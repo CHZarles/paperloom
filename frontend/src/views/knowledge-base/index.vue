@@ -74,7 +74,6 @@ const activeProcessingStatuses = new Set<Api.Paper.UploadTask['processingStatus'
   'MINERU_ARTIFACT_SAVED',
   'MAPPING_STRUCTURED_CONTENT',
   'RENDERING_VISUAL_ASSETS',
-  'CHUNKING',
   'EMBEDDING',
   'INDEXING'
 ]);
@@ -86,7 +85,6 @@ const processingStatusLabels: Partial<Record<NonNullable<Api.Paper.UploadTask['p
   MINERU_ARTIFACT_SAVED: 'Parsed',
   MAPPING_STRUCTURED_CONTENT: 'Mapping',
   RENDERING_VISUAL_ASSETS: 'Rendering',
-  CHUNKING: 'Chunking',
   EMBEDDING: 'Embedding',
   INDEXING: 'Indexing'
 };

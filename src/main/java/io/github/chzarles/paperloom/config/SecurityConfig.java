@@ -44,7 +44,7 @@ public class SecurityConfig {
                     // 配置请求的授权规则
                     .authorizeHttpRequests(authorize -> authorize
                             // 允许静态资源访问
-                            .requestMatchers("/", "/test.html", "/static/test.html", "/static/**", "/*.js", "/*.css", "/*.ico").permitAll()
+                            .requestMatchers("/", "/*.js", "/*.css", "/*.ico").permitAll()
                             // 允许 WebSocket 连接
                             .requestMatchers("/chat/**", "/ws/**").permitAll()
                             // 允许登录注册接口

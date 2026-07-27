@@ -1,6 +1,6 @@
 @startuml reference_02_reading_evidence_contracts_full
 !pragma layout smetana
-title Reference 02: PaperLoom reading and evidence contracts full field map
+title Reference 02: PaperLoom reading, retrieval, evidence, and source-quote contracts
 
 skinparam classAttributeIconSize 0
 skinparam shadowing false
@@ -8,13 +8,17 @@ skinparam defaultFontName "Arial"
 skinparam ArrowColor #334155
 
 class ParsedPaper <<parser DTO>> {
+  +parserName: String
+  +parserVersion: String
   +metadata: ParsedPaperMetadata
-  +pages: List<ParsedPaperPage>
   +elements: List<ParsedPaperElement>
+  +rawMetadata: Map<String,Object>
+  +rawParserJson: String
   +tables: List<ParsedPaperTable>
   +figures: List<ParsedPaperFigure>
   +formulas: List<ParsedPaperFormula>
-  +artifactPayload: ParsedPaperArtifactPayload
+  +artifacts: List<ParsedPaperArtifactPayload>
+  +pages: List<ParsedPaperPage>
 }
 
 class PaperReadingModel <<JPA entity>> {
@@ -27,8 +31,15 @@ class PaperReadingModel <<JPA entity>> {
   +pageCount: Integer
   +readablePageCount: Integer
   +readableCharCount: Integer
+  +failureReason: String
   +retrievalIndexStatus: PaperRetrievalIndexStatus
+  +retrievalIndexJobId: String
   +retrievalIndexContract: String
+  +retrievalIndexedLocationCount: Integer
+  +retrievalIndexedAt: LocalDateTime
+  +retrievalIndexStartedAt: LocalDateTime
+  +retrievalIndexErrorType: String
+  +retrievalIndexErrorMessage: String
   +diagnosticsJson: String
 }
 
@@ -41,9 +52,14 @@ class PaperPage <<JPA entity>> {
   +charCount: Integer
   +textStatus: READABLE | TEXTLESS | PARSER_MISSING
   +sourceSpanJson: String
+  +parserName: String
+  +parserVersion: String
+  +userId: String
 }
 
 class PaperSection <<JPA entity>> {
+  +paperId: String
+  +modelVersion: String
   +sectionId: String
   +sectionTitle: String
   +sectionLevel: Integer
@@ -51,26 +67,45 @@ class PaperSection <<JPA entity>> {
   +pageNumberTo: Integer
   +readingOrderFrom: Integer
   +readingOrderTo: Integer
+  +displayOrder: Integer
   +sectionText: String
+  +textHash: String
+  +charCount: Integer
   +sourceSpanJson: String
+  +parserName: String
+  +parserVersion: String
+  +userId: String
 }
 
 class PaperReadingElement <<JPA entity>> {
+  +paperId: String
+  +modelVersion: String
   +readingElementId: String
+  +contentListIndex: Integer
   +parserElementId: String
   +sourceObjectId: String
-  +elementType: heading | paragraph | table | figure | chart | formula
+  +elementType: heading | paragraph | table | figure | chart | formula | ...
   +pageNumber: Integer
   +readingOrder: Integer
   +sectionTitle: String
-  +bodyText: String
-  +captionText: String
-  +searchableText: String
-  +bboxJson: String
-  +rawAttributesJson: String
-  +parentElementId: String
+  +parentReadingElementId: String
   +attachmentRole: String
   +associationStatus: String
+  +locationRef: String
+  +locationType: PaperLocationType
+  +locationNotCreatedReason: String
+  +captionText: String
+  +bodyText: String
+  +searchableText: String
+  +captionSource: String
+  +parserImagePath: String
+  +bboxJson: String
+  +sourceSpanJson: String
+  +structuredPayloadJson: String
+  +rawAttributesJson: String
+  +parserName: String
+  +parserVersion: String
+  +userId: String
 }
 
 class PaperLocation <<JPA entity>> {
@@ -83,23 +118,66 @@ class PaperLocation <<JPA entity>> {
   +sectionTitle: String
   +sourceObjectId: String
   +displayOrder: Integer
-  +contentKind: String
   +sourceSpanJson: String
+  +contentKind: String
+  +userId: String
 }
 
 class PaperVisualAsset <<JPA entity>> {
   +paperId: String
-  +assetType: PAGE_SCREENSHOT | TABLE_CROP | FIGURE_CROP | CHART_CROP
+  +assetType: PAGE_SCREENSHOT | TABLE_CROP | FIGURE_CROP | CHART_CROP | PARSER_IMAGE
   +assetStatus: AVAILABLE | MISSING_IN_ARTIFACT | STORAGE_FAILED | RENDER_FAILED
   +modelVersion: String
   +pageNumber: Integer
   +sourceObjectId: String
   +readingElementId: String
+  +parserElementId: String
   +parserImagePath: String
   +bboxJson: String
   +objectKey: String
   +contentType: String
+  +widthPx: Integer
+  +heightPx: Integer
   +sha256: String
+  +failureReason: String
+  +userId: String
+}
+
+class PaperSourceQuote <<authoritative quote JPA entity>> {
+  +sourceQuoteRef: String
+  +paperId: String
+  +modelVersion: String
+  +locationRef: String
+  +locationType: String
+  +pageNumber: Integer
+  +pageEndNumber: Integer
+  +sectionTitle: String
+  +contentKind: String
+  +content: String
+  +contentHash: String
+  +splitPolicyVersion: String
+  +splitIndex: Integer
+  +sourceSpanJson: String
+}
+
+class ConversationSourceQuote <<conversation registry JPA entity>> {
+  +conversationId: String
+  +sourceQuoteRef: String
+  +firstSeenTurnId: String
+  +userId: String
+}
+
+class Conversation <<JPA entity>> {
+  +conversationId: String
+  +referenceMappingsJson: String
+  +effectiveScopeJson: String
+  +readingArtifactsJson: String
+  +readingStatePatchJson: String
+  +researchEventsJson: String
+  +generationId: String
+  +answerSlotId: Long
+  +answerRevision: Integer
+  +currentRevision: Boolean
 }
 
 class PaperSearchRequest <<Corpus API input>> {
@@ -109,11 +187,18 @@ class PaperSearchRequest <<Corpus API input>> {
   +scope_paper_ids: List<String>
   +query_text: String
   +paper_ids: List<String>
+  +authors: List<String>
+  +venues: List<String>
+  +year_from: Integer
+  +year_to: Integer
+  +offset: Integer
+  +limit: Integer
   +identity: Map<String,Object>
 }
 
 class LocationSearchRequest <<Corpus API input>> {
   +request_id: String
+  +conversation_id: String
   +user_id: Long
   +scope_paper_ids: List<String>
   +paper_ids: List<String>
@@ -126,15 +211,24 @@ class LocationSearchRequest <<Corpus API input>> {
 }
 
 class QdrantPoint <<candidate payload>> {
-  +id: location_ref hash
-  +sparseVector: QdrantSparseVector
+  +id: UUID hash(paperId, modelVersion, locationRef)
+  +lexicalVector: lexical_bm25_v1 sparse vector
+  +denseVector: dense_embo01_v1 optional
   +payload.paper_id: String
   +payload.model_version: String
   +payload.location_ref: String
+  +payload.reading_element_id(s): String | List<String>
+  +payload.source_object_id: String
+  +payload.element_type(s): String | List<String>
   +payload.location_type: String
   +payload.page_number: Integer
+  +payload.page_end_number: Integer
   +payload.section_path: String
-  +payload.element_types: List<String>
+  +payload.text_hash: String
+  +payload.parser_name: String
+  +payload.parser_version: String
+  +payload.lexical_contract: String
+  +payload.lexical_token_count: Integer
 }
 
 class PaperCard <<metadata candidate>> {
@@ -158,6 +252,7 @@ class LocationCandidate <<navigation preview>> {
   +page: Integer
   +element_type: String
   +preview: String
+  +dense_score: double
   +sparse_score: double
   +fused_score: double
 }
@@ -176,6 +271,11 @@ class CanonicalLocation <<exact read>> {
   +parser_name: String
   +parser_version: String
   +source_object_id: String
+  +page_screenshot_available: boolean
+  +pdf_evidence_available: boolean
+  +table_screenshot_available: boolean
+  +figure_screenshot_available: boolean
+  +asset_warnings: List<String>
 }
 
 class EvidenceItem <<harness ledger>> {
@@ -188,16 +288,15 @@ class EvidenceItem <<harness ledger>> {
   +page: Integer | unknown
   +section: String
   +span_text: String
-  +citeable: true
+  +bbox_json: String
   +evidence_quality: verified
 }
 
-class ResearchAnswer <<final tool payload>> {
-  +outcome: answer | partial_answer | clarify | abstain | technical_failure
-  +markdown: String
+class ResearchAnswer <<submit_research_answer draft>> {
+  +outcome: answered | needs_clarification | partial | abstained
+  +markdown: String with [[ev_...]]
   +fields: JsonMap
   +cited_evidence_ids: List<String>
-  +status: accepted | rejected
 }
 
 class ProductTurnResult <<Java output>> {
@@ -205,39 +304,44 @@ class ProductTurnResult <<Java output>> {
   +envelope: AnswerEnvelope
   +references: List<Map<String,Object>>
   +progressEvents: List<ToolProgressEvent>
+  +productStateItems: List<Map<String,Object>>
   +readingArtifacts: ReadingTurnArtifacts
   +readingStatePatch: ReadingStatePatch
   +researchTrace: ReadingResearchTrace
+  +stopReason: ProductStopReason
   +resultStatus: ProductResultStatus
 }
 
-class PaperConversationReference <<JPA entity>> {
-  +refId: String
-  +conversationId: String
-  +scopeSnapshotId: String
-  +turnId: String
-  +refType: PAPER | EVIDENCE | PAGE | CITATION
-  +sourceEntityId: String
-  +sourcePayloadJson: String
-  +displayPayloadJson: String
+class ProductReferenceFocus <<next-turn input>> {
+  +referenceNumber: Integer
+  +conversationRecordId: Long
+  +sourceQuoteRef: String
+  +paperHandles: List<String>
+  +paperHandle: String
+  +readingAction: SEARCH_PAPERS | LIST_LOCATIONS | FIND_LOCATIONS | READ_LOCATION | TRACE_SOURCE_QUOTE
+  +locationRef: String
 }
 
-ParsedPaper "1" --> "1" PaperReadingModel : builder creates version
+ParsedPaper "1" --> "1" PaperReadingModel : replaceFromParsedPaper creates version
 PaperReadingModel "1" --> "*" PaperPage
 PaperReadingModel "1" --> "*" PaperSection
 PaperReadingModel "1" --> "*" PaperReadingElement
 PaperReadingModel "1" --> "*" PaperLocation
 PaperReadingElement "1" --> "*" PaperVisualAsset
-PaperLocation "1" --> "1" QdrantPoint : indexed as rebuildable candidate
+PaperLocation "1" --> "1" QdrantPoint : rebuildable sparse or sparse+dense candidate
 
 PaperSearchRequest --> PaperCard : searchPapers / identity
-LocationSearchRequest --> QdrantPoint : sparse query filter
+LocationSearchRequest --> QdrantPoint : BM25 + optional dense/RRF filter
 QdrantPoint --> LocationCandidate : hydrated preview
-LocationCandidate --> CanonicalLocation : read_locations
-CanonicalLocation --> EvidenceItem : evidence_id()
+LocationCandidate --> CanonicalLocation : read_locations reopens MySQL
+CanonicalLocation --> EvidenceItem : Python creates ev_ hash
 EvidenceItem --> ResearchAnswer : cited_evidence_ids
 ResearchAnswer --> ProductTurnResult
-EvidenceItem --> PaperConversationReference : durable source mapping
-ProductTurnResult --> PaperConversationReference : references
-@enduml
+ProductTurnResult --> Conversation : referenceMappingsJson + artifacts + events
+Conversation --> ProductReferenceFocus : clicked citation / structured reopen
 
+ConversationSourceQuote --> PaperSourceQuote : source_quote_ref registry
+Conversation ..> ConversationSourceQuote : resolver requires conversation ownership
+PaperSourceQuote ..> PaperLocation : location_ref + current model check
+ProductReferenceFocus ..> Conversation : referenceNumber resolves through persisted mapping
+@enduml

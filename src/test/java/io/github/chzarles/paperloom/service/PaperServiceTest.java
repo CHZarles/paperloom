@@ -13,7 +13,6 @@ import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.repository.PaperSectionRepository;
 import io.github.chzarles.paperloom.repository.PaperSourceQuoteRepository;
-import io.github.chzarles.paperloom.repository.PaperTextChunkRepository;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.RemoveObjectArgs;
@@ -53,9 +52,6 @@ class PaperServiceTest {
 
     @Mock
     private PaperSearchabilityService paperSearchabilityService;
-
-    @Mock
-    private PaperTextChunkRepository paperTextChunkRepository;
 
     @Mock
     private PaperSourceQuoteRepository paperSourceQuoteRepository;
@@ -108,7 +104,6 @@ class PaperServiceTest {
         ReflectionTestUtils.setField(paperService, "paperRepository", paperRepository);
         ReflectionTestUtils.setField(paperService, "paperPublicationRepository", paperPublicationRepository);
         ReflectionTestUtils.setField(paperService, "paperSearchabilityService", paperSearchabilityService);
-        ReflectionTestUtils.setField(paperService, "paperTextChunkRepository", paperTextChunkRepository);
         ReflectionTestUtils.setField(paperService, "paperSourceQuoteRepository", paperSourceQuoteRepository);
         ReflectionTestUtils.setField(paperService, "paperReadingElementRepository", paperReadingElementRepository);
         ReflectionTestUtils.setField(paperService, "paperLocationRepository", paperLocationRepository);
@@ -193,7 +188,6 @@ class PaperServiceTest {
         verify(paperRepository).flush();
         verify(paperRepository, times(2)).countByPaperId("same-hash");
         verifyNoInteractions(qdrantIndexService);
-        verifyNoInteractions(paperTextChunkRepository);
         verifyNoInteractions(chunkInfoRepository);
     }
 
@@ -240,7 +234,6 @@ class PaperServiceTest {
         verify(paperPageRepository).deleteByPaperId("only-hash");
         verify(paperReadingModelRepository).deleteByPaperId("only-hash");
         verify(minioClient, times(2)).removeObject(any(RemoveObjectArgs.class));
-        verify(paperTextChunkRepository).deleteByPaperId("only-hash");
         verify(chunkInfoRepository).deleteByPaperId("only-hash");
     }
 

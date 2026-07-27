@@ -18,12 +18,12 @@ public class UsageBalanceDashboardService extends UsageDashboardService {
     public UsageBalanceDashboardService(UserRepository userRepository,
                                         UsageQuotaService usageQuotaService,
                                         UserTokenService userTokenService) {
-        super(userRepository, usageQuotaService);
         this.userRepository = userRepository;
         this.usageQuotaService = usageQuotaService;
         this.userTokenService = userTokenService;
     }
 
+    @Override
     public UsageOverview buildOverview(int days) {
         int normalizedDays = days <= 7 ? 7 : 30;
         List<DailyUsagePoint> trends = usageQuotaService.getDailyAggregates(List.of(), normalizedDays).stream()

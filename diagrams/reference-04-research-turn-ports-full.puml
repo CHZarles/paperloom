@@ -1,6 +1,6 @@
 @startuml reference_04_research_turn_ports_full
 !pragma layout smetana
-title Reference 04: Research turn dependency structure with data contracts
+title Reference 04: Research turn dependency structure with current ports
 
 top to bottom direction
 skinparam shadowing false
@@ -13,55 +13,77 @@ skinparam component {
   BackgroundColor #F8FAFC
 }
 
-component "Folio / Chat API\nQ0 user message + source selection" as Folio #EEF2FF
-component "ChatHandler\nQ1 userId + locked SourceScope" as Chat #DBEAFE
-component "ProductReadingConversationService\nQ2 ProductTurnRequest" as PRCS #DBEAFE
-component "PythonResearchHarnessClient\nQ3 POST /v1/research/stream" as Client #DBEAFE
+component "Folio / Chat API\nQ0 user message + ProductReferenceFocus" as Folio #EEF2FF
+component "ChatHandler\nQ1 auth, scope, generation state, progress stream" as Chat #DBEAFE
+component "ProductReadingConversationService\nQ2 ProductTurnRequest + reading memory" as PRCS #DBEAFE
+component "ResearchHarnessTransport\nQ3 submit/run/cancel abstraction" as Client #DBEAFE
 
 package "Java product boundary\nowns auth, quota, conversation, references" #DBEAFE {
-  component "ConversationScopeService\nsource-set snapshot / paper IDs" as Scope
-  component "ConversationService\nhistory + durable assistant message" as Conversation
-  component "RateLimitService\nreserve LLM usage" as Rate
-  component "UsageQuotaService\nsettle / abort reservation" as Quota
-  component "ConversationReferenceRegistry\ncitations -> PaperConversationReference" as RefRegistry
+  component "ConversationScopeService\nresolve/lock source scope + assert focus within scope" as Scope
+  component "ProductPaperHandleService\npaper_handle <-> paper_id" as Handles
+  component "ConversationService\nhistory, previous evidence, durable conversation" as Conversation
+  component "ChatGenerationStateService\nRedis generation meta/content/progress/references" as GenState
+  component "UsageQuotaService\nchat count + LLM token reservation/settlement/abort" as Quota
+  component "ResearchHarnessPayloadFactory\nrequest body + token estimate" as PayloadFactory
+  component "ResearchHarnessResultMapper\nPython response -> ProductTurnResult" as ResultMapper
+  component "ProductReadingSourceQuoteResolver\nsourceQuoteRef reopen: conversation registry + current model check" as SourceQuoteResolver
+  component "RedisResearchHarnessTransport\nXADD jobs, XREAD events, cancel key" as RedisTransport
+  component "PythonResearchHarnessClient\nPOST /v1/research/stream NDJSON" as HttpTransport
 }
 
 package "Python harness boundary\nrequest-local agent runtime" #DCFCE7 {
-  component "ResearchHarnessService\nQ4 validate request + CorpusReader" as RHS
-  component "LiveResearchChatHarness\nQ5 ConversationState + run_id" as Live
+  component "RedisResearchWorker\nconsumer group + job lock heartbeat" as Worker
+  component "RedisResearchEventSink\njob_started/tool/model/result/error events" as EventSink
+  component "ResearchHarnessService\nQ4 validate request + JavaCorpusGatewayReader" as RHS
+  component "LiveResearchChatHarness\nQ5 ConversationState + run_id + optional EvalRecorder" as Live
   component "AgentsSdkHarnessRuntime\nQ6 Agent, Session, Tools, Runner" as Runtime
-  component "ResearchRunContext\nQ6a trace + authorization state" as Context
-  component "ReadingCorpusTools\nQ7 model-visible paper tools" as Tools
+  component "ResearchRunContext\nQ6a trace + disclosure/evidence state" as Context
+  component "ReadingCorpusTools\nQ7 model-visible corpus tools" as Tools
   component "RequestBackedSession\nrequest-local SDK history" as Session
   component "submit_research_answer\nQ8 final validation gate" as Submit
 }
 
 package "Internal Java Corpus API\nnarrow data plane behind harness tools" #FEF3C7 {
-  component "JavaCorpusGateway\ninternal bearer token + cancel check" as Gateway
-  component "InternalCorpusController\n/papers/search\n/locations/search\n/locations/read" as Controller
+  component "JavaCorpusGateway\ninternal bearer token + max response bytes + cancel check" as Gateway
+  component "InternalCorpusController\n/internal/v1/corpus/papers/search\n/internal/v1/corpus/locations/search\n/internal/v1/corpus/locations/read" as Controller
   component "CorpusRetrievalService\nscope checks + retrieval orchestration" as Corpus
-  component "PaperService\naccessible papers by user" as PaperSvc
-  component "PaperSearchabilityService\ncurrent READY + index availability" as Searchable
+  component "PaperService\naccessible papers by user/scope" as PaperSvc
+  component "PaperSearchabilityService\ncurrent READY + index status gate" as Searchable
   component "ReadingLocationRetriever\ninterface" as Retriever
-  component "QdrantReadingLocationRetriever\nsparse BM25 candidate search" as QdrantRetriever
-  component "CanonicalReadingLocationService\nhydrate previews + exact reads" as Canonical
+  component "HybridReadingLocationRetriever\nsparse BM25 + optional dense/RRF" as HybridRetriever
+  component "QdrantReadingLocationRetriever\nlexical_bm25_v1 candidate search" as QdrantRetriever
+  component "EmbeddingProviderFactory\nMiniMax query embedding when sparse-dense-v1" as Embeddings
+  component "CanonicalReadingLocationService\nhydrate previews + exact reads + visual availability" as Canonical
 }
 
-package "Stores" #F8FAFC {
-  component "MySQL\npapers, Reading Model, conversations, references" as MySQL
-  component "Qdrant\nrebuildable sparse candidate index" as Qdrant
+package "Stores and external systems" #F8FAFC {
+  component "MySQL\npapers, Reading Model, conversations, source quote tables" as MySQL
+  component "Qdrant\nrebuildable lexical or lexical+dense candidate index" as Qdrant
+  component "Redis\ngeneration state, quotas, jobs/events/status/cancel/locks" as Redis
   component "Model Provider\nAgents SDK chat/responses transport" as Provider
 }
 
 Folio --> Chat : Q0
-Chat --> Scope : Q1 compute locked paper IDs
-Chat --> PRCS : Q2 runTurn(...)
-PRCS --> Conversation : compact history + previous research memory
+Chat --> Scope : Q1 resolveForChat + lockForFirstMessage
+Chat --> Conversation : resolve clicked reference number when needed
+Chat --> Handles : normalize paper handles for focus/product state
+Chat --> GenState : createGeneration + appendProgressEvent + markCompleted/Failed
+Chat --> PRCS : Q2 submitTurn or retryTurn(...)
+PRCS --> Conversation : compact history + latest reference mappings + reading state
 PRCS --> Client : ProductTurnRequest
-Client --> Rate : reserve prompt/completion budget
-Client --> RHS : Q3 NDJSON stream
 
-RHS --> Gateway : Q4 reader(request_id, user_id, scope_paper_ids)
+Client <|.. RedisTransport
+Client <|.. HttpTransport
+Client --> PayloadFactory : requestBody(...) + estimatedPromptTokens(...)
+Client --> Quota : reserve before dispatch; settle/abort after terminal result
+HttpTransport --> RHS : Q3 POST NDJSON stream
+RedisTransport --> Redis : XADD job + QUEUED status
+Redis --> Worker : XREADGROUP job
+Worker --> EventSink : emit progress/terminal events
+Worker --> RHS : run_job(payload, event sink, cancel check)
+RedisTransport --> Redis : XREAD per-generation event stream
+
+RHS --> Gateway : Q4 reader(request_id, conversation_id, user_id, scope_paper_ids)
 RHS --> Live : Q5 run_turn(dataset shells, state, message)
 Live --> Runtime : TurnExecutionInput
 Runtime --> Context : create one per Runner.run
@@ -76,30 +98,39 @@ Controller --> Corpus
 Corpus --> PaperSvc : user + scope paper access
 Corpus --> Searchable : current READY/index gate
 Corpus --> Retriever : find_reading_locations
-Retriever <|.. QdrantRetriever
-QdrantRetriever --> Qdrant : sparse query + scoped payload filter
+Retriever <|.. HybridRetriever
+HybridRetriever --> QdrantRetriever : sparse first pass
+QdrantRetriever --> Qdrant : searchLexical(vector, active model/page filter)
+HybridRetriever --> Embeddings : optional query embedding
+HybridRetriever --> Qdrant : optional searchDense + ReciprocalRankFusion
 Corpus --> Canonical : hydrate preview / read exact location_ref
-Canonical --> MySQL : canonical Reading Model content
+Canonical --> MySQL : canonical Reading Model content + visual asset availability
 PaperSvc --> MySQL
 
-Submit --> Context : known Evidence IDs + coverage state
-Client --> Quota : settle actual total tokens
-Client --> RefRegistry : cited evidence -> persistent refs
-Client --> Conversation : durable assistant message
+Submit --> Context : known Evidence IDs + final tool exclusivity
+RHS --> EventSink : result/error/cancelled when Redis transport is active
+Client --> ResultMapper : response -> ProductTurnResult
+PRCS --> Chat : answer + references + product state
+Chat --> Conversation : recordConversation(referenceMappings, effectiveScope, artifacts, events, generationId)
+Conversation --> SourceQuoteResolver : sourceQuoteRef detail reopening path
+SourceQuoteResolver --> MySQL : ConversationSourceQuote + PaperSourceQuote + current model
+Chat --> Folio : streamed progress + final message + reference mappings
 
 note right of PRCS
 The fixed paper scope is a Java product decision.
 Python can narrow within it, not expand beyond it.
+Reading memory carries previous accepted evidence and clicked anchors.
 end note
 
 note right of Tools
 Tool ladder:
 paper candidate -> location candidate -> exact read -> Evidence ID -> accepted answer.
+get_research_skill records guidance only.
 end note
 
 note right of Canonical
 Candidate previews are navigation.
 Only read_locations creates citeable paper-content evidence.
+Exact text is reopened from MySQL, not from Qdrant.
 end note
 @enduml
-

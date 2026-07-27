@@ -50,17 +50,6 @@ CREATE TABLE chunk_info (
                             UNIQUE KEY uk_file_md5_chunk_index (file_md5, chunk_index)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文件分块信息表';
 
-CREATE TABLE document_vectors (
-                                  vector_id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '向量记录唯一标识',
-                                  file_md5 VARCHAR(32) NOT NULL COMMENT '关联的文件MD5值',
-                                  chunk_id INT NOT NULL COMMENT '文本分块序号',
-                                  text_content TEXT COMMENT '文本内容',
-                                  page_number INT COMMENT 'PDF页码，用于引用定位',
-                                  anchor_text VARCHAR(255) COMMENT '页内定位锚点文本',
-                                  model_version VARCHAR(32) COMMENT '向量模型版本',
-                                  user_id VARCHAR(64) NOT NULL COMMENT '上传用户ID'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文档向量存储表';
-
 -- PaperLoom Reading Model 持久化闭环
 CREATE TABLE IF NOT EXISTS paper_parser_artifacts (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -333,54 +322,6 @@ CREATE TABLE model_provider_configs (
                                         KEY idx_model_provider_scope (config_scope)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='运行时模型 Provider 配置表';
 
--- 充值套餐表
-CREATE TABLE recharge_packages (
-                                   id INT AUTO_INCREMENT PRIMARY KEY COMMENT '套餐 ID（自增主键）',
-                                   package_name VARCHAR(128) NOT NULL COMMENT '套餐名称',
-                                   package_price BIGINT NOT NULL COMMENT '套餐价格，单位分',
-                                   package_desc TEXT COMMENT '套餐描述',
-                                   package_benefit TEXT COMMENT '套餐权益',
-                                   llm_token INT NOT NULL COMMENT 'LLM token 数量',
-                                   embedding_token INT NOT NULL COMMENT 'Embedding token 数量',
-                                   sort_order INT NOT NULL DEFAULT 10 COMMENT '排序顺序（数字越小越靠前）',
-                                   enabled BOOLEAN NOT NULL DEFAULT TRUE COMMENT '是否启用',
-                                   deleted BOOLEAN NOT NULL DEFAULT FALSE COMMENT '是否已删除',
-                                   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-                                   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='充值套餐表';
-
--- 充值订单表
-CREATE TABLE recharge_orders (
-                                 id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '订单 ID',
-                                 trade_no VARCHAR(128) NOT NULL UNIQUE COMMENT '业务单号（外部系统唯一）',
-                                 user_id VARCHAR(64) NOT NULL COMMENT '用户 ID（关联 users 表）',
-                                 package_id INT NOT NULL COMMENT '套餐 ID（如果是自定义充值，则为 0）',
-                                 amount BIGINT NOT NULL COMMENT '订单金额，单位分',
-                                 llm_token INT NOT NULL COMMENT 'LLM token 数量',
-                                 embedding_token INT NOT NULL COMMENT 'Embedding token 数量',
-                                 wx_transaction_id VARCHAR(64) NOT NULL COMMENT '微信交易流水号',
-                                 status ENUM('NOT_PAY', 'PAYING', 'SUCCEED', 'FAIL', 'CANCELLED') NOT NULL DEFAULT 'NOT_PAY' COMMENT '订单状态',
-                                 description VARCHAR(255) COMMENT '订单描述',
-                                 pay_time TIMESTAMP NULL COMMENT '支付成功时间',
-                                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-                                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-                                 INDEX idx_trade_no (trade_no),
-                                 INDEX idx_user_id (user_id),
-                                 INDEX idx_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='充值订单表';
-
--- 初始化充值套餐数据
--- 说明：
--- 1. 保留 1 分钱内部基准套餐，用于自定义充值时按比例折算 Token，不对前台用户展示。
--- 2. 默认三档套餐基于 2026-03-20 的 DeepSeek / 阿里百炼官方价格做保守估算，兼顾吸引力和利润空间。
-INSERT INTO recharge_packages (package_name, package_price, package_desc, package_benefit, llm_token, embedding_token, sort_order, enabled)
-VALUES
-    ('内部基准', 1, '自定义充值折算基准，不对外展示', 'LLM Token: 2,500\nEmbedding Token: 1,000', 2500, 1000, 999, TRUE),
-    ('体验版', 990, '适合轻度体验、日常问答和少量知识库上传。', 'LLM Token：250 万\nEmbedding Token：100 万\n支持微信支付充值\n余额到账后可直接使用', 2500000, 1000000, 10, TRUE),
-    ('进阶版', 1990, '适合持续问答、资料整理和中等规模知识库构建。', 'LLM Token：550 万\nEmbedding Token：250 万\n支持微信支付充值\n余额到账后可直接使用', 5500000, 2500000, 20, TRUE),
-    ('旗舰版', 4990, '适合高频问答、团队共享资料和较大规模知识库场景。', 'LLM Token：1400 万\nEmbedding Token：600 万\n支持微信支付充值\n余额到账后可直接使用', 14000000, 6000000, 30, TRUE);
-
-
 -- 创建用户 Token 变动记录表
 CREATE TABLE IF NOT EXISTS `user_token_record` (
                                `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
@@ -388,12 +329,12 @@ CREATE TABLE IF NOT EXISTS `user_token_record` (
                                `record_date` DATE NOT NULL COMMENT '记录日期（按天统计）',
                                `token_type` VARCHAR(20) NOT NULL COMMENT 'Token 类型：LLM/EMBEDDING',
                                `change_type` VARCHAR(20) NOT NULL COMMENT '变动类型：INCREASE/CONSUME',
-                                `request_count` BIGINT NOT NULL DEFAULT 0 COMMENT '请求次数（一次充值或对话可能包含多次 API 请求）',
+                                `request_count` BIGINT NOT NULL DEFAULT 0 COMMENT '请求次数（一次对话可能包含多次 API 请求）',
                                `amount` BIGINT NOT NULL COMMENT '变动数量',
                                `balance_before` BIGINT DEFAULT NULL COMMENT '变动前的余额',
                                `balance_after` BIGINT DEFAULT NULL COMMENT '变动后的余额',
                                `reason` VARCHAR(500) DEFAULT NULL COMMENT '变动原因描述',
-                               `remark` VARCHAR(500) DEFAULT NULL COMMENT '备注信息（订单号、对话 ID 等）',
+                               `remark` VARCHAR(500) DEFAULT NULL COMMENT '备注信息（操作来源、对话 ID 等）',
                                `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
                                PRIMARY KEY (`id`),
                                INDEX `idx_user_date` (`user_id`, `record_date`),

@@ -8,17 +8,28 @@ skinparam defaultFontName "Arial"
 skinparam ArrowColor #334155
 
 package "Runtime emitters" {
+  interface ResearchHarnessTransport #DBEAFE
   class PythonResearchHarnessClient #DBEAFE
+  class RedisResearchHarnessTransport #DBEAFE
+  class RedisResearchWorker #DCFCE7
+  class RedisResearchEventSink #DCFCE7
   class ResearchHarnessService #DCFCE7
+  class LiveResearchChatHarness #DCFCE7
+  class AgentsSdkHarnessRuntime #DCFCE7
+  class ResearchRunHooks #DCFCE7
   class ResearchRunContext #DCFCE7 {
     +model_call_count
     +prompt_tokens
     +completion_tokens
+    +total_tokens
     +model_latency_ms
     +state_snapshot()
   }
-  class ReadingCorpusTools #DCFCE7
-  class AgentsSdkHarnessRuntime #DCFCE7
+  class ReadingCorpusTools #DCFCE7 {
+    +authorized_paper_ids
+    +disclosed_location_refs
+    +observations_by_evidence_id
+  }
 }
 
 package "Per-run capture" {
@@ -30,13 +41,37 @@ package "Per-run capture" {
   class "result.json" as result <<artifact>> #FEF3C7
 }
 
-package "Java product traces" {
-  interface ProductTraceSink #EEF2FF
-  class AsyncDiskProductTraceSink #EEF2FF
-  class ReadingResearchTrace #EEF2FF
-  class ReadingTurnArtifacts #EEF2FF
-  class ReadingStatePatch #EEF2FF
-  class ProductTurnResult #EEF2FF
+package "Java generation and conversation state" {
+  class ChatGenerationStateService #EEF2FF {
+    +appendProgressEvent(generationId, event)
+    +updateReferenceMappings(generationId, refs)
+    +updateDiagnostics(generationId, diagnostics)
+    +updateReadingArtifacts(generationId, artifacts)
+    +updateReadingStatePatch(generationId, patch)
+    +markCompleted(generationId, refs)
+  }
+  class GenerationSnapshot #EEF2FF {
+    +progressEvents
+    +referenceMappings
+    +researchAuditTrail
+  }
+  class ConversationService #EEF2FF {
+    +recordConversation(...)
+    +findReferenceDetail(...)
+    +prepareUserRetry(...)
+  }
+  class ResearchAuditTrailProjector #EEF2FF {
+    +project(answerStatus, referenceMappings, researchEvents)
+  }
+  class ResearchAuditTrail #EEF2FF
+  class Conversation <<JPA entity>> #EEF2FF {
+    +referenceMappingsJson
+    +effectiveScopeJson
+    +readingArtifactsJson
+    +readingStatePatchJson
+    +researchEventsJson
+    +generationId
+  }
 }
 
 package "Offline evaluation" {
@@ -51,23 +86,34 @@ package "Offline evaluation" {
   class "score_report.json" as scoreReport <<artifact>> #F8FAFC
 }
 
-PythonResearchHarnessClient --> ResearchHarnessService : stream progress/result
-ResearchHarnessService --> AgentsSdkHarnessRuntime
-AgentsSdkHarnessRuntime --> ResearchRunContext : model, token, latency totals
-AgentsSdkHarnessRuntime --> EvalRecorder : transport + final submission events
+ResearchHarnessTransport <|.. PythonResearchHarnessClient
+ResearchHarnessTransport <|.. RedisResearchHarnessTransport
+PythonResearchHarnessClient --> ResearchHarnessService : NDJSON progress/result
+RedisResearchHarnessTransport --> RedisResearchWorker : jobs/events/status/cancel streams
+RedisResearchWorker --> RedisResearchEventSink : emits event stream entries
+RedisResearchWorker --> ResearchHarnessService : run_job + cancel check
+ResearchHarnessService --> LiveResearchChatHarness
+LiveResearchChatHarness --> AgentsSdkHarnessRuntime
+LiveResearchChatHarness --> EvalRecorder : optional per-run capture
+AgentsSdkHarnessRuntime --> ResearchRunHooks
+AgentsSdkHarnessRuntime --> ResearchRunContext
+ResearchRunHooks --> ResearchRunContext : model/token/latency totals
+ResearchRunContext --> ReadingCorpusTools : disclosure + evidence ledger state
+AgentsSdkHarnessRuntime --> EvalRecorder : model transport + final submission events
 ReadingCorpusTools --> EvalRecorder : tool args/results + before/after auth state
-EvalRecorder --> events : append-only, sequenced, fsync
-EvalRecorder --> result : atomic final write
+EvalRecorder --> events : append-only, sequenced
+EvalRecorder --> result : final run artifact
 
-PythonResearchHarnessClient --> ProductTurnResult : map answer/citations/usage/trace
-ProductTurnResult --> ReadingResearchTrace
-ProductTurnResult --> ReadingTurnArtifacts
-ProductTurnResult --> ReadingStatePatch
-ProductTraceSink <|.. AsyncDiskProductTraceSink
-ReadingResearchTrace --> ProductTraceSink
+PythonResearchHarnessClient --> ChatGenerationStateService : progress events via ChatHandler callback
+RedisResearchHarnessTransport --> ChatGenerationStateService : progress events via ChatHandler callback
+ChatGenerationStateService --> GenerationSnapshot
+ChatGenerationStateService --> ResearchAuditTrailProjector : project cached progress + refs
+ConversationService --> Conversation : durable JSON fields
+ConversationService --> ResearchAuditTrailProjector : project stored events + refs
+ResearchAuditTrailProjector --> ResearchAuditTrail
 
 GoldenCase --> GoldenJavaCorpusReader : product paper map
-GoldenJavaCorpusReader --> ResearchHarnessService : same Java/Qdrant corpus path
+GoldenJavaCorpusReader --> ResearchHarnessService : same Java Corpus path for product runs
 BehaviorScorer --> GoldenCase
 BehaviorScorer --> FactAssertions
 BehaviorScorer --> scoreReport
@@ -79,12 +125,12 @@ questions, tool payloads, model traffic, and paper text.
 end note
 
 note bottom of BehaviorScorer
-Scores Candidate, Read, Cited, grounding, outcome, content, trace, and efficiency.
+Scores candidate, read, cited, grounding, outcome, content, trace, and efficiency.
 Hard pass is not just answer wording.
 end note
 
-note bottom of ProductTraceSink
-Trace, cache, and eval failures are diagnostic failures.
+note bottom of ChatGenerationStateService
+Generation-state failures are diagnostic/persistence failures.
 They must not change authorization or accepted product answers.
 end note
 @enduml

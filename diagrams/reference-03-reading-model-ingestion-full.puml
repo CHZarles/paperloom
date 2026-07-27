@@ -1,6 +1,6 @@
 @startuml reference_03_reading_model_ingestion_full
 !pragma layout smetana
-title Reference 03: Reading Model ingestion dependency structure with data contracts
+title Reference 03: Reading Model ingestion dependency structure with current contracts
 
 top to bottom direction
 skinparam shadowing false
@@ -14,26 +14,27 @@ skinparam component {
 }
 
 component "Kafka paper-processing topic\nI1 PaperProcessingTask" as Entry #EEF2FF
-component "PaperProcessingConsumer\nI1 task -> processing status" as Consumer #DBEAFE
-component "ParseService\nI2 PDF bytes -> ParsedPaper + Reading Model" as Parse #DBEAFE
-component "RetrievalIndexingService\nI9 paperId -> IndexingResult" as Indexing #DBEAFE
+component "PaperProcessingConsumer\nI1 task -> parse/index/retry decisions" as Consumer #DBEAFE
+component "ParseService\nI2 PDF bytes -> ParsedPaper + Reading Model artifacts" as Parse #DBEAFE
+component "RetrievalIndexingService\nI9 paperId -> IndexingResult + quota metrics" as Indexing #DBEAFE
 
 package "In-process parsing and model-building capabilities" #DCFCE7 {
   component "UploadService\nI2a paperId -> merged PDF stream" as Upload
-  component "MinerUPaperPdfParser\nI3 PDF bytes -> ParsedPaper\nproviderName=MinerU, providerVersion=self-hosted\n@ConditionalOnProperty(mineru, matchIfMissing=true)" as Parser
-  component "PaperParserArtifactService\nI4 ParsedPaper -> parser artifact row/object" as Artifact
+  component "MinerUPaperPdfParser\nI3 PDF stream -> ParsedPaper\npaper.parsing.provider=mineru\nmatchIfMissing=true" as Parser
+  component "MinerUOutputMapper\ncontent_list/middle/md -> pages/elements/tables/figures/formulas" as Mapper
+  component "PaperParserArtifactService\nI4 ParsedPaper artifacts -> parser artifact row/object" as Artifact
   component "PaperReadingModelService\nI5 replace current model transaction" as ModelService
-  component "PaperReadingModelBuilder\nI5a ParsedPaper -> pages/sections/elements/locations" as Builder
-  component "PaperVisualAssetService\nI6 PDF + parser assets -> MinIO visual assets" as Visuals
-  component "PaperChunkBuilder\nI7 ParsedPaper -> legacy PaperTextChunk[]" as Chunker
-  component "MinerUParserClient\nHTTP client (WebClient) calling MinerU sidecar:\nGET /health -> POST /tasks (multipart) ->\nGET /tasks/{taskId} (poll every 3s, up to 900s) ->\nGET /tasks/{taskId}/result (zip up to 64MB)\nbase: paper.parsing.mineru.base-url (default http://localhost:8000)" as MinerUClient
+  component "PaperReadingModelBuilder\nI5a ParsedPaper -> pages/sections/elements/locations/diagnostics" as Builder
+  component "PaperVisualAssetService\nI6 PDF + parser assets -> screenshots/crops/PARSER_IMAGE availability" as Visuals
+  component "MinerUParserClient\nHTTP client (WebClient + health check):\nGET /health -> POST /tasks (multipart) ->\nGET /tasks/{taskId} (poll) -> GET /tasks/{taskId}/result\nor immediate structured output\nbase: paper.parsing.mineru.base-url" as MinerUClient
 }
 
-node "MinerU self-hosted sidecar\nhttp://127.0.0.1:8000\n/tasks, /tasks/{id}, /tasks/{id}/result, /health" as MinerU #FECACA
+node "MinerU self-hosted sidecar\n/tasks, /tasks/{id}, /tasks/{id}/result, /health" as MinerU #FECACA
 
 package "Persistence surfaces\nMySQL canonical state and object storage" #FEF3C7 {
-  component "PaperReadingModelRepository\ncurrent READY model metadata" as ModelRepo
-  component "PaperPageRepository\nphysical page text/status" as PageRepo
+  component "PaperRepository\npipeline status + parser metadata backfill" as PaperRepo
+  component "PaperReadingModelRepository\ncurrent READY model metadata + index status/job" as ModelRepo
+  component "PaperPageRepository\nphysical page text/status/source span" as PageRepo
   component "PaperSectionRepository\nreadable paper structure" as SectionRepo
   component "PaperReadingElementRepository\ntyped content surface" as ElementRepo
   component "PaperLocationRepository\nstable navigation refs" as LocationRepo
@@ -42,69 +43,80 @@ package "Persistence surfaces\nMySQL canonical state and object storage" #FEF3C7
 }
 
 package "Retrieval index capabilities\nrebuildable navigation index" #EEF2FF {
+  component "PaperSearchabilityService\ncurrent READY + retrieval_index_status READY gate" as Searchability
+  component "PaperRetrievalControlRepository\nfull rebuild maintenance lock" as ControlRepo
   component "ReadingModelQdrantIndexService\nI9a current model -> QdrantPoint[]" as QdrantIndex
-  component "LexicalBm25Encoder\nI9b searchable text -> sparse vectors" as BM25
+  component "LexicalBm25Encoder\nI9b searchable text -> lexical_bm25_v1 sparse vectors" as BM25
+  component "EmbeddingProviderFactory / MiniMaxEmbeddingProvider\noptional sparse-dense-v1 dense_embo01_v1 vectors" as Embeddings
   component "RetrievalIndexContractService\nactive avg doc length / index contract" as Contract
-  component "QdrantClient\nI9c upsert lexical sparse points" as Qdrant
-  component "PaperSearchabilityService\nREADY + index status gate" as Searchability
+  component "QdrantClient\nI9c ensure collection, payload indexes, upsert, count" as Qdrant
 }
 
 Entry --> Consumer : I1 consume task
 Consumer --> Searchability : skip duplicate searchable paper
+Consumer --> PaperRepo : markVectorizationProcessing/Completed/Failed
+Consumer --> ModelRepo : retry-initial checks current READY model
 Consumer --> Upload : I2a getMergedFileStream(paperId)
 Consumer --> Parse : I2 parseAndSave(...)
 
-Parse --> Parser : I3 parse(pdfBytes, originalFilename)
-Parser --> MinerUClient : invokes minerUParserClient.parse(pdfBytes, originalFilename)
-MinerUClient --> MinerU : GET /health (assertSidecarAvailable)
-MinerUClient --> MinerU : POST /tasks (multipart PDF, backend=pipeline)
-MinerUClient --> MinerU : GET /tasks/{taskId} (poll until completed/failed)
-MinerUClient --> MinerU : GET /tasks/{taskId}/result (raw-result.zip)
-Parse --> Artifact : I4 save parser artifact
+Parse --> PaperRepo : pipeline status + parser metadata
+Parse --> Parser : I3 parse(pdfStream, originalFilename)
+Parser --> MinerUClient : parse(pdfBytes, originalFilename)
+Parser --> Mapper : map(content_list, middle, markdown)
+MinerUClient --> MinerU : GET /health
+MinerUClient --> MinerU : POST /tasks multipart\nbackend, parse_method, return_* flags
+MinerUClient --> MinerU : optional poll GET /tasks/{taskId}
+MinerUClient --> MinerU : optional GET /tasks/{taskId}/result
+Parse --> Artifact : I4 saveParserArtifact(...)
+Artifact --> MinIO : write raw parser artifact bytes
 Parse --> ModelService : I5 replaceFromParsedPaper(...)
-ModelService --> Builder : I5a build PaperReadingModelBuildResult
-Builder --> ModelRepo
-Builder --> PageRepo
-Builder --> SectionRepo
-Builder --> ElementRepo
-Builder --> LocationRepo
+ModelService --> Builder : I5a build(...)
+ModelService --> ModelRepo : building -> ready/failed
+ModelService --> PageRepo
+ModelService --> SectionRepo
+ModelService --> ElementRepo
+ModelService --> LocationRepo
 Parse --> Visuals : I6 replaceVisualAssets(...)
 Visuals --> VisualRepo
 Visuals --> MinIO
-Parse --> Chunker : I7 buildChunks(...)
 
-Consumer --> Indexing : I9 indexWithMetrics(paperId, userId)
+Consumer --> Indexing : I9 indexWithMetrics(paperId, requesterId)
 Indexing --> QdrantIndex : I9a indexCurrentModel(...)
-QdrantIndex --> ModelRepo : current READY model
+Indexing --> PaperRepo : requester metrics / completion status
+QdrantIndex --> ModelRepo : current READY model + claim job
+QdrantIndex --> ControlRepo : reject during full rebuild
+QdrantIndex --> Qdrant : deleteByPaperId before rebuild
 QdrantIndex --> LocationRepo : indexable locations
-QdrantIndex --> ElementRepo : searchable location text
-QdrantIndex --> BM25 : I9b encode text/query vocabulary
-QdrantIndex --> Contract : ensureActiveContract(...)
-QdrantIndex --> Qdrant : I9c upsert(points)
-QdrantIndex --> ModelRepo : mark retrieval index READY/FAILED
-
-Consumer --> Consumer : markVectorizationCompleted / Failed
+QdrantIndex --> PageRepo : page text
+QdrantIndex --> SectionRepo : section text
+QdrantIndex --> ElementRepo : searchable/caption/body text
+QdrantIndex --> BM25 : encode document/query vocabulary
+QdrantIndex --> Contract : ensureActiveContract(avgDocLength)
+QdrantIndex --> Qdrant : ensureCollection + payload indexes
+QdrantIndex --> Embeddings : optional embed(searchableText[])
+QdrantIndex --> Qdrant : upsert lexical-only or hybrid points
+QdrantIndex --> Qdrant : countByPaperIdAndModelVersion
+QdrantIndex --> ModelRepo : finish READY or FAILED
 
 note right of Parse
-Parser output is retained for reproducibility,
-but the durable product contract is the Reading Model.
+Parser output is retained for reproducibility.
+The durable product contract is the versioned Reading Model.
 end note
 
 note right of MinerU
-  MinerUParserClient throws MinerUUnavailableException when:
-  - GET /health fails or returns non-2xx (sidecar down)
-  - POST /tasks cannot reach the sidecar
-  - GET /tasks/{taskId} cannot reach the sidecar
-  - GET /tasks/{taskId}/result cannot reach the sidecar
-  Throws PaperParsingException when:
-  - task status becomes failed / error / interrupted
-  - task does not complete within timeout-seconds
-  - result zip or JSON lacks content_list.json
+MinerUUnavailableException:
+- health check failure / non-2xx
+- submit/status/result transport failure
+PaperParsingException:
+- task failed/error/interrupted
+- timeout
+- malformed result zip or missing content_list output
 end note
 
 note right of QdrantIndex
 Qdrant stores location candidates only.
 Exact evidence is later reopened from MySQL by location_ref.
+Hash collisions fail the index build to protect lexical contracts.
 end note
 
 legend right
@@ -113,4 +125,3 @@ solid arrow --> : runtime call / main dependency
 Packages group capability interfaces and storage surfaces.
 endlegend
 @enduml
-

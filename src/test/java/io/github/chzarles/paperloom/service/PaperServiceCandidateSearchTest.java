@@ -3,7 +3,6 @@ package io.github.chzarles.paperloom.service;
 import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.model.User;
 import io.github.chzarles.paperloom.repository.PaperRepository;
-import io.github.chzarles.paperloom.repository.PaperTextChunkRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,9 +25,6 @@ class PaperServiceCandidateSearchTest {
     private PaperRepository paperRepository;
 
     @Mock
-    private PaperTextChunkRepository paperTextChunkRepository;
-
-    @Mock
     private UserRepository userRepository;
 
     @Mock
@@ -44,7 +40,6 @@ class PaperServiceCandidateSearchTest {
         MockitoAnnotations.openMocks(this);
         paperService = new PaperService();
         ReflectionTestUtils.setField(paperService, "paperRepository", paperRepository);
-        ReflectionTestUtils.setField(paperService, "paperTextChunkRepository", paperTextChunkRepository);
         ReflectionTestUtils.setField(paperService, "userRepository", userRepository);
         ReflectionTestUtils.setField(paperService, "paperAccessService", paperAccessService);
         ReflectionTestUtils.setField(paperService, "paperSearchabilityService", paperSearchabilityService);

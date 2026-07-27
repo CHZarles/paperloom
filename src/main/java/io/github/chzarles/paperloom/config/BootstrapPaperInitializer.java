@@ -4,7 +4,6 @@ import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.model.PaperPublication;
 import io.github.chzarles.paperloom.model.User;
 import io.github.chzarles.paperloom.repository.PaperPublicationRepository;
-import io.github.chzarles.paperloom.repository.PaperTextChunkRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
 import io.github.chzarles.paperloom.service.ReadingModelQdrantIndexService;
@@ -48,7 +47,6 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
     private final ReadingModelQdrantIndexService qdrantIndexService;
     private final PaperRepository paperRepository;
     private final PaperPublicationRepository publicationRepository;
-    private final PaperTextChunkRepository paperTextChunkRepository;
     private final MinioClient minioClient;
     private final UserRepository userRepository;
 
@@ -72,7 +70,6 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
                                      ReadingModelQdrantIndexService qdrantIndexService,
                                      PaperRepository paperRepository,
                                      PaperPublicationRepository publicationRepository,
-                                     PaperTextChunkRepository paperTextChunkRepository,
                                      MinioClient minioClient,
                                      UserRepository userRepository) {
         this.parseService = parseService;
@@ -80,7 +77,6 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
         this.qdrantIndexService = qdrantIndexService;
         this.paperRepository = paperRepository;
         this.publicationRepository = publicationRepository;
-        this.paperTextChunkRepository = paperTextChunkRepository;
         this.minioClient = minioClient;
         this.userRepository = userRepository;
     }
@@ -146,8 +142,6 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
     private boolean isBootstrapPaperReady(String fileMd5, String fileName, String ownerUserId) {
         Optional<Paper> existingFile = paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(fileMd5, ownerUserId);
         long fileRecordCount = paperRepository.countByPaperIdAndUserId(fileMd5, ownerUserId);
-        long vectorCount = paperTextChunkRepository.countByPaperId(fileMd5);
-        long pageAwareVectorCount = paperTextChunkRepository.countByPaperIdAndPageNumberIsNotNull(fileMd5);
         long qdrantCount = qdrantIndexService.countByPaperId(fileMd5);
 
         if (existingFile.isEmpty()) {
@@ -159,14 +153,12 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
                 && paper.getStatus() == 1;
         boolean publicationMatches = publicationRepository.existsByPaperId(fileMd5) == shouldPublish(ownerUserId);
 
-        boolean pageMetadataReady = !fileName.toLowerCase().endsWith(".pdf") || pageAwareVectorCount > 0;
-        if (metadataMatches && publicationMatches && vectorCount > 0 && qdrantCount > 0
-                && pageMetadataReady && fileRecordCount == 1) {
+        if (metadataMatches && publicationMatches && qdrantCount > 0 && fileRecordCount == 1) {
             return true;
         }
 
-        logger.info("启动论文数据不完整、元数据已变化或存在重复记录，准备重新导入: paperId={}, fileRecords={}, vectors={}, pageAwareVectors={}, qdrantPoints={}",
-                fileMd5, fileRecordCount, vectorCount, pageAwareVectorCount, qdrantCount);
+        logger.info("启动论文数据不完整、元数据已变化或存在重复记录，准备重新导入: paperId={}, fileRecords={}, qdrantPoints={}",
+                fileMd5, fileRecordCount, qdrantCount);
         return false;
     }
 
@@ -241,12 +233,6 @@ public class BootstrapPaperInitializer implements CommandLineRunner {
             qdrantIndexService.deleteByPaperId(fileMd5);
         } catch (Exception e) {
             logger.warn("清理启动论文 Qdrant 数据失败: paperId={}, error={}", fileMd5, e.getMessage());
-        }
-
-        try {
-            paperTextChunkRepository.deleteByPaperId(fileMd5);
-        } catch (Exception e) {
-            logger.warn("清理启动论文 chunk 数据失败: paperId={}, error={}", fileMd5, e.getMessage());
         }
 
         try {

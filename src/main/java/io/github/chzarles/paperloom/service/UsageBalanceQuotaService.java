@@ -7,13 +7,10 @@ import io.github.chzarles.paperloom.model.DailyUsageStat;
 import io.github.chzarles.paperloom.model.UserTokenRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -22,20 +19,20 @@ import java.util.Map;
 public class UsageBalanceQuotaService extends UsageQuotaService {
 
     private static final Logger logger = LoggerFactory.getLogger(UsageBalanceQuotaService.class);
-    private static final DateTimeFormatter DAY_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
 
     private final UserTokenService userTokenService;
+    private final UsageQuotaProperties properties;
 
-    public UsageBalanceQuotaService(StringRedisTemplate stringRedisTemplate,
-                                    UsageQuotaProperties properties,
+    public UsageBalanceQuotaService(UsageQuotaProperties properties,
                                     UserTokenService userTokenService
     ) {
-        super(stringRedisTemplate, properties);
+        this.properties = properties;
         this.userTokenService = userTokenService;
     }
 
+    @Override
     public TokenReservation reserveLlmTokens(String userId, int estimatedPromptTokens, int maxCompletionTokens) {
-        if (!isQuotaManaged(userId)) {
+        if (!isQuotaManaged(userId) || !properties.getLlm().isEnabled()) {
             return TokenReservation.noop("llm", userId);
         }
 
@@ -58,8 +55,9 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
         );
     }
 
+    @Override
     public TokenReservation reserveEmbeddingTokens(String userId, List<String> texts) {
-        if (!isQuotaManaged(userId)) {
+        if (!isQuotaManaged(userId) || !properties.getEmbedding().isEnabled()) {
             return TokenReservation.noop("embedding", userId);
         }
 
@@ -85,6 +83,7 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
      * @param userId
      */
     @Transactional(rollbackFor = Exception.class)
+    @Override
     public void recordChatRequest(String userId) {
         if (!isQuotaManaged(userId)) {
             return;
@@ -100,38 +99,34 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
      * @param actualTokens
      */
     @Transactional(rollbackFor = Exception.class)
+    @Override
     public void settleReservation(TokenReservation reservation, int actualTokens) {
         if (reservation == null || reservation.noop()) {
             return;
         }
 
-        if (reservation.quotaKey().isBlank()) {
-            if (actualTokens <= 0) {
-                return;
-            }
+        if (reservation.quotaKey() != null && !reservation.quotaKey().isBlank()) {
+            throw new IllegalArgumentException("Legacy daily quota reservations are no longer supported");
+        }
+        if (actualTokens <= 0) {
+            return;
+        }
 
-            // 结算用户的token消耗
-            try {
-                // 更新总的请求次数
-                userTokenService.incrementUserTotalRequestCount(reservation.scope(), reservation.userId());
-
-                // 根据消耗token扣减用户余额
-                if ("llm".equals(reservation.scope())) {
-                    userTokenService.consumeLlmTokens(reservation.userId(), actualTokens);
-                    logger.info("用户 {} 结算 LLM Token: {}, 剩余额度从预留中扣减",
-                            reservation.userId(), actualTokens);
-                } else if ("embedding".equals(reservation.scope())) {
-                    userTokenService.consumeEmbeddingTokens(reservation.userId(), actualTokens);
-                    logger.info("用户 {} 结算 Embedding Token: {}, 剩余额度从预留中扣减",
-                            reservation.userId(), actualTokens);
-                }
-            } catch (Exception e) {
-                logger.error("结算用户 Token 失败：userId={}, scope={}, tokens={}",
-                        reservation.userId(), reservation.scope(), actualTokens, e);
-                throw e;
+        try {
+            userTokenService.incrementUserTotalRequestCount(reservation.scope(), reservation.userId());
+            if ("llm".equals(reservation.scope())) {
+                userTokenService.consumeLlmTokens(reservation.userId(), actualTokens);
+                logger.info("用户 {} 结算 LLM Token: {}, 剩余额度从预留中扣减",
+                        reservation.userId(), actualTokens);
+            } else if ("embedding".equals(reservation.scope())) {
+                userTokenService.consumeEmbeddingTokens(reservation.userId(), actualTokens);
+                logger.info("用户 {} 结算 Embedding Token: {}, 剩余额度从预留中扣减",
+                        reservation.userId(), actualTokens);
             }
-        } else {
-            super.settleReservation(reservation, actualTokens);
+        } catch (Exception e) {
+            logger.error("结算用户 Token 失败：userId={}, scope={}, tokens={}",
+                    reservation.userId(), reservation.scope(), actualTokens, e);
+            throw e;
         }
     }
 
@@ -141,6 +136,7 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
      * @param userIds
      * @return
      */
+    @Override
     public Map<String, UserUsageSnapshot> getSnapshots(List<String> userIds) {
         Map<String, UserUsageSnapshot> result = new LinkedHashMap<>();
         if (userIds == null || userIds.isEmpty()) {
@@ -165,7 +161,7 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
      * @param quota
      * @return
      */
-    private QuotaView buildQuotaView(String scope, String userId, UsageQuotaProperties.DailyTokenQuota quota) {
+    private QuotaView buildQuotaView(String scope, String userId, UsageQuotaProperties.TokenQuota quota) {
         if (!isQuotaManaged(userId) || !quota.isEnabled()) {
             return new QuotaView(false, 0, 0, 0, 0);
         }
@@ -185,10 +181,6 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
         return new QuotaView(true, usedTokens, limit, balance, requestCount);
     }
 
-    private String currentDay() {
-        return ZonedDateTime.now(ZoneId.systemDefault()).format(DAY_FORMATTER);
-    }
-
     private boolean isQuotaManaged(String userId) {
         return userId != null && !userId.isBlank() && !userId.startsWith("system");
     }
@@ -201,6 +193,7 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
      * @param days
      * @return
      */
+    @Override
     public List<DailyUsageAggregate> getDailyAggregates(List<String> userIds, int days) {
         int normalizedDays = Math.max(1, Math.min(days, properties.getRetentionDays()));
         LocalDate today = LocalDate.now(ZoneId.systemDefault());
@@ -239,7 +232,7 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
 
         // 遍历所有日期，生成聚合结果
         for (LocalDate day = startDay; !day.isAfter(today); day = day.plusDays(1)) {
-            String dayString = day.format(DAY_FORMATTER);
+            String dayString = day.toString();
 
             DailyUsageStat llmStatForDay = llmStatMap.get(day);
             DailyUsageStat embeddingStatForDay = embeddingStatMap.get(day);

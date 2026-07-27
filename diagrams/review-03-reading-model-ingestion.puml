@@ -1,6 +1,6 @@
 @startuml review_03_reading_model_ingestion
 !pragma layout smetana
-title 03 Reading Model Ingestion Runtime Collaboration: UML sequence with data contracts
+title 03 Reading Model Ingestion Runtime Collaboration: UML sequence with current failure gates
 
 skinparam shadowing false
 skinparam defaultFontName "Arial"
@@ -17,21 +17,25 @@ skinparam sequence {
 actor "Kafka\npaper-processing" as Entry
 participant "PaperProcessingConsumer" as Consumer #DBEAFE
 participant "PaperSearchabilityService" as Searchability #DBEAFE
+participant "PaperReadingModelRepository" as ModelRepo #FEF3C7
+participant "PaperService / PaperRepository" as PaperState #DBEAFE
 participant "UploadService" as Upload #DBEAFE
 participant "ParseService" as Parse #DCFCE7
 participant "MinerUPaperPdfParser" as Parser #DCFCE7
 participant "MinerUParserClient" as MinerUClient #DCFCE7
-participant "MinerU self-hosted sidecar\nhttp://127.0.0.1:8000" as MinerU #FECACA
+participant "MinerU self-hosted sidecar" as MinerU #FECACA
+participant "MinerUOutputMapper" as Mapper #DCFCE7
 participant "PaperParserArtifactService" as Artifact #DCFCE7
 participant "PaperReadingModelService" as ModelService #DCFCE7
+participant "PaperReadingModelBuilder" as Builder #DCFCE7
 participant "PaperVisualAssetService" as Visuals #DCFCE7
-participant "PaperChunkBuilder" as Chunker #DCFCE7
 participant "RetrievalIndexingService" as Indexing #EEF2FF
 participant "ReadingModelQdrantIndexService" as QdrantIndex #EEF2FF
+participant "RetrievalIndexContractService" as Contract #EEF2FF
+participant "EmbeddingProviderFactory\nMiniMaxEmbeddingProvider" as Embeddings #EEF2FF
 participant "QdrantClient" as Qdrant #FEF3C7
-participant "PaperService" as PaperService #DBEAFE
 
-Entry -> Consumer : I1 processTask(task: PaperProcessingTask)
+Entry -> Consumer : I1 processTask(task)
 activate Consumer
 
 Consumer -> Searchability : I1a isSearchable(task.paperId)
@@ -40,11 +44,29 @@ Searchability --> Consumer : searchable: bool
 deactivate Searchability
 
 alt I1b already current READY and indexed
-  Consumer -> PaperService : markVectorizationCompleted(existing metrics)
+  Consumer -> ModelRepo : current model metadata
+  Consumer -> PaperState : markVectorizationCompleted(existing metrics)
   Consumer --> Entry : skipped duplicate processing
   deactivate Consumer
-else I1c parse and index
-  Consumer -> PaperService : markVectorizationProcessing(paperId)
+else I1c not searchable
+  Consumer -> PaperState : markVectorizationProcessing(paperId, false)
+  alt taskType == RETRY_INITIAL and current READY model exists
+    Consumer -> ModelRepo : find current READY model
+    Consumer -> Indexing : retry failed initial index
+    activate Indexing
+    Indexing -> QdrantIndex : indexWithMetrics(...)
+    activate QdrantIndex
+    QdrantIndex -> Qdrant : rebuild/upsert existing Reading Model locations
+    Qdrant --> QdrantIndex : written count
+    QdrantIndex --> Indexing : IndexResult
+    deactivate QdrantIndex
+    Indexing --> Consumer : IndexingResult
+    deactivate Indexing
+    Consumer -> PaperState : markVectorizationCompleted(...)
+    Consumer --> Entry : retry indexed
+    deactivate Consumer
+  else I1d parse PDF and build new Reading Model
+
   Consumer -> Upload : I2 getMergedFileStream(paperId)
   activate Upload
   Upload --> Consumer : fileStream: InputStream
@@ -53,83 +75,85 @@ else I1c parse and index
   Consumer -> Parse : I3 parseAndSave(paperId, fileStream, title, userId)
   activate Parse
   Parse -> Parse : read pdfBytes + physicalPageCount
+  Parse -> PaperState : status MINERU_RUNNING
 
-  Parse -> Parser : I4 parse(pdfBytes, originalFilename)
+  Parse -> Parser : I4 parse(pdfStream, originalFilename)
   activate Parser
-  Parser -> MinerUClient : I4a minerUParserClient.parse(pdfBytes, originalFilename)
+  Parser -> MinerUClient : I4a parse(pdfBytes, originalFilename)
   activate MinerUClient
-  MinerUClient -> MinerU : GET /health  (assertSidecarAvailable)
-  alt MinerU sidecar reachable (2xx)
-    MinerU --> MinerUClient : 200 OK
-    MinerUClient -> MinerU : POST /tasks  (multipart, backend=pipeline)
-    alt immediate structured output in submit response
-      MinerU --> MinerUClient : {content_list_json, middle_json, markdown}
-    else async task with task_id
-      MinerU --> MinerUClient : {task_id, status: pending|processing|...}
-      loop poll GET /tasks/{taskId} every poll-interval-seconds, up to timeout-seconds
+  MinerUClient -> MinerU : GET /health
+  alt MinerU sidecar reachable
+    MinerU --> MinerUClient : 2xx
+    MinerUClient -> MinerU : POST /tasks multipart\nbackend + parse options
+    alt immediate structured output
+      MinerU --> MinerUClient : content_list / middle_json / markdown
+    else async task
+      MinerU --> MinerUClient : task_id
+      loop until completed or timeout
         MinerUClient -> MinerU : GET /tasks/{taskId}
-        alt status == completed
-          MinerU --> MinerUClient : {status: completed}
-        else status == failed | error | interrupted
-          MinerU --> MinerUClient : {status: failed, error: ...}
-          MinerUClient --> Parser : throw PaperParsingException("MinerU task failed: ...")
+        alt failed | error | interrupted
+          MinerU --> MinerUClient : failed status
+          MinerUClient --> Parser : throw PaperParsingException
           Parser --> Parse : throw PaperParsingException
-        else status == pending | processing | running
-          MinerU --> MinerUClient : {status: <in-progress>}
+        else pending | processing | running
+          MinerU --> MinerUClient : in-progress status
+        else completed
+          MinerU --> MinerUClient : completed
         end
       end
-      alt task completed within timeout
-        MinerUClient -> MinerU : GET /tasks/{taskId}/result
-        MinerU --> MinerUClient : raw-result.zip  (content_list.json + middle.json + *.md)
-      else task did not complete within timeout
-        MinerUClient --> Parser : throw PaperParsingException("MinerU task timed out after ...")
-        Parser --> Parse : throw PaperParsingException
-      end
+      MinerUClient -> MinerU : GET /tasks/{taskId}/result
+      MinerU --> MinerUClient : raw-result.zip
     end
-    Parser --> Parse : parsedPaper: ParsedPaper  (with raw zip artifact)
-  else MinerU sidecar unreachable
-    MinerU --> MinerUClient : connection refused / timeout / non-2xx
+    MinerUClient --> Parser : MinerUParseResult(raw bytes + structured output)
+    Parser -> Mapper : map to ParsedPaper
+    Mapper --> Parser : ParsedPaper
+    Parser --> Parse : ParsedPaper with raw zip artifact
+  else unreachable / non-2xx
+    MinerU --> MinerUClient : connection refused / timeout / bad health
     MinerUClient --> Parser : throw MinerUUnavailableException
-    deactivate MinerUClient
     Parser --> Parse : throw MinerUUnavailableException
-    deactivate Parser
-    Parse --> Consumer : MinerUUnavailableException  (sidecar not running at paper.parsing.mineru.base-url)
+    Parse --> Consumer : exception
     deactivate Parse
-    Consumer -> PaperService : markVectorizationFailed(paperId, MinerUUnavailableException)
+    Consumer -> PaperState : markVectorizationFailed(...)
     Consumer --> Entry : failed
     deactivate Consumer
   end
   deactivate MinerUClient
   deactivate Parser
 
-  Parse -> Artifact : I5 saveParserArtifact(paperId, parsedPaper, ...)
+  Parse -> PaperState : parser metadata backfill
+  Parse -> Artifact : I5 saveParserArtifact(...)
   activate Artifact
   Artifact --> Parse : artifact persisted
   deactivate Artifact
+  Parse -> PaperState : status MINERU_ARTIFACT_SAVED
 
-  Parse -> ModelService : I6 replaceFromParsedPaper(paperId, parsedPaper, physicalPageCount, ...)
+  Parse -> ModelService : I6 replaceFromParsedPaper(...)
   activate ModelService
-  ModelService --> Parse : readingModel: PaperReadingModel
+  ModelService -> Builder : build pages/sections/elements/locations
+  activate Builder
+  Builder --> ModelService : PaperReadingModelBuildResult
+  deactivate Builder
+  alt validation failed
+    ModelService --> Parse : READING_MODEL_FAILED
+  else ready
+    ModelService --> Parse : current READING_MODEL_READY
+  end
   deactivate ModelService
 
   alt I6a modelStatus != READING_MODEL_READY
     Parse --> Consumer : PaperReadingModelNotReadyException
     deactivate Parse
-    Consumer -> PaperService : markVectorizationFailed(paperId, error)
+    Consumer -> PaperState : markVectorizationFailed(...)
     Consumer --> Entry : failed
     deactivate Consumer
   else I6b current model ready
-    Parse -> Visuals : I7 replaceVisualAssets(pdfBytes, parsedPaper, modelVersion, ...)
+    Parse -> PaperState : status MAPPING_STRUCTURED_CONTENT\nthen RENDERING_VISUAL_ASSETS
+    Parse -> Visuals : I7 replaceVisualAssets(pdfBytes, parsedPaper, modelVersion)
     activate Visuals
     Visuals --> Parse : visual assets persisted
     deactivate Visuals
 
-    Parse -> Chunker : I8 buildChunks(parsedPaper, chunkSize)
-    activate Chunker
-    Chunker --> Parse : chunks: List<PaperChunkCandidate>
-    deactivate Chunker
-
-    Parse -> Parse : saveStructuredChunks(paperId, chunks)
     Parse --> Consumer : parse complete
     deactivate Parse
 
@@ -137,7 +161,15 @@ else I1c parse and index
     activate Indexing
     Indexing -> QdrantIndex : I9a indexCurrentModel(current READY model)
     activate QdrantIndex
-    QdrantIndex -> QdrantIndex : build IndexedLocation[]\n+ BM25 sparse vectors
+    QdrantIndex -> Qdrant : deleteByPaperId + ensureCollection
+    QdrantIndex -> QdrantIndex : build IndexedLocation[]\n+ payloads + BM25 sparse vectors
+    QdrantIndex -> Contract : ensureActiveContract(avgDocLength)
+    opt QDRANT_CONTRACT == sparse-dense-v1
+      QdrantIndex -> Embeddings : embed(searchableText[])
+      activate Embeddings
+      Embeddings --> QdrantIndex : dense vectors
+      deactivate Embeddings
+    end
     QdrantIndex -> Qdrant : I9b upsert(points: QdrantPoint[])
     activate Qdrant
     Qdrant --> QdrantIndex : written count
@@ -147,9 +179,10 @@ else I1c parse and index
     Indexing --> Consumer : IndexingResult
     deactivate Indexing
 
-    Consumer -> PaperService : markVectorizationCompleted(indexingResult)
+    Consumer -> PaperState : markVectorizationCompleted(indexingResult)
     Consumer --> Entry : searchable paper ready
     deactivate Consumer
+  end
   end
 end
 @enduml

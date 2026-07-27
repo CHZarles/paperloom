@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1100" viewBox="0 0 1800 1100" role="img" aria-labelledby="title description">
   <title id="title">PaperLoom live system architecture</title>
-  <desc id="description">The current product path from Folio through the Java product and corpus boundary to the Python Agents SDK harness, Qdrant candidate retrieval, canonical MySQL reads, evidence validation, and Reading Model ingestion.</desc>
+  <desc id="description">The current product path from Folio through ChatHandler, Java product state, ResearchHarnessTransport, Redis or HTTP transport, the Python Agents SDK harness, hybrid Qdrant candidate retrieval, canonical MySQL reads, source quote reopening, evidence validation, and Reading Model ingestion.</desc>
   <defs>
     <marker id="arrow-end" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="7" markerHeight="7" orient="auto">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#66766f"/>
@@ -44,7 +44,7 @@
   <rect class="canvas" width="1800" height="1100"/>
   <text class="kicker" x="40" y="40">PAPERLOOM / VERIFIED LIVE PATH</text>
   <text class="title" x="40" y="76">Evidence-bounded agentic RAG over an authorized Reading Model</text>
-  <text class="subtitle" x="40" y="102">Current assistant answers use Java product controls, a Python Agents SDK loop, Qdrant candidates, and canonical MySQL reads.</text>
+  <text class="subtitle" x="40" y="102">Current assistant answers use Java scope/reference controls, Redis/HTTP harness transport, a Python Agents SDK loop, hybrid Qdrant candidates, and canonical MySQL reads.</text>
 
   <rect class="boundary-experience" x="30" y="125" width="170" height="615" rx="6"/>
   <rect class="boundary-java" x="220" y="125" width="780" height="615" rx="6"/>
@@ -56,11 +56,11 @@
   <rect class="node-dark" x="50" y="190" width="130" height="94" rx="5"/>
   <text class="node-title-light" x="115" y="225" text-anchor="middle">Folio</text>
   <text class="node-copy-light" x="115" y="250" text-anchor="middle">research UI</text>
-  <text class="node-copy-light" x="115" y="269" text-anchor="middle">evidence reopen</text>
+  <text class="node-copy-light" x="115" y="269" text-anchor="middle">source quote focus</text>
 
   <rect class="node-blue" x="250" y="190" width="180" height="94" rx="5"/>
   <text class="node-title" x="340" y="225" text-anchor="middle">ChatHandler</text>
-  <text class="node-copy" x="340" y="250" text-anchor="middle">scope + stream entry</text>
+  <text class="node-copy" x="340" y="250" text-anchor="middle">scope + generation state</text>
 
   <rect class="node-blue" x="465" y="190" width="265" height="94" rx="5"/>
   <text class="node-title" x="597.5" y="218" text-anchor="middle">ProductReading</text>
@@ -68,13 +68,13 @@
   <text class="node-copy" x="597.5" y="266" text-anchor="middle">history + research memory</text>
 
   <rect class="node-blue" x="770" y="190" width="200" height="94" rx="5"/>
-  <text class="node-title" x="870" y="218" text-anchor="middle">PythonResearch</text>
-  <text class="node-title" x="870" y="240" text-anchor="middle">HarnessClient</text>
-  <text class="node-copy" x="870" y="266" text-anchor="middle">quota + NDJSON client</text>
+  <text class="node-title" x="870" y="218" text-anchor="middle">ResearchHarness</text>
+  <text class="node-title" x="870" y="240" text-anchor="middle">Transport</text>
+  <text class="node-copy" x="870" y="266" text-anchor="middle">PayloadFactory + Mapper</text>
 
   <rect class="node-green" x="1050" y="190" width="220" height="94" rx="5"/>
-  <text class="mono" x="1160" y="225" text-anchor="middle">POST</text>
-  <text class="node-title" x="1160" y="249" text-anchor="middle">/v1/research/stream</text>
+  <text class="mono" x="1160" y="225" text-anchor="middle">REDIS / POST</text>
+  <text class="node-title" x="1160" y="249" text-anchor="middle">research job stream</text>
   <text class="node-copy" x="1160" y="269" text-anchor="middle">authorized request boundary</text>
 
   <rect class="node-green" x="1410" y="190" width="260" height="94" rx="5"/>
@@ -87,7 +87,7 @@
   <path class="edge" d="M 730 237 L 770 237"/>
   <path class="edge-both" d="M 970 237 L 1050 237"/>
   <path class="edge" d="M 1270 237 L 1410 237"/>
-  <text class="edge-label" x="1010" y="320" text-anchor="middle">AUTHORIZED TURN + STREAMED RESULT</text>
+  <text class="edge-label" x="1010" y="320" text-anchor="middle">AUTHORIZED TURN + PROGRESS / RESULT EVENTS</text>
 
   <rect class="control-panel" x="250" y="415" width="720" height="270" rx="5"/>
   <text class="group" x="280" y="448">JAVA-OWNED STATE / 模型不可自行改变</text>
@@ -97,29 +97,29 @@
   <text class="responsibility-copy" x="302" y="512">Java supplies the exact paper IDs for every turn.</text>
 
   <circle class="bullet" cx="285" cy="536" r="5"/>
-  <text class="responsibility" x="302" y="541">Quota, cancellation, API and WebSocket integration</text>
-  <text class="responsibility-copy" x="302" y="562">Usage is reserved before the internal research request.</text>
+  <text class="responsibility" x="302" y="541">Quota, cancellation, API and generation progress</text>
+  <text class="responsibility-copy" x="302" y="562">ChatGenerationStateService publishes durable snapshots/events.</text>
 
   <circle class="bullet" cx="285" cy="586" r="5"/>
   <text class="responsibility" x="302" y="591">Durable conversation and research memory</text>
   <text class="responsibility-copy" x="302" y="612">The SDK Session is request-local, not a second source of truth.</text>
 
   <circle class="bullet" cx="285" cy="636" r="5"/>
-  <text class="responsibility" x="302" y="641">Reference persistence and evidence reopening</text>
-  <text class="responsibility-copy" x="302" y="662">Accepted citations become durable product mappings.</text>
+  <text class="responsibility" x="302" y="641">Reference persistence and source quote reopening</text>
+  <text class="responsibility-copy" x="302" y="662">Conversation JSON plus source quote rows resolve accepted citations.</text>
 
   <rect class="node-gold" x="1050" y="440" width="300" height="125" rx="5"/>
   <text class="node-title" x="1200" y="466" text-anchor="middle">JavaCorpus</text>
   <text class="node-title" x="1200" y="488" text-anchor="middle">GatewayReader</text>
-  <text class="node-copy" x="1200" y="512" text-anchor="middle">scoped metadata + remote tools</text>
-  <text class="node-copy" x="1200" y="533" text-anchor="middle">Qdrant candidates + MySQL reads</text>
+  <text class="node-copy" x="1200" y="512" text-anchor="middle">InternalCorpusController tools</text>
+  <text class="node-copy" x="1200" y="533" text-anchor="middle">hybrid Qdrant + MySQL reads</text>
   <text class="node-copy" x="1200" y="554" text-anchor="middle">no local persistent index</text>
 
   <rect class="node-green" x="1410" y="440" width="260" height="125" rx="5"/>
   <text class="node-title" x="1540" y="477" text-anchor="middle">Agents SDK Runner</text>
   <text class="node-copy" x="1540" y="503" text-anchor="middle">one Context + Agent + Session</text>
   <text class="node-copy" x="1540" y="524" text-anchor="middle">serial tool-state transitions</text>
-  <text class="node-copy" x="1540" y="545" text-anchor="middle">accepted final tool output</text>
+  <text class="node-copy" x="1540" y="545" text-anchor="middle">submit_research_answer gate</text>
 
   <rect class="node-green" x="1050" y="610" width="300" height="100" rx="5"/>
   <text class="node-title" x="1200" y="640" text-anchor="middle">ReadingCorpusTools</text>
@@ -156,8 +156,8 @@
 
   <rect class="node-gold" x="1050" y="850" width="300" height="110" rx="5"/>
   <text class="node-title" x="1200" y="885" text-anchor="middle">MySQL + Qdrant</text>
-  <text class="node-copy" x="1200" y="911" text-anchor="middle">canonical model + candidate index</text>
-  <text class="node-copy" x="1200" y="932" text-anchor="middle">stable location_ref contract</text>
+  <text class="node-copy" x="1200" y="911" text-anchor="middle">Reading Model + source quotes</text>
+  <text class="node-copy" x="1200" y="932" text-anchor="middle">lexical_bm25_v1 + dense_embo01_v1</text>
 
   <rect class="node-gold" x="1410" y="870" width="260" height="90" rx="5"/>
   <text class="node-title" x="1540" y="905" text-anchor="middle">MinIO</text>
@@ -168,7 +168,7 @@
   <path class="edge-data" d="M 860 915 L 960 915 L 960 905 L 1050 905"/>
   <path class="edge-data" d="M 860 915 L 930 915 L 930 1010 L 1375 1010 L 1375 915 L 1410 915"/>
   <path class="edge-data" d="M 1200 850 L 1200 780 L 1010 780 L 1010 502 L 1050 502"/>
-  <text class="edge-label" x="1100" y="770" text-anchor="middle">JAVA CORPUS API: QDRANT SEARCH + MYSQL READ</text>
+  <text class="edge-label" x="1100" y="770" text-anchor="middle">JAVA CORPUS API: BM25 + DENSE/RRF SEARCH + MYSQL READ</text>
 
-  <text class="subtitle" x="40" y="1080">Qdrant returns navigation candidates; only a validated Current Reading Model read can create assistant evidence.</text>
+  <text class="subtitle" x="40" y="1080">Qdrant returns navigation candidates from the active sparse-only or sparse-dense contract; only a validated Current Reading Model read can create assistant evidence.</text>
 </svg>

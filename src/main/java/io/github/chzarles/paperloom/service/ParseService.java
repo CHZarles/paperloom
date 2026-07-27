@@ -3,13 +3,9 @@ package io.github.chzarles.paperloom.service;
 import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.model.PaperReadingModel;
 import io.github.chzarles.paperloom.model.PaperReadingModelStatus;
-import io.github.chzarles.paperloom.model.PaperTextChunk;
-import io.github.chzarles.paperloom.paper.parser.PaperChunkBuilder;
-import io.github.chzarles.paperloom.paper.parser.PaperChunkCandidate;
 import io.github.chzarles.paperloom.paper.parser.PaperPdfParser;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaper;
 import io.github.chzarles.paperloom.repository.PaperRepository;
-import io.github.chzarles.paperloom.repository.PaperTextChunkRepository;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,8 +16,6 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.List;
 
 @Service
 public class ParseService {
@@ -29,16 +23,10 @@ public class ParseService {
     private static final Logger logger = LoggerFactory.getLogger(ParseService.class);
 
     @Autowired
-    private PaperTextChunkRepository paperTextChunkRepository;
-
-    @Autowired
     private PaperRepository paperRepository;
 
     @Autowired
     private PaperPdfParser paperPdfParser;
-
-    @Autowired
-    private PaperChunkBuilder paperChunkBuilder;
 
     @Autowired
     private PaperParserArtifactService paperParserArtifactService;
@@ -49,14 +37,11 @@ public class ParseService {
     @Autowired
     private PaperReadingModelService paperReadingModelService;
 
-    @Value("${paper.parsing.chunk-size:512}")
-    private int chunkSize;
-
     @Value("${paper.parsing.max-memory-threshold:0.8}")
     private double maxMemoryThreshold;
 
     /**
-     * Parses a research paper PDF, builds page-aware chunks, and persists chunk provenance.
+     * Parses a research paper PDF and persists the current reading model artifacts.
      */
     public void parseAndSave(String paperId, InputStream fileStream,
                              String userId) throws IOException {
@@ -102,10 +87,7 @@ public class ParseService {
                 parsedPaper,
                 userId
         );
-        updatePipelineStatus(paperId, Paper.VECTORIZATION_STATUS_CHUNKING);
-        List<PaperChunkCandidate> chunks = paperChunkBuilder.buildChunks(parsedPaper, chunkSize);
-        saveStructuredChunks(paperId, chunks, userId);
-        logger.info("论文 PDF 结构化解析和入库完成，paperId: {}, chunkCount: {}", paperId, chunks.size());
+        logger.info("论文 PDF 结构化解析和入库完成，paperId: {}", paperId);
     }
 
     private Integer physicalPageCount(byte[] pdfBytes) {
@@ -154,32 +136,6 @@ public class ParseService {
             paper.setVectorizationErrorMessage(null);
             paperRepository.save(paper);
         });
-    }
-
-    private void saveStructuredChunks(String paperId, List<PaperChunkCandidate> chunks,
-                                      String userId) {
-        for (PaperChunkCandidate chunk : chunks) {
-            PaperTextChunk paperChunk = new PaperTextChunk();
-            paperChunk.setPaperId(paperId);
-            paperChunk.setChunkId(chunk.chunkId());
-            paperChunk.setTextContent(chunk.text());
-            paperChunk.setPageNumber(chunk.pageNumber());
-            paperChunk.setAnchorText(chunk.anchorText());
-            paperChunk.setElementType(chunk.elementType());
-            paperChunk.setSectionTitle(chunk.sectionTitle());
-            paperChunk.setSectionLevel(chunk.sectionLevel());
-            paperChunk.setBboxJson(chunk.bboxJson());
-            paperChunk.setParserName(chunk.parserName());
-            paperChunk.setParserVersion(chunk.parserVersion());
-            paperChunk.setRawProvenanceJson(chunk.rawProvenanceJson());
-            paperChunk.setSourceKind(chunk.sourceKind());
-            paperChunk.setTableId(chunk.tableId());
-            paperChunk.setFigureId(chunk.figureId());
-            paperChunk.setFormulaId(chunk.formulaId());
-            paperChunk.setEvidenceRole(chunk.evidenceRole());
-            paperChunk.setUserId(userId);
-            paperTextChunkRepository.save(paperChunk);
-        }
     }
 
     private void checkMemoryThreshold() {

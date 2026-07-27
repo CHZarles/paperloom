@@ -1,12 +1,24 @@
 flowchart TB
-    subgraph ROW1["ReadingCorpusTools: paper and location state"]
+    subgraph ROW0["Java turn boundary: fixed scope and prior accepted evidence"]
         direction LR
         SCOPE["user_id + scope.paper_ids<br/>Java Corpus API cannot widen this scope"]:::control
+        MEMORY["research_memory<br/>selected evidence + previous exact reads"]:::state
+        FOCUS["scope.reference_focus<br/>clicked source quote / paper handle / location"]:::control
+
+        FOCUS -->|validated by Java before dispatch| SCOPE
+        MEMORY -->|known evidence ids for follow-up| SCOPE
+    end
+
+    subgraph ROW1["Research skill + ReadingCorpusTools: paper and location state"]
+        direction LR
+        SKILL["get_research_skill<br/>records method guidance only"]:::tool
+        SKILLS["skills_used<br/>no corpus authorization change"]:::state
         DISCOVER["search_paper_candidates<br/>or find_papers_by_identity"]:::tool
         PAPERS["authorized_paper_ids<br/>returned paper IDs"]:::state
-        LOCATE["find_reading_locations<br/>Java/Qdrant candidates + Current Model validation"]:::tool
+        LOCATE["find_reading_locations<br/>Java hybrid retriever + Current Model validation"]:::tool
         LOCATIONS["disclosed_location_refs<br/>returned location_ref values"]:::state
 
+        SKILL -->|method only| SKILLS
         SCOPE --> DISCOVER
         DISCOVER -->|unique or returned papers| PAPERS
         PAPERS -->|required| LOCATE
@@ -15,21 +27,24 @@ flowchart TB
 
     subgraph ROW2["ReadingCorpusTools + submit_research_answer"]
         direction RL
-        READ["read_locations<br/>requires disclosed_location_refs<br/>exact retained span"]:::tool
+        READ["read_locations<br/>requires disclosed_location_refs<br/>MySQL exact retained span"]:::tool
         EVIDENCE["observations_by_evidence_id<br/>Evidence ID + provenance"]:::evidence
         SUBMIT["submit_research_answer<br/>outcome + markdown + fields"]:::tool
         VALIDATE["answer_validation_error"]:::control
         ACCEPTED["accepted draft<br/>tools_to_final_output ends Runner"]:::answer
-        REFERENCES["ChatHandler referenceMappings<br/>persisted with the conversation"]:::source
+        REFERENCES["ChatHandler referenceMappings<br/>persisted conversation JSON"]:::source
 
         READ -->|create| EVIDENCE
-        EVIDENCE -->|known IDs only| SUBMIT
+        MEMORY -->|previous known IDs| SUBMIT
+        EVIDENCE -->|current known IDs only| SUBMIT
         SUBMIT --> VALIDATE
         VALIDATE -->|accepted| ACCEPTED
         ACCEPTED --> REFERENCES
     end
 
-    LOCATIONS ~~~ READ
+    LOCATIONS -->|required disclosed refs| READ
+    SKILLS ~~~ SUBMIT
+    FOCUS ~~~ READ
 
     classDef source fill:#18212b,color:#ffffff,stroke:#18212b,stroke-width:2px;
     classDef control fill:#f8ece9,color:#18212b,stroke:#d94b40,stroke-width:2px;
@@ -40,3 +55,4 @@ flowchart TB
 
     style ROW1 fill:#eef2f8,stroke:#aebed8,stroke-width:1px
     style ROW2 fill:#edf5f1,stroke:#afc8bc,stroke-width:1px
+    style ROW0 fill:#f8f1ea,stroke:#d8c7a7,stroke-width:1px

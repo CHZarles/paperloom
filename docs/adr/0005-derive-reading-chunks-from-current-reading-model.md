@@ -27,8 +27,8 @@ paper_tables / paper_figures / paper_formulas
 ```
 
 Parser artifacts remain evidence and debugging material. `ParsedPaper` remains an ingestion-time
-adapter. `paper_text_chunks` remains legacy retrieval storage until it is replaced. None of them is
-the source of truth for new Reading Chunks.
+adapter. The legacy `paper_text_chunks` projection has been removed. None of them is the source of
+truth for new Reading Chunks.
 
 This keeps retrieval downstream of the product-owned Current Reading Model:
 

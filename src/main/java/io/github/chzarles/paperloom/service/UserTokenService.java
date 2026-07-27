@@ -219,7 +219,7 @@ public class UserTokenService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void addLlmTokens(String userId, long tokens) {
-        addLlmTokens(userId, tokens, "购买套餐充值", null);
+        addLlmTokens(userId, tokens, "额度追加", null);
     }
 
     /**
@@ -254,7 +254,7 @@ public class UserTokenService {
      */
     @Transactional(rollbackFor = Exception.class)
     public void addEmbeddingTokens(String userId, long tokens) {
-        addEmbeddingTokens(userId, tokens, "购买套餐充值", null);
+        addEmbeddingTokens(userId, tokens, "额度追加", null);
     }
 
     /**
@@ -327,7 +327,7 @@ public class UserTokenService {
         return EMBEDDING_TOKEN_KEY_PREFIX + userId;
     }
 
-    private long resolveInitToken(String userId, UsageQuotaProperties.DailyTokenQuota quota) {
+    private long resolveInitToken(String userId, UsageQuotaProperties.TokenQuota quota) {
         long adminInitTokens = quota.getAdminInitTokens();
         if (adminInitTokens > 0 && isAdminUser(userId)) {
             return adminInitTokens;

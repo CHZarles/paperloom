@@ -4,7 +4,6 @@ import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.model.PaperPublication;
 import io.github.chzarles.paperloom.model.User;
 import io.github.chzarles.paperloom.repository.PaperPublicationRepository;
-import io.github.chzarles.paperloom.repository.PaperTextChunkRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
 import io.github.chzarles.paperloom.service.ParseService;
@@ -58,9 +57,6 @@ class BootstrapPaperInitializerTest {
     private PaperPublicationRepository publicationRepository;
 
     @Mock
-    private PaperTextChunkRepository paperTextChunkRepository;
-
-    @Mock
     private MinioClient minioClient;
 
     @Mock
@@ -90,8 +86,6 @@ class BootstrapPaperInitializerTest {
         when(paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(fileMd5, "1"))
                 .thenReturn(Optional.of(existingFile));
         when(paperRepository.countByPaperIdAndUserId(fileMd5, "1")).thenReturn(1L);
-        when(paperTextChunkRepository.countByPaperId(fileMd5)).thenReturn(2L);
-        when(paperTextChunkRepository.countByPaperIdAndPageNumberIsNotNull(fileMd5)).thenReturn(2L);
         when(qdrantIndexService.countByPaperId(fileMd5)).thenReturn(2L);
         when(publicationRepository.existsByPaperId(fileMd5)).thenReturn(true);
 
@@ -115,8 +109,6 @@ class BootstrapPaperInitializerTest {
         when(paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(fileMd5, "1"))
                 .thenReturn(Optional.empty());
         when(paperRepository.countByPaperIdAndUserId(fileMd5, "1")).thenReturn(0L);
-        when(paperTextChunkRepository.countByPaperId(fileMd5)).thenReturn(0L);
-        when(paperTextChunkRepository.countByPaperIdAndPageNumberIsNotNull(fileMd5)).thenReturn(0L);
         when(qdrantIndexService.countByPaperId(fileMd5)).thenReturn(0L);
         doNothing().when(retrievalIndexingService).index(fileMd5, "system-bootstrap");
         when(minioClient.putObject(any(PutObjectArgs.class))).thenReturn(null);
@@ -167,8 +159,6 @@ class BootstrapPaperInitializerTest {
         when(paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(fileMd5, "1"))
                 .thenReturn(Optional.of(newest));
         when(paperRepository.countByPaperIdAndUserId(fileMd5, "1")).thenReturn(1L);
-        when(paperTextChunkRepository.countByPaperId(fileMd5)).thenReturn(2L);
-        when(paperTextChunkRepository.countByPaperIdAndPageNumberIsNotNull(fileMd5)).thenReturn(2L);
         when(qdrantIndexService.countByPaperId(fileMd5)).thenReturn(2L);
         when(publicationRepository.existsByPaperId(fileMd5)).thenReturn(true);
 

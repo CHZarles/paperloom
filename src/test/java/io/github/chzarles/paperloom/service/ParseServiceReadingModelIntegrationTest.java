@@ -3,14 +3,12 @@ package io.github.chzarles.paperloom.service;
 import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.model.PaperReadingModel;
 import io.github.chzarles.paperloom.model.PaperReadingModelStatus;
-import io.github.chzarles.paperloom.paper.parser.PaperChunkBuilder;
 import io.github.chzarles.paperloom.paper.parser.PaperPdfParser;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaper;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaperElement;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaperElementType;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaperMetadata;
 import io.github.chzarles.paperloom.repository.PaperRepository;
-import io.github.chzarles.paperloom.repository.PaperTextChunkRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
@@ -31,9 +29,6 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ParseServiceReadingModelIntegrationTest {
-
-    @Mock
-    private PaperTextChunkRepository paperTextChunkRepository;
 
     @Mock
     private PaperRepository paperRepository;
@@ -79,14 +74,11 @@ class ParseServiceReadingModelIntegrationTest {
 
     private ParseService parseService() {
         ParseService parseService = new ParseService();
-        ReflectionTestUtils.setField(parseService, "paperTextChunkRepository", paperTextChunkRepository);
         ReflectionTestUtils.setField(parseService, "paperRepository", paperRepository);
         ReflectionTestUtils.setField(parseService, "paperPdfParser", paperPdfParser);
-        ReflectionTestUtils.setField(parseService, "paperChunkBuilder", new PaperChunkBuilder());
         ReflectionTestUtils.setField(parseService, "paperParserArtifactService", paperParserArtifactService);
         ReflectionTestUtils.setField(parseService, "paperVisualAssetService", paperVisualAssetService);
         ReflectionTestUtils.setField(parseService, "paperReadingModelService", paperReadingModelService);
-        ReflectionTestUtils.setField(parseService, "chunkSize", 512);
         ReflectionTestUtils.setField(parseService, "maxMemoryThreshold", 0.8);
         return parseService;
     }

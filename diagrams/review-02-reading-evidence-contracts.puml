@@ -11,10 +11,11 @@ hide circle
 hide empty methods
 
 class ParsedPaper <<parser DTO>> #DCFCE7 {
-  +metadata: ParsedPaperMetadata
-  +pages: list[ParsedPaperPage]
+  +parserName: String
+  +parserVersion: String
   +elements: list[ParsedPaperElement]
-  +artifacts: ParsedPaperArtifactPayload
+  +pages: list[ParsedPaperPage]
+  +artifacts: list[ParsedPaperArtifactPayload]
 }
 
 class PaperReadingModel <<JPA entity>> #DCFCE7 {
@@ -22,15 +23,16 @@ class PaperReadingModel <<JPA entity>> #DCFCE7 {
   +modelVersion: String
   +modelStatus: READING_MODEL_READY
   +isCurrent: boolean
+  +retrievalIndexStatus: PENDING | READY | FAILED
+  +retrievalIndexContract: String
   +diagnosticsJson: String
 }
 
 class PaperPage <<JPA entity>> #DCFCE7 {
-  +paperId: String
-  +modelVersion: String
   +pageNumber: Integer
   +pageText: String
-  +textStatus: String
+  +textStatus: READABLE | TEXTLESS | PARSER_MISSING
+  +sourceSpanJson: String
 }
 
 class PaperSection <<JPA entity>> #DCFCE7 {
@@ -44,11 +46,12 @@ class PaperSection <<JPA entity>> #DCFCE7 {
 class PaperReadingElement <<JPA entity>> #DCFCE7 {
   +readingElementId: String
   +elementType: String
-  +pageNumber: Integer
-  +sectionTitle: String
   +bodyText: String
   +captionText: String
   +searchableText: String
+  +bboxJson: String
+  +structuredPayloadJson: String
+  +locationRef: String
 }
 
 class PaperLocation <<JPA entity>> #DCFCE7 {
@@ -56,23 +59,25 @@ class PaperLocation <<JPA entity>> #DCFCE7 {
   +locationType: PAGE | SECTION | TABLE | FIGURE
   +paperId: String
   +modelVersion: String
-  +pageNumber: Integer
+  +sourceSpanJson: String
   +contentKind: String
 }
 
 class PaperVisualAsset <<JPA entity>> #DCFCE7 {
-  +assetType: PAGE_SCREENSHOT | TABLE_CROP | FIGURE_CROP
-  +assetStatus: AVAILABLE | MISSING | FAILED
+  +assetType: PAGE_SCREENSHOT | TABLE_CROP | FIGURE_CROP | CHART_CROP | PARSER_IMAGE
+  +assetStatus: AVAILABLE | MISSING_IN_ARTIFACT | STORAGE_FAILED | RENDER_FAILED
   +objectKey: String
   +bboxJson: String
 }
 
 class QdrantPoint <<candidate index>> #EEF2FF {
-  +id: locationRef
-  +sparseVector: BM25 tokens
+  +id: UUID hash
+  +lexicalVector: BM25 sparse
+  +denseVector: MiniMax embo-01 optional
+  +payload.location_ref: String
   +payload.paper_id: String
   +payload.model_version: String
-  +payload.location_ref: String
+  +payload.element_types: list[String]
 }
 
 class LocationCandidate <<navigation preview>> #FEF3C7 {
@@ -81,32 +86,58 @@ class LocationCandidate <<navigation preview>> #FEF3C7 {
   +section: String
   +page: Integer
   +preview: String
+  +dense_score: double
   +sparse_score: double
+  +fused_score: double
 }
 
-class CanonicalLocation <<exact read>> #FEF3C7 {
+class CanonicalLocation <<exact MySQL read>> #FEF3C7 {
   +paper_id: String
   +paper_version: String
   +location_ref: String
-  +element_type: String
   +span_text: String
-  +parser_name: String
+  +bbox_json: String
+  +visual availability flags
 }
 
 class EvidenceItem <<harness ledger>> #FEF3C7 {
-  +evidence_id: String
+  +evidence_id: ev_...
   +paper_id: String
   +location_ref: String
   +span_text: String
-  +citeable: true
+  +evidence_quality: verified
 }
 
-class PaperConversationReference <<product reference>> #FEF3C7 {
-  +refId: String
+class ConversationReferenceMapping <<conversation JSON>> #FEF3C7 {
+  +referenceNumber: Integer
+  +evidenceRef: ev_...
+  +citationRef: [n]
+  +paperId: String
+  +locationRef: String
+  +sourceQuoteRef: String optional
+}
+
+class ProductReferenceFocus <<next-turn anchor>> #FEF3C7 {
+  +referenceNumber: Integer
+  +conversationRecordId: Long
+  +sourceQuoteRef: source_quote_... optional
+  +paperHandle: paper_handle_... optional
+  +locationRef: page_ref_... optional
+  +readingAction: TRACE_SOURCE_QUOTE | READ_LOCATION | ...
+}
+
+class PaperSourceQuote <<authoritative quote>> #F8FAFC {
+  +sourceQuoteRef: String
+  +modelVersion: String
+  +locationRef: String
+  +content: String
+  +sourceSpanJson: String
+}
+
+class ConversationSourceQuote <<conversation registry>> #F8FAFC {
   +conversationId: String
-  +turnId: String
-  +refType: EVIDENCE | PAGE | CITATION
-  +sourcePayloadJson: String
+  +sourceQuoteRef: String
+  +firstSeenTurnId: String
 }
 
 ParsedPaper -[#16A34A,thickness=3]-> PaperReadingModel : replaceFromParsedPaper(...)
@@ -114,16 +145,22 @@ PaperReadingModel -[#16A34A,thickness=3]-> PaperPage : persists pages
 PaperReadingModel -[#16A34A,thickness=3]-> PaperSection : persists sections
 PaperReadingModel -[#16A34A,thickness=3]-> PaperReadingElement : persists typed content
 PaperReadingModel -[#16A34A,thickness=3]-> PaperLocation : creates stable refs
-PaperReadingElement -[#16A34A,thickness=3]-> PaperVisualAsset : owns crop/page availability
+PaperReadingElement -[#16A34A,thickness=3]-> PaperVisualAsset : visual availability
 
 PaperLocation -[#4F46E5,thickness=3]-> QdrantPoint : indexCurrentModel(...)
 QdrantPoint -[#D97706,thickness=3]-> LocationCandidate : find_reading_locations
-LocationCandidate -[#D97706,thickness=3]-> CanonicalLocation : read_locations reopens MySQL
-CanonicalLocation -[#D97706,thickness=3]-> EvidenceItem : evidence_id()
-EvidenceItem -[#D97706,thickness=3]-> PaperConversationReference : cited answer persists mapping
+LocationCandidate -[#D97706,thickness=3]-> CanonicalLocation : read_locations
+CanonicalLocation -[#D97706,thickness=3]-> EvidenceItem : create ev_ id
+EvidenceItem -[#D97706,thickness=3]-> ConversationReferenceMapping : cited answer persists mapping
+ConversationReferenceMapping -[#D97706,thickness=3]-> ProductReferenceFocus : clicked reference seeds next turn
+
+ConversationReferenceMapping ..> PaperSourceQuote : sourceQuoteRef when present
+ConversationSourceQuote ..> PaperSourceQuote : conversation-scoped registry
+PaperSourceQuote ..> PaperLocation : current model + location_ref revalidation
 
 note right of QdrantPoint
 Qdrant is rebuildable navigation.
+Active contract can be sparse-only or sparse-dense.
 It never becomes citeable evidence.
 end note
 
@@ -131,5 +168,10 @@ note bottom of EvidenceItem
 Evidence exists only after exact canonical content is read.
 Candidate previews and paper cards are not enough.
 end note
-@enduml
 
+note bottom of PaperSourceQuote
+Source-quote reopening is fail-closed:
+the ref must belong to the conversation and the quote's
+modelVersion must still be the current READY Reading Model.
+end note
+@enduml

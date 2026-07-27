@@ -109,52 +109,6 @@ declare namespace Api {
     }
   }
 
-  /**
-   * namespace Recharge
-   *
-   * backend api module: "recharge"
-   */
-  namespace Recharge {
-    /** 充值套餐 */
-    interface Package {
-      id: number;
-      packageName: string;
-      packagePrice: number; // 单位分
-      packageDesc: string;
-      packageBenefit: string;
-      llmToken: number; // LLM token 数量
-      embeddingToken: number; // Embedding token 数量
-      enabled: boolean;
-      createdAt: string;
-      updatedAt: string;
-    }
-
-    /** 订单信息 */
-    interface OrderInfo {
-      outTradeNo: string;
-      appId: string;
-      prePayId: string;
-      expireTime: number;
-    }
-
-    /** 充值订单 */
-    interface Order {
-      id: number;
-      tradeNo: string;
-      userId: string;
-      packageId: number;
-      amount: number; // 单位分
-      llmToken: number; // LLM token 数量
-      embeddingToken: number; // Embedding token 数量
-      wxTransactionId: string;
-      status: 'NOT_PAY' | 'PAYING' | 'SUCCEED' | 'FAIL' | 'CANCELLED';
-      description: string;
-      payTime: string | null;
-      createdAt: string;
-      updatedAt: string;
-    }
-  }
-
   namespace Admin {
     interface UsageTrendPoint {
       day: string;
@@ -233,7 +187,6 @@ declare namespace Api {
         | 'MINERU_ARTIFACT_SAVED'
         | 'MAPPING_STRUCTURED_CONTENT'
         | 'RENDERING_VISUAL_ASSETS'
-        | 'CHUNKING'
         | 'EMBEDDING'
         | 'INDEXING'
         | 'COMPLETED'

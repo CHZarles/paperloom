@@ -15,7 +15,6 @@ import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.repository.PaperSectionRepository;
 import io.github.chzarles.paperloom.repository.PaperSourceQuoteRepository;
-import io.github.chzarles.paperloom.repository.PaperTextChunkRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
 import io.minio.GetObjectArgs;
@@ -61,9 +60,6 @@ public class PaperService {
 
     @Autowired
     private PaperSearchabilityService paperSearchabilityService;
-
-    @Autowired
-    private PaperTextChunkRepository paperTextChunkRepository;
 
     @Autowired
     private PaperSourceQuoteRepository paperSourceQuoteRepository;
@@ -184,7 +180,6 @@ public class PaperService {
         deleteUploadChunks(paperId);
         deleteParserArtifacts(paperId);
         deleteVisualAssets(paperId);
-        deleteParsedChunks(paperId);
     }
 
     private void deleteReadingModelArtifacts(String paperId) {
@@ -242,15 +237,6 @@ public class PaperService {
             logger.info("成功删除论文上传分片记录: paperId={}, chunkCount={}", paperId, chunks.size());
         } catch (Exception e) {
             logger.error("删除论文上传分片记录时出错: paperId={}", paperId, e);
-        }
-    }
-
-    private void deleteParsedChunks(String paperId) {
-        try {
-            paperTextChunkRepository.deleteByPaperId(paperId);
-            logger.info("成功删除论文解析 chunk 记录: paperId={}", paperId);
-        } catch (Exception e) {
-            logger.error("删除论文解析 chunk 记录时出错: paperId={}", paperId, e);
         }
     }
 

@@ -1,12 +1,10 @@
 package io.github.chzarles.paperloom.service;
 
-import io.github.chzarles.paperloom.model.PaperTextChunk;
 import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.model.PaperReadingModel;
 import io.github.chzarles.paperloom.model.PaperReadingModelStatus;
 import io.github.chzarles.paperloom.model.PaperVisualAsset;
 import io.github.chzarles.paperloom.paper.parser.BoundingBox;
-import io.github.chzarles.paperloom.paper.parser.PaperChunkBuilder;
 import io.github.chzarles.paperloom.paper.parser.PaperPdfParser;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaper;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaperElement;
@@ -16,11 +14,9 @@ import io.github.chzarles.paperloom.paper.parser.ParsedPaperFormula;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaperMetadata;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaperTable;
 import io.github.chzarles.paperloom.repository.PaperRepository;
-import io.github.chzarles.paperloom.repository.PaperTextChunkRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -33,21 +29,15 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ParseServiceStructuredParserTest {
-
-    @Mock
-    private PaperTextChunkRepository paperTextChunkRepository;
 
     @Mock
     private PaperRepository paperRepository;
@@ -65,16 +55,13 @@ class ParseServiceStructuredParserTest {
     private PaperReadingModelService paperReadingModelService;
 
     @Test
-    void parseAndSavePersistsStructuredPaperChunkProvenance() throws Exception {
+    void parseAndSavePersistsStructuredReadingModelArtifacts() throws Exception {
         ParseService parseService = new ParseService();
-        ReflectionTestUtils.setField(parseService, "paperTextChunkRepository", paperTextChunkRepository);
         ReflectionTestUtils.setField(parseService, "paperRepository", paperRepository);
         ReflectionTestUtils.setField(parseService, "paperPdfParser", paperPdfParser);
-        ReflectionTestUtils.setField(parseService, "paperChunkBuilder", new PaperChunkBuilder());
         ReflectionTestUtils.setField(parseService, "paperParserArtifactService", paperParserArtifactService);
         ReflectionTestUtils.setField(parseService, "paperVisualAssetService", paperVisualAssetService);
         ReflectionTestUtils.setField(parseService, "paperReadingModelService", paperReadingModelService);
-        ReflectionTestUtils.setField(parseService, "chunkSize", 512);
         ReflectionTestUtils.setField(parseService, "maxMemoryThreshold", 0.8);
 
         Paper paper = new Paper();
@@ -101,34 +88,9 @@ class ParseServiceStructuredParserTest {
                 "7"
         );
 
-        ArgumentCaptor<PaperTextChunk> captor = ArgumentCaptor.forClass(PaperTextChunk.class);
-        verify(paperTextChunkRepository, times(2)).save(captor.capture());
-        PaperTextChunk chunk = captor.getAllValues().stream()
-                .filter(savedChunk -> "TEXT".equals(savedChunk.getSourceKind()))
-                .findFirst()
-                .orElseThrow();
-        PaperTextChunk tableChunk = captor.getAllValues().stream()
-                .filter(savedChunk -> "TABLE".equals(savedChunk.getSourceKind()))
-                .findFirst()
-                .orElseThrow();
-
-        assertEquals("paper123", chunk.getPaperId());
-        assertEquals(1, chunk.getChunkId());
-        assertEquals("The model grounds answers in retrieved paper evidence.", chunk.getTextContent());
-        assertEquals(3, chunk.getPageNumber());
-        assertEquals("Methods", chunk.getSectionTitle());
-        assertEquals(ParsedPaperElementType.PARAGRAPH.name(), chunk.getElementType());
-        assertEquals("mineru", chunk.getParserName());
-        assertEquals("2.4.7", chunk.getParserVersion());
-        assertEquals("TEXT", chunk.getSourceKind());
-        assertTrue(chunk.getBboxJson().contains("\"pageNumber\":3"));
-        assertTrue(chunk.getRawProvenanceJson().contains("\"elementId\":\"p1\""));
-        assertEquals("7", chunk.getUserId());
-        assertEquals("table-t1", tableChunk.getTableId());
-        assertTrue(tableChunk.getTextContent().contains("PaperLoom: 91.2"));
         assertEquals("Evidence Paper", paper.getPaperTitle());
         assertEquals("Ada", paper.getAuthors());
-        assertEquals(Paper.VECTORIZATION_STATUS_CHUNKING, paper.getVectorizationStatus());
+        assertEquals(Paper.VECTORIZATION_STATUS_RENDERING_VISUAL_ASSETS, paper.getVectorizationStatus());
         verify(paperRepository, atLeastOnce()).save(paper);
         verify(paperParserArtifactService).saveParserArtifact("paper123", parsedPaper, "7");
         verify(paperVisualAssetService).replaceVisualAssets(eq("paper123"), eq("rm_test_1"), any(), eq(parsedPaper), eq("7"));
@@ -142,14 +104,11 @@ class ParseServiceStructuredParserTest {
     @Test
     void parseAndSaveStopsWhenReadingModelIsNotReady() throws Exception {
         ParseService parseService = new ParseService();
-        ReflectionTestUtils.setField(parseService, "paperTextChunkRepository", paperTextChunkRepository);
         ReflectionTestUtils.setField(parseService, "paperRepository", paperRepository);
         ReflectionTestUtils.setField(parseService, "paperPdfParser", paperPdfParser);
-        ReflectionTestUtils.setField(parseService, "paperChunkBuilder", new PaperChunkBuilder());
         ReflectionTestUtils.setField(parseService, "paperParserArtifactService", paperParserArtifactService);
         ReflectionTestUtils.setField(parseService, "paperVisualAssetService", paperVisualAssetService);
         ReflectionTestUtils.setField(parseService, "paperReadingModelService", paperReadingModelService);
-        ReflectionTestUtils.setField(parseService, "chunkSize", 512);
         ReflectionTestUtils.setField(parseService, "maxMemoryThreshold", 0.8);
 
         Paper paper = new Paper();
@@ -176,7 +135,6 @@ class ParseServiceStructuredParserTest {
                 )
         );
 
-        verify(paperTextChunkRepository, never()).save(any());
     }
 
     private ParsedPaper parsedPaper() {

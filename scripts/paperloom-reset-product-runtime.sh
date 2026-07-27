@@ -90,11 +90,6 @@ PRODUCT_DB_TABLES=(
   paper_reading_models
   paper_retrieval_control
   paper_publications
-  paper_tables
-  paper_figures
-  paper_formulas
-  paper_text_chunks
-  document_vectors
   chunk_info
   file_upload
 )
@@ -398,17 +393,9 @@ CALL paperloom_reset_delete_if_exists('paper_locations');
 CALL paperloom_reset_delete_if_exists('paper_sections');
 CALL paperloom_reset_delete_if_exists('paper_pages');
 CALL paperloom_reset_delete_if_exists('paper_reading_models');
-CALL paperloom_reset_delete_if_exists('paper_tables');
-CALL paperloom_reset_delete_if_exists('paper_figures');
-CALL paperloom_reset_delete_if_exists('paper_formulas');
-CALL paperloom_reset_delete_if_exists('paper_text_chunks');
-CALL paperloom_reset_delete_if_exists('document_vectors');
 CALL paperloom_reset_delete_if_exists('chunk_info');
 CALL paperloom_reset_delete_if_exists('paper_processing_tasks');
 CALL paperloom_reset_delete_if_exists('file_upload');
-
-DELETE FROM recharge_orders
-WHERE user_id NOT IN (SELECT CAST(id AS CHAR) FROM users WHERE username = 'admin');
 
 DELETE FROM user_token_record
 WHERE user_id NOT IN (SELECT CAST(id AS CHAR) FROM users WHERE username = 'admin');
@@ -566,9 +553,6 @@ verify_product_db_counts() {
       file_upload)
         label="product_papers"
         ;;
-      paper_text_chunks)
-        label="product_chunks"
-        ;;
       paper_collection_papers)
         label="product_collection_memberships"
         ;;
@@ -597,7 +581,6 @@ verify_user_dependent_counts() {
   print_assert_zero "non_admin_users" "$(mysql_scalar "$PRODUCT_DB_SCHEMA" "SELECT COUNT(*) FROM users WHERE username <> 'admin';")"
   print_assert_zero "user_token_record_non_admin" "$(mysql_scalar "$PRODUCT_DB_SCHEMA" "SELECT COUNT(*) FROM user_token_record WHERE user_id NOT IN (SELECT CAST(id AS CHAR) FROM users WHERE username='admin');")"
   print_assert_zero "user_daily_chat_count_non_admin" "$(mysql_scalar "$PRODUCT_DB_SCHEMA" "SELECT COUNT(*) FROM user_daily_chat_count WHERE user_id NOT IN (SELECT CAST(id AS CHAR) FROM users WHERE username='admin');")"
-  print_assert_zero "recharge_orders_non_admin" "$(mysql_scalar "$PRODUCT_DB_SCHEMA" "SELECT COUNT(*) FROM recharge_orders WHERE user_id NOT IN (SELECT CAST(id AS CHAR) FROM users WHERE username='admin');")"
   print_assert_zero "invite_codes_non_admin_created" "$(mysql_scalar "$PRODUCT_DB_SCHEMA" "SELECT COUNT(*) FROM invite_codes ic LEFT JOIN users u ON u.id = ic.created_by WHERE u.id IS NULL OR u.username <> 'admin';")"
 }
 

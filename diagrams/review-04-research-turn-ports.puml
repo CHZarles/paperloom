@@ -1,6 +1,6 @@
 @startuml review_04_research_turn_ports
 !pragma layout smetana
-title 04 Research Turn Runtime Collaboration: UML sequence with data contracts
+title 04 Research Turn Runtime Collaboration: UML sequence with current ports
 
 skinparam shadowing false
 skinparam defaultFontName "Arial"
@@ -16,37 +16,76 @@ skinparam sequence {
 
 actor "Folio / Chat API" as Folio
 participant "ChatHandler" as Chat #DBEAFE
-participant "ProductReadingConversationService" as PRCS #DBEAFE
+participant "ConversationScopeService" as Scope #DBEAFE
+participant "ChatGenerationStateService" as GenState #DBEAFE
 participant "ConversationService" as Conv #DBEAFE
-participant "PythonResearchHarnessClient" as Client #DBEAFE
+participant "ProductReadingConversationService" as PRCS #DBEAFE
+participant "ResearchHarnessTransport\nHTTP or Redis" as Client #DBEAFE
+participant "UsageQuotaService" as Quota #DBEAFE
+participant "ResearchHarnessPayloadFactory" as PayloadFactory #DBEAFE
+participant "ResearchHarnessResultMapper" as ResultMapper #DBEAFE
+queue "Redis Streams\njobs/events/status/cancel" as Redis #EEF2FF
+participant "RedisResearchWorker" as Worker #DCFCE7
 participant "ResearchHarnessService" as RHS #DCFCE7
 participant "LiveResearchChatHarness" as Live #DCFCE7
 participant "AgentsSdkHarnessRuntime" as Runtime #DCFCE7
 participant "Agent Runner" as Runner #DCFCE7
 participant "ReadingCorpusTools" as Tools #DCFCE7
-participant "JavaCorpusGateway" as Gateway #FEF3C7
+participant "JavaCorpusGatewayReader" as Gateway #FEF3C7
 participant "InternalCorpusController" as Controller #FEF3C7
 participant "CorpusRetrievalService" as Corpus #FEF3C7
-participant "QdrantReadingLocationRetriever" as Retriever #FEF3C7
+participant "HybridReadingLocationRetriever" as Retriever #FEF3C7
+participant "QdrantReadingLocationRetriever" as SparseRetriever #FEF3C7
+participant "EmbeddingProvider" as Embeddings #FEF3C7
 participant "CanonicalReadingLocationService" as Canonical #FEF3C7
 database "Qdrant" as Qdrant #F8FAFC
 database "MySQL" as MySQL #F8FAFC
 
-Folio -> Chat : Q0 message + selected source set
+Folio -> Chat : Q0 message + optional ProductReferenceFocus
 activate Chat
-Chat -> Chat : Q1 authenticate user\n+ compute locked SourceScope
-Chat -> PRCS : Q2 runTurn(userId, conversationId, generationId, message, lockedScope)
+Chat -> Scope : Q1 resolveForChat(user, conversation)
+activate Scope
+Scope --> Chat : effective scope
+Chat -> Conv : optional resolve referenceNumber -> reference detail
+activate Conv
+Conv --> Chat : sourceQuoteRef / paperId / locationRef
+deactivate Conv
+Chat -> Scope : assertReferenceFocusWithinScope(...)
+Chat -> GenState : createGeneration(user, client, conversation, message)
+activate GenState
+GenState --> Chat : generationId
+deactivate GenState
+Chat -> Scope : lockForFirstMessage(...)
+Scope --> Chat : locked effective scope
+deactivate Scope
+Chat -> PRCS : Q2 submitTurn(userId, conversationId, generationId, message, lockedScope, effectiveScope)
 activate PRCS
 
-PRCS -> Conv : Q2a conversationHistory + latest research memory
+PRCS -> Conv : Q2a last 20 messages + latest reference mappings + readingStatePatch
 activate Conv
-Conv --> PRCS : history + previous evidence
+Conv --> PRCS : history + previous_evidence + selected ids
 deactivate Conv
 
 PRCS -> Client : Q3 submit(ProductTurnRequest, progressListener)
 activate Client
-Client -> Client : reserveLlmUsage(estimated prompt, max completion)
-Client -> RHS : Q3a POST /v1/research/stream\nscope.paper_ids + user_id
+Client -> PayloadFactory : requestBody(request)
+activate PayloadFactory
+PayloadFactory --> Client : payload with scope.paper_ids + reference_focus + research_memory
+deactivate PayloadFactory
+Client -> Quota : reserveLlmTokens(estimate, maxCompletion)
+activate Quota
+Quota --> Client : TokenReservation
+deactivate Quota
+
+alt HTTP transport
+  Client -> RHS : Q3a POST /v1/research/stream\nNDJSON progress/result
+else Redis transport
+  Client -> Redis : XADD job + status QUEUED
+  Redis -> Worker : XREADGROUP job
+  activate Worker
+  Worker -> Redis : SET lock + heartbeat; status RUNNING
+  Worker -> RHS : run_job(payload, event sink, cancel check)
+end
 activate RHS
 
 RHS -> Gateway : Q4 reader(request_id, conversation_id, user_id, scope_paper_ids)
@@ -55,7 +94,7 @@ Gateway --> RHS : JavaCorpusGatewayReader
 deactivate Gateway
 RHS -> Gateway : Q4a load_metadata_dataset()
 activate Gateway
-Gateway --> RHS : GoldenDataset metadata shells
+Gateway --> RHS : scoped paper-id shells
 deactivate Gateway
 
 RHS -> Live : Q5 run_turn(dataset, ConversationState, userMessage)
@@ -69,7 +108,11 @@ activate Runner
 loop required tool-use loop
   Runner -> Tools : Q7 function call
   activate Tools
-  alt search_paper_candidates / find_papers_by_identity
+  Tools --> Chat : progress event through transport listener
+  Chat -> GenState : appendProgressEvent(...)
+  alt get_research_skill
+    Tools -> Tools : record skills_used only
+  else search_paper_candidates / find_papers_by_identity
     Tools -> Gateway : /papers/search
     activate Gateway
     Gateway -> Controller : POST /internal/v1/corpus/papers/search
@@ -88,14 +131,27 @@ loop required tool-use loop
   else find_reading_locations
     Tools -> Gateway : /locations/search
     activate Gateway
-    Gateway -> Controller : POST /locations/search
+    Gateway -> Controller : POST /internal/v1/corpus/locations/search
     activate Controller
     Controller -> Corpus : searchLocations
     activate Corpus
-    Corpus -> Retriever : sparse BM25 query + active model filter
+    Corpus -> Retriever : hybrid retrieval request + active model filter
     activate Retriever
-    Retriever -> Qdrant : searchLexical(vector, filter)
-    Qdrant --> Retriever : QdrantSearchHit[]
+    Retriever -> SparseRetriever : sparse BM25 query
+    activate SparseRetriever
+    SparseRetriever -> Qdrant : searchLexical(vector, filter)
+    Qdrant --> SparseRetriever : QdrantSearchHit[]
+    SparseRetriever --> Retriever : sparse ranked refs
+    deactivate SparseRetriever
+    opt QDRANT_CONTRACT == sparse-dense-v1
+      Retriever -> Embeddings : embed(query)
+      activate Embeddings
+      Embeddings --> Retriever : dense vector
+      deactivate Embeddings
+      Retriever -> Qdrant : searchDense(vector, filter)
+      Qdrant --> Retriever : dense hits
+      Retriever -> Retriever : ReciprocalRankFusion(sparse, dense)
+    end
     Retriever --> Corpus : ranked location refs
     deactivate Retriever
     Corpus -> Canonical : hydrate selected previews
@@ -114,13 +170,13 @@ loop required tool-use loop
   else read_locations
     Tools -> Gateway : /locations/read
     activate Gateway
-    Gateway -> Controller : POST /locations/read
+    Gateway -> Controller : POST /internal/v1/corpus/locations/read
     activate Controller
     Controller -> Corpus : readLocations
     activate Corpus
     Corpus -> Canonical : read(location_refs, authorizedIds)
     activate Canonical
-    Canonical -> MySQL : exact canonical span_text
+    Canonical -> MySQL : exact span_text + visual availability
     MySQL --> Canonical : CanonicalLocation[]
     Canonical --> Corpus : ReadBatch
     deactivate Canonical
@@ -132,8 +188,8 @@ loop required tool-use loop
     deactivate Gateway
     Tools -> Tools : create Evidence IDs\nobservations_by_evidence_id
   else submit_research_answer
-    Tools -> Tools : validate sole final tool call\n+ known evidence + coverage
-    Tools --> Runner : accepted final output
+    Tools -> Tools : validate sole final tool call\n+ known previous/current evidence
+    Tools --> Runner : accepted final output or validation error
   end
   Tools --> Runner : model-facing result
   deactivate Tools
@@ -145,20 +201,42 @@ Runtime --> Live : TurnExecutionResult
 deactivate Runtime
 Live --> RHS : run + next ConversationState
 deactivate Live
-RHS --> Client : result NDJSON payload
+RHS --> Client : result payload
 deactivate RHS
+opt Redis transport
+  Worker -> Redis : XADD result/error/cancelled event
+  Worker -> Redis : status SUCCEEDED/FAILED/CANCELLED + delete lock
+  deactivate Worker
+  Redis --> Client : XREAD terminal event
+end
 
-Client -> Client : settle actual token usage
-Client --> PRCS : ProductTurnResult(answer, citations, trace)
+Client -> ResultMapper : toProductResult(request, response)
+activate ResultMapper
+ResultMapper --> Client : ProductTurnResult(answer, references, artifacts, state patch)
+deactivate ResultMapper
+Client -> Quota : settle actual total tokens\nor abort on failure
+activate Quota
+Quota --> Client : quota updated
+deactivate Quota
+Client --> PRCS : ProductTurnResult
 deactivate Client
 PRCS --> Chat : answer + references + product state
 deactivate PRCS
-Chat --> Folio : streamed progress + final message
+
+Chat -> GenState : updateReferenceMappings / diagnostics / artifacts / state patch
+Chat -> Conv : recordConversation(..., referenceMappings, effectiveScope, researchEvents, generationId)
+activate Conv
+Conv -> MySQL : persist conversation JSON fields
+Conv --> Chat : conversationRecordId
+deactivate Conv
+Chat -> GenState : markCompleted(referenceMappings)
+Chat --> Folio : streamed chunks + completion + referenceMappings
 deactivate Chat
 
-note right of PRCS
-Java fixes user_id and scope.paper_ids before Python runs.
-The harness never expands global paper access.
+note right of Chat
+Reference focus is structured input:
+sourceQuoteRef, paperHandle, locationRef, and readingAction are validated
+before they become ProductTurnRequest memory.
 end note
 
 note right of Tools

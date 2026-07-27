@@ -75,13 +75,13 @@ public class UserTokenRecord {
     private String reason;
 
     /**
-     * 备注信息（如订单号、对话 ID 等）
+     * 备注信息（如操作来源、对话 ID 等）
      */
     @Column(length = 500)
     private String remark;
 
     /**
-     * 请求次数（一次充值或对话可能包含多次 API 请求）
+     * 请求次数（一次对话可能包含多次 API 请求）
      */
     @Column(nullable = false)
     private Long requestCount = 0L;
@@ -104,7 +104,7 @@ public class UserTokenRecord {
      * 变动类型枚举
      */
     public enum ChangeType {
-        INCREASE,     // 增加（充值、赠送等）
+        INCREASE,     // 增加（额度追加、赠送等）
         CONSUME       // 消耗（对话使用等）
     }
 }

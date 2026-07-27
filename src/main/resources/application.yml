@@ -99,26 +99,19 @@ app:
       invite-required: ${APP_AUTH_INVITE_REQUIRED:true}
 
 usage-quota:
-  # true 表示使用token总量消费机制； false 表示使用每日 token 重置的策略，默认是每日重置可用token的策略，沿用之前的逻辑
-  use-user-token-balance: ${USAGE_QUOTA_USE_USER_TOKEN_BALANCE:true}
-  # 每日 Token 配额，按自然日统计；系统初始化任务默认豁免
+  # 用户全局 Token 余额；新用户按 init-tokens 发放，使用时按实际 Token 扣减
   retention-days: ${USAGE_QUOTA_RETENTION_DAYS:35}
   llm:
     enabled: ${USAGE_QUOTA_LLM_ENABLED:true}
-    day-max-tokens: ${USAGE_QUOTA_LLM_DAY_MAX_TOKENS:300000}
     init-tokens: ${USAGE_QUOTA_LLM_INIT_TOKENS:10000} # token 总量使用策略下，新用户的初始可用token数
   embedding:
     enabled: ${USAGE_QUOTA_EMBEDDING_ENABLED:true}
-    day-max-tokens: ${USAGE_QUOTA_EMBEDDING_DAY_MAX_TOKENS:1000000}
     init-tokens: ${USAGE_QUOTA_EMBEDDING_INIT_TOKENS:10000} # token 总量使用策略下，新用户的初始可用token数
     admin-init-tokens: ${USAGE_QUOTA_EMBEDDING_ADMIN_INIT_TOKENS:100000} # 管理员初始 Embedding Token
 
 paper:
   parsing:
     provider: mineru
-    chunk-size: 512
-    overlap-size: 100
-    min-chunk-size: 100
     buffer-size: 8192
     max-memory-threshold: 0.8
     mineru:
