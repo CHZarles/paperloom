@@ -284,8 +284,6 @@ Snapshot / Restore 或滚动重启。
 - [`Lexical-First Qdrant 设计`](https://github.com/CHZarles/paperloom/blob/main/docs/engineering-evolution/architecture/lexical-first-qdrant-retriever-proposal-2026-07-17.md)
 - [`Java BM25 编码器`](https://github.com/CHZarles/paperloom/blob/main/src/main/java/io/github/chzarles/paperloom/service/LexicalBm25Encoder.java)
 - [`Qdrant 检索器`](https://github.com/CHZarles/paperloom/blob/main/src/main/java/io/github/chzarles/paperloom/service/QdrantReadingLocationRetriever.java)
-- [`切换校验脚本`](https://github.com/CHZarles/paperloom/blob/main/research/golden-data/lexical_qdrant_cutover_verify.py)
-- [`产品检索探针`](https://github.com/CHZarles/paperloom/blob/main/research/golden-data/qdrant_product_probe.py)
 - [`Content Scorer v3 改造计划与验收`](https://github.com/CHZarles/paperloom/blob/main/docs/evaluation/deterministic-content-scorer-v3-plan-2026-07-19.md)
 
 完整运行产物保存在：

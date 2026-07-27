@@ -44,6 +44,9 @@ public interface PaperRepository extends JpaRepository<Paper, Long> {
     @Query("SELECT DISTINCT f.paperId FROM Paper f WHERE f.paperId IS NOT NULL AND f.paperId <> ''")
     List<String> findDistinctPaperIds();
 
+    @Query("SELECT DISTINCT f.paperId FROM Paper f WHERE f.userId = :userId AND f.paperId IS NOT NULL AND f.paperId <> ''")
+    List<String> findDistinctPaperIdsByUserId(@Param("userId") String userId);
+
     @Transactional
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE Paper f SET f.status = :newStatus WHERE f.id = :id AND f.status = :currentStatus")

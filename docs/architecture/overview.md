@@ -59,9 +59,8 @@ Python owns the research behavior inside the already-authorized scope:
 - deterministic final-answer and citation validation;
 - optional per-run evaluation capture.
 
-The Agents SDK supplies the generic model-tool loop. `ReadingCorpusTools`,
-`answer_validation_error`, and `evaluate_evidence_coverage` decide what the model may search, read,
-cite, and submit.
+The Agents SDK supplies the generic model-tool loop. `ReadingCorpusTools` and
+`answer_validation_error` decide what the model may search, read, cite, and submit.
 
 ## Runtime Assembly For One Turn
 
@@ -153,12 +152,11 @@ Neither is an evidence source.
 
 ## Evaluation Boundary
 
-Product papers and evaluation corpora are separate domains. Golden cases may exercise the same
-research tools, but benchmark papers do not become part of a user's library or default paper scope.
+Product papers and Golden fixtures are separate domains. Golden cases may exercise the same research
+tools, but fixture papers do not become part of a user's library or default paper scope.
 Saved runs are offline measurement artifacts, not product authorization or answer state.
 
-See [ADR 0001](../adr/0001-separate-product-papers-from-eval-corpora.md) and the
-[Evaluation System](../evaluation/README.md).
+See the [Evaluation System](../evaluation/README.md).
 
 ## Deeper Reading
 

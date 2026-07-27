@@ -1,7 +1,6 @@
 package io.github.chzarles.paperloom.service;
 
 import io.github.chzarles.paperloom.model.Paper;
-import io.github.chzarles.paperloom.model.PaperReadingModel;
 import io.github.chzarles.paperloom.model.PaperReadingModelStatus;
 import io.github.chzarles.paperloom.model.PaperRetrievalIndexStatus;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
@@ -14,6 +13,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class PaperSearchabilityServiceTest {
@@ -29,23 +30,29 @@ class PaperSearchabilityServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        when(contractService.isActive("active-index-contract")).thenReturn(true);
+        when(contractService.activeContract()).thenReturn("active-index-contract");
         service = new PaperSearchabilityService(modelRepository, contractService);
     }
 
     @Test
     void readyQdrantIndexMakesPaperSearchable() {
-        when(modelRepository.findByPaperIdInAndIsCurrentTrueAndModelStatus(
-                List.of("paper-a"), PaperReadingModelStatus.READING_MODEL_READY
-        )).thenReturn(List.of(indexedModel("paper-a")));
+        when(modelRepository.findSearchableCurrentPaperIds(
+                List.of("paper-a"),
+                PaperReadingModelStatus.READING_MODEL_READY,
+                PaperRetrievalIndexStatus.READY,
+                "active-index-contract"
+        )).thenReturn(List.of("paper-a"));
 
         assertTrue(service.isSearchable(paper("paper-a")));
     }
 
     @Test
     void legacyCompletionWithoutReadyIndexIsNotSearchable() {
-        when(modelRepository.findByPaperIdInAndIsCurrentTrueAndModelStatus(
-                List.of("paper-a"), PaperReadingModelStatus.READING_MODEL_READY
+        when(modelRepository.findSearchableCurrentPaperIds(
+                List.of("paper-a"),
+                PaperReadingModelStatus.READING_MODEL_READY,
+                PaperRetrievalIndexStatus.READY,
+                "active-index-contract"
         )).thenReturn(List.of());
 
         assertFalse(service.isSearchable(paper("paper-a")));
@@ -53,22 +60,24 @@ class PaperSearchabilityServiceTest {
 
     @Test
     void incompleteRetrievalContractIsNotSearchable() {
-        PaperReadingModel model = indexedModel("paper-a");
-        model.setRetrievalIndexContract(null);
-        when(modelRepository.findByPaperIdInAndIsCurrentTrueAndModelStatus(
-                List.of("paper-a"), PaperReadingModelStatus.READING_MODEL_READY
-        )).thenReturn(List.of(model));
+        when(modelRepository.findSearchableCurrentPaperIds(
+                List.of("paper-a"),
+                PaperReadingModelStatus.READING_MODEL_READY,
+                PaperRetrievalIndexStatus.READY,
+                "active-index-contract"
+        )).thenReturn(List.of());
 
         assertFalse(service.isSearchable(paper("paper-a")));
     }
 
     @Test
     void unavailableRetrievalIndexIsNotSearchable() {
-        PaperReadingModel model = indexedModel("paper-a");
-        model.setRetrievalIndexStatus(PaperRetrievalIndexStatus.FAILED);
-        when(modelRepository.findByPaperIdInAndIsCurrentTrueAndModelStatus(
-                List.of("paper-a"), PaperReadingModelStatus.READING_MODEL_READY
-        )).thenReturn(List.of(model));
+        when(modelRepository.findSearchableCurrentPaperIds(
+                List.of("paper-a"),
+                PaperReadingModelStatus.READING_MODEL_READY,
+                PaperRetrievalIndexStatus.READY,
+                "active-index-contract"
+        )).thenReturn(List.of());
 
         assertFalse(service.isSearchable(paper("paper-a")));
     }
@@ -79,6 +88,19 @@ class PaperSearchabilityServiceTest {
         assertFalse(service.isSearchable(paper(" ")));
     }
 
+    @Test
+    void batchSearchabilityReadsActiveContractOnce() {
+        when(modelRepository.findSearchableCurrentPaperIds(
+                List.of("paper-a", "paper-b"),
+                PaperReadingModelStatus.READING_MODEL_READY,
+                PaperRetrievalIndexStatus.READY,
+                "active-index-contract"
+        )).thenReturn(List.of("paper-a", "paper-b"));
+
+        assertTrue(service.searchablePaperIdsById(List.of("paper-a", "paper-b")).containsAll(List.of("paper-a", "paper-b")));
+        verify(contractService, times(1)).activeContract();
+    }
+
     private Paper paper(String paperId) {
         Paper paper = new Paper();
         paper.setPaperId(paperId);
@@ -87,15 +109,4 @@ class PaperSearchabilityServiceTest {
         return paper;
     }
 
-    private PaperReadingModel indexedModel(String paperId) {
-        PaperReadingModel model = new PaperReadingModel();
-        model.setPaperId(paperId);
-        model.setModelVersion("rm-1");
-        model.setCurrent(true);
-        model.setModelStatus(PaperReadingModelStatus.READING_MODEL_READY);
-        model.setRetrievalIndexStatus(PaperRetrievalIndexStatus.READY);
-        model.setRetrievalIndexContract("active-index-contract");
-        model.setRetrievalIndexedLocationCount(1);
-        return model;
-    }
 }

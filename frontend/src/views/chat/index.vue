@@ -347,7 +347,10 @@ onBeforeUnmount(() => {
   background: var(--color-surface);
   color: var(--chat-text-muted);
   cursor: pointer;
-  transition: all 0.16s ease;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
 }
 
 .topbar-icon-button:hover,
@@ -443,7 +446,6 @@ onBeforeUnmount(() => {
   overflow: hidden;
   border-left: 1px solid var(--chat-line);
   background: var(--color-bg);
-  transition: width 0.2s ease;
 }
 
 .reference-panel--expanded {
@@ -520,7 +522,6 @@ onBeforeUnmount(() => {
 
 .review-mode-switch button.is-active {
   background: var(--color-surface);
-  box-shadow: var(--shadow-card);
   color: var(--chat-accent);
 }
 

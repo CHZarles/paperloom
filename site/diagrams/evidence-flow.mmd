@@ -18,7 +18,7 @@ flowchart TB
         READ["read_locations<br/>requires disclosed_location_refs<br/>exact retained span"]:::tool
         EVIDENCE["observations_by_evidence_id<br/>Evidence ID + provenance"]:::evidence
         SUBMIT["submit_research_answer<br/>outcome + markdown + fields"]:::tool
-        VALIDATE["answer_validation_error<br/>evaluate_evidence_coverage"]:::control
+        VALIDATE["answer_validation_error"]:::control
         ACCEPTED["accepted draft<br/>tools_to_final_output ends Runner"]:::answer
         REFERENCES["ChatHandler referenceMappings<br/>persisted with the conversation"]:::source
 

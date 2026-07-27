@@ -87,10 +87,6 @@ def load_dataset(manifest_path: str | Path, repo_root: str | Path | None = None)
     )
 
 
-def load_artifact_contracts(path: str | Path) -> JsonMap:
-    return _load_yaml(Path(path))
-
-
 def _validate_packs(packs: list[JsonMap]) -> None:
     pack_ids: set[str] = set()
     paper_ids: set[str] = set()

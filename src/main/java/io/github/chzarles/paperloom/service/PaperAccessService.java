@@ -57,6 +57,23 @@ public class PaperAccessService {
     }
 
     @Transactional(readOnly = true)
+    public Set<String> accessiblePaperIds(String userId) {
+        if (blank(userId)) {
+            return Set.of();
+        }
+        LinkedHashSet<String> accessible = new LinkedHashSet<>();
+        paperRepository.findDistinctPaperIdsByUserId(userId.trim()).stream()
+                .filter(id -> !blank(id))
+                .map(String::trim)
+                .forEach(accessible::add);
+        publicationRepository.findAllPaperIds().stream()
+                .filter(id -> !blank(id))
+                .map(String::trim)
+                .forEach(accessible::add);
+        return Set.copyOf(accessible);
+    }
+
+    @Transactional(readOnly = true)
     public List<Paper> accessiblePapers(String userId) {
         List<Paper> own = paperRepository.findByUserId(userId);
         List<Paper> published = publishedPapers(publicationRepository.findAll());
@@ -72,6 +89,20 @@ public class PaperAccessService {
         List<Paper> own = paperRepository.findAllByUserIdAndPaperIdIn(userId, List.copyOf(requested));
         List<Paper> published = publishedPapers(publicationRepository.findAllById(requested));
         return mergePreferred(own, published);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Paper> findAccessiblePaper(String userId, String paperId) {
+        if (blank(userId) || blank(paperId)) {
+            return Optional.empty();
+        }
+        String normalizedUserId = userId.trim();
+        String normalizedPaperId = paperId.trim();
+        Optional<Paper> own = paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(
+                normalizedPaperId,
+                normalizedUserId
+        );
+        return own.isPresent() ? own : findPublishedPaper(normalizedPaperId);
     }
 
     @Transactional(readOnly = true)

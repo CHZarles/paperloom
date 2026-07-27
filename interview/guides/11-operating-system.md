@@ -208,7 +208,7 @@ IO 多路复用让一个线程管理多个 Socket：
 - `../src/main/java/io/github/chzarles/paperloom/service/AsyncDiskProductTraceSink.java`：有界 `ArrayBlockingQueue`、固定写盘线程、队列满时 Trace 尽力而为。
 - `../src/main/java/io/github/chzarles/paperloom/config/AsyncExecutorConfig.java`：Spring `ThreadPoolTaskExecutor`，线程池边界由配置决定。
 - `../src/main/java/io/github/chzarles/paperloom/consumer/PaperProcessingConsumer.java`：PDF `InputStream` 读取，并在 `finally` 关闭资源。
-- `../docs/evaluation/qdrant-retrieval-impact-2026-07-15.md:273`：Qdrant `Too many open files` 运行记录、HTTP `/healthz` 探活和 nofile 处理。
+- `../docs/evaluation/retrieval-method-benchmark.md`：Qdrant 共享索引、HTTP 探活和资源边界。
 - `../pom.xml`：Java 17 运行时；没有自定义 Linux 调度器、页面置换器或零拷贝 Broker。
 
 ## 最后背一遍：项目版操作系统自我介绍

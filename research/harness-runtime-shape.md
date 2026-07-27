@@ -131,7 +131,8 @@ The default interface shows only the natural answer. Optional panes are derived 
 The runtime does not manufacture `IntentFrame`, `RetrievalPlan`, `StageTrace`, `ClaimGraph`,
 `ReasoningArtifact`, or `VerificationPass` objects. Raw chain-of-thought is never exposed.
 
-The canonical run artifacts are documented in `research/harness-artifact-contracts.md`.
+Run artifacts are documented at the producer boundary (`harness_py/README.md`) instead of a second
+contract file.
 
 ## Evaluation Gate
 

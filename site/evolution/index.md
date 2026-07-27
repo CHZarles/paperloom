@@ -31,7 +31,7 @@ typed Task Router、Capability Executor 与 Product Paper Corpus，并让无法�
 ## 2026.07 · 从最终答案走向 Evidence Funnel
 
 Candidate Recall 恢复后，总通过率只多了一个 Case。Evaluation 开始分别记录 Candidate、Read、Cited、
-Outcome 与 Hard Pass，并在最终提交时调用 `evaluate_evidence_coverage`。
+Outcome 与 Hard Pass，并尝试过最终提交前的论文级覆盖检查；后来这类判断移到离线评估。
 
 从 Candidate 到最终引用之间还有多次模型决策，召回数字无法代替 Read、Cited 与 Outcome 指标。
 

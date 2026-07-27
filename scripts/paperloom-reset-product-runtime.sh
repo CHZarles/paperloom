@@ -71,8 +71,8 @@ QDRANT_COLLECTION_EXISTS=0
 
 # Product runtime table policy:
 # these tables are reset because they contain uploaded paper PDFs, derived parser/vector artifacts,
-# and chat/session runtime state. paperloom_eval is never modified here. Future product-runtime
-# tables must be added to this list, reset_mysql, and verify_product_db_counts together.
+# and chat/session runtime state. Future product-runtime tables must be added to this list,
+# reset_mysql, and verify_product_db_counts together.
 PRODUCT_DB_TABLES=(
   conversations
   conversation_sessions
@@ -276,10 +276,6 @@ preflight_mysql() {
 
   if ! mysql_query "$PRODUCT_DB_SCHEMA" -N -e "SELECT 1;" >/dev/null; then
     fail "MySQL preflight failed for ${PRODUCT_DB_SCHEMA}."
-  fi
-
-  if ! mysql_query paperloom_eval -N -e "SELECT 1;" >/dev/null; then
-    fail "MySQL preflight failed for paperloom_eval."
   fi
 
   ADMIN_COUNT_BEFORE="$(mysql_scalar "$PRODUCT_DB_SCHEMA" "SELECT COUNT(*) FROM users WHERE username='admin';")"
@@ -605,11 +601,6 @@ verify_user_dependent_counts() {
   print_assert_zero "invite_codes_non_admin_created" "$(mysql_scalar "$PRODUCT_DB_SCHEMA" "SELECT COUNT(*) FROM invite_codes ic LEFT JOIN users u ON u.id = ic.created_by WHERE u.id IS NULL OR u.username <> 'admin';")"
 }
 
-verify_eval_counts() {
-  echo "eval_litsearch_papers $(mysql_scalar paperloom_eval "SELECT COUNT(*) FROM eval_papers WHERE corpus='litsearch';")"
-  echo "eval_qasper_papers $(mysql_scalar paperloom_eval "SELECT COUNT(*) FROM eval_papers WHERE corpus='qasper';")"
-}
-
 verify_qdrant_count() {
   qdrant_request GET "/collections/${QDRANT_COLLECTION_VALUE}" "" true
   if [[ "$QDRANT_HTTP_CODE" == "404" ]]; then
@@ -671,7 +662,6 @@ verify_reset() {
   verify_admin_count
   verify_product_db_counts
   verify_user_dependent_counts
-  verify_eval_counts
   verify_qdrant_count
   verify_redis_count
   verify_minio_count
@@ -682,7 +672,7 @@ verify_reset() {
   fi
 }
 
-echo "Preserving: admin user and paperloom_eval benchmark corpus."
+echo "Preserving: admin user."
 echo "Deleting: product papers, product collections, product chunks, product chat/session history, Redis runtime keys, product Qdrant points, product MinIO objects."
 
 preflight

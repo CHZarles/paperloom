@@ -29,7 +29,6 @@ begin with the architecture and development guides.
 - [Architecture Decision Records](adr/)
 - [Engineering Evolution Index](engineering-evolution/README.md)
 - [Engineering Evolution Timeline](engineering-evolution/timeline.md)
-- [June 2026 Implementation Alignment](engineering-evolution/architecture/implementation-alignment-2026-06.md)
 - [First Product ReAct Harness Design](engineering-evolution/agent-runtime/product-react-harness-design-2026-06.md)
 - [Public Practice Journal](https://chzarles.github.io/paperloom/practice/)
 

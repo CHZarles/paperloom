@@ -203,8 +203,7 @@ cannot widen paper authorization, disclose a location, or create evidence.
 
 Submits `outcome`, `markdown`, and optional `fields`. It must be the only tool call in the final model
 step. `answer_validation_error` checks the draft shape, citation syntax, known IDs, and basic citation
-requirements. `evaluate_evidence_coverage` checks Candidate, Read, Cited, and substantive evidence for
-papers discussed in the answer.
+requirements.
 
 Rejected submissions return structured feedback to the same Runner. An accepted result is the only
 tool output that `tools_to_final_output` treats as final.

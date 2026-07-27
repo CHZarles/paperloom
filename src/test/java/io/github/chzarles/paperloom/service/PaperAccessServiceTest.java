@@ -8,10 +8,13 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class PaperAccessServiceTest {
@@ -48,6 +51,23 @@ class PaperAccessServiceTest {
 
         assertTrue(new PaperAccessService(paperRepository, publicationRepository)
                 .canAccess("1", "paper-a"));
+    }
+
+    @Test
+    void findAccessiblePaperPrefersDirectPersonalCopyWithoutListingLibrary() {
+        PaperRepository paperRepository = mock(PaperRepository.class);
+        PaperPublicationRepository publicationRepository = mock(PaperPublicationRepository.class);
+        Paper own = paper("paper-a", "1", 2);
+        when(paperRepository.findFirstByPaperIdAndUserIdOrderByCreatedAtDesc("paper-a", "1"))
+                .thenReturn(Optional.of(own));
+
+        Optional<Paper> found = new PaperAccessService(paperRepository, publicationRepository)
+                .findAccessiblePaper(" 1 ", " paper-a ");
+
+        assertTrue(found.isPresent());
+        assertEquals("1", found.get().getUserId());
+        verify(paperRepository, never()).findByUserId("1");
+        verify(publicationRepository, never()).findAll();
     }
 
     private Paper paper(String paperId, String userId, int day) {

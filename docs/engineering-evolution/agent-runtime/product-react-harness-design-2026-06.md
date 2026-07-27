@@ -11,9 +11,9 @@ not conflict with current product requirements or accepted ADRs.
 
 The Product ReAct Harness is for product chat sessions only.
 
-It must not be coupled to benchmark harnesses, eval corpora, LitSearch, QASPER, PageIndex, or
-parser/OCR experiments. Benchmarks may test product behavior externally, but they must not define
-the product function catalog, product prompt, or product chat interface.
+It must not be coupled to benchmark harnesses, old retrieval corpora, PageIndex, or parser/OCR
+experiments. Benchmarks may test product behavior externally, but they must not define the product
+function catalog, product prompt, or product chat interface.
 
 Product chat reads only the current user's permissioned product paper library and the locked session
 scope. Eval data is unreachable by construction.

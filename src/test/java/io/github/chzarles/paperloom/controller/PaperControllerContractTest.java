@@ -26,6 +26,8 @@ import org.springframework.data.domain.PageRequest;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.ByteArrayInputStream;
@@ -34,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -365,7 +368,7 @@ class PaperControllerContractTest {
         assertEquals("application/pdf", data.get("contentType"));
         assertEquals("preview-paper.pdf", data.get("originalFilename"));
         assertEquals(8L, data.get("sourceFileSizeBytes"));
-        assertEquals(262144, data.get("chunkSizeBytes"));
+        assertEquals(1048576, data.get("chunkSizeBytes"));
         assertEquals("/api/v1/papers/paper-preview/preview/pdf-data/range", data.get("rangeUrl"));
         assertFalse(data.containsKey("contentBase64"));
         assertNull(response.getHeaders().getContentType());
@@ -389,7 +392,7 @@ class PaperControllerContractTest {
         when(paperService.openMergedPdfRangeStream("paper-preview", 1L, 4L))
                 .thenReturn(new ByteArrayInputStream("PDF-".getBytes()));
 
-        var response = paperController.previewPdfDataRangeByPath("paper-preview", 1L, 5L, null, null);
+        var response = paperController.previewPdfDataRangeByPath("paper-preview", 1L, 5L, null, null, null);
 
         assertEquals(206, response.getStatusCode().value());
         Map<?, ?> body = (Map<?, ?>) response.getBody();
@@ -410,6 +413,40 @@ class PaperControllerContractTest {
     }
 
     @Test
+    void pdfPreviewDataRangeEndpointCanReturnBinaryPdfChunksForPdfJs() {
+        Paper paper = paper(
+                "paper-preview",
+                "Preview Paper",
+                "preview-paper.pdf",
+                Paper.VECTORIZATION_STATUS_COMPLETED,
+                Paper.STATUS_COMPLETED
+        );
+        paper.setTotalSize(8L);
+
+        when(paperAccessService.findPublishedPaper("paper-preview"))
+                .thenReturn(Optional.of(paper));
+        when(paperService.openMergedPdfRangeStream("paper-preview", 1L, 4L))
+                .thenReturn(new ByteArrayInputStream("PDF-".getBytes()));
+
+        var response = paperController.previewPdfDataRangeByPath(
+                "paper-preview",
+                1L,
+                5L,
+                null,
+                "application/pdf, application/json",
+                null
+        );
+
+        assertEquals(206, response.getStatusCode().value());
+        assertEquals(MediaType.APPLICATION_PDF, response.getHeaders().getContentType());
+        assertEquals(4, response.getHeaders().getContentLength());
+        assertEquals("bytes", response.getHeaders().getFirst(HttpHeaders.ACCEPT_RANGES));
+        assertEquals("bytes 1-4/8", response.getHeaders().getFirst(HttpHeaders.CONTENT_RANGE));
+        assertArrayEquals("PDF-".getBytes(), (byte[]) response.getBody());
+        verify(paperService).openMergedPdfRangeStream("paper-preview", 1L, 4L);
+    }
+
+    @Test
     void pdfPreviewDataRangeAllowsPdfJsMultiMegabyteRanges() {
         long requestedLength = 2L * 1024 * 1024;
         Paper paper = paper(
@@ -426,10 +463,35 @@ class PaperControllerContractTest {
         when(paperService.openMergedPdfRangeStream("paper-preview", 0L, requestedLength))
                 .thenReturn(new ByteArrayInputStream(new byte[(int) requestedLength]));
 
-        var response = paperController.previewPdfDataRangeByPath("paper-preview", 0L, requestedLength, null, null);
+        var response = paperController.previewPdfDataRangeByPath("paper-preview", 0L, requestedLength, null, null, null);
 
         assertEquals(206, response.getStatusCode().value());
         verify(paperService).openMergedPdfRangeStream("paper-preview", 0L, requestedLength);
+    }
+
+    @Test
+    void authenticatedPdfPreviewUsesDirectPaperAccessLookup() {
+        Paper paper = paper(
+                "paper-preview",
+                "Preview Paper",
+                "preview-paper.pdf",
+                Paper.VECTORIZATION_STATUS_COMPLETED,
+                Paper.STATUS_COMPLETED
+        );
+        paper.setTotalSize(8L);
+
+        when(jwtUtils.extractUserIdFromToken("token")).thenReturn("1");
+        when(paperAccessService.findAccessiblePaper("1", "paper-preview"))
+                .thenReturn(Optional.of(paper));
+
+        var response = paperController.previewPdfDataByPath("paper-preview", "Bearer token", null);
+        Map<?, ?> body = (Map<?, ?>) response.getBody();
+        Map<?, ?> data = (Map<?, ?>) body.get("data");
+
+        assertEquals(200, response.getStatusCode().value());
+        assertEquals("paper-preview", data.get("paperId"));
+        verify(paperAccessService).findAccessiblePaper("1", "paper-preview");
+        verify(paperService, never()).getAccessiblePapers("1");
     }
 
     @Test

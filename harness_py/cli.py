@@ -89,7 +89,7 @@ def main(argv: list[str] | None = None) -> int:
         "agent-run",
         help="Run the real tool-using agent through the Java/Qdrant product corpus.",
     )
-    agent_parser.add_argument("--out", default="eval/rag/runs/python-minimax-agent")
+    agent_parser.add_argument("--out", default="research/golden-data/local-runs/python-minimax-agent")
     agent_parser.add_argument("--case-id", action="append", default=[])
     agent_parser.add_argument(
         "--product-corpus-map",
@@ -124,7 +124,7 @@ def main(argv: list[str] | None = None) -> int:
         help="Compare one LLM judge with fixed human-labelled harness runs.",
     )
     judge_parser.add_argument("--labels", default="research/golden-data/human-labels.yaml")
-    judge_parser.add_argument("--out", default="eval/rag/runs/llm-judge-calibration")
+    judge_parser.add_argument("--out", default="research/golden-data/local-runs/llm-judge-calibration")
     judge_parser.add_argument("--provider-source", choices=PROVIDER_SOURCE_CHOICES, default="db")
     judge_parser.add_argument("--max-tokens", type=int, default=1200)
     claim_judge_parser = subcommands.add_parser(

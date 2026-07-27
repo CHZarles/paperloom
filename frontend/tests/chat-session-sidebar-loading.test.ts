@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const chatStoreSource = readFileSync(resolve(currentDir, '../src/store/modules/chat/index.ts'), 'utf8');
+const chatListSource = readFileSync(resolve(currentDir, '../src/views/chat/modules/chat-list.vue'), 'utf8');
 const inputBoxSource = readFileSync(resolve(currentDir, '../src/views/chat/modules/input-box.vue'), 'utf8');
 const sidebarSource = readFileSync(resolve(currentDir, '../src/views/chat/modules/conversation-sidebar.vue'), 'utf8');
 
@@ -34,6 +35,18 @@ assert.match(
   inputBoxSource,
   /chatStore\.loadSessionIndex\(\s*\{\s*silent:\s*true\s*\}\s*\)/,
   'input-box completion handler should refresh the session index silently'
+);
+
+assert.match(
+  chatListSource,
+  /sessionsLoaded[\s\S]*const pageLoading = computed\([\s\S]*!sessionsLoaded\.value/,
+  'chat list should not render the empty hero before the first session index load completes'
+);
+
+assert.match(
+  chatListSource,
+  /<NSpin\s+[^>]*:show="pageLoading"/,
+  'chat list should drive its initial load state from pageLoading'
 );
 
 // Sidebar should still drive the spinner from sessionsLoading (regression guard).

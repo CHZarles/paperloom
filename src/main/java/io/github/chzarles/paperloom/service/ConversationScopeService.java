@@ -8,11 +8,9 @@ import io.github.chzarles.paperloom.model.ConversationScopeMode;
 import io.github.chzarles.paperloom.model.ConversationScopeStatus;
 import io.github.chzarles.paperloom.model.ConversationSession;
 import io.github.chzarles.paperloom.model.Paper;
-import io.github.chzarles.paperloom.model.PaperReadingModelStatus;
 import io.github.chzarles.paperloom.model.User;
 import io.github.chzarles.paperloom.repository.ConversationSessionRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
-import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -37,7 +35,6 @@ public class ConversationScopeService {
     private final ConversationSessionRepository sessionRepository;
     private final UserRepository userRepository;
     private final PaperRepository paperRepository;
-    private final PaperReadingModelRepository readingModelRepository;
     private final PaperCollectionService paperCollectionService;
     private final PaperSearchabilityService paperSearchabilityService;
     private final PaperAccessService paperAccessService;
@@ -46,7 +43,6 @@ public class ConversationScopeService {
     public ConversationScopeService(ConversationSessionRepository sessionRepository,
                                     UserRepository userRepository,
                                     PaperRepository paperRepository,
-                                    PaperReadingModelRepository readingModelRepository,
                                     PaperCollectionService paperCollectionService,
                                     PaperSearchabilityService paperSearchabilityService,
                                     PaperAccessService paperAccessService,
@@ -54,7 +50,6 @@ public class ConversationScopeService {
         this.sessionRepository = sessionRepository;
         this.userRepository = userRepository;
         this.paperRepository = paperRepository;
-        this.readingModelRepository = readingModelRepository;
         this.paperCollectionService = paperCollectionService;
         this.paperSearchabilityService = paperSearchabilityService;
         this.paperAccessService = paperAccessService;
@@ -240,23 +235,9 @@ public class ConversationScopeService {
         if (userId == null) {
             return null;
         }
-        User user = resolveUser(userId);
-        LinkedHashSet<String> countedPaperIds = new LinkedHashSet<>();
-        int count = 0;
-        for (Paper paper : accessiblePapersForTitleMatch(user)) {
-            String paperId = trimToNull(paper == null ? null : paper.getPaperId());
-            if (paper == null
-                    || paperId == null
-                    || !canAccessPaper(user, paper)
-                    || !paperSearchabilityService.isSearchable(paper)
-                    || !hasCurrentReadyReadingModel(paperId)) {
-                continue;
-            }
-            if (countedPaperIds.add(paperId)) {
-                count += 1;
-            }
-        }
-        return count;
+        return paperSearchabilityService.searchablePaperIdsById(
+                paperAccessService.accessiblePaperIds(String.valueOf(userId))
+        ).size();
     }
 
     private Integer sourcePaperCount(Long userId, EffectiveConversationScope scope) {
@@ -481,16 +462,6 @@ public class ConversationScopeService {
             }
         }
         return true;
-    }
-
-    private boolean hasCurrentReadyReadingModel(String paperId) {
-        String normalizedPaperId = trimToNull(paperId);
-        if (normalizedPaperId == null) {
-            return false;
-        }
-        return readingModelRepository.findFirstByPaperIdAndIsCurrentTrue(normalizedPaperId)
-                .filter(model -> model.getModelStatus() == PaperReadingModelStatus.READING_MODEL_READY)
-                .isPresent();
     }
 
     private Map<String, List<Paper>> productPapersByPaperId(List<String> paperIds) {

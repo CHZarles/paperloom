@@ -410,14 +410,9 @@ Qdrant 继续负责候选，MySQL 继续负责准确内容，Python Harness 继�
   --manifest research/golden-data/manifest-expanded.yaml \
   validate
 mvn test
-
-.venv-harness/bin/python research/golden-data/qdrant_impact_benchmark.py --preflight
-.venv-harness/bin/python research/golden-data/qdrant_product_probe.py \
-  --out /tmp/paperloom-qdrant-product-probe \
-  --run-model-smoke
 ```
 
 详细资料：
 
 - [`Qdrant 检索平面与 Elasticsearch 退役 Proposal`](https://github.com/CHZarles/paperloom/blob/main/docs/engineering-evolution/architecture/qdrant-retrieval-plane-and-elasticsearch-retirement-proposal-2026-07-15.md)
-- [`Qdrant 检索影响量化报告`](https://github.com/CHZarles/paperloom/blob/main/docs/evaluation/qdrant-retrieval-impact-2026-07-15.md)
+- [`检索方法 Benchmark 工作流`](https://github.com/CHZarles/paperloom/blob/main/docs/evaluation/retrieval-method-benchmark.md)

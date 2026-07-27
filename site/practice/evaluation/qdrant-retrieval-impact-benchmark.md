@@ -282,28 +282,7 @@ Snapshot / Restore、Replica、Rolling Restart、数千篇论文容量和多副�
 
 ## 10. 复现资料
 
-完整方法、原始数据和失败时间线：
+原始离线脚本、探针配置和复核 YAML 已删除；保留当前仍有维护价值的资料：
 
-- [`Qdrant 检索影响量化报告`](https://github.com/CHZarles/paperloom/blob/main/docs/evaluation/qdrant-retrieval-impact-2026-07-15.md)
-- [`离线检索脚本`](https://github.com/CHZarles/paperloom/blob/main/research/golden-data/qdrant_impact_benchmark.py)
-- [`离线测试配置`](https://github.com/CHZarles/paperloom/blob/main/research/golden-data/qdrant-impact-benchmark.yaml)
-- [`等价证据复核表`](https://github.com/CHZarles/paperloom/blob/main/research/golden-data/qdrant-impact-benchmark-adjudication.yaml)
-- [`复核校验脚本`](https://github.com/CHZarles/paperloom/blob/main/research/golden-data/qdrant_impact_adjudication.py)
-- [`产品路径探针`](https://github.com/CHZarles/paperloom/blob/main/research/golden-data/qdrant_product_probe.py)
+- [`检索方法 Benchmark 工作流`](https://github.com/CHZarles/paperloom/blob/main/docs/evaluation/retrieval-method-benchmark.md)
 - [`Java 检索实现`](https://github.com/CHZarles/paperloom/blob/main/src/main/java/io/github/chzarles/paperloom/service/CorpusRetrievalService.java)
-
-```bash
-.venv-harness/bin/python research/golden-data/qdrant_impact_benchmark.py --preflight
-
-# MYSQL_CONTAINER 需要指向本地运行中的 MySQL 容器。
-QDRANT_BASE_URL=http://127.0.0.1:6335 \
-PAPERLOOM_QDRANT_CONTAINER=paperloom-qdrant-benchmark \
-.venv-harness/bin/python research/golden-data/qdrant_impact_benchmark.py \
-  --mysql-container "$MYSQL_CONTAINER" \
-  --out /tmp/paperloom-qdrant-impact \
-  --cleanup
-
-.venv-harness/bin/python research/golden-data/qdrant_impact_adjudication.py \
-  --adjudication research/golden-data/qdrant-impact-benchmark-adjudication.yaml \
-  --out /tmp/paperloom-qdrant-adjudication.json
-```

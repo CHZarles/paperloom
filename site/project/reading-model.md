@@ -240,12 +240,9 @@ Evidence ID 由 Paper、Location、Element Type 和 Page 稳定生成。读取�
 1. Outcome、Markdown 与 Fields 结构；
 2. 是否手写数字引用，或引用未知 / 不可引用的 Evidence ID；
 3. 本轮已经读过 Paper Content 时，Answered / Partial 是否实际引用 Evidence；
-4. 答案提及的论文是否完成 Candidate、Read、Cited；
-5. Citation 是否只有 Heading 等弱导航 Evidence；
-6. `submit_research_answer` 是否独占最终 Tool Step。
+4. `submit_research_answer` 是否独占最终 Tool Step。
 
-`evaluate_evidence_coverage` 只使用当前问题、论文 Metadata、可见 Tool Trace 和 Known Evidence。它不读取 Golden Case、
-Expected Anchor 或 Human Label。拒绝原因会返回 Agent，让它补读、补引、缩小答案，或调整 Outcome。
+在线提交不再做论文级覆盖推断。Candidate、Read、Cited 与逐 Block 语义支撑留给离线 Scorer/Judge。
 
 ## 一个多论文比较会怎样走工具
 
@@ -260,8 +257,7 @@ read_locations(method locations)
 find_reading_locations(paper A + B, result query)
 read_locations(result locations)
 submit_research_answer
--> evaluate_evidence_coverage 检查 A / B 是否都 Read + Cited
--> Accepted，或返回缺口继续同一个 Runner
+-> Accepted，或返回格式 / 引用错误继续同一个 Runner
 ```
 
 模型可以改变 Query、重复搜索或先读某一篇。协议不会规定固定顺序，但会保证每个 Evidence 都经过

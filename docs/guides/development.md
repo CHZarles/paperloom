@@ -9,7 +9,6 @@
 | `frontend/` | Folio Vue application and Playwright tests |
 | `harness_py/` | Python research harness and unit tests |
 | `research/golden-data/` | Evidence-first golden assets and analysis tools |
-| `eval/rag/` | Retrieval benchmarks and scorecard artifacts |
 | `docs/` | Maintained product documentation and engineering evolution |
 | `site/` | VitePress project site and practice journal |
 

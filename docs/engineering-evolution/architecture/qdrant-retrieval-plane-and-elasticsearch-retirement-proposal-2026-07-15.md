@@ -128,8 +128,8 @@ MiniMax-M3 Smoke 已验证两条路径的 Provider、Model、OpenAI-compatible A
 `max_completion_tokens=3000` 一致。每种方法每个 Case 只有 1 个样本，精确 Hard Pass 为 BM25 `1/3`、
 Qdrant `0/3`。这个结果只能用于连线和失败定位，不能用于排序用户体验。
 
-完整数据、人工复核和故障时间线见
-[`Qdrant 检索影响量化报告`](../../evaluation/qdrant-retrieval-impact-2026-07-15.md)。
+历史 Hybrid 量化材料已压缩到
+[`检索方法 Benchmark 工作流`](../../evaluation/retrieval-method-benchmark.md)。
 
 ## 为什么现在需要作出这个决定
 

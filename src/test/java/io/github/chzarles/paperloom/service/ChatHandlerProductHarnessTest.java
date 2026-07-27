@@ -8,8 +8,6 @@ import io.github.chzarles.paperloom.model.ConversationScopeStatus;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.socket.WebSocketSession;
@@ -58,7 +56,7 @@ class ChatHandlerProductHarnessTest {
             return completedTurn("当前 session scope 内有 2 篇 READY 论文。", List.of());
         });
 
-        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("现在有多少论文可以检索", null), fixture.session);
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("现在有多少论文可以检索", null, "conversation-1"), fixture.session);
 
         verify(fixture.readingConversationService).runTurn(
                 eq(1L),
@@ -90,7 +88,7 @@ class ChatHandlerProductHarnessTest {
     }
 
     @Test
-    void explicitConversationIdOverridesRedisCurrentConversationForChatTurn() {
+    void explicitConversationIdIsRequiredForChatTurn() {
         ChatFixture fixture = chatFixture("conversation-explicit", "generation-explicit", autoScope());
 
         fixture.handler.processMessage(
@@ -100,8 +98,6 @@ class ChatHandlerProductHarnessTest {
         );
 
         verify(fixture.conversationService).requireActiveOwnedConversationSession(1L, "conversation-explicit");
-        verify(fixture.valueOperations, never()).get("user:1:current_conversation");
-        verify(fixture.conversationService, never()).ensureConversationSession(eq(1L), eq("conversation-redis"), anyString());
         verify(fixture.readingConversationService).runTurn(
                 eq(1L),
                 eq("conversation-explicit"),
@@ -127,7 +123,6 @@ class ChatHandlerProductHarnessTest {
         );
 
         verify(fixture.conversationService).requireActiveOwnedConversationSession(1L, "foreign-conversation");
-        verify(fixture.valueOperations, never()).get("user:1:current_conversation");
         verify(fixture.generationStateService, never()).createGeneration(anyString(), anyString(), anyString(), anyString());
         verify(fixture.readingConversationService, never()).runTurn(any(), any(), any(), any(), any(), any(), any(), any());
     }
@@ -278,7 +273,7 @@ class ChatHandlerProductHarnessTest {
                 "TEXT"
         );
 
-        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释这个来源", forgedFocus), fixture.session);
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释这个来源", forgedFocus, "conversation-1"), fixture.session);
 
         ArgumentCaptor<SourceScope> scopeCaptor = ArgumentCaptor.forClass(SourceScope.class);
         verify(fixture.readingConversationService).runTurn(
@@ -309,7 +304,7 @@ class ChatHandlerProductHarnessTest {
 
         fixture.handler.processMessage(
                 "1",
-                new ChatHandler.ChatRequest("LoRA 的方法是什么", null, RetrievalBudgetProfile.DEEP_AUDIT),
+                new ChatHandler.ChatRequest("LoRA 的方法是什么", null, RetrievalBudgetProfile.DEEP_AUDIT, "conversation-1"),
                 fixture.session
         );
 
@@ -342,7 +337,7 @@ class ChatHandlerProductHarnessTest {
                 any()
         )).thenThrow(new QuotaExceededException("LLM Token 额度已达上限", 42));
 
-        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("现在有多少论文可以检索", null), fixture.session);
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("现在有多少论文可以检索", null, "conversation-1"), fixture.session);
 
         verify(fixture.sessionRegistry).sendJsonToClient(eq("1"), eq("client-1"), argThat(payload ->
                 "error".equals(payload.get("type"))
@@ -370,7 +365,7 @@ class ChatHandlerProductHarnessTest {
                 new QuotaExceededException("LLM Token 余额不足，请联系管理员补充额度", 60)
         ));
 
-        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("现在有多少论文可以检索", null), fixture.session);
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("现在有多少论文可以检索", null, "conversation-1"), fixture.session);
 
         verify(fixture.sessionRegistry).sendJsonToClient(eq("1"), eq("client-1"), argThat(payload ->
                 "error".equals(payload.get("type"))
@@ -386,7 +381,7 @@ class ChatHandlerProductHarnessTest {
         ChatFixture fixture = chatFixture();
         ProductReferenceFocus focus = paperHandleFocus("paper_handle_clicked");
 
-        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看这篇论文", focus), fixture.session);
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看这篇论文", focus, "conversation-1"), fixture.session);
 
         Map<String, Object> effectiveScope = capturedReadingEffectiveScope(fixture);
         assertEquals(List.of("paper_handle_clicked"), effectiveScope.get("clickedPaperHandles"));
@@ -399,7 +394,7 @@ class ChatHandlerProductHarnessTest {
         ProductReferenceFocus focus = paperIdFocus("paper-1");
         when(fixture.productPaperHandleService.handleForPaperId("paper-1")).thenReturn("paper_handle_converted");
 
-        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看这篇论文", focus), fixture.session);
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看这篇论文", focus, "conversation-1"), fixture.session);
 
         Map<String, Object> effectiveScope = capturedReadingEffectiveScope(fixture);
         assertEquals(List.of("paper_handle_converted"), effectiveScope.get("clickedPaperHandles"));
@@ -413,7 +408,7 @@ class ChatHandlerProductHarnessTest {
     void typedPaperHandleWithoutStructuredFocusDoesNotReachReadingEffectiveScope() {
         ChatFixture fixture = chatFixture();
 
-        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("请看 paper_handle_clicked", null), fixture.session);
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("请看 paper_handle_clicked", null, "conversation-1"), fixture.session);
 
         Map<String, Object> effectiveScope = capturedReadingEffectiveScope(fixture);
         assertFalse(effectiveScope.containsKey("clickedPaperHandles"));
@@ -428,7 +423,7 @@ class ChatHandlerProductHarnessTest {
                 .when(fixture.conversationScopeService)
                 .assertReferenceFocusWithinScope(any(), argThat(scope -> "outside-paper".equals(scope.paperId())));
 
-        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看这篇论文", focus), fixture.session);
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看这篇论文", focus, "conversation-1"), fixture.session);
 
         verify(fixture.generationStateService, never()).createGeneration(anyString(), anyString(), anyString(), anyString());
         verify(fixture.productPaperHandleService, never()).handleForPaperId(anyString());
@@ -440,7 +435,7 @@ class ChatHandlerProductHarnessTest {
         ChatFixture fixture = chatFixture();
         ProductReferenceFocus focus = sourceQuoteFocus("source_quote_clicked", null);
 
-        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释这个引用", focus), fixture.session);
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释这个引用", focus, "conversation-1"), fixture.session);
 
         Map<String, Object> effectiveScope = capturedReadingEffectiveScope(fixture);
         assertEquals(List.of("source_quote_clicked"), effectiveScope.get("clickedSourceQuoteRefs"));
@@ -459,7 +454,7 @@ class ChatHandlerProductHarnessTest {
                         "matchedChunkText", "resolved quote"
                 )));
 
-        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释这个引用", focus), fixture.session);
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释这个引用", focus, "conversation-1"), fixture.session);
 
         Map<String, Object> effectiveScope = capturedReadingEffectiveScope(fixture);
         assertEquals(List.of("source_quote_resolved"), effectiveScope.get("clickedSourceQuoteRefs"));
@@ -471,7 +466,7 @@ class ChatHandlerProductHarnessTest {
         ChatFixture fixture = chatFixture();
         ProductReferenceFocus focus = locationFocus("page_ref_clicked");
 
-        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("读取这个位置", focus), fixture.session);
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("读取这个位置", focus, "conversation-1"), fixture.session);
 
         Map<String, Object> effectiveScope = capturedReadingEffectiveScope(fixture);
         assertEquals(List.of("page_ref_clicked"), effectiveScope.get("clickedLocationRefs"));
@@ -482,7 +477,7 @@ class ChatHandlerProductHarnessTest {
     void typedCitationDoesNotBecomeClickedSourceQuoteOnReadingPath() {
         ChatFixture fixture = chatFixture();
 
-        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释 [1]", null), fixture.session);
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释 [1]", null, "conversation-1"), fixture.session);
 
         Map<String, Object> effectiveScope = capturedReadingEffectiveScope(fixture);
         assertFalse(effectiveScope.containsKey("clickedSourceQuoteRefs"));
@@ -490,11 +485,11 @@ class ChatHandlerProductHarnessTest {
     }
 
     @Test
-    void sourceQuoteFocusWithReferenceNumberDoesNotRequireLegacyPaperResolution() {
+    void sourceQuoteFocusWithReferenceNumberDoesNotRequirePaperResolution() {
         ChatFixture fixture = chatFixture();
         ProductReferenceFocus focus = sourceQuoteFocus("source_quote_clicked", 1);
 
-        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释这个引用", focus), fixture.session);
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释这个引用", focus, "conversation-1"), fixture.session);
 
         Map<String, Object> effectiveScope = capturedReadingEffectiveScope(fixture);
         assertEquals(List.of("source_quote_clicked"), effectiveScope.get("clickedSourceQuoteRefs"));
@@ -530,7 +525,7 @@ class ChatHandlerProductHarnessTest {
         when(fixture.productPaperHandleService.resolvePaperHandle("paper_handle_answer"))
                 .thenReturn(Optional.of("paper-id-answer"));
 
-        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释这个引用", null), fixture.session);
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释这个引用", null, "conversation-1"), fixture.session);
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, Map<String, Object>>> updateCaptor = ArgumentCaptor.forClass(Map.class);
@@ -592,7 +587,7 @@ class ChatHandlerProductHarnessTest {
                         ))
                 ));
 
-        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释这个引用", null), fixture.session);
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释这个引用", null, "conversation-1"), fixture.session);
 
         Map<String, Object> completion = completionPayload(fixture, "finished");
         assertEquals(9001L, completion.get("conversationRecordId"));
@@ -617,7 +612,7 @@ class ChatHandlerProductHarnessTest {
         when(fixture.readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
                 .thenReturn(completedTurn("请选择论文", List.of(), productStateItems));
 
-        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看 Ada 的论文", null), fixture.session);
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看 Ada 的论文", null, "conversation-1"), fixture.session);
 
         Map<String, Object> completion = completionPayload(fixture, "finished");
         assertTrue(completion.containsKey("productStateItems"));
@@ -651,7 +646,7 @@ class ChatHandlerProductHarnessTest {
         when(fixture.readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
                 .thenReturn(completedTurn("请选择论文", List.of(), productStateItems));
 
-        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("找论文", null), fixture.session);
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("找论文", null, "conversation-1"), fixture.session);
 
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> payloadItems =
@@ -671,7 +666,7 @@ class ChatHandlerProductHarnessTest {
                         paperChoiceItem("paper_handle_outline", "Outline Paper", "get_paper_outline")
                 )));
 
-        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看大纲", null), fixture.session);
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看大纲", null, "conversation-1"), fixture.session);
 
         assertFalse(completionPayload(fixture, "finished").containsKey("productStateItems"));
     }
@@ -690,7 +685,7 @@ class ChatHandlerProductHarnessTest {
                         ProductResultStatus.FAILED
                 ));
 
-        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看论文", null), fixture.session);
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看论文", null, "conversation-1"), fixture.session);
 
         assertFalse(completionPayload(fixture, "failed").containsKey("productStateItems"));
     }
@@ -723,7 +718,7 @@ class ChatHandlerProductHarnessTest {
                         ProductResultStatus.INCOMPLETE_PRECISE
                 ));
 
-        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看论文", null), fixture.session);
+        fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看论文", null, "conversation-1"), fixture.session);
 
         assertTrue(completionPayload(fixture, "finished").containsKey("diagnostics"));
         verify(fixture.generationStateService, never()).markFailed(eq("generation-1"), anyString());
@@ -906,11 +901,6 @@ class ChatHandlerProductHarnessTest {
     private static ChatFixture chatFixture(String conversationId,
                                            String generationId,
                                            ConversationScopeService.EffectiveConversationScope scope) {
-        RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
-        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.get("user:1:current_conversation")).thenReturn("conversation-1");
-
         ChatSessionRegistry sessionRegistry = mock(ChatSessionRegistry.class);
         WebSocketSession session = mock(WebSocketSession.class);
         when(session.getId()).thenReturn("socket-1");
@@ -972,7 +962,6 @@ class ChatHandlerProductHarnessTest {
         ProductPaperHandleService productPaperHandleService = mock(ProductPaperHandleService.class);
         ConversationService conversationService = mock(ConversationService.class);
         ChatHandler handler = new ChatHandler(
-                redisTemplate,
                 mock(UsageQuotaService.class),
                 conversationService,
                 conversationScopeService,
@@ -994,7 +983,6 @@ class ChatHandlerProductHarnessTest {
                 generationStateService,
                 readingConversationService,
                 productPaperHandleService,
-                valueOperations,
                 conversationId,
                 generationId
         );
@@ -1031,7 +1019,6 @@ class ChatHandlerProductHarnessTest {
             ChatGenerationStateService generationStateService,
             ProductReadingConversationService readingConversationService,
             ProductPaperHandleService productPaperHandleService,
-            ValueOperations<String, String> valueOperations,
             String conversationId,
             String generationId
     ) {

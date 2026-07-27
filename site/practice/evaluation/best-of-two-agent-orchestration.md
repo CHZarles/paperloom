@@ -280,5 +280,5 @@ Hard Pass，生成互补性不足，成本高于单路径。
 
 - [`检索召回恢复后，为什么只多通过一个问题`](golden-data-harness-evolution.md)
 - [`模型 API 迁移实验`](provider-migration-experiment.md)
-- `research/golden-data/2026-07-13-reading-model-retrieval-practice.md`
+- `research/golden-data/README.md`
 - `harness_py/ONBOARDING.md`

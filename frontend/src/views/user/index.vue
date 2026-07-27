@@ -2,11 +2,12 @@
 import { computed, ref } from 'vue';
 import { NButton } from 'naive-ui';
 import { enableStatusOptions } from '@/constants/common';
-import SvgIcon from '@/components/custom/svg-icon.vue';
 import UserSearch from './modules/user-search.vue';
+import TokenQuotaDialog from './modules/token-quota-dialog.vue';
 
 const appStore = useAppStore();
-const authStore = useAuthStore();
+const tokenDialogVisible = ref(false);
+const tokenTarget = ref<Api.User.Item | null>(null);
 
 function apiFn(params: Api.User.SearchParams) {
   return request<Api.User.List>({ url: '/admin/users/list', params });
@@ -63,7 +64,13 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, searchP
       key: 'operate',
       title: 'Actions / 操作',
       width: 180,
-      render: row => null
+      render: row => (
+        <div class="user-action-group">
+          <NButton size="small" type="primary" secondary onClick={() => openTokenDialog(row)}>
+            追加 Token
+          </NButton>
+        </div>
+      )
     }
   ]
 });
@@ -100,6 +107,11 @@ function shortId(value?: string) {
     return '-';
   }
   return value.length > 12 ? `${value.slice(0, 6)}...${value.slice(-4)}` : value;
+}
+
+function openTokenDialog(row: Api.User.Item) {
+  tokenTarget.value = row;
+  tokenDialogVisible.value = true;
 }
 
 </script>
@@ -184,6 +196,13 @@ function shortId(value?: string) {
         class="user-registry-table"
       />
     </NCard>
+
+    <TokenQuotaDialog
+      v-if="tokenTarget"
+      v-model:visible="tokenDialogVisible"
+      :row-data="tokenTarget"
+      @submitted="getData"
+    />
   </div>
 </template>
 

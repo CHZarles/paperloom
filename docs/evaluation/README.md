@@ -86,6 +86,8 @@ The contract and acceptance record are documented in
 
 ## Evidence-First Golden Cases
 
+一句话：Golden Data 测的是“固定论文问题下，Agent 最终回答是否满足证据合同”，不是泛泛的检索分数。
+
 The Golden Data schema does not require one exact prose answer. It stores obligations that can be
 checked across different valid phrasings:
 
@@ -103,7 +105,17 @@ See:
 - [`research/golden-data/README.md`](../../research/golden-data/README.md)
 - [`research/golden-data/SCHEMA.md`](../../research/golden-data/SCHEMA.md)
 - [`harness_py/README.md`](../../harness_py/README.md)
-- [`Golden Data architecture and retrieval evolution review`](golden-data-architecture-and-retrieval-evolution-2026-07-16.md)
+
+## Directory Boundary
+
+| Directory | Owns | Runtime owner | Not for |
+| --- | --- | --- | --- |
+| `research/golden-data/` | Current Harness Golden Truth: manifests, paper packs, cases, claims, human labels, frozen validation runs, judge calibration data | Python `harness_py` | Product launch readiness, parser import checks, legacy RAG scorecards |
+| `research/golden-data/local-runs/` | Local, ignored Golden outputs | Python `harness_py` | Versioned baseline unless manually reviewed and copied |
+| `research/golden-data/validation-runs/` | Frozen saved Golden runs for replay/rescore/audit | Python `harness_py` | Live product state or mutable scratch output |
+
+The old RAG benchmark fixture root was removed. `research/golden-data` is the only active Golden
+Data source.
 
 ## What The Data Can Improve
 
@@ -156,19 +168,6 @@ Do not train on hidden chain-of-thought. Distill observable actions and accepted
 training export, filter technical failures and invalid trajectories, deduplicate near-identical
 examples, remove secrets and personal data, respect paper and provider licensing, and keep paper,
 question, and conversation families separated across train, validation, and test splits.
-
-## Retrieval Benchmark Boundary
-
-The `eval/rag/` directory contains method exploration and scorecards for product paper QA,
-literature search, QASPER, LitSearch, parser behavior, page location, and figure/table retrieval.
-
-Important rules:
-
-- benchmark corpora remain outside product paper storage and default product scope;
-- parser evaluation and retrieval evaluation are separate experiments;
-- structured-text benchmarks should not be forced through OCR only to resemble production input;
-- small samples must not be reported as complete benchmark results;
-- a new retrieval strategy remains eval-gated until it improves product behavior on held-out cases.
 
 ## Public Experiment Reports
 

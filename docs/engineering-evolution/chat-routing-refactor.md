@@ -225,10 +225,7 @@ still inherit the same failure mode.
 - Product ES status after cleanup:
   - `paper_chunks=278` across the two product papers
   - `paper_search=2`
-- Eval/admin preserved:
-  - `paperloom_eval.eval_papers=64254`
-  - `paperloom_eval.eval_chunks=1480777`
-  - admin user count remains 1
+- Admin user count remains 1.
 - REST hybrid search after backend reload:
   - query `attention`
   - HTTP status `200`
@@ -376,7 +373,7 @@ Acceptance:
 
 - `file_upload`, `paper_text_chunks`, `paper_chunks`, `paper_search`, parser artifacts, and visual
   assets agree on product paper ids.
-- Admin account and eval corpora remain untouched.
+- Admin account remains untouched.
 
 ### Phase 6: Browser and runtime verification
 

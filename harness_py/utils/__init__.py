@@ -1,2 +1,1 @@
-"""Shared value objects, contracts, statuses, and errors."""
-
+"""Shared value objects, statuses, and errors."""

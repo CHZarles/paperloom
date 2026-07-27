@@ -8,7 +8,7 @@ Status: Accepted on the four-case development calibration set
 ```bash
 python3 -m harness_py judge-calibrate \
   --labels research/golden-data/human-labels.yaml \
-  --out eval/rag/runs/llm-judge-calibration
+  --out research/golden-data/local-runs/llm-judge-calibration
 ```
 
 Durable JSON report:

@@ -64,7 +64,7 @@ WebSocket / API
 
 所以正确说法是：**迁移解决了重复加载和横向扩展问题，但没有直接证明检索质量更好。**
 
-依据：`../docs/evaluation/qdrant-retrieval-impact-2026-07-15.md`。
+依据：`../docs/evaluation/retrieval-method-benchmark.md`。
 
 ### 2. 会话论文范围隔离
 

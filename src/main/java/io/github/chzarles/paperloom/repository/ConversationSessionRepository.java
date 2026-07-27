@@ -25,5 +25,4 @@ public interface ConversationSessionRepository extends JpaRepository<Conversatio
     Optional<ConversationSession> findByConversationIdAndUserIdForUpdate(@Param("conversationId") String conversationId,
                                                                          @Param("userId") Long userId);
 
-    boolean existsByConversationId(String conversationId);
 }

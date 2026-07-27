@@ -27,6 +27,20 @@ public interface PaperReadingModelRepository extends JpaRepository<PaperReadingM
             PaperReadingModelStatus modelStatus
     );
 
+    @Query("""
+            SELECT DISTINCT model.paperId FROM PaperReadingModel model
+            WHERE model.paperId IN :paperIds
+              AND model.isCurrent = true
+              AND model.modelStatus = :modelStatus
+              AND model.retrievalIndexStatus = :retrievalIndexStatus
+              AND model.retrievalIndexContract = :retrievalIndexContract
+              AND model.retrievalIndexedLocationCount > 0
+            """)
+    List<String> findSearchableCurrentPaperIds(@Param("paperIds") List<String> paperIds,
+                                               @Param("modelStatus") PaperReadingModelStatus modelStatus,
+                                               @Param("retrievalIndexStatus") PaperRetrievalIndexStatus retrievalIndexStatus,
+                                               @Param("retrievalIndexContract") String retrievalIndexContract);
+
     long countByIsCurrentTrueAndRetrievalIndexStatusIn(List<PaperRetrievalIndexStatus> statuses);
 
     void deleteByPaperId(String paperId);

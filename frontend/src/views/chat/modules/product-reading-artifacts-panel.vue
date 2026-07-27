@@ -3,7 +3,6 @@ defineOptions({ name: 'ProductReadingArtifactsPanel' });
 
 const props = defineProps<{
   artifacts?: Api.Chat.ReadingTurnArtifacts | null;
-  legacyItems?: Api.Chat.ProductStateItem[] | null;
 }>();
 
 const emit = defineEmits<{

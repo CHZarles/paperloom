@@ -14,7 +14,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -33,7 +32,7 @@ class ChatWebSocketHandlerTest {
         handler.handleTextMessage(
                 session,
                 new TextMessage("""
-                        {"type":"chat","conversationId":"conversation-1","message":"explain this paper","scope":{}}
+                        {"type":"chat","conversationId":"conversation-1","message":"explain this paper","referenceFocus":{}}
                         """)
         );
 
@@ -51,7 +50,7 @@ class ChatWebSocketHandlerTest {
         handler.handleTextMessage(
                 session,
                 new TextMessage("""
-                        {"type":"chat","conversationId":"conversation-1","message":"audit the evidence","scope":{"retrievalBudgetProfile":"deep_audit"}}
+                        {"type":"chat","conversationId":"conversation-1","message":"audit the evidence","referenceFocus":{"retrievalBudgetProfile":"deep_audit"}}
                         """)
         );
 
@@ -79,7 +78,7 @@ class ChatWebSocketHandlerTest {
     }
 
     @Test
-    void structuredChatPayloadUsesReferenceFocusInsteadOfLegacyScopeWhenPresent() {
+    void structuredChatPayloadUsesReferenceFocus() {
         ChatHandler chatHandler = mock(ChatHandler.class);
         ChatWebSocketHandler handler = handler(chatHandler);
         WebSocketSession session = session();
@@ -87,7 +86,7 @@ class ChatWebSocketHandlerTest {
         handler.handleTextMessage(
                 session,
                 new TextMessage("""
-                        {"type":"chat","conversationId":"conversation-1","message":"explain this citation","referenceFocus":{"referenceNumber":2,"retrievalBudgetProfile":"high_recall"},"scope":{"referenceNumber":9,"retrievalBudgetProfile":"deep_audit"}}
+                        {"type":"chat","conversationId":"conversation-1","message":"explain this citation","referenceFocus":{"referenceNumber":2,"retrievalBudgetProfile":"high_recall"}}
                         """)
         );
 
@@ -222,8 +221,7 @@ class ChatWebSocketHandlerTest {
                         """)
         );
 
-        verify(chatHandler, never()).processMessage(anyString(), any(ChatHandler.ChatRequest.class), eq(session));
-        verify(chatHandler, never()).processMessage(anyString(), anyString(), eq(session));
+        verify(chatHandler, never()).processMessage(eq("u1"), any(ChatHandler.ChatRequest.class), eq(session));
         verify(session).sendMessage(argThat(message ->
                 message instanceof TextMessage textMessage
                         && textMessage.getPayload().contains("conversationId")
@@ -231,21 +229,21 @@ class ChatWebSocketHandlerTest {
     }
 
     @Test
-    void structuredChatPayloadUsesLegacyScopeFieldWhenReferenceFocusIsNull() {
+    void plainTextPayloadIsRejected() throws Exception {
         ChatHandler chatHandler = mock(ChatHandler.class);
         ChatWebSocketHandler handler = handler(chatHandler);
         WebSocketSession session = session();
 
         handler.handleTextMessage(
                 session,
-                new TextMessage("""
-                        {"type":"chat","conversationId":"conversation-1","message":"legacy audit","referenceFocus":null,"scope":{"retrievalBudgetProfile":"deep_audit"}}
-                        """)
+                new TextMessage("legacy plain text")
         );
 
-        ChatHandler.ChatRequest request = capturedRequest(chatHandler, session);
-        assertEquals("legacy audit", request.message());
-        assertEquals(RetrievalBudgetProfile.INTERACTIVE, request.retrievalBudgetProfile());
+        verify(chatHandler, never()).processMessage(eq("u1"), any(ChatHandler.ChatRequest.class), eq(session));
+        verify(session).sendMessage(argThat(message ->
+                message instanceof TextMessage textMessage
+                        && textMessage.getPayload().contains("结构化 JSON")
+        ));
     }
 
     private ChatWebSocketHandler handler(ChatHandler chatHandler) {

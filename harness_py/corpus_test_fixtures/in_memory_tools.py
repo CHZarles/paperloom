@@ -22,7 +22,7 @@ from ..corpus.pages import (
     normalize_text as _normalize,
     page_matches as _page_matches,
 )
-from ..corpus.tools import ReadingCorpusTools, ToolResult
+from ..corpus.tools import ReadingCorpusTools
 
 
 # 评分权重与常量：仅 in-memory 路径使用。
@@ -1095,18 +1095,3 @@ SEARCH_ELEMENT_TYPES = (
     "formula",
     "aside",
 )
-
-
-# InMemoryTools 复刻 ReadingCorpusTools.call 入口，方便从工具名走 BM25 路径。
-def call_in_memory(tools: InMemoryTools, name: str, arguments: JsonMap) -> ToolResult:
-    if name == "search_paper_candidates":
-        return ToolResult(name, tools.search_paper_candidates(arguments))
-    if name == "find_papers_by_identity":
-        return ToolResult(name, tools.find_papers_by_identity(arguments))
-    if name == "find_reading_locations":
-        return ToolResult(name, tools.find_reading_locations(arguments))
-    if name == "read_locations":
-        return ToolResult(name, tools.read_locations(arguments))
-    if name == "get_citation_edges":
-        return ToolResult(name, tools.get_citation_edges(arguments))
-    return ToolResult(name, {"error": f"unknown tool: {name}"})

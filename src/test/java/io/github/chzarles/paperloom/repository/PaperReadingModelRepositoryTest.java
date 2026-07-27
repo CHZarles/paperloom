@@ -13,6 +13,9 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -142,5 +145,59 @@ class PaperReadingModelRepositoryTest {
         assertEquals(PaperRetrievalIndexStatus.READY, activated.getRetrievalIndexStatus());
         assertEquals("collection|location-bm25-v3", activated.getRetrievalIndexContract());
         assertEquals(8, activated.getRetrievalIndexedLocationCount());
+    }
+
+    @Test
+    void findsSearchableCurrentPaperIdsWithActiveIndexContract() {
+        modelRepository.save(searchableModel("paper-ready", "contract-a"));
+        modelRepository.save(searchableModel("paper-ready", "contract-a"));
+        modelRepository.save(searchableModel("paper-other-contract", "contract-b"));
+        modelRepository.save(model("paper-building", true, PaperReadingModelStatus.READING_MODEL_BUILDING,
+                PaperRetrievalIndexStatus.READY, "contract-a", 1));
+        modelRepository.save(model("paper-failed-index", true, PaperReadingModelStatus.READING_MODEL_READY,
+                PaperRetrievalIndexStatus.FAILED, "contract-a", 1));
+        modelRepository.save(model("paper-empty-index", true, PaperReadingModelStatus.READING_MODEL_READY,
+                PaperRetrievalIndexStatus.READY, "contract-a", 0));
+        modelRepository.save(model("paper-old", false, PaperReadingModelStatus.READING_MODEL_READY,
+                PaperRetrievalIndexStatus.READY, "contract-a", 1));
+        modelRepository.flush();
+
+        Set<String> result = new HashSet<>(modelRepository.findSearchableCurrentPaperIds(
+                List.of(
+                        "paper-ready",
+                        "paper-other-contract",
+                        "paper-building",
+                        "paper-failed-index",
+                        "paper-empty-index",
+                        "paper-old"
+                ),
+                PaperReadingModelStatus.READING_MODEL_READY,
+                PaperRetrievalIndexStatus.READY,
+                "contract-a"
+        ));
+
+        assertEquals(Set.of("paper-ready"), result);
+    }
+
+    private PaperReadingModel searchableModel(String paperId, String contract) {
+        return model(paperId, true, PaperReadingModelStatus.READING_MODEL_READY,
+                PaperRetrievalIndexStatus.READY, contract, 1);
+    }
+
+    private PaperReadingModel model(String paperId,
+                                    boolean current,
+                                    PaperReadingModelStatus modelStatus,
+                                    PaperRetrievalIndexStatus indexStatus,
+                                    String contract,
+                                    Integer indexedLocations) {
+        PaperReadingModel model = new PaperReadingModel();
+        model.setPaperId(paperId);
+        model.setModelVersion("rm-" + paperId + "-" + current + "-" + indexedLocations);
+        model.setModelStatus(modelStatus);
+        model.setCurrent(current);
+        model.setRetrievalIndexStatus(indexStatus);
+        model.setRetrievalIndexContract(contract);
+        model.setRetrievalIndexedLocationCount(indexedLocations);
+        return model;
     }
 }

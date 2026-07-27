@@ -329,30 +329,6 @@ public class ConversationService {
         return result;
     }
 
-    public void ensureConversationSession(Long userId, String conversationId, String title) {
-        if (conversationId == null || conversationId.isBlank()) {
-            return;
-        }
-
-        if (sessionRepository.findByConversationIdAndUserId(conversationId, userId).isPresent()) {
-            return;
-        }
-
-        if (sessionRepository.existsByConversationId(conversationId)) {
-            throw new CustomException("对话不存在", HttpStatus.NOT_FOUND);
-        }
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
-
-        ConversationSession session = new ConversationSession();
-        session.setUser(user);
-        session.setConversationId(conversationId);
-        session.setTitle(title != null && !title.isBlank() ? title : "新对话");
-        session.setStatus(ConversationSession.SessionStatus.ACTIVE);
-        sessionRepository.save(session);
-    }
-
     public void switchCurrentConversation(Long userId, String conversationId) {
         requireOwnedSession(userId, conversationId);
         String redisKey = "user:" + userId + ":current_conversation";

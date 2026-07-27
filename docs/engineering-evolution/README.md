@@ -17,7 +17,6 @@ An evolution record is worth keeping when it documents at least one of the follo
 - [Reading Retrieval Minimal System](reading-model/minimal-system.md)
 - [Reading Model Persistence Closure](reading-model/persistence-closure.md)
 - [Chat Routing Refactor](chat-routing-refactor.md)
-- [June 2026 Implementation Alignment](architecture/implementation-alignment-2026-06.md)
 - [Lexical Qdrant Product Cutover Proposal](architecture/lexical-qdrant-product-cutover-proposal-2026-07-18.md)
 - [First Product ReAct Harness Design](agent-runtime/product-react-harness-design-2026-06.md)
 - [Research Harness Single-Session Context Management Proposal](agent-runtime/research-harness-context-compression-proposal-2026-07-16.md)

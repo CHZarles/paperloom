@@ -73,6 +73,7 @@ declare namespace Api {
     type Item = {
       userId: string;
       username: string;
+      role?: 'USER' | 'ADMIN';
       status: number;
       createdAt: string;
     };
@@ -453,13 +454,6 @@ declare namespace Api {
       chunk: string;
     }
 
-    interface AgentToolEvent {
-      id?: string;
-      tool: string;
-      status: 'executing' | 'success' | 'failed';
-      timestamp?: number;
-    }
-
     interface ResearchProgressEvent {
       generationId?: string;
       retryOfGenerationId?: string;
@@ -721,7 +715,6 @@ declare namespace Api {
       readingArtifacts?: ReadingTurnArtifacts;
       readingStatePatch?: Record<string, any>;
       researchAuditTrail?: ResearchAuditTrail | null;
-      toolEvents?: AgentToolEvent[];
       researchEvents?: ResearchProgressEvent[];
       feedbackRating?: 'good' | 'bad';
       effectiveScope?: ConversationScope | Record<string, any>;

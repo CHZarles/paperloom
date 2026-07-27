@@ -183,7 +183,7 @@ PDF
 **结论。** 检索修复解决了上游召回问题，没有解决模型如何读取、选择和引用候选。检索指标与最终回答
 指标需要继续分开报告。
 
-## 7. 决策三：提交前检查论文级证据覆盖
+## 7. 决策三：提交前检查论文级证据覆盖（已下线）
 
 **论点。** 当答案讨论多篇论文时，每篇被讨论的论文都需要已有原文证据。
 
@@ -193,7 +193,7 @@ PDF
 **论证。** 论文卡片、标题和摘要元数据只能帮助导航。方法、数值和实验结论需要来自 `read_locations`
 读取的准确原文。检查论文级覆盖可以拦住“找到但没读”和“读了但没引”的答案。
 
-`submit_research_answer` 前增加了 `evaluate_evidence_coverage`：
+当时在 `submit_research_answer` 前增加了论文级覆盖检查：
 
 ```text
 模型提交答案
@@ -202,6 +202,8 @@ PDF
    -> 完整：结束运行
    -> 不完整：返回具体错误，允许同一轮继续处理
 ```
+
+这层在线检查后来移除；现在覆盖链路由离线 Scorer/Judge 分析。
 
 该检查只使用产品运行时已有信息，不读取测试问题编号、指定证据位置、预期事实或人工标签。
 
@@ -335,7 +337,6 @@ Python tests：                  76/76
 
 - `harness_py/ONBOARDING.md`
 - `research/golden-data/README.md`
-- `research/golden-data/2026-07-13-reading-model-retrieval-practice.md`
 - `docs/adr/0011-use-evidence-first-golden-cases-for-harness-eval.md`
 - `docs/adr/0012-build-golden-schema-runtime-as-offline-eval-first.md`
 - [`Best-of-2 Agent 编排实验`](best-of-two-agent-orchestration.md)

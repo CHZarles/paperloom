@@ -434,17 +434,6 @@ public class PaperUploadController {
         return (double) uploadedChunks.size() / totalChunks * 100;
     }
 
-    private String formatSize(long sizeInBytes) {
-        double sizeInMb = sizeInBytes / (1024d * 1024d);
-        if (sizeInMb >= 1024d) {
-            return String.format("%.2f GB", sizeInMb / 1024d);
-        }
-        if (sizeInMb >= 1d) {
-            return String.format("%.2f MB", sizeInMb);
-        }
-        return String.format("%.2f KB", sizeInBytes / 1024d);
-    }
-
     /**
      * 合并请求，paperId 当前使用 PDF 内容哈希。
      */

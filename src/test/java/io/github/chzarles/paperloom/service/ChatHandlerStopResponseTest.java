@@ -2,7 +2,6 @@ package io.github.chzarles.paperloom.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.socket.WebSocketSession;
 
@@ -61,7 +60,6 @@ class ChatHandlerStopResponseTest {
     private static ChatHandler handler(ChatGenerationStateService generationStateService,
                                        ChatSessionRegistry sessionRegistry) {
         return new ChatHandler(
-                mock(RedisTemplate.class),
                 mock(UsageQuotaService.class),
                 mock(ConversationService.class),
                 mock(ConversationScopeService.class),

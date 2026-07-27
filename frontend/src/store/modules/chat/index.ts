@@ -21,6 +21,7 @@ const CHAT_ROUTES = new Set<Api.Chat.Route>([
 ]);
 const MAX_RETAINED_RESEARCH_EVENTS = 200;
 const PRESERVED_HEAD_EVENTS = 20;
+const MAX_CACHED_CONVERSATIONS = 8;
 
 function trimEvents<T>(events: T[] | undefined | null): T[] {
   if (!events || events.length <= MAX_RETAINED_RESEARCH_EVENTS) return events || [];
@@ -50,6 +51,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
   const list = ref<Api.Chat.Message[]>([]);
   const sessions = ref<Api.Chat.ConversationSession[]>([]);
   const sessionsLoading = ref(false);
+  const sessionsLoaded = ref(false);
   const hasOlderMessages = ref(false);
   const messagesLoadingOlder = ref(false);
   const activeTab = ref<'active' | 'archived'>('active');
@@ -68,7 +70,66 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
   let loadedConversationDetailsId = '';
   let conversationSelectionVersion = 0;
   const conversationDetailsInFlight = new Map<string, Promise<void>>();
+  const conversationDetailsCache = new Map<
+    string,
+    {
+      messages: Api.Chat.Message[];
+      scope: Api.Chat.ConversationScope | null;
+      hasOlderMessages: boolean;
+      cachedAt: number;
+    }
+  >();
   const HISTORY_RECORD_PAGE_SIZE = 15;
+
+  function cloneMessage(message: Api.Chat.Message): Api.Chat.Message {
+    return {
+      ...message,
+      researchEvents: message.researchEvents ? [...message.researchEvents] : undefined
+    };
+  }
+
+  function cloneScope(scope: Api.Chat.ConversationScope | null): Api.Chat.ConversationScope | null {
+    if (!scope) return null;
+    return {
+      ...scope,
+      paperIds: scope.paperIds ? [...scope.paperIds] : [],
+      sourceRecipe: scope.sourceRecipe ? { ...scope.sourceRecipe } : scope.sourceRecipe
+    };
+  }
+
+  function cacheConversationDetails(targetConversationId = conversationId.value) {
+    if (!targetConversationId) return;
+    conversationDetailsCache.delete(targetConversationId);
+    conversationDetailsCache.set(targetConversationId, {
+      messages: list.value.map(cloneMessage),
+      scope: cloneScope(currentScope.value),
+      hasOlderMessages: hasOlderMessages.value,
+      cachedAt: Date.now()
+    });
+    while (conversationDetailsCache.size > MAX_CACHED_CONVERSATIONS) {
+      const oldestKey = conversationDetailsCache.keys().next().value;
+      if (!oldestKey) break;
+      conversationDetailsCache.delete(oldestKey);
+    }
+  }
+
+  function restoreCachedConversationDetails(targetConversationId: string) {
+    const cached = conversationDetailsCache.get(targetConversationId);
+    if (!cached) return false;
+
+    conversationDetailsCache.delete(targetConversationId);
+    conversationDetailsCache.set(targetConversationId, cached);
+    list.value = cached.messages.map(cloneMessage);
+    currentScope.value = cloneScope(cached.scope);
+    hasOlderMessages.value = cached.hasOlderMessages;
+    loadedConversationDetailsId = targetConversationId;
+    return true;
+  }
+
+  function discardConversationCache(targetConversationId: string) {
+    conversationDetailsCache.delete(targetConversationId);
+    if (loadedConversationDetailsId === targetConversationId) loadedConversationDetailsId = '';
+  }
 
   function mapGenerationStatus(status?: Api.Chat.GenerationStatus): Api.Chat.Message['status'] {
     if (status === 'COMPLETED' || status === 'CANCELLED') {
@@ -267,7 +328,6 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       assistant.readingStatePatch = undefined;
       assistant.researchAuditTrail = undefined;
       assistant.researchEvents = [];
-      assistant.toolEvents = [];
     }
     return true;
   }
@@ -360,6 +420,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       return data;
     } finally {
       if (!silent) sessionsLoading.value = false;
+      sessionsLoaded.value = true;
     }
   }
 
@@ -409,6 +470,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     targetConversationId: string,
     payload: Api.Chat.UpdateConversationScopePayload
   ) {
+    discardConversationCache(targetConversationId);
     const { error, data } = await request<Api.Chat.ConversationScope>({
       url: `users/conversations/${targetConversationId}/scope`,
       method: 'PUT',
@@ -473,6 +535,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       list.value = [];
       hasOlderMessages.value = false;
       loadedConversationDetailsId = '';
+      discardConversationCache(data.conversationId);
       referenceFocus.value = null;
       await loadConversationScope(data.conversationId);
     }
@@ -485,6 +548,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       if (loadDetails) await loadConversationDetails(targetConversationId);
       return true;
     }
+    cacheConversationDetails();
     const { error } = await request({
       url: `users/conversations/${targetConversationId}/switch`,
       method: 'PUT'
@@ -493,13 +557,16 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       return false;
     }
     conversationSelectionVersion += 1;
-    conversationId.value = targetConversationId;
-    list.value = [];
-    hasOlderMessages.value = false;
-    loadedConversationDetailsId = '';
     referenceFocus.value = null;
-    currentScope.value = null;
-    if (loadDetails) await loadConversationDetails(targetConversationId, { force: true });
+    const restored = loadDetails && restoreCachedConversationDetails(targetConversationId);
+    if (!restored) {
+      list.value = [];
+      hasOlderMessages.value = false;
+      loadedConversationDetailsId = '';
+      currentScope.value = null;
+    }
+    conversationId.value = targetConversationId;
+    if (loadDetails && !restored) await loadConversationDetails(targetConversationId, { force: true });
     return true;
   }
 
@@ -539,7 +606,10 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     if (older) {
       const existingKeys = new Set(list.value.map(messageIdentity));
       const olderMessages = boundedData.filter(message => !existingKeys.has(messageIdentity(message)));
-      if (olderMessages.length) list.value = [...olderMessages, ...list.value];
+      if (olderMessages.length) {
+        list.value = [...olderMessages, ...list.value];
+        cacheConversationDetails(cid);
+      }
       return olderMessages.length > 0;
     }
     return applyLoadedMessages(boundedData, cid);
@@ -559,6 +629,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
   async function loadConversationDetails(targetConversationId: string, options: { force?: boolean } = {}) {
     const { force = false } = options;
     if (!force && loadedConversationDetailsId === targetConversationId) return;
+    if (!force && restoreCachedConversationDetails(targetConversationId)) return;
 
     const existing = conversationDetailsInFlight.get(targetConversationId);
     if (existing) {
@@ -578,6 +649,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
         ) {
           upsertGenerationSnapshot(snapshot);
         }
+        cacheConversationDetails(targetConversationId);
       }
     );
     conversationDetailsInFlight.set(targetConversationId, pending);
@@ -595,6 +667,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       method: 'PUT'
     });
     if (!error) {
+      discardConversationCache(targetConversationId);
       if (archivingCurrentSession) {
         conversationSelectionVersion += 1;
         list.value = [];
@@ -614,6 +687,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       method: 'PUT'
     });
     if (!error) {
+      discardConversationCache(targetConversationId);
       await loadSessions();
     }
   }
@@ -629,6 +703,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     }
 
     sessions.value = sessions.value.filter(session => session.conversationId !== targetConversationId);
+    discardConversationCache(targetConversationId);
     if (deletingCurrentSession) {
       conversationSelectionVersion += 1;
       conversationId.value = '';
@@ -731,6 +806,7 @@ function resetConnectionState() {
     input.value = { message: '' };
     list.value = [];
     sessions.value = [];
+    sessionsLoaded.value = false;
     hasOlderMessages.value = false;
     loadedConversationDetailsId = '';
     conversationDetailsInFlight.clear();
@@ -780,6 +856,7 @@ function resetConnectionState() {
     list,
     sessions,
     sessionsLoading,
+    sessionsLoaded,
     hasOlderMessages,
     messagesLoadingOlder,
     activeTab,

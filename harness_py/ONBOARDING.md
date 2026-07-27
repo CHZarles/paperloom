@@ -76,7 +76,7 @@ submit_research_answer
 
 - [`Golden Data 与 Harness 演化`](../site/practice/evaluation/golden-data-harness-evolution.md)：
   Candidate 恢复后，已实现的 `submit_research_answer` 证据覆盖门及其验收边界。
-- [`Reading Model 与检索实践复盘`](../research/golden-data/2026-07-13-reading-model-retrieval-practice.md)：
+- [`Sparse Qdrant 切换与 MiniMax 证据缺口`](../site/practice/evaluation/qdrant-bm25-cutover-minimax-evidence-gap.md)：
   从 `21/32 -> 16/32 -> 29/32` 理解如何区分数据、检索、读取、引用和真实模型行为。
 
 ## OpenAI Agents SDK 在这里怎么用
@@ -300,9 +300,8 @@ surface。
 `fields_schema=golden-facts/v1` 时，评分器才逐 Key 校验 `fields`。普通模型输出即使包含
 `evidence_id` 等字段，也不会因此被解释为已经承诺输出全部 Golden Facts。
 
-`orchestration/evidence_coverage.py` 保留为离线诊断辅助：它可以检查当前内容研究中被明确点名的
-论文是否经过 Candidate、Read 和同论文 Cited 三个阶段，用来分析“检索、读取、引用”链路问题。
-这些诊断不再作为在线最终提交闸门；逐 Block 语义支撑留给离线 Scorer/Judge。
+逐 Block 语义支撑留给离线 Scorer/Judge，在线最终提交只做格式、Outcome 和 Evidence ID
+可引用性校验。
 
 ### Transport 契约
 

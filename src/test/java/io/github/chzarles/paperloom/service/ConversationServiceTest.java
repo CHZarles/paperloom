@@ -460,7 +460,6 @@ class ConversationServiceTest {
 
         assertEquals("对话不存在", exception.getMessage());
         verify(valueOperations, never()).set(anyString(), anyString(), any());
-        verify(sessionRepository, never()).existsByConversationId(anyString());
     }
 
     @Test

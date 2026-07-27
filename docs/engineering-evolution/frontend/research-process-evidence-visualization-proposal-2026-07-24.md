@@ -274,7 +274,7 @@ reading artifacts 投影出来的稳定结构。
   - `source_object_id`
   - table / figure / formula id
   - screenshot availability
-- `evidence_coverage.py` 作为离线诊断，不作为在线 rejection；
+- 论文级覆盖链路作为离线 Scorer/Judge 信号，不作为在线 rejection；
 - Golden runs 报 Candidate / Read / Cited 数量，用于回归对比。
 
 ## Golden Data 工作

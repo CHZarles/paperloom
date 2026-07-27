@@ -27,6 +27,7 @@ import io.github.chzarles.paperloom.utils.JwtUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -57,7 +58,7 @@ public class PaperController {
 
     private static final int DEFAULT_PAGE_SIZE = 10;
     private static final int MAX_PAGE_SIZE = 100;
-    private static final int PDF_PREVIEW_RANGE_CHUNK_SIZE_BYTES = 256 * 1024;
+    private static final int PDF_PREVIEW_RANGE_CHUNK_SIZE_BYTES = 1024 * 1024;
     private static final int PDF_PREVIEW_MAX_RANGE_SIZE_BYTES = 64 * 1024 * 1024;
 
     @Autowired
@@ -790,9 +791,7 @@ public class PaperController {
     }
 
     private Optional<Paper> findAccessiblePaper(String paperId, String userId) {
-        return paperService.getAccessiblePapers(userId).stream()
-                .filter(paper -> paper.getPaperId().equals(paperId))
-                .findFirst();
+        return paperAccessService.findAccessiblePaper(userId, paperId);
     }
 
     private ResponseEntity<?> paperNotFoundOrForbidden() {
@@ -1051,11 +1050,7 @@ public class PaperController {
                 return ResponseEntity.ok(response);
             }
 
-            List<Paper> accessibleFiles = paperService.getAccessiblePapers(userId);
-
-            Optional<Paper> targetFile = accessibleFiles.stream()
-                    .filter(file -> file.getPaperId().equals(paperId))
-                    .findFirst();
+            Optional<Paper> targetFile = findAccessiblePaper(paperId, userId);
 
             if (targetFile.isEmpty()) {
                 LogUtils.logUserOperation(userId, "DOWNLOAD_PAPER", paperId, "FAILED_NOT_FOUND");
@@ -1159,11 +1154,7 @@ public class PaperController {
                 return ResponseEntity.ok(response);
             }
 
-            List<Paper> accessibleFiles = paperService.getAccessiblePapers(userId);
-
-            Optional<Paper> targetFile = accessibleFiles.stream()
-                    .filter(f -> f.getPaperId().equals(paperId))
-                    .findFirst();
+            Optional<Paper> targetFile = findAccessiblePaper(paperId, userId);
 
             if (targetFile.isEmpty()) {
                 LogUtils.logUserOperation(userId, "PREVIEW_PAPER", paperId, "FAILED_NOT_FOUND");
@@ -1279,6 +1270,7 @@ public class PaperController {
             @RequestParam Long begin,
             @RequestParam Long end,
             @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestHeader(value = HttpHeaders.ACCEPT, required = false) String accept,
             @RequestParam(required = false) String token) {
         try {
             RequestAuthContext authContext = resolveRequestAuthContext(authorization, token);
@@ -1309,6 +1301,16 @@ public class PaperController {
             }
 
             long actualEnd = begin + rangeBytes.length;
+            if (wantsBinaryPdfRange(accept)) {
+                long lastByte = Math.max(begin, actualEnd) - 1;
+                return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
+                        .contentType(MediaType.APPLICATION_PDF)
+                        .contentLength(rangeBytes.length)
+                        .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                        .header(HttpHeaders.CONTENT_RANGE, "bytes " + begin + "-" + lastByte + "/" + totalSizeBytes)
+                        .body(rangeBytes);
+            }
+
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("paperId", file.getPaperId());
             payload.put("paperTitle", file.getPaperTitle());
@@ -1462,6 +1464,10 @@ public class PaperController {
         } catch (IOException e) {
             throw new RuntimeException("无法读取 PDF 文件大小", e);
         }
+    }
+
+    private boolean wantsBinaryPdfRange(String accept) {
+        return accept != null && accept.toLowerCase(Locale.ROOT).contains(MediaType.APPLICATION_PDF_VALUE);
     }
 
     private ResponseEntity<?> invalidPdfPreviewRange(String message) {

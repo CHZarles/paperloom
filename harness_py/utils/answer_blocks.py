@@ -55,16 +55,6 @@ def answer_blocks(answer: JsonMap) -> tuple[list[JsonMap], list[str]]:
     return blocks, list(dict.fromkeys(errors))
 
 
-def uncited_material_blocks(answer: JsonMap) -> list[JsonMap]:
-    blocks, _errors = answer_blocks(answer)
-    return [
-        block
-        for block in blocks
-        if not as_list(block.get("evidence_ids"))
-        and str(block.get("kind") or "") not in NON_MATERIAL_UNCITED_BLOCK_KINDS
-    ]
-
-
 def _answer_body(markdown: str) -> str:
     marker = re.search(r"(?:^|\n)Sources\s*\n", markdown)
     return markdown[:marker.start()].rstrip() if marker else markdown

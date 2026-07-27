@@ -7,6 +7,7 @@ import io.github.chzarles.paperloom.model.PaperRetrievalIndexStatus;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -40,12 +41,17 @@ public class PaperSearchabilityService {
     }
 
     public boolean isSearchable(PaperReadingModel model) {
+        return isSearchable(model, contractService.activeContract());
+    }
+
+    private boolean isSearchable(PaperReadingModel model, String activeContract) {
         return model != null
                 && model.getPaperId() != null
                 && !model.getPaperId().isBlank()
                 && model.getModelStatus() == PaperReadingModelStatus.READING_MODEL_READY
                 && model.getRetrievalIndexStatus() == PaperRetrievalIndexStatus.READY
-                && contractService.isActive(model.getRetrievalIndexContract())
+                && activeContract != null
+                && activeContract.equals(model.getRetrievalIndexContract())
                 && model.getRetrievalIndexedLocationCount() != null
                 && model.getRetrievalIndexedLocationCount() > 0;
     }
@@ -62,14 +68,32 @@ public class PaperSearchabilityService {
         if (paperIds.isEmpty()) {
             return Set.of();
         }
+        return searchablePaperIdsById(paperIds);
+    }
 
-        LinkedHashSet<String> searchable = new LinkedHashSet<>();
-        for (PaperReadingModel model : modelRepository.findByPaperIdInAndIsCurrentTrueAndModelStatus(
-                List.copyOf(paperIds), PaperReadingModelStatus.READING_MODEL_READY)) {
-            if (isSearchable(model)) {
-                searchable.add(model.getPaperId());
+    public Set<String> searchablePaperIdsById(Collection<String> paperIds) {
+        LinkedHashSet<String> normalizedPaperIds = new LinkedHashSet<>();
+        if (paperIds != null) {
+            for (String paperId : paperIds) {
+                if (paperId != null && !paperId.isBlank()) {
+                    normalizedPaperIds.add(paperId.trim());
+                }
             }
         }
+        if (normalizedPaperIds.isEmpty()) {
+            return Set.of();
+        }
+
+        String activeContract = contractService.activeContract();
+        if (activeContract == null || activeContract.isBlank()) {
+            return Set.of();
+        }
+        LinkedHashSet<String> searchable = new LinkedHashSet<>(modelRepository.findSearchableCurrentPaperIds(
+                List.copyOf(normalizedPaperIds),
+                PaperReadingModelStatus.READING_MODEL_READY,
+                PaperRetrievalIndexStatus.READY,
+                activeContract
+        ));
         return Set.copyOf(searchable);
     }
 }

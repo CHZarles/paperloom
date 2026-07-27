@@ -12,12 +12,6 @@ PAPER_PACK_SCHEMA_VERSION = "harness-paper-pack/v2"
 GOLDEN_CLAIM_SCHEMA_VERSION = "harness-golden-claims/v1"
 RUN_TRACE_SCHEMA_VERSION = "harness-run-trace/v2"
 SCORE_REPORT_SCHEMA_VERSION = "harness-score-report/v4"
-SUPPORTED_SCORE_REPORT_SCHEMA_VERSIONS = frozenset({
-    "harness-score-report/v2",
-    "harness-score-report/v3",
-    SCORE_REPORT_SCHEMA_VERSION,
-})
-ARTIFACT_CONTRACT_SCHEMA_VERSION = "research-harness-artifacts/v2"
 
 
 JsonMap = dict[str, Any]
@@ -36,12 +30,6 @@ class GoldenDataset:
     reading_models_by_paper_id: dict[str, JsonMap]
     claims_by_id: dict[str, JsonMap] = field(default_factory=dict)
     load_warnings: list[str] = field(default_factory=list)
-
-
-@dataclass(frozen=True)
-class EvidenceLookupResult:
-    item: JsonMap | None
-    missing: JsonMap | None = None
 
 
 def as_list(value: Any) -> list[Any]:

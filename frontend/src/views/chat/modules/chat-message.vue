@@ -74,6 +74,15 @@ const retrying = ref(false);
 const revisionModalVisible = ref(false);
 const revisionsLoading = ref(false);
 const answerRevisions = ref<Api.Chat.AnswerRevision[]>([]);
+const canRetryAnswer = computed(
+  () =>
+    props.msg.role === 'assistant' &&
+    props.msg.status === 'finished' &&
+    Boolean(props.msg.generationId && props.msg.conversationRecordId)
+);
+const canOpenAnswerRevisions = computed(
+  () => props.msg.role === 'assistant' && Boolean(props.msg.answerSlotId && (props.msg.answerRevision || 1) > 1)
+);
 
 async function handleRetry() {
   if (retrying.value || !canRetryAnswer.value) return;
@@ -117,7 +126,11 @@ function revisionReferenceEntries(revision: Api.Chat.AnswerRevision) {
     .filter(item => Number.isFinite(item.referenceNumber));
 }
 
-function openRevisionReference(revision: Api.Chat.AnswerRevision, referenceNumber: number, detail: Api.Chat.ReferenceEvidence) {
+function openRevisionReference(
+  revision: Api.Chat.AnswerRevision,
+  referenceNumber: number,
+  detail: Api.Chat.ReferenceEvidence
+) {
   const paperTitle = detail.paperTitle || detail.originalFilename || detail.paperId || `Reference #${referenceNumber}`;
   revisionModalVisible.value = false;
   emit('openReference', {
@@ -179,12 +192,16 @@ const assistantContentRef = ref<HTMLElement | null>(null);
 const activeReferenceNumber = ref<number | null>(null);
 // eslint-disable-next-line no-useless-escape
 const bareUrlPattern = /https?:\/\/[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+/g;
-const toolEvents = computed(() => props.msg.toolEvents || []);
 const researchEvents = computed(() => props.msg.researchEvents || []);
+const INLINE_PROGRESS_EVENT_LIMIT = 4;
+const INLINE_PROGRESS_LOOKBACK_LIMIT = 80;
 const assistantIsRunning = computed(
   () =>
     props.msg.role === 'assistant' &&
     (props.msg.status === 'pending' || (props.msg.status === 'loading' && !props.msg.content))
+);
+const assistantIsStreaming = computed(
+  () => props.msg.role === 'assistant' && ['pending', 'loading'].includes(props.msg.status || '')
 );
 // Keep the thinking animation alive across session switches and unmounts.
 // Once events have arrived for this message and answer_completed hasn't,
@@ -198,15 +215,6 @@ const assistantIsGenerating = computed(
     (['pending', 'loading'].includes(props.msg.status || '') || researchEvents.value.length > 0)
 );
 const showMessageActions = computed(() => !assistantIsRunning.value && Boolean((props.msg.content || '').trim()));
-const canRetryAnswer = computed(
-  () =>
-    props.msg.role === 'assistant' &&
-    props.msg.status === 'finished' &&
-    Boolean(props.msg.generationId && props.msg.conversationRecordId)
-);
-const canOpenAnswerRevisions = computed(
-  () => props.msg.role === 'assistant' && Boolean(props.msg.answerSlotId && (props.msg.answerRevision || 1) > 1)
-);
 const hasReadingArtifacts = computed(() => {
   const artifacts = props.msg.readingArtifacts;
   if (!artifacts) return false;
@@ -226,10 +234,18 @@ const showResearchDetails = computed(
     props.msg.role === 'assistant' &&
     (assistantIsGenerating.value ||
       researchEvents.value.length > 0 ||
-      toolEvents.value.length > 0 ||
       hasReadingArtifacts.value ||
       Boolean(props.msg.researchAuditTrail?.steps?.length || props.msg.researchAuditTrail?.evidence?.length))
 );
+
+type ProgressEventState = 'running' | 'completed' | 'failed';
+
+interface InlineProgressItem {
+  key: string;
+  title: string;
+  detail: string;
+  state: ProgressEventState;
+}
 
 function progressEventTitle(event: Api.Chat.ResearchProgressEvent) {
   const eventType = event.eventType || event.type;
@@ -300,6 +316,54 @@ function progressEventDetail(event: Api.Chat.ResearchProgressEvent) {
   if (event.tool === 'get_research_skill') return String(input.skillId || output.skillId || '');
   return '';
 }
+
+function progressEventState(event: Api.Chat.ResearchProgressEvent): ProgressEventState {
+  const eventType = event.eventType || event.type;
+  if (eventType === 'job_failed' || event.status === 'failed') return 'failed';
+  if (eventType === 'tool_started' || eventType === 'model_call_started') return 'running';
+  return 'completed';
+}
+
+function inlineProgressIdentity(event: Api.Chat.ResearchProgressEvent) {
+  const eventType = event.eventType || event.type || 'progress';
+  const input = event.input || {};
+  const inputHandle = String(input.query || input.locationRef || input.skillId || input.locationCount || '').trim();
+  if (event.tool) return ['tool', event.tool, inputHandle || event.attempt || ''].join(':');
+  if (eventType.startsWith('model_call')) return ['model', event.attempt || 1].join(':');
+  return eventType;
+}
+
+function buildInlineProgressItems(events: Api.Chat.ResearchProgressEvent[]): InlineProgressItem[] {
+  const compacted: Api.Chat.ResearchProgressEvent[] = [];
+  const identityIndexes = new Map<string, number>();
+
+  events.slice(-INLINE_PROGRESS_LOOKBACK_LIMIT).forEach(event => {
+    const identity = inlineProgressIdentity(event);
+    const existingIndex = identityIndexes.get(identity);
+    if (existingIndex === undefined) {
+      identityIndexes.set(identity, compacted.length);
+      compacted.push(event);
+      return;
+    }
+    compacted[existingIndex] = event;
+  });
+
+  return compacted.slice(-INLINE_PROGRESS_EVENT_LIMIT).map((event, index) => {
+    const sequence = Number(event.sequence || 0);
+    const key = sequence > 0 ? String(sequence) : `${inlineProgressIdentity(event)}:${index}`;
+    return {
+      key,
+      title: progressEventTitle(event),
+      detail: progressEventDetail(event),
+      state: progressEventState(event)
+    };
+  });
+}
+
+const inlineProgressItems = computed(() => buildInlineProgressItems(researchEvents.value));
+const showInlineProgress = computed(
+  () => props.msg.role === 'assistant' && assistantIsGenerating.value && inlineProgressItems.value.length > 0
+);
 
 const currentProgressText = computed(() => {
   const latest = researchEvents.value[researchEvents.value.length - 1];
@@ -813,6 +877,20 @@ async function handleSourceFileClick(fileInfo: {
           <span>{{ currentProgressText }}</span>
           <icon-lucide:panel-right-open />
         </button>
+        <div v-if="showInlineProgress" class="assistant-progress-strip" aria-live="polite">
+          <div
+            v-for="event in inlineProgressItems"
+            :key="event.key"
+            class="assistant-progress-row"
+            :class="`assistant-progress-row--${event.state}`"
+          >
+            <span class="assistant-progress-row__dot" aria-hidden="true" />
+            <div class="assistant-progress-row__body">
+              <span class="assistant-progress-row__title">{{ event.title }}</span>
+              <span v-if="event.detail" class="assistant-progress-row__detail">{{ event.detail }}</span>
+            </div>
+          </div>
+        </div>
         <NText v-if="msg.status === 'error'" class="message-error">
           {{ msg.content || '服务器繁忙，请稍后再试' }}
         </NText>
@@ -825,7 +903,7 @@ async function handleSourceFileClick(fileInfo: {
           @mouseover="syncActiveReferenceFromContent($event.target)"
           @focusin="syncActiveReferenceFromContent($event.target)"
         >
-          <StreamingMarkdown v-if="assistantIsGenerating" :content="msg.content" />
+          <StreamingMarkdown v-if="assistantIsStreaming" :content="msg.content" />
           <VueMarkdownIt v-else :content="content" />
         </div>
         <NText v-else-if="msg.role === 'user'" class="message-content user-content">{{ content }}</NText>
@@ -926,7 +1004,6 @@ async function handleSourceFileClick(fileInfo: {
   border: 1px solid color-mix(in srgb, var(--color-citation) 42%, var(--color-border));
   border-radius: 999px;
   background: var(--color-citation-soft-bg);
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--color-citation) 12%, transparent);
   color: var(--color-citation);
   font-size: 12px;
   font-weight: 700;
@@ -936,17 +1013,13 @@ async function handleSourceFileClick(fileInfo: {
   transition:
     background 0.16s ease,
     border-color 0.16s ease,
-    box-shadow 0.16s ease,
-    color 0.16s ease,
-    transform 0.16s ease;
+    color 0.16s ease;
 
   &:hover {
     border-color: color-mix(in srgb, var(--color-citation) 72%, var(--color-border));
     background: color-mix(in srgb, var(--color-citation) 18%, var(--color-citation-soft-bg));
-    box-shadow: 0 2px 6px color-mix(in srgb, var(--color-citation) 18%, transparent);
     color: var(--color-citation-hover);
     text-decoration: none;
-    transform: translateY(-1px);
   }
 
   &:focus-visible {
@@ -965,7 +1038,6 @@ async function handleSourceFileClick(fileInfo: {
   cursor: default;
   border-color: var(--color-border);
   background: var(--color-surface-alt);
-  box-shadow: none;
   color: var(--color-text-muted);
 }
 
@@ -1241,6 +1313,66 @@ async function handleSourceFileClick(fileInfo: {
   background: var(--color-surface-alt) !important;
 }
 
+.assistant-progress-strip {
+  display: grid;
+  width: 100%;
+  gap: 4px;
+  overflow: hidden;
+  border-left: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-border));
+  padding: 1px 0 1px 10px;
+}
+
+.assistant-progress-row {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  min-height: 24px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.assistant-progress-row__dot {
+  width: 6px;
+  height: 6px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--color-border);
+}
+
+.assistant-progress-row--running .assistant-progress-row__dot {
+  background: var(--color-primary);
+  animation: runner-dot 1.2s ease-in-out infinite;
+}
+
+.assistant-progress-row--completed .assistant-progress-row__dot {
+  background: var(--color-success);
+}
+
+.assistant-progress-row--failed .assistant-progress-row__dot {
+  background: var(--color-error);
+}
+
+.assistant-progress-row__body {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.assistant-progress-row__title {
+  color: var(--color-text);
+  font-weight: 650;
+}
+
+.assistant-progress-row__detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .assistant-live-status {
   display: inline-flex;
   max-width: 100%;
@@ -1284,12 +1416,17 @@ async function handleSourceFileClick(fileInfo: {
   0%,
   100% {
     opacity: 0.42;
-    transform: scale(0.84);
   }
 
   50% {
     opacity: 1;
-    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-live-status .assistant-process__dot,
+  .assistant-progress-row--running .assistant-progress-row__dot {
+    animation: none;
   }
 }
 

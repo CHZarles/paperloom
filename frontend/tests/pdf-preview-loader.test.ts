@@ -162,5 +162,79 @@ const loadedRange = await rangeResult;
 assert.equal(loadedRange.begin, 1);
 assert.deepEqual([...(loadedRange.chunk || [])], [0x50, 0x44, 0x46, 0x2d]);
 assert.equal(rangeRequests[1], '/proxy-default/papers/paper-3/preview/pdf-data/range?begin=1&end=5');
-assert.equal(rangeRequestHeaders[1].Accept, 'application/json');
+assert.equal(rangeRequestHeaders[1].Accept, 'application/pdf, application/json');
 assert.equal(rangeRequestHeaders[1].Authorization, 'Bearer token-3');
+
+const cachedPreviewSource = await createPdfPreviewSource('/proxy-default/papers/paper-3/preview/pdf-data', {
+  authorization: 'Bearer token-3',
+  fetchImpl: rangeFetchImpl
+});
+const cachedRangeResult = new Promise<{ begin: number; chunk: Uint8Array | null }>(resolve => {
+  cachedPreviewSource.range!.onDataRange = (begin, chunk) => resolve({ begin, chunk });
+});
+
+cachedPreviewSource.range!.requestDataRange(1, 5);
+const cachedRange = await cachedRangeResult;
+
+assert.equal(cachedRange.begin, 1);
+assert.deepEqual([...(cachedRange.chunk || [])], [0x50, 0x44, 0x46, 0x2d]);
+assert.equal(rangeRequests.length, 2, 'completed metadata and range chunks should be reused by later viewers');
+
+clearPdfPreviewByteLoadCacheForTest();
+
+const binaryRangeRequests: string[] = [];
+const binaryRangeHeaders: Record<string, string>[] = [];
+const binaryRangeFetchImpl: typeof fetch = async (input, init) => {
+  const url = String(input);
+  binaryRangeRequests.push(url);
+  binaryRangeHeaders.push((init?.headers as Record<string, string>) || {});
+
+  if (url === '/proxy-default/papers/paper-4/preview/pdf-data') {
+    return new Response(
+      JSON.stringify({
+        code: 200,
+        data: {
+          paperId: 'paper-4',
+          originalFilename: 'paper-4.pdf',
+          contentType: 'application/pdf',
+          sourceFileSizeBytes: 8,
+          chunkSizeBytes: 1048576,
+          rangeUrl: '/api/v1/papers/paper-4/preview/pdf-data/range'
+        }
+      }),
+      {
+        status: 200,
+        headers: {
+          'content-type': 'application/json'
+        }
+      }
+    );
+  }
+
+  if (url === '/proxy-default/papers/paper-4/preview/pdf-data/range?begin=0&end=4') {
+    return new Response(new Uint8Array([0x25, 0x50, 0x44, 0x46]), {
+      status: 206,
+      headers: {
+        'content-type': 'application/pdf'
+      }
+    });
+  }
+
+  throw new Error(`unexpected binary range request: ${url}`);
+};
+
+const binaryPreviewSource = await createPdfPreviewSource('/proxy-default/papers/paper-4/preview/pdf-data', {
+  authorization: 'Bearer token-4',
+  fetchImpl: binaryRangeFetchImpl
+});
+const binaryRangeResult = new Promise<{ begin: number; chunk: Uint8Array | null }>(resolve => {
+  binaryPreviewSource.range!.onDataRange = (begin, chunk) => resolve({ begin, chunk });
+});
+
+binaryPreviewSource.range!.requestDataRange(0, 4);
+const loadedBinaryRange = await binaryRangeResult;
+
+assert.equal(binaryPreviewSource.rangeChunkSize, 1048576);
+assert.equal(loadedBinaryRange.begin, 0);
+assert.deepEqual([...(loadedBinaryRange.chunk || [])], [0x25, 0x50, 0x44, 0x46]);
+assert.equal(binaryRangeHeaders[1].Accept, 'application/pdf, application/json');

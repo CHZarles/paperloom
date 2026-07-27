@@ -6,13 +6,13 @@ recorded engineering work, not formal product releases.
 ## June 2026: Narrow the Product Around Papers
 
 The system stopped presenting itself as a general document assistant and adopted research-paper PDFs
-as the product subject. Product papers and benchmark corpora became separate data domains, followed
-by explicit paper scope and collection semantics.
+as the product subject. Evaluation moved to explicit Golden fixtures instead of mixed product data,
+followed by explicit paper scope and collection semantics.
 
 Evidence:
 
-- [ADR 0001](../adr/0001-separate-product-papers-from-eval-corpora.md)
 - [ADR 0002](../adr/0002-lock-conversation-scope-with-source-set-snapshots.md)
+- [ADR 0011](../adr/0011-use-evidence-first-golden-cases-for-harness-eval.md)
 - [Product Requirements](../reference/product-requirements.md)
 
 ## Late June 2026: Fail Closed on Task Routing

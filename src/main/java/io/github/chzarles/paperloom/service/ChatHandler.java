@@ -1,6 +1,5 @@
 package io.github.chzarles.paperloom.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.chzarles.paperloom.exception.QuotaExceededException;
@@ -10,12 +9,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.WebSocketSession;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -23,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentHashMap.KeySetView;
@@ -58,7 +54,6 @@ public class ChatHandler {
             Pattern.compile("\\[(\\d+)]");
     private static final Pattern PAPER_HANDLE_PATTERN =
             Pattern.compile("^paper_handle_[A-Za-z0-9_-]+$");
-    private final RedisTemplate<String, String> redisTemplate;
     private final UsageQuotaService usageQuotaService;
     private final ConversationService conversationService;
     private final ConversationScopeService conversationScopeService;
@@ -92,8 +87,7 @@ public class ChatHandler {
     private final Map<String, ChatRequestTiming> generationTimings = new ConcurrentHashMap<>();
 
     @Autowired
-    public ChatHandler(RedisTemplate<String, String> redisTemplate,
-                      UsageQuotaService usageQuotaService,
+    public ChatHandler(UsageQuotaService usageQuotaService,
                       ConversationService conversationService,
                       ConversationScopeService conversationScopeService,
                       ChatGenerationStateService chatGenerationStateService,
@@ -103,7 +97,6 @@ public class ChatHandler {
                       ObjectMapper objectMapper,
                       @Value("${research-harness.user-retry-max-per-message:3}") int maxUserRetriesPerMessage,
                       @Qualifier("chatMonitorExecutor") ThreadPoolTaskExecutor chatMonitorExecutor) {
-        this.redisTemplate = redisTemplate;
         this.usageQuotaService = usageQuotaService;
         this.conversationService = conversationService;
         this.conversationScopeService = conversationScopeService;
@@ -114,10 +107,6 @@ public class ChatHandler {
         this.objectMapper = objectMapper;
         this.maxUserRetriesPerMessage = Math.max(1, maxUserRetriesPerMessage);
         this.chatMonitorExecutor = chatMonitorExecutor;
-    }
-
-    public void processMessage(String userId, String userMessage, WebSocketSession session) {
-        processMessage(userId, new ChatRequest(userMessage, null), session);
     }
 
     public void processMessage(String userId, ChatRequest request, WebSocketSession session) {
@@ -134,12 +123,10 @@ public class ChatHandler {
 
             Long userIdLong = Long.parseLong(userId);
             if (requestedConversationId == null) {
-                conversationId = getOrCreateConversationId(userId);
-                conversationService.ensureConversationSession(userIdLong, conversationId, userMessage);
-            } else {
-                conversationId = requestedConversationId;
-                conversationService.requireActiveOwnedConversationSession(userIdLong, conversationId);
+                throw new IllegalArgumentException("conversationId is required");
             }
+            conversationId = requestedConversationId;
+            conversationService.requireActiveOwnedConversationSession(userIdLong, conversationId);
             ConversationScopeService.EffectiveConversationScope resolvedScope =
                     conversationScopeService.resolveForChat(userIdLong, conversationId);
             ProductReferenceFocus referenceFocus =
@@ -1082,22 +1069,12 @@ public class ChatHandler {
             timing.citationCount(referenceMappings.size());
             timing.mark("reference_mapping_saved");
         }
-        updateConversationHistory(
-                conversationId,
-                userMessage,
-                completeResponse,
-                referenceMappings,
-                generationEffectiveScopes.get(generationId),
-                generationReadingArtifacts.get(generationId),
-                generationReadingStatePatches.get(generationId)
-        );
         chatGenerationStateService.markCompleted(generationId, toSerializableReferenceMappings(referenceMappings));
         sendCompletionNotification(userId, generationId, conversationId, false, false);
         if (timing != null) {
             timing.mark("response_sent");
             timing.log(logger, conversationId, generationId);
         }
-        logger.info("对话存储信息 - Redis键: {}, 值: {}", "user:" + userId + ":current_conversation", conversationId);
         cleanupGenerationState(generationId, null);
         logger.info("消息处理完成，用户ID: {}", userId);
     }
@@ -1139,106 +1116,6 @@ public class ChatHandler {
 
     private boolean isGenerationCancelled(String generationId) {
         return generationId != null && (cancelledGenerations.contains(generationId) || Boolean.TRUE.equals(stopFlags.get(generationId)));
-    }
-
-    private String getOrCreateConversationId(String userId) {
-        String key = "user:" + userId + ":current_conversation";
-        String conversationId = redisTemplate.opsForValue().get(key);
-
-        if (conversationId == null) {
-            conversationId = UUID.randomUUID().toString();
-            redisTemplate.opsForValue().set(key, conversationId, Duration.ofDays(7));
-            logger.info("为用户 {} 创建新的会话ID: {}", userId, conversationId);
-        } else {
-            logger.info("获取到用户 {} 的现有会话ID: {}", userId, conversationId);
-        }
-
-        return conversationId;
-    }
-
-    private List<Map<String, String>> getConversationHistory(String conversationId) {
-        List<Map<String, Object>> records = getConversationHistoryRecords(conversationId);
-        List<Map<String, String>> history = new ArrayList<>();
-        for (Map<String, Object> message : records) {
-            Map<String, String> normalized = new HashMap<>();
-            normalized.put("role", String.valueOf(message.getOrDefault("role", "")));
-            normalized.put("content", String.valueOf(message.getOrDefault("content", "")));
-            Object timestamp = message.get("timestamp");
-            if (timestamp != null) {
-                normalized.put("timestamp", String.valueOf(timestamp));
-            }
-            history.add(normalized);
-        }
-        return history;
-    }
-
-    private List<Map<String, Object>> getConversationHistoryRecords(String conversationId) {
-        String key = "conversation:" + conversationId;
-        String json = redisTemplate.opsForValue().get(key);
-        try {
-            if (json == null) {
-                logger.debug("会话 {} 没有历史记录", conversationId);
-                return new ArrayList<>();
-            }
-
-            List<Map<String, Object>> history = objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {});
-            logger.debug("读取到会话 {} 的 {} 条历史记录", conversationId, history.size());
-            return history;
-        } catch (JsonProcessingException e) {
-            logger.error("解析对话历史出错: {}, 会话ID: {}", e.getMessage(), conversationId, e);
-            return new ArrayList<>();
-        }
-    }
-
-    private void updateConversationHistory(String conversationId, String userMessage, String response,
-                                           Map<Integer, ReferenceInfo> referenceMapping,
-                                           Map<String, Object> effectiveScope,
-                                           Map<String, Object> readingArtifacts,
-                                           Map<String, Object> readingStatePatch) {
-        String key = "conversation:" + conversationId;
-        List<Map<String, Object>> history = getConversationHistoryRecords(conversationId);
-
-        // 获取当前时间戳
-        String currentTimestamp = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
-
-        // 添加用户消息（带时间戳）
-        Map<String, Object> userMsgMap = new HashMap<>();
-        userMsgMap.put("role", "user");
-        userMsgMap.put("content", userMessage);
-        userMsgMap.put("timestamp", currentTimestamp);
-        if (effectiveScope != null && !effectiveScope.isEmpty()) {
-            userMsgMap.put("effectiveScope", effectiveScope);
-        }
-        history.add(userMsgMap);
-
-        // 添加助手回复（带时间戳）
-        Map<String, Object> assistantMsgMap = new HashMap<>();
-        assistantMsgMap.put("role", "assistant");
-        assistantMsgMap.put("content", response);
-        assistantMsgMap.put("timestamp", currentTimestamp);
-        if (referenceMapping != null && !referenceMapping.isEmpty()) {
-            assistantMsgMap.put("referenceMappings", toSerializableReferenceMappings(referenceMapping));
-        }
-        if (readingArtifacts != null && !readingArtifacts.isEmpty()) {
-            assistantMsgMap.put("readingArtifacts", readingArtifacts);
-        }
-        if (readingStatePatch != null && !readingStatePatch.isEmpty()) {
-            assistantMsgMap.put("readingStatePatch", readingStatePatch);
-        }
-        history.add(assistantMsgMap);
-
-        // 限制历史记录长度，保留最近的20条消息
-        if (history.size() > 20) {
-            history = history.subList(history.size() - 20, history.size());
-        }
-
-        try {
-            String json = objectMapper.writeValueAsString(history);
-            redisTemplate.opsForValue().set(key, json, Duration.ofDays(7));
-            logger.debug("更新会话历史，会话ID: {}, 总消息数: {}", conversationId, history.size());
-        } catch (JsonProcessingException e) {
-            logger.error("序列化对话历史出错: {}, 会话ID: {}", e.getMessage(), conversationId, e);
-        }
     }
 
     private Map<String, Map<String, Object>> toSerializableReferenceMappings(Map<Integer, ReferenceInfo> referenceMapping) {
@@ -1348,19 +1225,6 @@ public class ChatHandler {
                 "conversationId", conversationId,
                 "chunk", chunk
         ));
-    }
-
-    private void sendProductToolCall(String userId,
-                                     String generationId,
-                                     String conversationId,
-                                     ToolProgressEvent event) {
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("type", "calling_tool");
-        payload.put("toolName", event.toolName());
-        payload.put("generationId", generationId);
-        payload.put("conversationId", conversationId);
-        payload.put("timestamp", System.currentTimeMillis());
-        sendJsonToGenerationClient(userId, generationId, payload);
     }
 
     private void sendResearchProgress(String userId,
@@ -2276,14 +2140,6 @@ public class ChatHandler {
                     ? RetrievalBudgetProfile.INTERACTIVE
                     : retrievalBudgetProfile;
             conversationId = conversationId == null || conversationId.isBlank() ? null : conversationId.trim();
-        }
-
-        public ChatRequest(String message, ProductReferenceFocus referenceFocus) {
-            this(message, referenceFocus, RetrievalBudgetProfile.INTERACTIVE, null);
-        }
-
-        public ChatRequest(String message, ProductReferenceFocus referenceFocus, RetrievalBudgetProfile retrievalBudgetProfile) {
-            this(message, referenceFocus, retrievalBudgetProfile, null);
         }
 
         public ChatRequest(String message, ProductReferenceFocus referenceFocus, String conversationId) {

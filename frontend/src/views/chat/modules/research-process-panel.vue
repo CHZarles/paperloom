@@ -215,7 +215,6 @@ const auditEvidence = computed(() => auditTrail.value?.evidence || []);
 const auditSteps = computed(() => auditTrail.value?.steps || []);
 const hasAuditTrail = computed(() => auditSteps.value.length > 0 || auditEvidence.value.length > 0);
 const events = computed(() => props.message?.researchEvents || []);
-const legacyTools = computed(() => props.message?.toolEvents || []);
 const isRunning = computed(() => ['pending', 'loading'].includes(props.message?.status || ''));
 // Once we've observed an in-flight message, stay active until we see a real
 // terminal state. status='success' is terminal, but transient flips to undefined
@@ -298,10 +297,6 @@ const latestPresentedPhase = computed<PhaseView | undefined>(() => {
 const auditDiagnostics = computed(() => auditTrail.value?.diagnostics || {});
 
 const citedEvidence = computed(() => auditEvidence.value.filter(row => row.status === 'cited'));
-
-function legacyToolLabel(event: Api.Chat.AgentToolEvent) {
-  return toolLabel(event.tool, event.status === 'executing');
-}
 
 function evidenceTitle(row: Api.Chat.ResearchAuditEvidence) {
   return [
@@ -461,21 +456,6 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
       </article>
     </div>
 
-    <div v-else-if="legacyTools.length" class="research-process__timeline">
-      <article
-        v-for="event in legacyTools"
-        :key="event.id || `${event.tool}:${event.timestamp}`"
-        class="research-process__event"
-      >
-        <span class="research-process__marker" />
-        <div class="research-process__event-body">
-          <div class="research-process__event-heading">
-            <strong>{{ legacyToolLabel(event) }}</strong>
-          </div>
-        </div>
-      </article>
-    </div>
-
     <div v-else class="research-process__empty">
       Select an assistant answer with research activity to review its model and retrieval process.
     </div>
@@ -523,6 +503,12 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
   }
   50% {
     opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .research-process__status-dot.is-running {
+    animation: none;
   }
 }
 

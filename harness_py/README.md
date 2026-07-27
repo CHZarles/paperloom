@@ -33,12 +33,10 @@ Java 是权限和语料数据源。每个请求都必须携带 `user_id` 与 `sc
 - [Reading Model 与 `harness_py` 工具](../docs/architecture/reading-model-and-agent-tools.md)：理解持久化模型、
   Live Projection、BM25 和授权阶梯。
 - [Evaluation System](../docs/evaluation/README.md)：理解 Run Capture、Golden Case 与数据利用方向。
-- [Reading Model 与检索实践复盘](../research/golden-data/2026-07-13-reading-model-retrieval-practice.md)：
-  数据变化、错误方案和分层诊断记录。
-- [Qdrant 检索影响量化报告](../docs/evaluation/qdrant-retrieval-impact-2026-07-15.md)：
-  同查询下的相关性、延迟、内存、索引、可靠性和 MiniMax 小样本对照。
-- [Java/Qdrant 工程实践](../site/practice/evaluation/qdrant-retrieval-impact-benchmark.md)：
-  记录引入共享向量索引的背景、收益、退化、故障和保留边界。
+- [Golden Data](../research/golden-data/README.md)：当前 Manifest、Case、Claim、Baseline 与
+  Judge 校准入口。
+- [Sparse Qdrant 工程实践](../site/practice/evaluation/qdrant-bm25-cutover-minimax-evidence-gap.md)：
+  记录当前产品检索切换和 Candidate/Read/Cited 分层结果。
 
 第一次接触 Agents SDK 时先读 SDK Guide；已经熟悉 SDK 时可直接读 ONBOARDING 和本页的
 执行路径。
@@ -54,7 +52,6 @@ corpus/
 orchestration/
   live_chat.py                单回合产品边界与 Eval Recorder 生命周期
   conversation.py             跨回合研究记忆
-  evidence_coverage.py        离线检查 Candidate/Read/Cited 覆盖链路
   research_contract.py        Agent 指令和最终提交契约
   run_output.py               标准 Run、引用渲染和进度投影
   agents/

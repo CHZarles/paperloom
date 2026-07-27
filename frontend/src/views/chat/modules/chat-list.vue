@@ -62,7 +62,7 @@ const emit = defineEmits<{
 }>();
 
 const chatStore = useChatStore();
-const { conversationId, hasOlderMessages, list, messagesLoadingOlder } = storeToRefs(chatStore);
+const { conversationId, hasOlderMessages, list, messagesLoadingOlder, sessionsLoaded } = storeToRefs(chatStore);
 
 const loading = ref(false);
 const scrollbarRef = ref<InstanceType<typeof NScrollbar>>();
@@ -70,6 +70,9 @@ const scrollContainer = shallowRef<HTMLElement | null>(null);
 const isFollowingBottom = ref(true);
 let scrollFrame: number | null = null;
 let preservingScroll = false;
+let sessionSwitchScrollPending = false;
+let scrollSettlePasses = 0;
+const SESSION_SWITCH_SCROLL_PASSES = 4;
 const hasRichMarkdown = computed(() =>
   list.value.some(
     item =>
@@ -81,17 +84,32 @@ const hasRichMarkdown = computed(() =>
 );
 
 watch(
-  () => [list.value.length, list.value.at(-1)?.content.length || 0],
+  () => [list.value.length, list.value.at(-1)?.content.length || 0, list.value.at(-1)?.researchEvents?.length || 0],
   () => {
-    if (!preservingScroll) requestScrollToBottom();
+    if (preservingScroll) return;
+    if (sessionSwitchScrollPending && list.value.length === 0) return;
+    if (sessionSwitchScrollPending) {
+      sessionSwitchScrollPending = false;
+      scrollSettlePasses = SESSION_SWITCH_SCROLL_PASSES;
+    }
+    requestScrollToBottom(scrollSettlePasses > 0);
   },
   { flush: 'post' }
 );
 
-watch(conversationId, () => {
-  isFollowingBottom.value = true;
-  requestScrollToBottom(true);
-});
+watch(
+  conversationId,
+  () => {
+    if (!conversationId.value) {
+      loading.value = false;
+      return;
+    }
+    sessionSwitchScrollPending = true;
+    isFollowingBottom.value = true;
+    loadCurrentConversationIfNeeded().catch(() => {});
+  },
+  { flush: 'sync' }
+);
 
 function requestScrollToBottom(force = false) {
   if ((!force && !isFollowingBottom.value) || scrollFrame !== null) return;
@@ -102,6 +120,10 @@ function requestScrollToBottom(force = false) {
         top: Number.MAX_SAFE_INTEGER,
         behavior: 'auto'
       });
+      if (scrollSettlePasses > 0) {
+        scrollSettlePasses -= 1;
+        requestScrollToBottom(true);
+      }
     });
   });
 }
@@ -150,17 +172,19 @@ function getRetrievalQueryFallback(index: number) {
   return '';
 }
 
-async function loadCurrentConversationIfNeeded() {
-  if (!conversationId.value || list.value.length > 0) {
+async function loadCurrentConversationIfNeeded(options: { force?: boolean } = {}) {
+  const { force = false } = options;
+  if (!conversationId.value || (!force && list.value.length > 0)) {
     return;
   }
   loading.value = true;
   const targetConversationId = conversationId.value;
   try {
-    await chatStore.loadConversationDetails(targetConversationId);
+    await chatStore.loadConversationDetails(targetConversationId, { force });
   } finally {
     if (targetConversationId === conversationId.value) {
       loading.value = false;
+      if (list.value.length === 0) sessionSwitchScrollPending = false;
     }
   }
 }
@@ -173,7 +197,10 @@ onBeforeUnmount(() => {
   if (scrollFrame !== null) window.cancelAnimationFrame(scrollFrame);
 });
 
-const showEmpty = computed(() => !loading.value && list.value.length === 0);
+const pageLoading = computed(
+  () => loading.value || (!sessionsLoaded.value && !conversationId.value && list.value.length === 0)
+);
+const showEmpty = computed(() => sessionsLoaded.value && !pageLoading.value && list.value.length === 0);
 
 function messageKey(item: Api.Chat.Message, index: number) {
   if (item.conversationRecordId) return `${item.conversationRecordId}:${item.role}`;
@@ -194,7 +221,7 @@ function messageKey(item: Api.Chat.Message, index: number) {
       </div>
 
       <NScrollbar v-else ref="scrollbarRef" class="flex-1" @scroll="handleScroll">
-        <NSpin :show="loading">
+        <NSpin :show="pageLoading">
           <div class="chat-message-stack">
             <div v-if="hasOlderMessages" class="history-loader">
               <NButton quaternary size="small" :loading="messagesLoadingOlder" @click="handleLoadOlderMessages">

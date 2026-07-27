@@ -13,7 +13,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Sort;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.mockito.ArgumentCaptor;
 
 import java.time.LocalDateTime;
@@ -52,7 +51,6 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        ReflectionTestUtils.setField(userService, "globalUploadMaxFileSize", "50MB");
         when(appAuthProperties.getRegistration()).thenReturn(registration);
         when(registration.getMode()).thenReturn(RegistrationMode.OPEN);
         when(registration.isInviteRequired()).thenReturn(false);
@@ -160,5 +158,24 @@ class UserServiceTest {
         assertEquals(2, result.get("number"));
         assertEquals(10, ((List<?>) result.get("content")).size());
         verify(userRepository).findAll(any(Sort.class));
+    }
+
+    @Test
+    void testGetUserListDoesNotTreatAdminRoleAsPaused() {
+        User admin = new User();
+        admin.setId(1L);
+        admin.setUsername("admin");
+        admin.setRole(User.Role.ADMIN);
+        admin.setCreatedAt(LocalDateTime.of(2026, 3, 1, 0, 0));
+
+        when(userRepository.findAll(any(Sort.class))).thenReturn(List.of(admin));
+        when(usageQuotaService.getSnapshots(anyList())).thenReturn(Map.of());
+        when(usageQuotaService.getSnapshot(anyString())).thenReturn(null);
+
+        Map<String, Object> result = userService.getUserList(null, null, 1, 10);
+        Map<?, ?> row = (Map<?, ?>) ((List<?>) result.get("content")).get(0);
+
+        assertEquals(1, row.get("status"));
+        assertEquals(User.Role.ADMIN, row.get("role"));
     }
 }

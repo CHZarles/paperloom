@@ -14,7 +14,7 @@ import yaml
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ROOT = Path(__file__).resolve().parent / "corpora" / "llm-agent-evaluation"
 PACK_PATH = Path(__file__).resolve().parent / "paper-packs" / "llm-agent-evaluation.yaml"
-JAVA_MAIN = "io.github.chzarles.paperloom.eval.GoldenReadingModelBuildCli"
+JAVA_MAIN = "io.github.chzarles.paperloom.golden.GoldenReadingModelBuildCli"
 sys.path.insert(0, str(REPO_ROOT))
 
 from harness_py.corpus.pages import contains_normalized_phrase, normalize_text, page_matches

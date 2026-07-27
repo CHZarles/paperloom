@@ -102,7 +102,7 @@ Parser 输出会随解析器版本变化。Parser 与 Agent 之间的 Reading Mo
 - 用户个人论文空间、管理员全局发布和统一可检索状态；
 - 基于 OpenAI Agents SDK 的单路径 Python Research Harness；
 - Java Corpus API、Qdrant Sparse BM25 Candidate Retrieval 与 MySQL Exact Read；
-- Evidence Ledger、Citation Validation、`evaluate_evidence_coverage` 与可重开的历史引用；
+- Evidence Ledger、Citation Validation 与可重开的历史引用；
 - Evidence-first Golden Case、Per-run Trace、Human Label 与 Judge Calibration；
 - Vue 3 论文库、研究进度、来源选择和 Evidence Inspection。
 

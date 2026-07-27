@@ -7,12 +7,9 @@ import io.github.chzarles.paperloom.model.ConversationScopeMode;
 import io.github.chzarles.paperloom.model.ConversationScopeStatus;
 import io.github.chzarles.paperloom.model.ConversationSession;
 import io.github.chzarles.paperloom.model.Paper;
-import io.github.chzarles.paperloom.model.PaperReadingModel;
-import io.github.chzarles.paperloom.model.PaperReadingModelStatus;
 import io.github.chzarles.paperloom.model.User;
 import io.github.chzarles.paperloom.repository.ConversationSessionRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
-import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -46,9 +44,6 @@ class ConversationScopeServiceTest {
 
     @Mock
     private PaperRepository paperRepository;
-
-    @Mock
-    private PaperReadingModelRepository readingModelRepository;
 
     @Mock
     private PaperCollectionService paperCollectionService;
@@ -80,7 +75,6 @@ class ConversationScopeServiceTest {
                 sessionRepository,
                 userRepository,
                 paperRepository,
-                readingModelRepository,
                 paperCollectionService,
                 paperSearchabilityService,
                 paperAccessService,
@@ -108,20 +102,13 @@ class ConversationScopeServiceTest {
 
     @Test
     void autoLibraryScopeResponseCountsOnlyAccessibleReadyReadingModels() {
-        Paper ready = paper("paper-ready", "1");
-        Paper readyDuplicate = paper("paper-ready", "1");
-        Paper building = paper("paper-building", "1");
-        Paper notSearchable = paper("paper-not-searchable", "1");
-        when(paperAccessService.accessiblePapers("1"))
-                .thenReturn(List.of(ready, readyDuplicate, building, notSearchable));
-        when(paperSearchabilityService.isSearchable(ready)).thenReturn(true);
-        when(paperSearchabilityService.isSearchable(readyDuplicate)).thenReturn(true);
-        when(paperSearchabilityService.isSearchable(building)).thenReturn(true);
-        when(paperSearchabilityService.isSearchable(notSearchable)).thenReturn(false);
-        when(readingModelRepository.findFirstByPaperIdAndIsCurrentTrue("paper-ready"))
-                .thenReturn(Optional.of(readingModel(PaperReadingModelStatus.READING_MODEL_READY)));
-        when(readingModelRepository.findFirstByPaperIdAndIsCurrentTrue("paper-building"))
-                .thenReturn(Optional.of(readingModel(PaperReadingModelStatus.READING_MODEL_BUILDING)));
+        when(paperAccessService.accessiblePaperIds("1"))
+                .thenReturn(Set.of("paper-ready", "paper-building", "paper-not-searchable"));
+        when(paperSearchabilityService.searchablePaperIdsById(Set.of(
+                "paper-ready",
+                "paper-building",
+                "paper-not-searchable"
+        ))).thenReturn(Set.of("paper-ready"));
 
         Map<String, Object> response = service.scopeResponse(
                 1L,
@@ -136,6 +123,7 @@ class ConversationScopeServiceTest {
         );
 
         assertEquals(1, response.get("sourcePaperCount"));
+        verify(paperAccessService, never()).accessiblePapers("1");
     }
 
     @Test
@@ -708,10 +696,4 @@ class ConversationScopeServiceTest {
         return paper;
     }
 
-    private PaperReadingModel readingModel(PaperReadingModelStatus status) {
-        PaperReadingModel model = new PaperReadingModel();
-        model.setModelStatus(status);
-        model.setCurrent(true);
-        return model;
-    }
 }

@@ -11,15 +11,7 @@ const props = withDefaults(
 );
 
 const chatStore = useChatStore();
-const {
-  connectionStatus,
-  conversationId,
-  currentScope,
-  input,
-  list,
-  referenceFocus,
-  wsData
-} = storeToRefs(chatStore);
+const { connectionStatus, conversationId, currentScope, input, list, referenceFocus, wsData } = storeToRefs(chatStore);
 const sourceScopeUpdating = ref(false);
 const canEditSourceScope = computed(() => {
   return props.variant === 'hero' && list.value.length === 0 && !currentScope.value?.scopeLocked;
@@ -56,9 +48,12 @@ let generationStatusTimer: number | null = null;
 let lastStreamContentLength = 0;
 let lastStreamContentChangedAt = 0;
 let streamFlushTimer: number | null = null;
-const STREAM_FLUSH_INTERVAL_MS = 75;
+let researchEventFlushTimer: number | null = null;
+const STREAM_FLUSH_INTERVAL_MS = 140;
+const RESEARCH_EVENT_FLUSH_INTERVAL_MS = 160;
 const MAX_RESEARCH_EVENTS = 200;
 const pendingStreamChunks = new Map<Api.Chat.Message, string>();
+const pendingResearchEvents = new Map<Api.Chat.Message, Api.Chat.ResearchProgressEvent[]>();
 const researchEventSequences = new WeakMap<Api.Chat.Message, Set<number>>();
 
 function flushPendingStreamChunks(targetAssistant?: Api.Chat.Message) {
@@ -93,6 +88,75 @@ function discardPendingStreamChunks(assistant: Api.Chat.Message) {
   if (pendingStreamChunks.size === 0 && streamFlushTimer !== null) {
     window.clearTimeout(streamFlushTimer);
     streamFlushTimer = null;
+  }
+}
+
+function knownResearchSequencesFor(assistant: Api.Chat.Message) {
+  let knownSequences = researchEventSequences.get(assistant);
+  if (!knownSequences) {
+    knownSequences = new Set(
+      (assistant.researchEvents || []).map(item => Number(item.sequence || 0)).filter(item => item > 0)
+    );
+    researchEventSequences.set(assistant, knownSequences);
+  }
+  return knownSequences;
+}
+
+function releaseResearchSequences(knownSequences: Set<number>, events: Api.Chat.ResearchProgressEvent[] | undefined) {
+  events?.forEach(item => {
+    const sequence = Number(item.sequence || 0);
+    if (sequence > 0) knownSequences.delete(sequence);
+  });
+}
+
+function appendResearchEvents(assistant: Api.Chat.Message, events: Api.Chat.ResearchProgressEvent[]) {
+  if (!events.length) return;
+  const knownSequences = knownResearchSequencesFor(assistant);
+  const nextEvents = [...(assistant.researchEvents || []), ...events];
+  const overflow = Math.max(0, nextEvents.length - MAX_RESEARCH_EVENTS);
+
+  if (overflow > 0) {
+    releaseResearchSequences(knownSequences, nextEvents.slice(0, overflow));
+  }
+
+  assistant.researchEvents = overflow > 0 ? nextEvents.slice(overflow) : nextEvents;
+}
+
+function flushPendingResearchEvents(targetAssistant?: Api.Chat.Message) {
+  const entries = targetAssistant
+    ? ([[targetAssistant, pendingResearchEvents.get(targetAssistant) || []]] as const)
+    : Array.from(pendingResearchEvents.entries());
+
+  entries.forEach(([assistant, events]) => {
+    if (!events.length) return;
+    pendingResearchEvents.delete(assistant);
+    appendResearchEvents(assistant, events);
+  });
+
+  if (pendingResearchEvents.size === 0 && researchEventFlushTimer !== null) {
+    window.clearTimeout(researchEventFlushTimer);
+    researchEventFlushTimer = null;
+  }
+}
+
+function scheduleResearchEventFlush() {
+  if (researchEventFlushTimer !== null) return;
+  researchEventFlushTimer = window.setTimeout(() => {
+    researchEventFlushTimer = null;
+    flushPendingResearchEvents();
+  }, RESEARCH_EVENT_FLUSH_INTERVAL_MS);
+}
+
+function discardPendingResearchEvents(assistant: Api.Chat.Message) {
+  const pendingEvents = pendingResearchEvents.get(assistant);
+  const knownSequences = knownResearchSequencesFor(assistant);
+  releaseResearchSequences(knownSequences, pendingEvents);
+  pendingResearchEvents.delete(assistant);
+  researchEventSequences.delete(assistant);
+
+  if (pendingResearchEvents.size === 0 && researchEventFlushTimer !== null) {
+    window.clearTimeout(researchEventFlushTimer);
+    researchEventFlushTimer = null;
   }
 }
 
@@ -192,33 +256,36 @@ function clearReferenceFocus() {
   chatStore.setReferenceFocus(null);
 }
 
-function findAssistantMessage(generationId?: string, payload?: Record<string, any>) {
-  if (generationId) {
-    for (let i = list.value.length - 1; i >= 0; i -= 1) {
-      const item = list.value[i];
-      if (item?.role === 'assistant' && item.generationId === generationId) {
-        return item;
-      }
+function findAssistantBy(matcher: (message: Api.Chat.Message) => boolean) {
+  for (let i = list.value.length - 1; i >= 0; i -= 1) {
+    const item = list.value[i];
+    if (item?.role === 'assistant' && matcher(item)) {
+      return item;
     }
+  }
+  return null;
+}
+
+function findAssistantMessage(generationId?: string, payload?: Record<string, any>) {
+  const matchers: Array<(message: Api.Chat.Message) => boolean> = [];
+  if (generationId) {
+    matchers.push(item => item.generationId === generationId);
   }
 
   const answerSlotId = Number(payload?.answerSlotId || 0);
   if (answerSlotId > 0) {
-    for (let i = list.value.length - 1; i >= 0; i -= 1) {
-      const item = list.value[i];
-      if (item?.role === 'assistant' && item.answerSlotId === answerSlotId) {
-        return item;
-      }
-    }
+    matchers.push(item => item.answerSlotId === answerSlotId);
   }
 
   const retryOfGenerationId = typeof payload?.retryOfGenerationId === 'string' ? payload.retryOfGenerationId : '';
   if (retryOfGenerationId) {
-    for (let i = list.value.length - 1; i >= 0; i -= 1) {
-      const item = list.value[i];
-      if (item?.role === 'assistant' && item.generationId === retryOfGenerationId) {
-        return item;
-      }
+    matchers.push(item => item.generationId === retryOfGenerationId);
+  }
+
+  for (const matcher of matchers) {
+    const assistant = findAssistantBy(matcher);
+    if (assistant) {
+      return assistant;
     }
   }
 
@@ -248,6 +315,7 @@ function handleStartPayload(assistant: Api.Chat.Message, payload: Record<string,
 
   if (payload.replaceMessage) {
     discardPendingStreamChunks(startedAssistant);
+    discardPendingResearchEvents(startedAssistant);
     startedAssistant.content = '';
     startedAssistant.status = 'loading';
     startedAssistant.referenceMappings = undefined;
@@ -256,11 +324,12 @@ function handleStartPayload(assistant: Api.Chat.Message, payload: Record<string,
     startedAssistant.readingStatePatch = undefined;
     startedAssistant.researchAuditTrail = undefined;
     startedAssistant.researchEvents = [];
-    startedAssistant.toolEvents = [];
   }
   if (typeof payload.answerSlotId === 'number') startedAssistant.answerSlotId = payload.answerSlotId;
   if (typeof payload.answerRevision === 'number') startedAssistant.answerRevision = payload.answerRevision;
-  if (typeof payload.retryOfGenerationId === 'string') startedAssistant.retryOfGenerationId = payload.retryOfGenerationId;
+  if (typeof payload.retryOfGenerationId === 'string') {
+    startedAssistant.retryOfGenerationId = payload.retryOfGenerationId;
+  }
   if (typeof payload.retryOfConversationRecordId === 'number') {
     startedAssistant.retryOfConversationRecordId = payload.retryOfConversationRecordId;
   }
@@ -273,14 +342,15 @@ function handleStartPayload(assistant: Api.Chat.Message, payload: Record<string,
   }
 }
 
-function handleCompletionPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
-  flushPendingStreamChunks(assistant);
+function applyCompletionStatus(assistant: Api.Chat.Message, payload: Record<string, any>) {
   if (payload.status === 'finished' && assistant.status !== 'error') {
     assistant.status = 'finished';
   } else if (payload.status === 'failed') {
     assistant.status = 'error';
   }
+}
 
+function applyCompletionMetadata(assistant: Api.Chat.Message, payload: Record<string, any>) {
   if (payload.referenceMappings) {
     assistant.referenceMappings = payload.referenceMappings;
   }
@@ -299,6 +369,9 @@ function handleCompletionPayload(assistant: Api.Chat.Message, payload: Record<st
   if (typeof payload.retryOfConversationRecordId === 'number') {
     assistant.retryOfConversationRecordId = payload.retryOfConversationRecordId;
   }
+}
+
+function applyCompletionArtifacts(assistant: Api.Chat.Message, payload: Record<string, any>) {
   if (payload.diagnostics) {
     assistant.diagnostics = payload.diagnostics;
   }
@@ -314,29 +387,36 @@ function handleCompletionPayload(assistant: Api.Chat.Message, payload: Record<st
   if (payload.researchAuditTrail && typeof payload.researchAuditTrail === 'object') {
     assistant.researchAuditTrail = payload.researchAuditTrail as Api.Chat.ResearchAuditTrail;
   }
+}
+
+function handleCompletionPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
+  flushPendingStreamChunks(assistant);
+  flushPendingResearchEvents(assistant);
+  applyCompletionStatus(assistant, payload);
+  applyCompletionMetadata(assistant, payload);
+  applyCompletionArtifacts(assistant, payload);
   assistant.route = normalizeChatRoute(payload.route) || assistant.route;
   assistant.route = normalizeChatRoute(payload.diagnostics?.route) || assistant.route;
-  markExecutingToolsAsSuccess(assistant);
   stopGenerationStatusMonitor();
   chatStore.loadSessionIndex({ silent: true }).catch(() => {});
 }
 
 function handleStopPayload(assistant: Api.Chat.Message) {
   flushPendingStreamChunks(assistant);
+  flushPendingResearchEvents(assistant);
   if (assistant.status !== 'error') {
     assistant.status = 'finished';
   }
-  markExecutingToolsAsSuccess(assistant);
   stopGenerationStatusMonitor();
 }
 
 function handleErrorPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
   discardPendingStreamChunks(assistant);
+  flushPendingResearchEvents(assistant);
 
   const message = buildWsErrorMessage(payload);
   assistant.status = 'error';
   assistant.content = message;
-  markExecutingToolsAsFailed(assistant);
   stopGenerationStatusMonitor();
 
   window.$message?.error(message);
@@ -387,125 +467,25 @@ function startGenerationStatusMonitor() {
     chatStore.upsertGenerationSnapshot(snapshot);
     const refreshedAssistant = findAssistantMessage(snapshot.generationId);
     if (refreshedAssistant?.status === 'finished') {
-      markExecutingToolsAsSuccess(refreshedAssistant);
       stopGenerationStatusMonitor();
     } else if (refreshedAssistant?.status === 'error') {
-      markExecutingToolsAsFailed(refreshedAssistant);
       stopGenerationStatusMonitor();
     }
   }, 2000);
-}
-
-function markExecutingToolsAsSuccess(assistant: Api.Chat.Message) {
-  updateExecutingToolStatus(assistant, 'success');
-}
-
-function markExecutingToolsAsFailed(assistant: Api.Chat.Message) {
-  updateExecutingToolStatus(assistant, 'failed');
-}
-
-function updateExecutingToolStatus(assistant: Api.Chat.Message, status: Api.Chat.AgentToolEvent['status']) {
-  if (!assistant.toolEvents?.length) {
-    return;
-  }
-
-  let changed = false;
-  const timestamp = Date.now();
-  const toolEvents = assistant.toolEvents.map(event => {
-    if (event.status !== 'executing') {
-      return event;
-    }
-    changed = true;
-    return {
-      ...event,
-      status,
-      timestamp
-    };
-  });
-
-  if (changed) {
-    assistant.toolEvents = toolEvents;
-  }
-}
-
-function handleCallingToolPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
-  const tool = typeof payload.toolName === 'string' ? payload.toolName.trim() : '';
-  if (!tool) {
-    return;
-  }
-
-  assistant.status = 'loading';
-  assistant.toolEvents ||= [];
-  assistant.toolEvents = [
-    ...assistant.toolEvents,
-    {
-      id: `${tool}:${payload.timestamp || Date.now()}`,
-      tool,
-      status: 'executing',
-      timestamp: Number(payload.timestamp || Date.now())
-    }
-  ];
-}
-
-function handleToolCallPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
-  const id = typeof payload.toolCallId === 'string' ? payload.toolCallId : '';
-  const tool = typeof payload.tool === 'string' ? payload.tool : '';
-  const status = typeof payload.status === 'string' ? payload.status : 'executing';
-  if (!tool || !['executing', 'success', 'failed'].includes(status)) {
-    return;
-  }
-
-  assistant.status = 'loading';
-  assistant.toolEvents ||= [];
-  const event = {
-    id,
-    tool,
-    status: status as Api.Chat.AgentToolEvent['status'],
-    timestamp: Number(payload.timestamp || Date.now())
-  };
-
-  const matchEvent = (item: Api.Chat.AgentToolEvent) => {
-    if (id && item.id) {
-      return item.id === id;
-    }
-    if (!id && !item.id) {
-      return item.tool === tool;
-    }
-    return false;
-  };
-
-  if (assistant.toolEvents.some(matchEvent)) {
-    assistant.toolEvents = assistant.toolEvents.map(item => (matchEvent(item) ? event : item));
-  } else {
-    assistant.toolEvents = [...assistant.toolEvents, event];
-  }
 }
 
 function handleResearchProgressPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
   assistant.status = 'loading';
   const event = payload as Api.Chat.ResearchProgressEvent;
   const sequence = Number(event.sequence || 0);
-  let knownSequences = researchEventSequences.get(assistant);
-  if (!knownSequences) {
-    knownSequences = new Set(
-      (assistant.researchEvents || []).map(item => Number(item.sequence || 0)).filter(item => item > 0)
-    );
-    researchEventSequences.set(assistant, knownSequences);
-  }
+  const knownSequences = knownResearchSequencesFor(assistant);
   if (sequence > 0) {
     if (knownSequences.has(sequence)) return;
     knownSequences.add(sequence);
   }
 
-  assistant.researchEvents ||= [];
-  assistant.researchEvents.push(event);
-  if (assistant.researchEvents.length > MAX_RESEARCH_EVENTS) {
-    const removed = assistant.researchEvents.splice(0, assistant.researchEvents.length - MAX_RESEARCH_EVENTS);
-    removed.forEach(item => {
-      const removedSequence = Number(item.sequence || 0);
-      if (removedSequence > 0) knownSequences?.delete(removedSequence);
-    });
-  }
+  pendingResearchEvents.set(assistant, [...(pendingResearchEvents.get(assistant) || []), event]);
+  scheduleResearchEventFlush();
 }
 
 watch(wsData, val => {
@@ -535,16 +515,6 @@ watch(wsData, val => {
 
   if (payload.type === 'research_progress') {
     handleResearchProgressPayload(assistant, payload);
-    return;
-  }
-
-  if (payload.type === 'tool_call') {
-    handleToolCallPayload(assistant, payload);
-    return;
-  }
-
-  if (payload.type === 'calling_tool') {
-    handleCallingToolPayload(assistant, payload);
     return;
   }
 
@@ -589,6 +559,7 @@ const handleSend = async (messageOverride?: string) => {
 
     const assistant = list.value[list.value.length - 1];
     flushPendingStreamChunks(assistant);
+    flushPendingResearchEvents(assistant);
     assistant.status = 'finished';
     if (!latestMessage.value.content) list.value.pop();
     return;
@@ -619,8 +590,7 @@ const handleSend = async (messageOverride?: string) => {
     content: '',
     role: 'assistant',
     status: 'pending',
-    conversationId: targetConversationId,
-    toolEvents: []
+    conversationId: targetConversationId
   });
   chatStore.wsSend(
     JSON.stringify({
@@ -662,6 +632,7 @@ const handShortcut = (e: KeyboardEvent) => {
 
 onUnmounted(() => {
   flushPendingStreamChunks();
+  flushPendingResearchEvents();
   stopGenerationStatusMonitor();
 });
 </script>

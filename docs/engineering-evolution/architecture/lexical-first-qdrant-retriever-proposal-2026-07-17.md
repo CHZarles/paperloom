@@ -29,8 +29,8 @@ Java 生成 BM25 风格 Sparse Vector
 
 ## 1. 当前证据
 
-权威结果见
-[`Qdrant 检索影响量化报告`](../../evaluation/qdrant-retrieval-impact-2026-07-15.md)。
+权威口径见
+[`检索方法 Benchmark 工作流`](../../evaluation/retrieval-method-benchmark.md)。
 
 相同请求 `top_k` 下：
 
@@ -296,8 +296,7 @@ Probe。这个问题是产品 Gate：
 
 ## 8. Evaluation Gates
 
-扩展现有 `research/golden-data/qdrant_impact_benchmark.py`，使用相同 14 篇论文、69 次保存的 MiniMax Query、
-相同 Paper Filter 和相同请求 `top_k`。
+使用相同 14 篇论文、69 次保存的 MiniMax Query、相同 Paper Filter 和相同请求 `top_k`。
 
 比较：
 

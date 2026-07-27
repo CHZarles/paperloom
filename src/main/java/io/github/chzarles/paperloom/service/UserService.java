@@ -9,7 +9,6 @@ import io.github.chzarles.paperloom.utils.PasswordUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -18,7 +17,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.unit.DataSize;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -41,7 +39,6 @@ public class UserService {
 
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
-    private static final long BYTES_PER_MB = 1024L * 1024L;
     private static final Pattern PASSWORD_PATTERN = Pattern.compile(
             "^(?=.*[A-Za-z])(?=.*\\d).{6,18}$"
     );
@@ -57,9 +54,6 @@ public class UserService {
 
     @Autowired
     private UsageQuotaService usageQuotaService;
-
-    @Value("${spring.servlet.multipart.max-file-size:50MB}")
-    private String globalUploadMaxFileSize;
 
     /**
      * 注册新用户。
@@ -200,7 +194,8 @@ public class UserService {
                     Map<String, Object> userMap = new HashMap<>();
                     userMap.put("userId", user.getId());
                     userMap.put("username", user.getUsername());
-                    userMap.put("status", user.getRole() == User.Role.USER ? 1 : 0);
+                    userMap.put("role", user.getRole());
+                    userMap.put("status", 1);
                     userMap.put("createdAt", user.getCreatedAt());
                     userMap.put("usage", usageSnapshots.getOrDefault(
                             String.valueOf(user.getId()),
@@ -226,8 +221,8 @@ public class UserService {
             return false;
         }
 
-        if (status != null) {
-            return user.getRole() == (status == 1 ? User.Role.USER : User.Role.ADMIN);
+        if (status != null && status != 1) {
+            return false;
         }
 
         return true;
@@ -244,28 +239,4 @@ public class UserService {
         }
     }
 
-    private Long normalizeUploadMaxSizeBytes(Long uploadMaxSizeMb) {
-        if (uploadMaxSizeMb == null) {
-            return null;
-        }
-        if (uploadMaxSizeMb <= 0) {
-            throw new CustomException("上传大小上限必须大于 0 MB", HttpStatus.BAD_REQUEST);
-        }
-        long uploadMaxSizeBytes = uploadMaxSizeMb * BYTES_PER_MB;
-        long globalUploadMaxBytes = DataSize.parse(globalUploadMaxFileSize).toBytes();
-        if (uploadMaxSizeBytes > globalUploadMaxBytes) {
-            throw new CustomException(
-                    "上传大小上限不能超过系统全局限制 " + (globalUploadMaxBytes / BYTES_PER_MB) + " MB",
-                    HttpStatus.BAD_REQUEST
-            );
-        }
-        return uploadMaxSizeBytes;
-    }
-
-    private Long toUploadMaxSizeMb(Long uploadMaxSizeBytes) {
-        if (uploadMaxSizeBytes == null) {
-            return null;
-        }
-        return uploadMaxSizeBytes / BYTES_PER_MB;
-    }
 }

@@ -252,9 +252,3 @@ class ReadingCorpusTools:
         return self.reader.find_papers_by_identity(
             dict(arguments)
         ).get("edges", [])  # 实际走 search_papers 让 reader 实现；保留兼容签名
-
-
-# Tool payload → JSON 字符串（tests 用）
-def json_tool_content(result: ToolResult) -> str:
-    import json
-    return json.dumps(result.payload, ensure_ascii=False, sort_keys=True)
