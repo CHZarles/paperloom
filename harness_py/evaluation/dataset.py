@@ -66,6 +66,7 @@ def load_dataset(manifest_path: str | Path, repo_root: str | Path | None = None)
         for path in as_list(manifest.get("claim_files"))
     ]
     claims = _normalized_claims(claim_documents, packs)
+    retrieval_queries = _normalized_retrieval_queries(claim_documents, claims)
     _validate_cases(cases, packs, claims)
     paper_records = _normalized_paper_records(packs, manifest_path, root)
     anchors = _normalized_anchors(packs)
@@ -83,6 +84,7 @@ def load_dataset(manifest_path: str | Path, repo_root: str | Path | None = None)
         citation_edges=citation_edges,
         reading_models_by_paper_id=reading_models,
         claims_by_id=claims,
+        retrieval_queries_by_claim_id=retrieval_queries,
         load_warnings=warnings,
     )
 
@@ -301,6 +303,28 @@ def _normalized_claims(
                 "fact_keys": fact_keys,
             }
     return claims
+
+
+def _normalized_retrieval_queries(
+    documents: list[JsonMap],
+    claims_by_id: dict[str, JsonMap],
+) -> dict[str, list[str]]:
+    queries_by_claim_id: dict[str, list[str]] = {}
+    for document in documents:
+        for raw_claim_id, raw_claim in child_map(document.get("claims")).items():
+            claim_id = str(raw_claim_id).strip()
+            if claim_id not in claims_by_id:
+                continue
+            queries = [
+                str(item).strip()
+                for item in as_list(child_map(raw_claim).get("retrieval_queries"))
+                if str(item).strip()
+            ]
+            if len(queries) != len(set(queries)):
+                raise ValueError(f"Golden claim {claim_id} has duplicate retrieval queries")
+            if queries:
+                queries_by_claim_id[claim_id] = queries
+    return queries_by_claim_id
 
 
 def _normalized_paper_records(

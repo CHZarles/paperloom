@@ -24,6 +24,7 @@ schema_version: harness-golden-claims/v1
 claims:
   example_claim:
     statement: The fact the answer must express.
+    retrieval_queries: [A query that asks for the evidence without containing the answer.]
     fact_keys: [optional_typed_fact]
     required_evidence:
       - paper_id: paper_a
@@ -38,6 +39,11 @@ point IDs, or copied source text.
 
 `forbidden_paper_ids` is claim-scoped. A citation from a forbidden paper fails only when it is attached
 to an answer block that expresses that claim.
+
+`retrieval_queries` is optional for answer scoring and required only when the Claim participates in
+`retrieval-eval`. These authored queries drive the Java/Qdrant product path directly; the evaluator
+derives relevance from `required_evidence.accepted_locations` and never substitutes the Claim statement
+as a query.
 
 ## Cases
 
@@ -72,3 +78,7 @@ any one of them, while a returned block outside that set is an unsafe false pass
 Every new product `agent-run` directory also contains `run_manifest.json`. It content-addresses the
 Golden/product corpus map, observed canonical locations, and retrieval trace, providing one immutable
 corpus/index observation without adding paper versions or changing the Java, Qdrant, or MySQL schemas.
+
+`retrieval-eval` emits `harness-retrieval-report/v1`. Its scoring unit is one paper-specific evidence
+requirement. Page and section refs listed for the same requirement are alternatives, not separate hits.
+The report keeps Retriever Recall separate from paper discovery and from Agent-generated queries.

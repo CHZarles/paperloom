@@ -29,6 +29,7 @@ class GoldenDataset:
     citation_edges: list[JsonMap]
     reading_models_by_paper_id: dict[str, JsonMap]
     claims_by_id: dict[str, JsonMap] = field(default_factory=dict)
+    retrieval_queries_by_claim_id: dict[str, list[str]] = field(default_factory=dict)
     load_warnings: list[str] = field(default_factory=list)
 
 

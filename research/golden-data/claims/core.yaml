@@ -4,6 +4,7 @@ claims:
   transformer_adam_hyperparameters:
     statement: >-
       Attention Is All You Need used Adam with beta1 = 0.9, beta2 = 0.98, and epsilon = 1e-9.
+    retrieval_queries: ["Transformer Adam optimizer beta1 beta2 epsilon"]
     fact_keys: [beta1, beta2, epsilon]
     required_evidence:
       - paper_id: attention_is_all_you_need_2017
@@ -14,6 +15,7 @@ claims:
   transformer_optimizer_configuration:
     statement: >-
       Attention Is All You Need uses Adam with beta1 = 0.9, beta2 = 0.98, and epsilon = 1e-9.
+    retrieval_queries: ["Attention Is All You Need Adam optimizer beta1 beta2 epsilon"]
     fact_keys: [optimizer, beta1, beta2, epsilon]
     required_evidence:
       - paper_id: attention_is_all_you_need_2017
@@ -24,6 +26,7 @@ claims:
 
   transformer_adam_beta2:
     statement: The Transformer paper used beta2 = 0.98 in its Adam training setup.
+    retrieval_queries: ["Transformer Adam beta2 training setup"]
     fact_keys: [beta2]
     required_evidence:
       - paper_id: attention_is_all_you_need_2017
@@ -36,6 +39,7 @@ claims:
     statement: >-
       Adam's recommended beta2 default of 0.999 and the Transformer's paper-specific beta2 setting
       of 0.98 are not contradictory because a general default need not equal one experiment's setting.
+    retrieval_queries: ["Adam recommended beta2 default and Transformer beta2 setting"]
     required_evidence:
       - paper_id: adam_2014
         accepted_locations:
@@ -48,6 +52,7 @@ claims:
 
   bert_bidirectional_transformer_encoder:
     statement: BERT uses a multi-layer bidirectional Transformer encoder.
+    retrieval_queries: ["BERT multi-layer bidirectional Transformer encoder architecture"]
     fact_keys: [transformer_role]
     required_evidence:
       - paper_id: bert_2018
@@ -57,6 +62,7 @@ claims:
 
   bert_masked_language_model_objective:
     statement: BERT is pre-trained with a masked language-model objective.
+    retrieval_queries: ["BERT pre-training masked language model objective"]
     required_evidence:
       - paper_id: bert_2018
         accepted_locations:
@@ -67,6 +73,7 @@ claims:
     statement: >-
       The original Transformer is presented as an encoder-decoder architecture, whereas BERT uses
       a bidirectional Transformer encoder.
+    retrieval_queries: ["original Transformer encoder decoder architecture BERT bidirectional encoder"]
     required_evidence:
       - paper_id: attention_is_all_you_need_2017
         accepted_locations:
@@ -82,6 +89,7 @@ claims:
     statement: >-
       BERT's direct technical relationship to Attention Is All You Need is its use of a
       bidirectional Transformer encoder.
+    retrieval_queries: ["BERT Attention Is All You Need Transformer encoder technical relationship"]
     required_evidence:
       - paper_id: bert_2018
         accepted_locations:
@@ -90,6 +98,7 @@ claims:
 
   gpt3_uses_gpt2_architecture:
     statement: GPT-3 uses the same model and architecture family as GPT-2.
+    retrieval_queries: ["GPT-3 GPT-2 same model architecture"]
     required_evidence:
       - paper_id: gpt3_2020
         accepted_locations:
@@ -99,6 +108,7 @@ claims:
 
   gpt2_uses_transformer_architecture:
     statement: GPT-2 uses a Transformer-based language-model architecture.
+    retrieval_queries: ["GPT-2 Transformer language model architecture"]
     required_evidence:
       - paper_id: gpt2_2019
         accepted_locations:

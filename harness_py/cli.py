@@ -29,7 +29,6 @@ from .evaluation.dataset import load_dataset
 from .evaluation.golden_fixture import GoldenFixtureHarness
 from .evaluation.golden_case import case_question, conversation_state_for_case
 from .evaluation.judge import (
-    JUDGE_PROMPT_VERSION,
     LLMJudge,
     evaluate_calibration,
     load_calibration_cases,
@@ -38,9 +37,11 @@ from .evaluation.judge_model import MiniMaxJudgeModel
 from .evaluation.product_runner import (
     GoldenJavaCorpusReader,
     load_product_corpus_map,
+    product_reader_for_claim,
     product_reader_for_case,
     validate_product_scope,
 )
+from .evaluation.retrieval import evaluate_product_retrieval
 from .evaluation.scoring import BehaviorScorer
 from .orchestration.live_chat import LiveResearchChatHarness
 from .orchestration.runtime import build_harness_runtime
@@ -67,6 +68,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     claim_audit_parser.add_argument("--product-corpus-map", required=True)
     claim_audit_parser.add_argument("--out", required=True)
+    retrieval_parser = subcommands.add_parser(
+        "retrieval-eval",
+        help="Evaluate Java/Qdrant product location recall without running the answer agent.",
+    )
+    retrieval_parser.add_argument("--product-corpus-map", required=True)
+    retrieval_parser.add_argument("--claim-id", action="append", default=[])
+    retrieval_parser.add_argument("--out", required=True)
     rescore_parser = subcommands.add_parser(
         "rescore",
         help="Rescore saved harness_run.json artifacts without calling a model.",
@@ -190,6 +198,54 @@ def main(argv: list[str] | None = None) -> int:
         _write_json(target, report)
         print(json.dumps({"out": str(target), "claim_location_audit": report}, indent=2))
         return 0 if report["failed_count"] == 0 else 1
+    if args.command == "retrieval-eval":
+        dataset = load_dataset(args.manifest)
+        selected = set(args.claim_id)
+        unknown_claim_ids = sorted(selected - set(dataset.claims_by_id))
+        if unknown_claim_ids:
+            print(json.dumps({
+                "error": "unknown_claim_id",
+                "claim_ids": unknown_claim_ids,
+            }, indent=2, sort_keys=True), file=sys.stderr)
+            return 2
+        claims = [
+            claim
+            for claim_id, claim in dataset.claims_by_id.items()
+            if not selected or claim_id in selected
+        ]
+        target = Path(args.out)
+        try:
+            _require_new_path(target)
+            corpus_map = load_product_corpus_map(args.product_corpus_map, dataset)
+            gateway = JavaCorpusGateway()
+            report = evaluate_product_retrieval(
+                dataset,
+                claims,
+                lambda claim: product_reader_for_claim(
+                    gateway,
+                    claim,
+                    corpus_map,
+                    request_id=f"golden-retrieval-{claim['claim_id']}-{uuid4().hex}",
+                    conversation_id=f"golden-retrieval-{claim['claim_id']}-{uuid4().hex}",
+                ),
+            )
+        except Exception as error:
+            print(json.dumps({
+                "error": "product_retrieval_evaluation_failed",
+                "error_type": type(error).__name__,
+                "message": str(error),
+            }, indent=2, sort_keys=True), file=sys.stderr)
+            return 2
+        target.parent.mkdir(parents=True, exist_ok=True)
+        _write_json(target, report)
+        print(json.dumps({
+            "out": str(target),
+            "configured_claim_count": report["configured_claim_count"],
+            "probe_count": report["probe_count"],
+            "technical_error_count": report["technical_error_count"],
+            "metrics": report["metrics"],
+        }, indent=2, sort_keys=True))
+        return 2 if report["technical_error_count"] else 0
     if args.command == "rescore":
         dataset = load_dataset(args.manifest)
         runs_root = Path(args.runs)

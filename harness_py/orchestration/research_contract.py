@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Research Agent instructions and the deterministic final-answer contract."""
+
+from __future__ import annotations
 
 import re
 from ..utils.models import JsonMap
@@ -39,8 +39,10 @@ def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
         "sentence, comparison, default value, and causal explanation must be directly entailed by a cited span_text. "
         "Cite with the exact syntax [[ev_...]], replacing ev_... with an actual evidence_id returned by "
         "read_locations or supplied as previous evidence. Never write the placeholder [[evidence_id]], numeric "
-        "citations, or a Sources section yourself; the harness renders those from evidence ids. For an exact-fact "
-        "request, give the requested facts and source without extra rationale. "
+        "citations, or a Sources section yourself; the harness renders those from evidence ids. Put each evidence "
+        "marker in the same Markdown paragraph, list item, or table row as the factual claim it supports; a citation "
+        "after a list does not support the preceding items. For an exact-fact request, prefer one complete cited "
+        "sentence containing the subject and all requested values, without extra rationale. "
         "Never substitute adjacent papers when the corpus lacks the requested topic; state the gap plainly.\n\n"
         "When you are ready to finish the turn, call submit_research_answer as the only tool call. Put all text the "
         "user should see in markdown. Use needs_clarification only for a genuinely blocking question. Use partial or "

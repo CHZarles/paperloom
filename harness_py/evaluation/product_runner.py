@@ -116,6 +116,39 @@ def product_reader_for_case(
     return GoldenJavaCorpusReader(delegate=delegate, mapping=mapping)
 
 
+def product_reader_for_claim(
+    gateway: JavaCorpusGateway,
+    claim: JsonMap,
+    corpus_map: ProductCorpusMap,
+    *,
+    request_id: str,
+    conversation_id: str,
+) -> GoldenJavaCorpusReader:
+    golden_scope = [
+        str(child_map(item).get("paper_id") or "")
+        for item in as_list(claim.get("required_evidence"))
+        if child_map(item).get("paper_id")
+    ]
+    missing = [
+        paper_id
+        for paper_id in golden_scope
+        if paper_id not in corpus_map.product_paper_ids_by_golden_id
+    ]
+    if missing:
+        raise ValueError(f"product corpus map is missing claim papers: {missing}")
+    mapping = {
+        paper_id: corpus_map.product_paper_ids_by_golden_id[paper_id]
+        for paper_id in golden_scope
+    }
+    delegate = gateway.reader(
+        request_id=request_id,
+        conversation_id=conversation_id,
+        user_id=corpus_map.user_id,
+        scope_paper_ids=list(mapping.values()),
+    )
+    return GoldenJavaCorpusReader(delegate=delegate, mapping=mapping)
+
+
 @dataclass
 class GoldenJavaCorpusReader:
     """Translate stable Golden identities around the product Java/Qdrant corpus path."""

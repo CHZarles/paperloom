@@ -58,6 +58,18 @@ Claim Location 审计，需要先从 `product-corpus-map.example.yaml` 创建本
   --out research/golden-data/local-runs/claim-location-audit.json
 ```
 
+独立产品检索评测，不运行 Agent 或回答模型：
+
+```bash
+.venv-harness/bin/python -m harness_py retrieval-eval \
+  --product-corpus-map research/golden-data/product-corpus-map.local.yaml \
+  --out research/golden-data/local-runs/stable-retrieval.json
+```
+
+该报告直接调用 Java/Qdrant/MySQL 位置检索链，按 Claim 的 `retrieval_queries` 和
+`accepted_locations` 计算 Location Recall@1/3/5/10/20、Claim Complete Rate 和 MRR。它测的是
+Retriever，不依赖 Agent 是否会搜索、读取、引用或组织答案。
+
 真实 Agent 运行：
 
 ```bash
@@ -140,5 +152,5 @@ focused Python tests -> validate -> audit -> one live case -> selected expanded 
 focused Python/Java tests -> validate -> audit -> product retrieval checks -> selected live cases
 ```
 
-Golden 分数只说明固定合同是否满足。Candidate、Read、Cited、Outcome、Hard Pass、人工语义质量和
-成本要分开报告。
+Golden 分数只说明固定合同是否满足。独立 Retriever、Agent 的 Location Candidate/Read/Cited、回答
+Claim、逐段 Evidence Contract 和成本必须分开报告。

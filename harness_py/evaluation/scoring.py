@@ -191,6 +191,7 @@ class BehaviorScorer:
             "review_coverage": resolved / len(scores) if scores else 1.0,
             "review_candidates": review_candidates,
             "trace_metrics": _aggregate_trace_metrics(scores),
+            "scorecard": _scorecard(scores),
             "scores": [score.to_dict() for score in scores],
         }
         if self.semantic_judgments:
@@ -485,6 +486,7 @@ def _trace_metrics(
     cited = set(cited_ids)
 
     candidate_hits = 0
+    paper_discovery_hits = 0
     read_hits = 0
     citation_hits = 0
     visual_hits = 0
@@ -496,7 +498,8 @@ def _trace_metrics(
             for item in as_list(requirement.get("accepted_locations"))
             if str(item or "").strip()
         }
-        candidate_hit = paper_id in candidate_papers or any(
+        paper_discovered = paper_id in candidate_papers
+        candidate_hit = any(
             location in accepted
             for location in candidate_locations.get(paper_id, set())
         )
@@ -510,12 +513,14 @@ def _trace_metrics(
         citation_hit = any(str(item.get("evidence_id") or "") in cited for item in matching_evidence)
         visual_hit = any(_has_visual_evidence(item) for item in matching_evidence)
         candidate_hits += int(candidate_hit)
+        paper_discovery_hits += int(paper_discovered)
         read_hits += int(read_hit)
         citation_hits += int(citation_hit)
         visual_hits += int(visual_hit)
         details.append({
             "paper_id": paper_id,
             "accepted_locations": sorted(accepted),
+            "paper_discovered": paper_discovered,
             "candidate": candidate_hit,
             "read": read_hit,
             "cited": citation_hit,
@@ -526,7 +531,9 @@ def _trace_metrics(
     return {
         "case_id": str(case.get("id") or ""),
         "required_evidence_count": total,
-        "candidate_count": len(candidate_papers),
+        "paper_candidate_count": len(candidate_papers),
+        "candidate_count": sum(len(items) for items in candidate_locations.values()),
+        "paper_discovery_recall": paper_discovery_hits / total,
         "read_count": len(evidence_items),
         "cited_count": len(cited),
         "candidate_recall": candidate_hits / total,
@@ -542,6 +549,7 @@ def _aggregate_trace_metrics(scores: list[CaseScore]) -> JsonMap:
     if not metrics:
         return {}
     fields = [
+        "paper_discovery_recall",
         "candidate_recall",
         "read_recall",
         "citation_recall",
@@ -554,8 +562,44 @@ def _aggregate_trace_metrics(scores: list[CaseScore]) -> JsonMap:
             for field in fields
         },
         "candidate_count": sum(int(item.get("candidate_count") or 0) for item in metrics),
+        "paper_candidate_count": sum(
+            int(item.get("paper_candidate_count") or 0) for item in metrics
+        ),
         "read_count": sum(int(item.get("read_count") or 0) for item in metrics),
         "cited_count": sum(int(item.get("cited_count") or 0) for item in metrics),
+    }
+
+
+def _scorecard(scores: list[CaseScore]) -> JsonMap:
+    if not scores:
+        return {}
+    dimension_names = list(scores[0].dimensions)
+    status_counts = {
+        name: {
+            status: sum(score.dimensions[name].status == status for score in scores)
+            for status in ("pass", "fail", "review_required", "not_applicable")
+        }
+        for name in dimension_names
+    }
+
+    def pass_rate(required_dimensions: tuple[str, ...]) -> float:
+        return sum(
+            all(score.dimensions[name].status in {"pass", "not_applicable"}
+                for name in required_dimensions)
+            for score in scores
+        ) / len(scores)
+
+    return {
+        "strict_end_to_end_pass_rate": sum(
+            score.case_status == "pass" for score in scores
+        ) / len(scores),
+        "required_answer_contract_pass_rate": pass_rate((
+            "outcome", "required_claims", "facts",
+        )),
+        "evidence_contract_pass_rate": pass_rate((
+            "grounding", "source_policy", "additional_claims",
+        )),
+        "dimension_status_counts": status_counts,
     }
 
 
