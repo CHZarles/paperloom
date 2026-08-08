@@ -1,6 +1,5 @@
 package io.github.chzarles.paperloom.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.chzarles.paperloom.model.PaperLocation;
 import io.github.chzarles.paperloom.model.PaperLocationType;
 import io.github.chzarles.paperloom.model.PaperPage;
@@ -9,7 +8,6 @@ import io.github.chzarles.paperloom.model.PaperReadingModelStatus;
 import io.github.chzarles.paperloom.model.PaperVisualAsset;
 import io.github.chzarles.paperloom.repository.PaperLocationRepository;
 import io.github.chzarles.paperloom.repository.PaperPageRepository;
-import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.repository.PaperSectionRepository;
@@ -17,6 +15,9 @@ import io.github.chzarles.paperloom.repository.PaperVisualAssetRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,7 +34,6 @@ class CanonicalReadingLocationServiceTest {
     private final PaperReadingModelRepository modelRepository = mock(PaperReadingModelRepository.class);
     private final PaperPageRepository pageRepository = mock(PaperPageRepository.class);
     private final PaperSectionRepository sectionRepository = mock(PaperSectionRepository.class);
-    private final PaperReadingElementRepository elementRepository = mock(PaperReadingElementRepository.class);
     private final PaperRepository paperRepository = mock(PaperRepository.class);
     private final PaperVisualAssetRepository visualAssetRepository = mock(PaperVisualAssetRepository.class);
     private CanonicalReadingLocationService service;
@@ -45,10 +45,8 @@ class CanonicalReadingLocationServiceTest {
                 modelRepository,
                 pageRepository,
                 sectionRepository,
-                elementRepository,
                 paperRepository,
-                visualAssetRepository,
-                new ObjectMapper()
+                visualAssetRepository
         );
         when(paperRepository.findByPaperIdIn(List.of("paper-a"))).thenReturn(List.of());
     }
@@ -126,6 +124,31 @@ class CanonicalReadingLocationServiceTest {
         assertEquals(List.of(), result.missingLocationRefs());
     }
 
+    @Test
+    void currentPassageLocationReadsTheSelectedPayloadWithoutHydratingPassageContent() {
+        PaperLocation location = pageLocation("rm-current");
+        location.setLocationType(PaperLocationType.PASSAGE);
+        location.setLocationRef("passage_ref_a");
+        location.setSourceObjectId("passage_ref_a");
+        location.setSourceSpanJson("{\"spans\":[]}");
+        when(locationRepository.findByLocationRefIn(List.of("passage_ref_a"))).thenReturn(List.of(location));
+        when(modelRepository.findFirstByPaperIdAndIsCurrentTrue("paper-a"))
+                .thenReturn(Optional.of(readyModel("rm-current")));
+        String content = "Exact selected passage content.";
+
+        CanonicalReadingLocationService.ReadBatch result = service.read(
+                List.of("passage_ref_a"),
+                List.of("paper-a"),
+                List.of(new CanonicalReadingLocationService.EvidencePayload(
+                        "paper-a", "rm-current", "passage_ref_a", "PASSAGE", content,
+                        sha256(content), "{\"spans\":[]}")));
+
+        assertEquals(1, result.items().size());
+        assertEquals(content, result.items().get(0).spanText());
+        assertEquals("passage", result.items().get(0).elementType());
+        verifyNoInteractions(pageRepository, sectionRepository);
+    }
+
     private PaperLocation pageLocation(String modelVersion) {
         PaperLocation location = new PaperLocation();
         location.setLocationRef("location_ref_a");
@@ -144,5 +167,18 @@ class CanonicalReadingLocationServiceTest {
         model.setModelStatus(PaperReadingModelStatus.READING_MODEL_READY);
         model.setCurrent(true);
         return model;
+    }
+
+    private String sha256(String value) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder result = new StringBuilder(digest.length * 2);
+            for (byte item : digest) {
+                result.append(String.format("%02x", item));
+            }
+            return result.toString();
+        } catch (NoSuchAlgorithmException error) {
+            throw new IllegalStateException(error);
+        }
     }
 }

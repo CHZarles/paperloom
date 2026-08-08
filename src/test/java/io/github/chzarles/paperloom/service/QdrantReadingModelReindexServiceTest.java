@@ -17,6 +17,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 class QdrantReadingModelReindexServiceTest {
 
@@ -27,6 +28,7 @@ class QdrantReadingModelReindexServiceTest {
         PaperRetrievalControlRepository controlRepository = mock(PaperRetrievalControlRepository.class);
         QdrantClient qdrantClient = mock(QdrantClient.class);
         RetrievalIndexContractService contractService = mock(RetrievalIndexContractService.class);
+        PaperPassageService passageService = mock(PaperPassageService.class);
         PaperReadingModel model = new PaperReadingModel();
         model.setPaperId("paper-a");
         model.setModelVersion("rm-1");
@@ -46,7 +48,7 @@ class QdrantReadingModelReindexServiceTest {
                 new ReadingModelQdrantIndexService.IndexResult(0, 0, 0, "active-index-contract", "rm-1")
         );
         QdrantReadingModelReindexService service = new QdrantReadingModelReindexService(
-                modelRepository, indexService, controlRepository, qdrantClient, contractService);
+                modelRepository, indexService, controlRepository, qdrantClient, contractService, passageService);
 
         QdrantReadingModelReindexService.ReindexResult result = service.reindexAllCurrent("admin-1");
 
@@ -54,5 +56,6 @@ class QdrantReadingModelReindexServiceTest {
         assertEquals(List.of(), result.indexedPaperIds());
         assertEquals(1, result.failures().size());
         assertEquals("paper-a", result.failures().get(0).paperId());
+        verify(passageService).rebuild("paper-a", "rm-1", "admin-1");
     }
 }

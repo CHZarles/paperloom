@@ -235,11 +235,13 @@ def _conversation_state(request: JsonMap, conversation_id: str, paper_ids: list[
     ]
     memory = child_map(request.get("research_memory"))
     previous_evidence = {
-        str(item.get("evidence_id")): item
+        str(item.get("source_quote_ref") or item.get("evidence_id")): item
         for item in (child_map(raw) for raw in as_list(memory.get("previous_evidence")))
-        if item.get("evidence_id")
+        if item.get("source_quote_ref") or item.get("evidence_id")
     }
-    selected_evidence_ids = unique_strings(memory.get("selected_evidence_ids"))
+    selected_evidence_ids = unique_strings(
+        memory.get("selected_source_quote_refs") or memory.get("selected_evidence_ids")
+    )
     if not selected_evidence_ids:
         selected_evidence_ids = list(previous_evidence)
     return ConversationState.from_dict({
@@ -262,11 +264,11 @@ def _turn_response(
     answer = child_map(run.get("research_answer"))
     ledger = child_map(run.get("evidence_ledger"))
     evidence_by_id = {
-        str(item.get("evidence_id")): item
+        str(item.get("source_quote_ref") or item.get("evidence_id")): item
         for item in (child_map(raw) for raw in as_list(ledger.get("items")))
-        if item.get("evidence_id")
+        if item.get("source_quote_ref") or item.get("evidence_id")
     }
-    cited_ids = unique_strings(answer.get("cited_evidence_ids"))
+    cited_ids = unique_strings(answer.get("cited_source_quote_refs") or answer.get("cited_evidence_ids"))
     citations = [
         {**evidence_by_id[evidence_id], "reference_number": index}
         for index, evidence_id in enumerate(cited_ids, start=1)

@@ -180,11 +180,19 @@ class GoldenJavaCorpusReader:
         for raw in as_list(response.get("items")):
             item = dict(child_map(raw))
             item["paper_id"] = self._golden_id(item.get("paper_id"))
+            item["source_quotes"] = [
+                {**child_map(raw_quote), "paper_id": self._golden_id(child_map(raw_quote).get("paper_id"))}
+                for raw_quote in as_list(item.get("source_quotes"))
+            ]
             items.append(item)
         return {
             **response,
             "items": items,
         }
+
+    def get_structure(self, arguments: JsonMap) -> JsonMap:
+        response = self.delegate.get_structure(self._request_arguments(arguments))
+        return self._response_with_papers(response, "items")
 
     def _request_arguments(self, arguments: JsonMap) -> JsonMap:
         translated = dict(arguments)

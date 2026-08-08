@@ -2,6 +2,7 @@ package io.github.chzarles.paperloom.controller;
 
 import io.github.chzarles.paperloom.service.CorpusRetrievalService;
 import io.github.chzarles.paperloom.service.CanonicalReadingLocationService;
+import io.github.chzarles.paperloom.service.PaperSourceQuoteReadService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -69,8 +70,9 @@ class InternalCorpusControllerTest {
     void locationReadExposesCanonicalVisualEvidenceFields() throws Exception {
         CorpusRetrievalService retrievalService = mock(CorpusRetrievalService.class);
         when(retrievalService.readLocations(any())).thenReturn(
-                new CanonicalReadingLocationService.ReadBatch(
-                        List.of(new CanonicalReadingLocationService.CanonicalLocation(
+                new PaperSourceQuoteReadService.ReadResult(
+                        List.of(new PaperSourceQuoteReadService.ReadItem(
+                                new CanonicalReadingLocationService.CanonicalLocation(
                                 "paper-a",
                                 "Paper A",
                                 "rm-current",
@@ -89,6 +91,11 @@ class InternalCorpusControllerTest {
                                 true,
                                 false,
                                 List.of()
+                                ),
+                                List.of(new PaperSourceQuoteReadService.SourceQuote(
+                                        "source_quote_a", "paper-a", "rm-current", "location_ref_a", "TABLE",
+                                        2, 2, "Methods", "TABLE", "Canonical table text.", "{\"bbox\":{\"x\":1}}"
+                                ))
                         )),
                         List.of()
                 )
@@ -114,6 +121,7 @@ class InternalCorpusControllerTest {
                 .andExpect(jsonPath("$.items[0].pdf_evidence_available").value(true))
                 .andExpect(jsonPath("$.items[0].table_screenshot_available").value(true))
                 .andExpect(jsonPath("$.items[0].figure_screenshot_available").value(false))
-                .andExpect(jsonPath("$.items[0].asset_warnings").isArray());
+                .andExpect(jsonPath("$.items[0].asset_warnings").isArray())
+                .andExpect(jsonPath("$.items[0].source_quotes[0].source_quote_ref").value("source_quote_a"));
     }
 }

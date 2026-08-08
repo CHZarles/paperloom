@@ -42,7 +42,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 })
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@Import({PaperReadingModelService.class, PaperReadingModelBuilder.class})
+@Import({PaperReadingModelService.class, PaperReadingModelBuilder.class, PaperPassageService.class,
+        StructuralPassageBuilder.class})
 class PaperReadingModelServicePersistenceTest {
 
     @Autowired
@@ -92,7 +93,7 @@ class PaperReadingModelServicePersistenceTest {
         assertEquals("Intro\n\nReadable text.", pages.get(0).getPageText());
         assertEquals(1, sections.size());
         assertEquals("Intro\n\nReadable text.", sections.get(0).getSectionText());
-        assertEquals(2, locations.size());
+        assertEquals(3, locations.size());
         assertEquals(PaperLocationType.PAGE, locations.get(0).getLocationType());
         assertEquals(PaperLocationType.SECTION, locations.get(1).getLocationType());
         assertEquals(sections.get(0).getSectionId(), locations.get(1).getSourceObjectId());

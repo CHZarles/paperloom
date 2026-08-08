@@ -2,18 +2,16 @@ package io.github.chzarles.paperloom.service;
 
 import io.github.chzarles.paperloom.model.PaperLocation;
 import io.github.chzarles.paperloom.model.PaperLocationType;
-import io.github.chzarles.paperloom.model.PaperPage;
+import io.github.chzarles.paperloom.model.PaperPassage;
 import io.github.chzarles.paperloom.model.PaperReadingElement;
 import io.github.chzarles.paperloom.model.PaperReadingModel;
 import io.github.chzarles.paperloom.model.PaperReadingModelStatus;
 import io.github.chzarles.paperloom.model.PaperRetrievalIndexStatus;
-import io.github.chzarles.paperloom.model.PaperSection;
 import io.github.chzarles.paperloom.repository.PaperLocationRepository;
-import io.github.chzarles.paperloom.repository.PaperPageRepository;
+import io.github.chzarles.paperloom.repository.PaperPassageRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.repository.PaperRetrievalControlRepository;
-import io.github.chzarles.paperloom.repository.PaperSectionRepository;
 import io.github.chzarles.paperloom.service.embedding.EmbeddingProvider;
 import io.github.chzarles.paperloom.service.embedding.EmbeddingProviderFactory;
 import org.slf4j.Logger;
@@ -46,8 +44,7 @@ public class ReadingModelQdrantIndexService {
     private final PaperReadingModelRepository modelRepository;
     private final PaperReadingElementRepository elementRepository;
     private final PaperLocationRepository locationRepository;
-    private final PaperPageRepository pageRepository;
-    private final PaperSectionRepository sectionRepository;
+    private final PaperPassageRepository passageRepository;
     private final QdrantClient qdrantClient;
     private final PaperRetrievalControlRepository controlRepository;
     private final RetrievalIndexContractService contractService;
@@ -56,8 +53,7 @@ public class ReadingModelQdrantIndexService {
     public ReadingModelQdrantIndexService(PaperReadingModelRepository modelRepository,
                                           PaperReadingElementRepository elementRepository,
                                           PaperLocationRepository locationRepository,
-                                          PaperPageRepository pageRepository,
-                                          PaperSectionRepository sectionRepository,
+                                          PaperPassageRepository passageRepository,
                                           QdrantClient qdrantClient,
                                           PaperRetrievalControlRepository controlRepository,
                                           RetrievalIndexContractService contractService,
@@ -65,8 +61,7 @@ public class ReadingModelQdrantIndexService {
         this.modelRepository = modelRepository;
         this.elementRepository = elementRepository;
         this.locationRepository = locationRepository;
-        this.pageRepository = pageRepository;
-        this.sectionRepository = sectionRepository;
+        this.passageRepository = passageRepository;
         this.qdrantClient = qdrantClient;
         this.controlRepository = controlRepository;
         this.contractService = contractService;
@@ -280,54 +275,40 @@ public class ReadingModelQdrantIndexService {
                 .findByPaperIdAndModelVersionOrderByPageNumberAscReadingOrderAscIdAsc(paperId, modelVersion);
         List<PaperLocation> locations = locationRepository
                 .findByPaperIdAndModelVersionOrderByPageNumberAscIdAsc(paperId, modelVersion);
-        Map<Integer, PaperPage> pagesByNumber = pageRepository
-                .findByPaperIdAndModelVersionOrderByPageNumberAsc(paperId, modelVersion).stream()
-                .collect(Collectors.toMap(PaperPage::getPageNumber, Function.identity(), (left, right) -> left));
-        Map<String, PaperSection> sectionsById = sectionRepository
-                .findByPaperIdAndModelVersionOrderByPageNumberFromAscDisplayOrderAsc(paperId, modelVersion).stream()
-                .filter(section -> !blank(section.getSectionId()))
-                .collect(Collectors.toMap(PaperSection::getSectionId, Function.identity(), (left, right) -> left));
+        Map<String, PaperPassage> passagesByRef = passageRepository
+                .findByPaperIdAndModelVersionOrderByDocumentOrdinalAsc(paperId, modelVersion).stream()
+                .collect(Collectors.toMap(PaperPassage::getPassageRef, Function.identity(), (left, right) -> left));
         Map<String, PaperReadingElement> elementsById = elements.stream()
                 .filter(element -> !blank(element.getReadingElementId()))
                 .collect(Collectors.toMap(PaperReadingElement::getReadingElementId, Function.identity(), (left, right) -> left));
-        Map<Integer, List<PaperReadingElement>> elementsByPage = elements.stream()
-                .filter(element -> element.getPageNumber() != null)
-                .collect(Collectors.groupingBy(
-                        PaperReadingElement::getPageNumber,
-                        LinkedHashMap::new,
-                        Collectors.toList()
-                ));
-        Map<String, List<PaperReadingElement>> elementsBySection = elements.stream()
-                .filter(element -> !blank(element.getSectionTitle()))
-                .collect(Collectors.groupingBy(
-                        element -> SearchText.normalize(element.getSectionTitle()),
-                        LinkedHashMap::new,
-                        Collectors.toList()
-                ));
+        Map<Integer, String> pageLocationRefs = locations.stream()
+                .filter(location -> location.getLocationType() == PaperLocationType.PAGE)
+                .filter(location -> location.getPageNumber() != null)
+                .filter(location -> !blank(location.getLocationRef()))
+                .collect(Collectors.toMap(PaperLocation::getPageNumber, PaperLocation::getLocationRef,
+                        (left, right) -> left));
 
         List<IndexedLocation> indexed = new ArrayList<>();
         for (PaperLocation location : locations) {
-            if (blank(location.getLocationRef())) {
+            if (blank(location.getLocationRef()) || !isEvidenceLocation(location)) {
                 continue;
             }
-            ResolvedLocation resolved = resolveLocationText(
-                    location, pagesByNumber, sectionsById, elementsById);
-            if (resolved == null || blank(resolved.text())) {
+            ResolvedLocation resolved = resolveLocationText(location, passagesByRef, elementsById);
+            if (resolved == null || blank(resolved.indexText())) {
                 continue;
             }
-            String searchableText = resolved.text().trim();
+            String searchableText = resolved.indexText().trim();
             if (searchableText.length() > MAX_INDEX_TEXT_CHARS) {
                 searchableText = searchableText.substring(0, MAX_INDEX_TEXT_CHARS);
             }
-            List<PaperReadingElement> relatedElements = relatedElements(
-                    location, elementsByPage, elementsBySection, elementsById);
+            List<PaperReadingElement> relatedElements = relatedElements(location, elementsById);
             indexed.add(new IndexedLocation(
                     location.getPaperId(),
                     location.getModelVersion(),
                     location.getLocationRef(),
                     location.getPageNumber(),
                     searchableText,
-                    payload(location, searchableText, resolved, relatedElements)
+                    payload(location, searchableText, resolved, relatedElements, pageLocationRefs)
             ));
         }
 
@@ -341,24 +322,15 @@ public class ReadingModelQdrantIndexService {
     }
 
     private ResolvedLocation resolveLocationText(PaperLocation location,
-                                                  Map<Integer, PaperPage> pagesByNumber,
-                                                  Map<String, PaperSection> sectionsById,
+                                                  Map<String, PaperPassage> passagesByRef,
                                                   Map<String, PaperReadingElement> elementsById) {
-        if (location.getLocationType() == PaperLocationType.PAGE) {
-            PaperPage page = pagesByNumber.get(location.getPageNumber());
-            return page == null || blank(page.getPageText())
+        if (location.getLocationType() == PaperLocationType.PASSAGE) {
+            PaperPassage passage = passagesByRef.get(location.getSourceObjectId());
+            return passage == null || blank(passage.getContentText())
                     ? null
                     : new ResolvedLocation(
-                            page.getPageText(), page.getParserName(), page.getParserVersion(),
-                            location.getSourceObjectId());
-        }
-        if (location.getLocationType() == PaperLocationType.SECTION) {
-            PaperSection section = sectionsById.get(location.getSourceObjectId());
-            return section == null || blank(section.getSectionText())
-                    ? null
-                    : new ResolvedLocation(
-                            section.getSectionText(), section.getParserName(), section.getParserVersion(),
-                            section.getSectionId());
+                            passage.getIndexText(), passage.getContentText(), passage.getContentHash(),
+                            passage.getSourceSpanJson(), null, null, passage.getPassageRef(), passage);
         }
         PaperReadingElement element = elementsById.get(location.getSourceObjectId());
         if (element == null) {
@@ -369,26 +341,13 @@ public class ReadingModelQdrantIndexService {
         return blank(text)
                 ? null
                 : new ResolvedLocation(
-                        text, element.getParserName(), element.getParserVersion(),
-                        element.getReadingElementId());
+                        text, text, textHash(text), location.getSourceSpanJson(), element.getParserName(),
+                        element.getParserVersion(), element.getReadingElementId(), null);
     }
 
     private List<PaperReadingElement> relatedElements(
             PaperLocation location,
-            Map<Integer, List<PaperReadingElement>> elementsByPage,
-            Map<String, List<PaperReadingElement>> elementsBySection,
             Map<String, PaperReadingElement> elementsById) {
-        if (location.getLocationType() == PaperLocationType.PAGE) {
-            return elementsByPage.getOrDefault(location.getPageNumber(), List.of());
-        }
-        if (location.getLocationType() == PaperLocationType.SECTION) {
-            int pageFrom = location.getPageNumber() == null ? Integer.MIN_VALUE : location.getPageNumber();
-            int pageTo = location.getPageEndNumber() == null ? pageFrom : location.getPageEndNumber();
-            return elementsBySection.getOrDefault(SearchText.normalize(location.getSectionTitle()), List.of()).stream()
-                    .filter(element -> element.getPageNumber() == null
-                            || (element.getPageNumber() >= pageFrom && element.getPageNumber() <= pageTo))
-                    .toList();
-        }
         PaperReadingElement element = elementsById.get(location.getSourceObjectId());
         return element == null ? List.of() : List.of(element);
     }
@@ -396,14 +355,26 @@ public class ReadingModelQdrantIndexService {
     private Map<String, Object> payload(PaperLocation location,
                                         String searchableText,
                                         ResolvedLocation resolved,
-                                        List<PaperReadingElement> elements) {
+                                        List<PaperReadingElement> elements,
+                                        Map<Integer, String> pageLocationRefs) {
         LinkedHashSet<String> elementTypes = elements.stream()
                 .map(PaperReadingElement::getElementType)
                 .filter(value -> !blank(value))
                 .map(value -> value.trim().toLowerCase(Locale.ROOT))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
+        String canonicalElementType = switch (location.getLocationType()) {
+            case PASSAGE -> "passage";
+            case TABLE -> "table";
+            case FIGURE -> "figure";
+            default -> location.getLocationType().name().toLowerCase(Locale.ROOT);
+        };
+        elementTypes.remove(canonicalElementType);
+        LinkedHashSet<String> canonicalFirst = new LinkedHashSet<>();
+        canonicalFirst.add(canonicalElementType);
+        canonicalFirst.addAll(elementTypes);
+        elementTypes = canonicalFirst;
         if (elementTypes.isEmpty()) {
-            elementTypes.add(location.getLocationType().name().toLowerCase(Locale.ROOT));
+            elementTypes.add(canonicalElementType);
         }
         LinkedHashSet<String> readingElementIds = elements.stream()
                 .map(PaperReadingElement::getReadingElementId)
@@ -426,10 +397,42 @@ public class ReadingModelQdrantIndexService {
                 ? location.getPageNumber()
                 : location.getPageEndNumber());
         put(payload, "section_path", location.getSectionTitle());
-        put(payload, "text_hash", textHash(searchableText));
+        put(payload, "text_hash", resolved.contentHash());
+        put(payload, "content_text", resolved.contentText());
+        put(payload, "content_hash", resolved.contentHash());
+        put(payload, "source_span_json", resolved.sourceSpanJson());
         put(payload, "parser_name", resolved.parserName());
         put(payload, "parser_version", resolved.parserVersion());
+        if (resolved.passage() != null) {
+            PaperPassage passage = resolved.passage();
+            put(payload, "parent_section_ref", passage.getParentSectionRef());
+            put(payload, "section_ordinal", passage.getSectionOrdinal());
+            put(payload, "document_ordinal", passage.getDocumentOrdinal());
+            put(payload, "estimated_token_count", passage.getEstimatedTokenCount());
+            put(payload, "page_location_refs", pageLocationRefs(location.getPageNumber(), location.getPageEndNumber(), pageLocationRefs));
+        }
         return payload;
+    }
+
+    private boolean isEvidenceLocation(PaperLocation location) {
+        return location.getLocationType() == PaperLocationType.PASSAGE
+                || location.getLocationType() == PaperLocationType.TABLE
+                || location.getLocationType() == PaperLocationType.FIGURE;
+    }
+
+    private List<String> pageLocationRefs(Integer from, Integer to, Map<Integer, String> refsByPage) {
+        if (from == null) {
+            return List.of();
+        }
+        int end = to == null ? from : to;
+        List<String> refs = new ArrayList<>();
+        for (int page = from; page <= end; page++) {
+            String ref = refsByPage.get(page);
+            if (!blank(ref)) {
+                refs.add(ref);
+            }
+        }
+        return refs;
     }
 
     private static void put(Map<String, Object> target, String key, Object value) {
@@ -498,9 +501,13 @@ public class ReadingModelQdrantIndexService {
                                   Map<String, Object> payload) {
     }
 
-    private record ResolvedLocation(String text,
+    private record ResolvedLocation(String indexText,
+                                    String contentText,
+                                    String contentHash,
+                                    String sourceSpanJson,
                                     String parserName,
                                     String parserVersion,
-                                    String sourceObjectId) {
+                                    String sourceObjectId,
+                                    PaperPassage passage) {
     }
 }

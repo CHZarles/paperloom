@@ -1,8 +1,8 @@
 package io.github.chzarles.paperloom.controller;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import io.github.chzarles.paperloom.service.CanonicalReadingLocationService;
 import io.github.chzarles.paperloom.service.CorpusRetrievalService;
+import io.github.chzarles.paperloom.service.PaperSourceQuoteReadService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -92,7 +92,8 @@ public class InternalCorpusController {
                         request.elementTypes(),
                         request.pageFrom(),
                         request.pageTo(),
-                        request.topK() == null ? 8 : request.topK()
+                        request.topK() == null ? 8 : request.topK(),
+                        request.sectionRefs()
                 )
         );
         Map<String, Object> response = new LinkedHashMap<>();
@@ -102,6 +103,7 @@ public class InternalCorpusController {
         response.put("returned_count", result.returnedCount());
         response.put("coverage", result.returnedCount() >= result.matchedCount() ? "complete" : "truncated");
         response.put("index_version", result.indexVersion());
+        response.put("evidence_payloads", result.evidencePayloads().stream().map(this::evidencePayload).toList());
         return response;
     }
 
@@ -109,14 +111,33 @@ public class InternalCorpusController {
     public Map<String, Object> readLocations(@RequestHeader(value = "Authorization", required = false) String authorization,
                                              @RequestBody LocationReadRequest request) {
         authorize(authorization);
-        CanonicalReadingLocationService.ReadBatch result = retrievalService.readLocations(
+        PaperSourceQuoteReadService.ReadResult result = retrievalService.readLocations(
                 new CorpusRetrievalService.LocationReadQuery(
-                        request.userId(), request.scopePaperIds(), request.locationRefs())
+                        request.userId(), request.scopePaperIds(), request.locationRefs(), request.evidencePayloads().stream()
+                                .map(payload -> new io.github.chzarles.paperloom.service.CanonicalReadingLocationService.EvidencePayload(
+                                        payload.paperId(), payload.modelVersion(), payload.locationRef(), payload.locationType(),
+                                        payload.contentText(), payload.contentHash(), payload.sourceSpanJson()))
+                                .toList())
         );
         return Map.of(
-                "items", result.items().stream().map(this::canonicalLocation).toList(),
+                "items", result.items().stream().map(this::readItem).toList(),
                 "missing_location_refs", result.missingLocationRefs()
         );
+    }
+
+    @PostMapping("/locations/structure")
+    public Map<String, Object> getStructure(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                            @RequestBody StructureRequest request) {
+        authorize(authorization);
+        CorpusRetrievalService.StructureResult result = retrievalService.getStructure(
+                new CorpusRetrievalService.StructureQuery(
+                        request.userId(), request.scopePaperIds(), request.paperIds(), request.structureType(),
+                        request.sectionQuery(), request.pageFrom(), request.pageTo())
+        );
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("structure_type", result.structureType());
+        response.put("items", result.items().stream().map(this::structureItem).toList());
+        return response;
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -184,7 +205,20 @@ public class InternalCorpusController {
         return result;
     }
 
-    private Map<String, Object> canonicalLocation(CanonicalReadingLocationService.CanonicalLocation item) {
+    private Map<String, Object> evidencePayload(
+            io.github.chzarles.paperloom.service.CanonicalReadingLocationService.EvidencePayload payload) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        put(result, "paper_id", payload.paperId());
+        put(result, "model_version", payload.modelVersion());
+        put(result, "location_ref", payload.locationRef());
+        put(result, "location_type", payload.locationType());
+        put(result, "content_text", payload.contentText());
+        put(result, "content_hash", payload.contentHash());
+        put(result, "source_span_json", payload.sourceSpanJson());
+        return result;
+    }
+
+    private Map<String, Object> canonicalLocation(io.github.chzarles.paperloom.service.CanonicalReadingLocationService.CanonicalLocation item) {
         Map<String, Object> result = new LinkedHashMap<>();
         put(result, "paper_id", item.paperId());
         put(result, "title", item.title());
@@ -204,6 +238,43 @@ public class InternalCorpusController {
         put(result, "table_screenshot_available", item.tableScreenshotAvailable());
         put(result, "figure_screenshot_available", item.figureScreenshotAvailable());
         put(result, "asset_warnings", item.assetWarnings());
+        return result;
+    }
+
+    private Map<String, Object> readItem(PaperSourceQuoteReadService.ReadItem item) {
+        Map<String, Object> result = canonicalLocation(item.location());
+        result.put("source_quotes", item.sourceQuotes().stream().map(this::sourceQuote).toList());
+        return result;
+    }
+
+    private Map<String, Object> sourceQuote(PaperSourceQuoteReadService.SourceQuote quote) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        put(result, "source_quote_ref", quote.sourceQuoteRef());
+        put(result, "paper_id", quote.paperId());
+        put(result, "paper_version", quote.modelVersion());
+        put(result, "location_ref", quote.locationRef());
+        put(result, "location_type", quote.locationType());
+        put(result, "page", quote.pageNumber());
+        put(result, "page_end", quote.pageEndNumber());
+        put(result, "section", quote.sectionTitle());
+        put(result, "content_kind", quote.contentKind());
+        put(result, "content", quote.content());
+        put(result, "source_span_json", quote.sourceSpanJson());
+        return result;
+    }
+
+    private Map<String, Object> structureItem(CorpusRetrievalService.StructureItem item) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        put(result, "paper_id", item.paperId());
+        put(result, "title", item.title());
+        put(result, "location_ref", item.locationRef());
+        put(result, "structure_type", item.structureType());
+        put(result, "section_title", item.sectionTitle());
+        put(result, "section_level", item.sectionLevel());
+        put(result, "section_path", item.sectionPath());
+        put(result, "display_order", item.displayOrder());
+        put(result, "page_from", item.pageFrom());
+        put(result, "page_to", item.pageTo());
         return result;
     }
 
@@ -256,12 +327,14 @@ public class InternalCorpusController {
             @JsonProperty("element_types") List<String> elementTypes,
             @JsonProperty("page_from") Integer pageFrom,
             @JsonProperty("page_to") Integer pageTo,
-            @JsonProperty("top_k") Integer topK
+            @JsonProperty("top_k") Integer topK,
+            @JsonProperty("section_refs") List<String> sectionRefs
     ) {
         public LocationSearchRequest {
             scopePaperIds = scopePaperIds == null ? List.of() : List.copyOf(scopePaperIds);
             paperIds = paperIds == null ? List.of() : List.copyOf(paperIds);
             elementTypes = elementTypes == null ? List.of() : List.copyOf(elementTypes);
+            sectionRefs = sectionRefs == null ? List.of() : List.copyOf(sectionRefs);
         }
     }
 
@@ -270,11 +343,41 @@ public class InternalCorpusController {
             @JsonProperty("conversation_id") String conversationId,
             @JsonProperty("user_id") Long userId,
             @JsonProperty("scope_paper_ids") List<String> scopePaperIds,
-            @JsonProperty("location_refs") List<String> locationRefs
+            @JsonProperty("location_refs") List<String> locationRefs,
+            @JsonProperty("evidence_payloads") List<EvidencePayloadRequest> evidencePayloads
     ) {
         public LocationReadRequest {
             scopePaperIds = scopePaperIds == null ? List.of() : List.copyOf(scopePaperIds);
             locationRefs = locationRefs == null ? List.of() : List.copyOf(locationRefs);
+            evidencePayloads = evidencePayloads == null ? List.of() : List.copyOf(evidencePayloads);
+        }
+    }
+
+    public record EvidencePayloadRequest(
+            @JsonProperty("paper_id") String paperId,
+            @JsonProperty("model_version") String modelVersion,
+            @JsonProperty("location_ref") String locationRef,
+            @JsonProperty("location_type") String locationType,
+            @JsonProperty("content_text") String contentText,
+            @JsonProperty("content_hash") String contentHash,
+            @JsonProperty("source_span_json") String sourceSpanJson
+    ) {
+    }
+
+    public record StructureRequest(
+            @JsonProperty("request_id") String requestId,
+            @JsonProperty("conversation_id") String conversationId,
+            @JsonProperty("user_id") Long userId,
+            @JsonProperty("scope_paper_ids") List<String> scopePaperIds,
+            @JsonProperty("paper_ids") List<String> paperIds,
+            @JsonProperty("structure_type") String structureType,
+            @JsonProperty("section_query") String sectionQuery,
+            @JsonProperty("page_from") Integer pageFrom,
+            @JsonProperty("page_to") Integer pageTo
+    ) {
+        public StructureRequest {
+            scopePaperIds = scopePaperIds == null ? List.of() : List.copyOf(scopePaperIds);
+            paperIds = paperIds == null ? List.of() : List.copyOf(paperIds);
         }
     }
 

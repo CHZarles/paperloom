@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import hashlib
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,7 +12,7 @@ import httpx
 from harness_py.utils.errors import HarnessCancelled
 from harness_py.corpus.gateway import JavaCorpusGateway, JavaCorpusGatewayReader
 from harness_py.corpus_test_fixtures.in_memory_tools import InMemoryTools
-from harness_py.corpus.tools import ReadingCorpusTools
+from harness_py.corpus.tools import ReadingCorpusTools, model_facing_payload
 
 
 class FakeGateway:
@@ -35,6 +36,7 @@ class FakeGateway:
                 "next_offset": None,
             }
         if path.endswith("/locations/search"):
+            content = "Exact canonical content."
             return {
                 "query_text": payload.get("query_text", ""),
                 "locations": [{
@@ -44,13 +46,22 @@ class FakeGateway:
                     "location_ref": "location_ref_a",
                     "section": "Methods",
                     "page": 3,
-                    "element_type": "paragraph",
+                    "element_type": "passage",
                     "preview": "Candidate only.",
                 }],
                 "matched_count": 1,
                 "returned_count": 1,
                 "coverage": "complete",
                 "index_version": "test-index",
+                "evidence_payloads": [{
+                    "paper_id": "paper-a",
+                    "model_version": "rm-1",
+                    "location_ref": "location_ref_a",
+                    "location_type": "PASSAGE",
+                    "content_text": content,
+                    "content_hash": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+                    "source_span_json": "{\"spans\":[]}",
+                }],
             }
         if path.endswith("/locations/read"):
             return {
@@ -59,7 +70,7 @@ class FakeGateway:
                     "title": "Paper A",
                     "paper_version": "rm-1",
                     "location_ref": "location_ref_a",
-                    "element_type": "section",
+                    "element_type": "passage",
                     "page": 3,
                     "page_end": 4,
                     "section": "Methods",
@@ -72,6 +83,16 @@ class FakeGateway:
                     "table_screenshot_available": False,
                     "figure_screenshot_available": False,
                     "asset_warnings": [],
+                    "source_quotes": [{
+                        "source_quote_ref": "source_quote_a",
+                        "paper_id": "paper-a",
+                        "paper_version": "rm-1",
+                        "location_ref": "location_ref_a",
+                        "page": 3,
+                        "page_end": 3,
+                        "section": "Methods",
+                        "content": "Exact canonical content.",
+                    }],
                 }],
                 "missing_location_refs": [],
             }
@@ -137,7 +158,7 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         tools = ReadingCorpusTools(dataset, reader=reader)
 
         paper_result = tools.search_paper_candidates({"query_text": "", "limit": 100})
-        location_result = tools.find_reading_locations({
+        location_result = tools.search_paper_content({
             "paper_ids": ["paper-a"],
             "query_text": "canonical content",
             "top_k": 8,
@@ -146,21 +167,24 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         self.assertEqual(1, paper_result["returned_count"])
         self.assertEqual("location_ref_a", location_result["locations"][0]["location_ref"])
         self.assertEqual("complete", location_result["coverage"])
+        self.assertNotIn("evidence_payloads", model_facing_payload(location_result))
         self.assertNotIn("evidence_id", location_result["locations"][0])
         self.assertEqual({}, tools.observations_by_evidence_id)
 
-        read_result = tools.read_locations({"location_refs": ["location_ref_a"]})
+        read_result = tools.read_paper_content({"location_refs": ["location_ref_a"]})
 
         self.assertEqual("Exact canonical content.", read_result["items"][0]["span_text"])
-        evidence_id = read_result["items"][0]["evidence_id"]
-        self.assertEqual("ev_e04a65dc77b9655f", evidence_id)
-        self.assertIn(evidence_id, tools.observations_by_evidence_id)
-        self.assertEqual("section", read_result["items"][0]["element_type"])
+        source_quote_ref = read_result["items"][0]["source_quotes"][0]["source_quote_ref"]
+        self.assertEqual("source_quote_a", source_quote_ref)
+        self.assertIn(source_quote_ref, tools.observations_by_evidence_id)
+        self.assertEqual("passage", read_result["items"][0]["element_type"])
         self.assertEqual("TEXT", read_result["items"][0]["source_kind"])
         self.assertEqual(4, read_result["items"][0]["page_end"])
         self.assertTrue(read_result["items"][0]["pdf_evidence_available"])
         self.assertTrue(read_result["items"][0]["page_screenshot_available"])
         self.assertEqual("{\"coordinateSystem\":\"top_left_1000\"}", read_result["items"][0]["bbox_json"])
+        read_request = next(payload for path, payload in gateway.calls if path.endswith("/locations/read"))
+        self.assertEqual("Exact canonical content.", read_request["evidence_payloads"][0]["content_text"])
         self.assertTrue(all(payload["user_id"] == 7 for _, payload in gateway.calls))
         self.assertTrue(all(payload["scope_paper_ids"] == ["paper-a"] for _, payload in gateway.calls))
 
@@ -175,7 +199,7 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         )
         tools = InMemoryTools(reader.load_metadata_dataset())
 
-        result = tools.read_locations({"location_refs": ["location_ref_hidden"]})
+        result = tools.read_paper_content({"location_refs": ["location_ref_hidden"]})
 
         self.assertEqual("location_not_disclosed_for_reading", result["error"])
         self.assertFalse(any(path.endswith("/locations/read") for path, _ in gateway.calls))

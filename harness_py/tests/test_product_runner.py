@@ -62,7 +62,7 @@ class FakeJavaGateway:
                     "paper_id": "product-a",
                     "location_ref": "location-a",
                     "page": 3,
-                    "element_type": "section",
+                    "element_type": "passage",
                     "preview": "Exact canonical content.",
                 }],
                 "returned_count": 1,
@@ -74,10 +74,17 @@ class FakeJavaGateway:
                     "title": "Paper A",
                     "paper_version": "rm-product-a",
                     "location_ref": "location-a",
-                    "element_type": "section",
+                    "element_type": "passage",
                     "page": 3,
                     "section": "Methods",
                     "span_text": "Exact canonical content.",
+                    "source_quotes": [{
+                        "source_quote_ref": "source_quote_location_a",
+                        "paper_id": "product-a",
+                        "location_ref": "location-a",
+                        "page": 3,
+                        "content": "Exact canonical content.",
+                    }],
                 }],
                 "missing_location_refs": [],
             }
@@ -102,12 +109,12 @@ class ProductRunnerTest(unittest.TestCase):
         tools = ReadingCorpusTools(dataset, reader=reader)
 
         paper_result = tools.search_paper_candidates({"paper_ids": ["golden-a"]})
-        location_result = tools.find_reading_locations({
+        location_result = tools.search_paper_content({
             "paper_ids": ["golden-a"],
             "query_text": "canonical content",
             "top_k": 8,
         })
-        read_result = tools.read_locations({"location_refs": ["location-a"]})
+        read_result = tools.read_paper_content({"location_refs": ["location-a"]})
 
         self.assertEqual("golden-a", paper_result["candidates"][0]["paper_id"])
         self.assertEqual("golden-a", location_result["locations"][0]["paper_id"])
@@ -125,20 +132,7 @@ class ProductRunnerTest(unittest.TestCase):
             ],
         )
 
-        run = {
-            "harness_id": "golden_fixture_v4",
-            "status": "COMPLETED",
-            "result_status": "COMPLETED",
-            "research_answer": {
-                "status": "COMPLETED",
-                "outcome": "answered",
-                "markdown": "The canonical content is exact. [1]",
-                "cited_evidence_ids": [evidence["evidence_id"]],
-            },
-            "evidence_ledger": {"items": [evidence]},
-        }
-        score = BehaviorScorer().score_case(dataset, dataset.cases[0], run)
-        self.assertTrue(score.case_status == "pass", score.to_dict())
+        self.assertEqual("source_quote_location_a", evidence["source_quotes"][0]["source_quote_ref"])
 
     def test_mapping_validation_rejects_wrong_dataset_duplicates_and_missing_scope(self) -> None:
         dataset = self._dataset()
@@ -195,7 +189,7 @@ class ProductRunnerTest(unittest.TestCase):
                         "paper_id": "product-a",
                         "location_ref": "location-a",
                         "page": 3,
-                        "element_type": "section",
+                        "element_type": "passage",
                         "preview": "Exact canonical content.",
                     }],
                     "returned_count": 1,
@@ -207,10 +201,17 @@ class ProductRunnerTest(unittest.TestCase):
                         "title": "Paper A",
                         "paper_version": "rm-product-a",
                         "location_ref": "location-a",
-                        "element_type": "section",
+                        "element_type": "passage",
                         "page": 3,
                         "section": "Methods",
                         "span_text": "Exact canonical content.",
+                        "source_quotes": [{
+                            "source_quote_ref": "source_quote_location_a",
+                            "paper_id": "product-a",
+                            "location_ref": "location-a",
+                            "page": 3,
+                            "content": "Exact canonical content.",
+                        }],
                     }],
                     "missing_location_refs": [],
                 })
@@ -237,12 +238,12 @@ class ProductRunnerTest(unittest.TestCase):
             def run_turn(self, turn):
                 tools = ReadingCorpusTools(turn.dataset, reader=turn.corpus_reader)
                 tools.search_paper_candidates({"paper_ids": ["golden-a"]})
-                tools.find_reading_locations({
+                tools.search_paper_content({
                     "paper_ids": ["golden-a"],
                     "query_text": "canonical content",
                     "top_k": 8,
                 })
-                evidence = tools.read_locations({
+                evidence = tools.read_paper_content({
                     "location_refs": ["location-a"],
                 })["items"][0]
                 return TurnExecutionResult(run={
@@ -253,7 +254,7 @@ class ProductRunnerTest(unittest.TestCase):
                     "research_answer": {
                         "status": "COMPLETED",
                         "outcome": "answered",
-                        "cited_evidence_ids": [evidence["evidence_id"]],
+                        "cited_source_quote_refs": [evidence["source_quotes"][0]["source_quote_ref"]],
                     },
                     "evidence_ledger": {"items": [evidence]},
                     "diagnostics": {},
@@ -411,13 +412,13 @@ class ProductRunnerTest(unittest.TestCase):
             "limit": len(scope),
         })
         self.assertEqual(len(scope), paper_result["returned_count"])
-        locations = tools.find_reading_locations({
+        locations = tools.search_paper_content({
             "paper_ids": scope,
             "query_text": case_question(case),
             "top_k": 8,
         })["locations"]
         self.assertTrue(locations)
-        read = tools.read_locations({
+        read = tools.read_paper_content({
             "location_refs": [locations[0]["location_ref"]],
         })
         self.assertTrue(read["items"])

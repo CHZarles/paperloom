@@ -121,8 +121,8 @@ def _function_tool(definition: JsonMap) -> FunctionTool:
                 "continue": True,
                 "message": repair_message or (
                     "Finish by calling submit_research_answer as the only tool call. "
-                    "Copy exact evidence IDs returned by read_locations; placeholders such as "
-                    "[[evidence_id]] are invalid. Remove claims not directly supported by cited spans."
+                    "Copy exact source_quote_ref values returned by read_paper_content; placeholders such as "
+                    "[[source_quote_ref]] are invalid. Remove claims not directly supported by cited spans."
                 ),
             }, ensure_ascii=False)
         if name == FINAL_TOOL_NAME:
@@ -229,7 +229,7 @@ def _invoke_final(
     if len(siblings) != 1:
         validation_error = "submit_research_answer must be the only tool call in the final step"
     else:
-        # 可引用证据来自两部分：上一轮已经接受的记忆，以及本轮 read_locations 的真实结果。
+        # 可引用内容来自上一轮已接受的记忆和本轮 read_paper_content 返回的真实 Source Quote。
         known_evidence = {
             **context.turn.research_memory.evidence_items_by_id,
             **context.corpus.observations_by_evidence_id,

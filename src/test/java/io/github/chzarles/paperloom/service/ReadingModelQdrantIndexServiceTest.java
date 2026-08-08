@@ -2,18 +2,16 @@ package io.github.chzarles.paperloom.service;
 
 import io.github.chzarles.paperloom.model.PaperLocation;
 import io.github.chzarles.paperloom.model.PaperLocationType;
-import io.github.chzarles.paperloom.model.PaperPage;
+import io.github.chzarles.paperloom.model.PaperPassage;
 import io.github.chzarles.paperloom.model.PaperReadingElement;
 import io.github.chzarles.paperloom.model.PaperReadingModel;
 import io.github.chzarles.paperloom.model.PaperReadingModelStatus;
 import io.github.chzarles.paperloom.model.PaperRetrievalIndexStatus;
-import io.github.chzarles.paperloom.model.PaperSection;
 import io.github.chzarles.paperloom.repository.PaperLocationRepository;
-import io.github.chzarles.paperloom.repository.PaperPageRepository;
+import io.github.chzarles.paperloom.repository.PaperPassageRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.repository.PaperRetrievalControlRepository;
-import io.github.chzarles.paperloom.repository.PaperSectionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
@@ -43,8 +41,7 @@ class ReadingModelQdrantIndexServiceTest {
     private PaperReadingModelRepository modelRepository;
     private PaperReadingElementRepository elementRepository;
     private PaperLocationRepository locationRepository;
-    private PaperPageRepository pageRepository;
-    private PaperSectionRepository sectionRepository;
+    private PaperPassageRepository passageRepository;
     private QdrantClient qdrantClient;
     private RetrievalIndexContractService contractService;
     private ReadingModelQdrantIndexService service;
@@ -54,8 +51,7 @@ class ReadingModelQdrantIndexServiceTest {
         modelRepository = mock(PaperReadingModelRepository.class);
         elementRepository = mock(PaperReadingElementRepository.class);
         locationRepository = mock(PaperLocationRepository.class);
-        pageRepository = mock(PaperPageRepository.class);
-        sectionRepository = mock(PaperSectionRepository.class);
+        passageRepository = mock(PaperPassageRepository.class);
         qdrantClient = mock(QdrantClient.class);
         contractService = mock(RetrievalIndexContractService.class);
         when(contractService.ensureActiveContract(anyDouble())).thenReturn("active-index-contract");
@@ -64,8 +60,7 @@ class ReadingModelQdrantIndexServiceTest {
                 modelRepository,
                 elementRepository,
                 locationRepository,
-                pageRepository,
-                sectionRepository,
+                passageRepository,
                 qdrantClient,
                 mock(PaperRetrievalControlRepository.class),
                 contractService,
@@ -122,49 +117,38 @@ class ReadingModelQdrantIndexServiceTest {
     }
 
     @Test
-    void buildsOnePointPerCanonicalLocationFromCanonicalText() {
-        PaperReadingElement paragraph = new PaperReadingElement();
-        paragraph.setPaperId("paper-a");
-        paragraph.setModelVersion("rm-1");
-        paragraph.setReadingElementId("element-1");
-        paragraph.setElementType("PARAGRAPH");
-        paragraph.setPageNumber(1);
-        paragraph.setSectionTitle("Abstract");
-        paragraph.setSearchableText("element fallback text");
-
-        PaperPage page = new PaperPage();
-        page.setPageNumber(1);
-        page.setPageText("canonical page text");
-        page.setParserName("page-parser");
-        page.setParserVersion("1");
-
-        PaperSection section = new PaperSection();
-        section.setSectionId("section-1");
-        section.setSectionText("canonical abstract text");
-        section.setParserName("section-parser");
-        section.setParserVersion("2");
-
+    void indexesOnlyEvidenceLocationsFromCanonicalPassageContent() {
+        PaperPassage passage = new PaperPassage();
+        passage.setPassageRef("passage-ref");
+        passage.setContentText("canonical passage text");
+        passage.setIndexText("Abstract\n\ncanonical passage text");
+        passage.setContentHash("content-hash");
+        passage.setSourceSpanJson("{\"spans\":[]}");
+        passage.setParentSectionRef("section-ref");
+        passage.setDocumentOrdinal(1);
+        passage.setSectionOrdinal(1);
+        passage.setEstimatedTokenCount(5);
         PaperLocation pageLocation = location("page-ref", PaperLocationType.PAGE, "page-1", "Abstract");
         PaperLocation sectionLocation = location(
                 "section-ref", PaperLocationType.SECTION, "section-1", "Abstract");
+        PaperLocation passageLocation = location(
+                "passage-ref", PaperLocationType.PASSAGE, "passage-ref", "Abstract");
 
         when(elementRepository.findByPaperIdAndModelVersionOrderByPageNumberAscReadingOrderAscIdAsc(
-                "paper-a", "rm-1")).thenReturn(List.of(paragraph));
+                "paper-a", "rm-1")).thenReturn(List.of());
         when(locationRepository.findByPaperIdAndModelVersionOrderByPageNumberAscIdAsc(
-                "paper-a", "rm-1")).thenReturn(List.of(pageLocation, sectionLocation));
-        when(pageRepository.findByPaperIdAndModelVersionOrderByPageNumberAsc(
-                "paper-a", "rm-1")).thenReturn(List.of(page));
-        when(sectionRepository.findByPaperIdAndModelVersionOrderByPageNumberFromAscDisplayOrderAsc(
-                "paper-a", "rm-1")).thenReturn(List.of(section));
+                "paper-a", "rm-1")).thenReturn(List.of(pageLocation, sectionLocation, passageLocation));
+        when(passageRepository.findByPaperIdAndModelVersionOrderByDocumentOrdinalAsc(
+                "paper-a", "rm-1")).thenReturn(List.of(passage));
 
         List<ReadingModelQdrantIndexService.IndexedLocation> indexed =
                 service.buildIndexedLocations("paper-a", "rm-1");
 
-        assertEquals(2, indexed.size());
-        assertEquals("canonical page text", indexed.get(0).searchableText());
-        assertEquals(1, indexed.get(0).payload().get("page_end_number"));
-        assertEquals("canonical abstract text", indexed.get(1).searchableText());
-        assertEquals("section-parser", indexed.get(1).payload().get("parser_name"));
+        assertEquals(1, indexed.size());
+        assertEquals("Abstract\n\ncanonical passage text", indexed.get(0).searchableText());
+        assertEquals("canonical passage text", indexed.get(0).payload().get("content_text"));
+        assertEquals("content-hash", indexed.get(0).payload().get("content_hash"));
+        assertEquals(List.of("page-ref"), indexed.get(0).payload().get("page_location_refs"));
     }
 
     private PaperReadingModel model(PaperRetrievalIndexStatus status) {

@@ -23,17 +23,20 @@ public class QdrantReadingModelReindexService {
     private final PaperRetrievalControlRepository controlRepository;
     private final QdrantClient qdrantClient;
     private final RetrievalIndexContractService contractService;
+    private final PaperPassageService passageService;
 
     public QdrantReadingModelReindexService(PaperReadingModelRepository modelRepository,
                                             ReadingModelQdrantIndexService indexService,
                                             PaperRetrievalControlRepository controlRepository,
                                             QdrantClient qdrantClient,
-                                            RetrievalIndexContractService contractService) {
+                                            RetrievalIndexContractService contractService,
+                                            PaperPassageService passageService) {
         this.modelRepository = modelRepository;
         this.indexService = indexService;
         this.controlRepository = controlRepository;
         this.qdrantClient = qdrantClient;
         this.contractService = contractService;
+        this.passageService = passageService;
     }
 
     public ReindexResult reindexAllCurrent(String requesterId) {
@@ -58,6 +61,9 @@ public class QdrantReadingModelReindexService {
         int indexedLocations = 0;
         int indexedTokens = 0;
         try {
+            for (PaperReadingModel model : models) {
+                passageService.rebuild(model.getPaperId(), model.getModelVersion(), requesterId);
+            }
             List<String> texts = models.stream()
                     .flatMap(model -> indexService.buildIndexedLocations(
                             model.getPaperId(), model.getModelVersion()).stream())

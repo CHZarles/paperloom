@@ -247,7 +247,7 @@ def _evidence_card(item: JsonMap) -> JsonMap:
     """把完整证据压缩成适合下一轮提示词的最小卡片。"""
 
     return {
-        "evidence_id": item.get("evidence_id"),
+        "source_quote_ref": item.get("source_quote_ref"),
         "paper_id": item.get("paper_id"),
         "title": item.get("title"),
         "section": item.get("section"),

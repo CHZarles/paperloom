@@ -5,11 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.chzarles.paperloom.exception.CustomException;
 import io.github.chzarles.paperloom.model.Conversation;
 import io.github.chzarles.paperloom.model.ConversationSession;
+import io.github.chzarles.paperloom.model.ConversationSourceQuote;
 import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.model.PaperSourceQuote;
 import io.github.chzarles.paperloom.model.User;
 import io.github.chzarles.paperloom.repository.ConversationRepository;
 import io.github.chzarles.paperloom.repository.ConversationSessionRepository;
+import io.github.chzarles.paperloom.repository.ConversationSourceQuoteRepository;
+import io.github.chzarles.paperloom.repository.PaperSourceQuoteRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +56,12 @@ public class ConversationService {
 
     @Autowired
     private ProductReadingSourceQuoteResolver sourceQuoteResolver;
+
+    @Autowired
+    private ConversationSourceQuoteRepository conversationSourceQuoteRepository;
+
+    @Autowired
+    private PaperSourceQuoteRepository sourceQuoteRepository;
 
     @Autowired(required = false)
     private ConversationScopeService conversationScopeService;
@@ -188,9 +197,34 @@ public class ConversationService {
             saved = conversationRepository.save(saved);
         }
         if (saved != null && saved.getId() != null) {
+            registerCitedSourceQuotes(saved, user, referenceMappings);
             return saved.getId();
         }
         return conversation.getId();
+    }
+
+    private void registerCitedSourceQuotes(Conversation conversation,
+                                            User user,
+                                            Map<String, Map<String, Object>> referenceMappings) {
+        if (conversation == null || conversation.getConversationId() == null || conversation.getConversationId().isBlank()
+                || referenceMappings == null || referenceMappings.isEmpty()) {
+            return;
+        }
+        for (Map<String, Object> mapping : referenceMappings.values()) {
+            String sourceQuoteRef = stringValue(mapping.get("sourceQuoteRef"));
+            if (sourceQuoteRef.isBlank()
+                    || sourceQuoteRepository.findFirstBySourceQuoteRef(sourceQuoteRef).isEmpty()
+                    || conversationSourceQuoteRepository.findFirstByConversationIdAndSourceQuoteRef(
+                    conversation.getConversationId(), sourceQuoteRef).isPresent()) {
+                continue;
+            }
+            ConversationSourceQuote quote = new ConversationSourceQuote();
+            quote.setConversationId(conversation.getConversationId());
+            quote.setSourceQuoteRef(sourceQuoteRef);
+            quote.setFirstSeenTurnId(String.valueOf(conversation.getId()));
+            quote.setUserId(user == null || user.getId() == null ? null : String.valueOf(user.getId()));
+            conversationSourceQuoteRepository.save(quote);
+        }
     }
 
     // ---- ConversationSession management ----
@@ -1052,10 +1086,12 @@ public class ConversationService {
         if (rawBbox instanceof Map<?, ?> rawMap) {
             return List.of(sourceQuoteVisualRegion(rawMap));
         }
-        if (rawBbox instanceof List<?> rawList
-                && rawList.size() == 1
-                && rawList.get(0) instanceof Map<?, ?> rawMap) {
-            return List.of(sourceQuoteVisualRegion(rawMap));
+        if (rawBbox instanceof List<?> rawList) {
+            return rawList.stream()
+                    .filter(Map.class::isInstance)
+                    .map(Map.class::cast)
+                    .map(this::sourceQuoteVisualRegion)
+                    .toList();
         }
         return List.of();
     }

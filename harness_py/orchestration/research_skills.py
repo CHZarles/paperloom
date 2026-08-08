@@ -68,7 +68,7 @@ def _skill(
 
 
 _COMMON_STANDARD = (
-    "Use exact passages returned by read_locations for paper-content claims. "
+    "Use exact paper content returned by read_paper_content for paper-content claims. "
     "Treat candidate metadata and location previews as navigation only, and state evidence gaps plainly."
 )
 

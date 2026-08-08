@@ -43,7 +43,7 @@ class AgentsRuntimeTest(unittest.TestCase):
 
         self.assertEqual("COMPLETED", run["status"])
         self.assertEqual("42", run["research_answer"]["fields"]["answer"])
-        self.assertEqual(1, len(run["research_answer"]["cited_evidence_ids"]))
+        self.assertEqual(1, len(run["research_answer"]["cited_source_quote_refs"]))
         self.assertEqual("python_openai_agents_sdk_harness_v1", run["harness_id"])
         self.assertTrue(run["run_id"].startswith("run_"))
         self.assertEqual(1, state.turn_index)
@@ -54,7 +54,7 @@ class AgentsRuntimeTest(unittest.TestCase):
         ]
         self.assertEqual(2, len(submissions))
         self.assertFalse(submissions[0]["result"]["accepted"])
-        self.assertIn("unknown cited evidence ids", submissions[0]["result"]["error"])
+        self.assertIn("unknown cited source quote refs", submissions[0]["result"]["error"])
         self.assertTrue(submissions[1]["result"]["accepted"])
         self.assertIn("run.started", {event["kind"] for event in events})
         self.assertIn("tool.completed", {event["kind"] for event in events})
@@ -143,8 +143,8 @@ class AgentsRuntimeTest(unittest.TestCase):
             server.server_close()
             thread.join(timeout=2)
 
-        self.assertEqual(2, len(requests))
-        self.assertEqual("COMPLETED", run["status"])
+        self.assertEqual(2, len(requests), run["diagnostics"])
+        self.assertEqual("COMPLETED", run["status"], run["diagnostics"])
         self.assertEqual(
             "Recovered after malformed tool arguments.",
             run["research_answer"]["markdown"],
@@ -175,25 +175,25 @@ class _ScriptedAgentsModel(Model):
         elif self.call_count == 2:
             name, arguments = "find_papers_by_identity", {"paper_id": "synthetic_paper"}
         elif self.call_count == 3:
-            name, arguments = "find_reading_locations", {
+            name, arguments = "search_paper_content", {
                 "paper_ids": ["synthetic_paper"],
                 "query_text": "structured value",
                 "top_k": 3,
             }
         elif self.call_count == 4:
             locations = outputs["call_3"]["locations"]
-            name, arguments = "read_locations", {"location_refs": [locations[0]["location_ref"]]}
+            name, arguments = "read_paper_content", {"location_refs": [locations[0]["location_ref"]]}
         elif self.call_count == 5:
             name, arguments = "submit_research_answer", {
                 "outcome": "answered",
-                "markdown": "The structured value is 42. [[ev_fake]]",
+                "markdown": "The structured value is 42. [[source_quote_fake]]",
                 "fields": {"answer": "42"},
             }
         else:
-            evidence_id = outputs["call_4"]["items"][0]["evidence_id"]
+            source_quote_ref = outputs["call_4"]["items"][0]["source_quotes"][0]["source_quote_ref"]
             name, arguments = "submit_research_answer", {
                 "outcome": "answered",
-                "markdown": f"The structured value is 42. [[{evidence_id}]]",
+                "markdown": f"The structured value is 42. [[{source_quote_ref}]]",
                 "fields": {"answer": "42"},
             }
         return ModelResponse(

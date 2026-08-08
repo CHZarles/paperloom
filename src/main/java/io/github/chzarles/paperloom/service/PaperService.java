@@ -9,6 +9,7 @@ import io.github.chzarles.paperloom.paper.parser.MinerUUnavailableException;
 import io.github.chzarles.paperloom.paper.parser.PaperParsingException;
 import io.github.chzarles.paperloom.repository.ChunkInfoRepository;
 import io.github.chzarles.paperloom.repository.PaperLocationRepository;
+import io.github.chzarles.paperloom.repository.PaperPassageRepository;
 import io.github.chzarles.paperloom.repository.PaperPageRepository;
 import io.github.chzarles.paperloom.repository.PaperPublicationRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
@@ -63,6 +64,9 @@ public class PaperService {
 
     @Autowired
     private PaperSourceQuoteRepository paperSourceQuoteRepository;
+
+    @Autowired
+    private PaperPassageRepository paperPassageRepository;
 
     @Autowired
     private PaperReadingElementRepository paperReadingElementRepository;
@@ -184,6 +188,7 @@ public class PaperService {
 
     private void deleteReadingModelArtifacts(String paperId) {
         paperSourceQuoteRepository.deleteByPaperId(paperId);
+        paperPassageRepository.deleteByPaperId(paperId);
         paperReadingElementRepository.deleteByPaperId(paperId);
         paperLocationRepository.deleteByPaperId(paperId);
         paperSectionRepository.deleteByPaperId(paperId);

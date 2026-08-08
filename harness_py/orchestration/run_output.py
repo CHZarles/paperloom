@@ -28,18 +28,18 @@ def build_harness_run(
         "abstained": "INCOMPLETE_PRECISE",
     }[outcome]
     raw_markdown = str(final["markdown"]).strip()
-    cited_ids = unique_strings(CITATION_RE.findall(raw_markdown))
+    cited_source_quote_refs = unique_strings(CITATION_RE.findall(raw_markdown))
     all_evidence = {**prior_evidence, **corpus.observations_by_evidence_id}
     cited_evidence = {
-        evidence_id: all_evidence[evidence_id]
-        for evidence_id in cited_ids
-        if evidence_id in all_evidence
+        source_quote_ref: all_evidence[source_quote_ref]
+        for source_quote_ref in cited_source_quote_refs
+        if source_quote_ref in all_evidence
     }
-    markdown = _render_citations(raw_markdown, cited_ids, cited_evidence)
+    markdown = _render_citations(raw_markdown, cited_source_quote_refs, cited_evidence)
     selected_paper_ids = unique_strings(
-        str(cited_evidence[evidence_id].get("paper_id") or "")
-        for evidence_id in cited_ids
-        if cited_evidence.get(evidence_id, {}).get("paper_id")
+        str(cited_evidence[source_quote_ref].get("paper_id") or "")
+        for source_quote_ref in cited_source_quote_refs
+        if cited_evidence.get(source_quote_ref, {}).get("paper_id")
     )
     answer = {
         "answer_id": stable_id("answer", case_id),
@@ -50,11 +50,11 @@ def build_harness_run(
         "summary": markdown[:400],
         "markdown": markdown,
         "fields": child_map(final.get("fields")),
-        "cited_evidence_ids": cited_ids,
+        "cited_source_quote_refs": cited_source_quote_refs,
     }
     evidence_items = list(corpus.observations_by_evidence_id.values())
-    for evidence_id, item in cited_evidence.items():
-        if evidence_id not in corpus.observations_by_evidence_id:
+    for source_quote_ref, item in cited_evidence.items():
+        if source_quote_ref not in corpus.observations_by_evidence_id:
             evidence_items.append(item)
     return {
         "schema_version": RUN_TRACE_SCHEMA_VERSION,
@@ -68,7 +68,7 @@ def build_harness_run(
         "result_status": status,
         "memory_update": {
             "selected_paper_ids": selected_paper_ids,
-            "selected_evidence_ids": cited_ids,
+            "selected_source_quote_refs": cited_source_quote_refs,
         },
         "skills_used": skills_used,
         "react_trace": trace,
@@ -83,7 +83,7 @@ def build_harness_run(
         },
         "citation_validation": {
             "passed": True,
-            "cited_evidence_ids": cited_ids,
+            "cited_source_quote_refs": cited_source_quote_refs,
             "corpus_tools_used": any(
                 item["tool_name"] in _corpus_tool_names(corpus) for item in trace
             ),
@@ -122,13 +122,13 @@ def progress_input(tool_name: str, arguments: JsonMap) -> JsonMap:
             "query": arguments.get("query_text") or arguments.get("query"),
             "limit": arguments.get("limit"),
         }
-    if tool_name == "find_reading_locations":
+    if tool_name == "search_paper_content":
         return {
             "paperIds": as_list(arguments.get("paper_ids")),
             "query": arguments.get("query_text"),
             "limit": arguments.get("top_k"),
         }
-    if tool_name == "read_locations":
+    if tool_name == "read_paper_content":
         location_refs = as_list(arguments.get("location_refs"))
         return {"locationRefs": location_refs, "locationCount": len(location_refs)}
     if tool_name == "get_citation_edges":
@@ -152,7 +152,7 @@ def progress_output(tool_name: str, payload: JsonMap) -> JsonMap:
                 for item in candidates[:50]
             ],
         }
-    if tool_name == "find_reading_locations":
+    if tool_name == "search_paper_content":
         locations = [child_map(item) for item in as_list(payload.get("locations"))]
         return {
             "resultCount": len(locations),
@@ -167,19 +167,40 @@ def progress_output(tool_name: str, payload: JsonMap) -> JsonMap:
                 for item in locations[:50]
             ],
         }
-    if tool_name == "read_locations":
+    if tool_name == "get_paper_structure":
         items = [child_map(item) for item in as_list(payload.get("items"))]
         return {
+            "resultCount": len(items),
+            "structure": [
+                {
+                    "paperId": item.get("paper_id"),
+                    "locationRef": item.get("location_ref"),
+                    "structureType": item.get("structure_type"),
+                    "section": item.get("section_title"),
+                    "pageFrom": item.get("page_from"),
+                    "pageTo": item.get("page_to"),
+                }
+                for item in items[:50]
+            ],
+        }
+    if tool_name == "read_paper_content":
+        items = [child_map(item) for item in as_list(payload.get("items"))]
+        source_quotes = [
+            {**item, **child_map(raw_quote)}
+            for item in items
+            for raw_quote in as_list(item.get("source_quotes"))
+            if child_map(raw_quote).get("source_quote_ref")
+        ]
+        return {
             "readCount": len(items),
-            "evidenceCount": len(items),
+            "sourceQuoteCount": len(source_quotes),
             "pages": unique_strings(
                 item.get("page") for item in items
                 if item.get("page") not in {None, "", "unknown"}
             ),
-            "evidence": [
+            "sourceQuotes": [
                 {
-                    "evidenceId": item.get("evidence_id"),
-                    "evidenceRef": item.get("evidence_id"),
+                    "sourceQuoteRef": item.get("source_quote_ref"),
                     "paperId": item.get("paper_id"),
                     "title": item.get("title"),
                     "originalFilename": item.get("original_filename"),
@@ -200,9 +221,9 @@ def progress_output(tool_name: str, payload: JsonMap) -> JsonMap:
                     "tableScreenshotAvailable": item.get("table_screenshot_available"),
                     "figureScreenshotAvailable": item.get("figure_screenshot_available"),
                     "assetWarnings": item.get("asset_warnings") or [],
-                    "quote": str(item.get("span_text") or "")[:300],
+                    "content": str(item.get("content") or item.get("span_text") or "")[:300],
                 }
-                for item in items[:50]
+                for item in source_quotes[:50]
             ],
         }
     if tool_name == "get_citation_edges":
@@ -221,9 +242,10 @@ def progress_output(tool_name: str, payload: JsonMap) -> JsonMap:
 
 def progress_evidence_ids(payload: JsonMap) -> list[str]:
     return unique_strings(
-        child_map(item).get("evidence_id")
+        child_map(raw_quote).get("source_quote_ref")
         for item in as_list(payload.get("items"))
-        if child_map(item).get("evidence_id")
+        for raw_quote in as_list(child_map(item).get("source_quotes"))
+        if child_map(raw_quote).get("source_quote_ref")
     )
 
 

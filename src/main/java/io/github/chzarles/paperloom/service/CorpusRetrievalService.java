@@ -2,14 +2,20 @@ package io.github.chzarles.paperloom.service;
 
 import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.model.PaperLocation;
+import io.github.chzarles.paperloom.model.PaperLocationType;
 import io.github.chzarles.paperloom.model.PaperReadingModel;
 import io.github.chzarles.paperloom.model.PaperReadingModelStatus;
+import io.github.chzarles.paperloom.model.PaperSection;
 import io.github.chzarles.paperloom.repository.PaperLocationRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
+import io.github.chzarles.paperloom.repository.PaperSectionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -31,7 +37,9 @@ public class CorpusRetrievalService {
     private final PaperService paperService;
     private final PaperReadingModelRepository modelRepository;
     private final PaperLocationRepository locationRepository;
+    private final PaperSectionRepository sectionRepository;
     private final CanonicalReadingLocationService canonicalReadService;
+    private final PaperSourceQuoteReadService sourceQuoteReadService;
     private final PaperSearchabilityService paperSearchabilityService;
     private final ReadingLocationRetriever readingLocationRetriever;
 
@@ -39,13 +47,17 @@ public class CorpusRetrievalService {
     public CorpusRetrievalService(PaperService paperService,
                                   PaperReadingModelRepository modelRepository,
                                   PaperLocationRepository locationRepository,
+                                  PaperSectionRepository sectionRepository,
                                   CanonicalReadingLocationService canonicalReadService,
+                                  PaperSourceQuoteReadService sourceQuoteReadService,
                                   PaperSearchabilityService paperSearchabilityService,
                                   ReadingLocationRetriever readingLocationRetriever) {
         this.paperService = paperService;
         this.modelRepository = modelRepository;
         this.locationRepository = locationRepository;
+        this.sectionRepository = sectionRepository;
         this.canonicalReadService = canonicalReadService;
+        this.sourceQuoteReadService = sourceQuoteReadService;
         this.paperSearchabilityService = paperSearchabilityService;
         this.readingLocationRetriever = readingLocationRetriever;
     }
@@ -139,7 +151,8 @@ public class CorpusRetrievalService {
         if (!sessionScope.containsAll(requested)) {
             throw new IllegalArgumentException("paper_ids must be a subset of scope_paper_ids");
         }
-        List<String> authorizedIds = accessiblePapers(query.userId(), new ArrayList<>(requested)).stream()
+        List<Paper> accessible = accessiblePapers(query.userId(), new ArrayList<>(requested));
+        List<String> authorizedIds = accessible.stream()
                 .map(Paper::getPaperId)
                 .filter(requested::contains)
                 .distinct()
@@ -151,11 +164,12 @@ public class CorpusRetrievalService {
         Map<String, String> activeModels = activeModels(authorizedIds, currentModels);
         String retrievalQuery = String.join(" ", List.of(safe(query.queryText()), safe(query.sectionQuery()))).trim();
         if (retrievalQuery.isBlank()) {
-            return new LocationSearchResult(List.of(), 0, 0, "");
+            return new LocationSearchResult(List.of(), List.of(), 0, 0, "");
         }
 
         int topK = Math.max(1, Math.min(query.topK(), MAX_LOCATION_LIMIT));
         Set<String> elementTypeHints = new LinkedHashSet<>(normalizeElementTypes(query.elementTypes()));
+        Set<String> sectionRefs = normalizedSet(query.sectionRefs());
         RetrievalCandidates retrieval = readingLocationRetriever.retrieve(
                 new LocationRetrievalRequest(
                         activeModels,
@@ -181,48 +195,49 @@ public class CorpusRetrievalService {
                 .collect(Collectors.toMap(PaperLocation::getLocationRef, Function.identity(), (left, right) -> left));
         List<FusedHit> valid = ranked.stream()
                 .filter(hit -> validCurrentHit(hit, locationsByRef.get(hit.locationRef()), currentModels, requested))
+                .filter(hit -> sectionRefs.isEmpty()
+                        || sectionRefs.contains(stringPayload(hit.payload(), "parent_section_ref", "")))
                 .toList();
         List<FusedHit> selected = selectPaperCoverage(valid, authorizedIds, retrievalQuery, topK);
-        CanonicalReadingLocationService.ReadBatch hydrated = canonicalReadService.read(
-                selected.stream().map(FusedHit::locationRef).toList(),
-                authorizedIds
-        );
-        Map<String, CanonicalReadingLocationService.CanonicalLocation> contentByRef = hydrated.items().stream()
-                .collect(Collectors.toMap(
-                        CanonicalReadingLocationService.CanonicalLocation::locationRef,
-                        Function.identity(),
-                        (left, right) -> left
-                ));
+        Map<String, Paper> papersById = accessible.stream()
+                .collect(Collectors.toMap(Paper::getPaperId, Function.identity(), (left, right) -> left));
         List<LocationCandidate> candidates = new ArrayList<>();
+        List<CanonicalReadingLocationService.EvidencePayload> evidencePayloads = new ArrayList<>();
         for (FusedHit hit : selected) {
-            CanonicalReadingLocationService.CanonicalLocation content = contentByRef.get(hit.locationRef());
-            if (content == null) {
+            PaperLocation location = locationsByRef.get(hit.locationRef());
+            String content = stringPayload(hit.payload(), "content_text", "");
+            if (location == null || content.isBlank()) {
                 continue;
             }
+            Paper paper = papersById.get(location.getPaperId());
             candidates.add(new LocationCandidate(
-                    content.paperId(),
-                    content.title(),
-                    content.paperVersion(),
-                    content.locationRef(),
-                    content.section(),
-                    content.page(),
-                    content.elementType(),
-                    SearchText.preview(content.spanText(), SearchText.tokens(retrievalQuery), 500),
+                    location.getPaperId(),
+                    paper == null ? location.getPaperId() : firstNonBlank(
+                            paper.getPaperTitle(), paper.getOriginalFilename(), paper.getPaperId()),
+                    location.getModelVersion(),
+                    location.getLocationRef(),
+                    firstNonBlank(stringPayload(hit.payload(), "section_path", ""), location.getSectionTitle()),
+                    integerPayload(hit.payload(), "page_number", location.getPageNumber()),
+                    firstNonBlank(stringPayload(hit.payload(), "element_type", ""),
+                            location.getLocationType().name().toLowerCase(Locale.ROOT)),
+                    SearchText.preview(content, SearchText.tokens(retrievalQuery), 500),
                     hit.denseScore(),
                     hit.sparseScore(),
                     hit.fusedScore()
             ));
+            evidencePayloads.add(evidencePayload(location, hit.payload()));
         }
         return new LocationSearchResult(
                 candidates,
+                evidencePayloads,
                 valid.size(),
                 candidates.size(),
                 retrieval.indexVersion()
         );
     }
 
-    @Transactional(readOnly = true)
-    public CanonicalReadingLocationService.ReadBatch readLocations(LocationReadQuery query) {
+    @Transactional
+    public PaperSourceQuoteReadService.ReadResult readLocations(LocationReadQuery query) {
         List<String> locationRefs = query.locationRefs().stream()
                 .filter(ref -> ref != null && !ref.isBlank())
                 .map(String::trim)
@@ -235,7 +250,45 @@ public class CorpusRetrievalService {
                 .map(Paper::getPaperId)
                 .distinct()
                 .toList();
-        return canonicalReadService.read(locationRefs, authorizedIds);
+        return sourceQuoteReadService.createQuotes(canonicalReadService.read(
+                locationRefs, authorizedIds, query.evidencePayloads()));
+    }
+
+    @Transactional(readOnly = true)
+    public StructureResult getStructure(StructureQuery query) {
+        Set<String> requested = normalizedSet(query.paperIds());
+        if (requested.isEmpty()) {
+            throw new IllegalArgumentException("paper_ids is required");
+        }
+        Set<String> scope = normalizedSet(query.scopePaperIds());
+        Set<String> sessionScope = scope.isEmpty()
+                ? accessiblePapers(query.userId(), List.of()).stream().map(Paper::getPaperId).collect(Collectors.toSet())
+                : scope;
+        if (!sessionScope.containsAll(requested)) {
+            throw new IllegalArgumentException("paper_ids must be a subset of scope_paper_ids");
+        }
+        List<Paper> accessible = accessiblePapers(query.userId(), new ArrayList<>(requested));
+        if (accessible.size() != requested.size()) {
+            throw new IllegalArgumentException("paper_ids contains an unavailable paper");
+        }
+        Map<String, PaperReadingModel> models = currentReadyModels(accessible.stream().map(Paper::getPaperId).toList());
+        if (models.size() != requested.size()) {
+            throw new IllegalArgumentException("paper_ids contains a paper without a current reading model");
+        }
+        String type = safe(query.structureType()).toUpperCase(Locale.ROOT);
+        if (!"SECTION".equals(type) && !"PAGE".equals(type)) {
+            throw new IllegalArgumentException("structure_type must be SECTION or PAGE");
+        }
+        List<StructureItem> items = new ArrayList<>();
+        for (Paper paper : accessible) {
+            PaperReadingModel model = models.get(paper.getPaperId());
+            if ("SECTION".equals(type)) {
+                items.addAll(sectionStructure(paper, model, query.sectionQuery()));
+            } else {
+                items.addAll(pageStructure(paper, model, query.pageFrom(), query.pageTo()));
+            }
+        }
+        return new StructureResult(type, items);
     }
 
     private List<Paper> authorizedPapers(Long userId, List<String> scopePaperIds) {
@@ -301,15 +354,35 @@ public class CorpusRetrievalService {
                                     PaperLocation location,
                                     Map<String, PaperReadingModel> currentModels,
                                     Set<String> requested) {
-        if (location == null || !requested.contains(location.getPaperId())) {
+        if (location == null || !isEvidenceLocation(location) || !requested.contains(location.getPaperId())) {
             return false;
         }
         PaperReadingModel current = currentModels.get(location.getPaperId());
         if (current == null || !current.getModelVersion().equals(location.getModelVersion())) {
             return false;
         }
+        String content = stringPayload(hit.payload(), "content_text", "");
+        String sourceSpan = safe(location.getSourceSpanJson());
         return current.getModelVersion().equals(stringPayload(hit.payload(), "model_version", ""))
-                && location.getPaperId().equals(stringPayload(hit.payload(), "paper_id", ""));
+                && location.getPaperId().equals(stringPayload(hit.payload(), "paper_id", ""))
+                && !content.isBlank()
+                && sha256(content).equals(stringPayload(hit.payload(), "content_hash", ""))
+                && !sourceSpan.isBlank()
+                && sourceSpan.equals(stringPayload(hit.payload(), "source_span_json", ""));
+    }
+
+    private CanonicalReadingLocationService.EvidencePayload evidencePayload(
+            PaperLocation location,
+            Map<String, Object> payload) {
+        return new CanonicalReadingLocationService.EvidencePayload(
+                location.getPaperId(),
+                location.getModelVersion(),
+                location.getLocationRef(),
+                location.getLocationType().name(),
+                stringPayload(payload, "content_text", ""),
+                stringPayload(payload, "content_hash", ""),
+                stringPayload(payload, "source_span_json", "")
+        );
     }
 
     private Map<String, String> activeModels(List<String> paperIds,
@@ -381,17 +454,67 @@ public class CorpusRetrievalService {
     private int leadPriority(Map<String, Object> payload) {
         String locationType = stringPayload(payload, "location_type", "");
         String section = normalize(stringPayload(payload, "section_path", ""));
-        if ("SECTION".equalsIgnoreCase(locationType)
+        if ("PASSAGE".equalsIgnoreCase(locationType)
                 && ("abstract".equals(section) || section.endsWith(" abstract"))) {
             return 0;
         }
-        if (firstPage(payload) && "PAGE".equalsIgnoreCase(locationType)) {
+        if (firstPage(payload) && "PASSAGE".equalsIgnoreCase(locationType)) {
             return 1;
         }
-        if (firstPage(payload) && "SECTION".equalsIgnoreCase(locationType)) {
-            return 2;
-        }
         return Integer.MAX_VALUE;
+    }
+
+    private List<StructureItem> sectionStructure(Paper paper, PaperReadingModel model, String sectionQuery) {
+        Map<String, String> refsBySectionId = locationRepository
+                .findByPaperIdAndModelVersionAndLocationTypeOrderByPageNumberAscIdAsc(
+                        paper.getPaperId(), model.getModelVersion(), PaperLocationType.SECTION).stream()
+                .filter(location -> !safe(location.getSourceObjectId()).isBlank())
+                .collect(Collectors.toMap(PaperLocation::getSourceObjectId, PaperLocation::getLocationRef,
+                        (left, right) -> left, LinkedHashMap::new));
+        List<PaperSection> sections = sectionRepository
+                .findByPaperIdAndModelVersionOrderByPageNumberFromAscDisplayOrderAsc(paper.getPaperId(), model.getModelVersion());
+        List<String> ancestors = new ArrayList<>();
+        List<StructureItem> result = new ArrayList<>();
+        String normalizedQuery = normalize(sectionQuery);
+        for (PaperSection section : sections) {
+            int level = section.getSectionLevel() == null ? 1 : Math.max(1, section.getSectionLevel());
+            while (ancestors.size() >= level) {
+                ancestors.remove(ancestors.size() - 1);
+            }
+            ancestors.add(firstNonBlank(section.getSectionTitle(), "Untitled"));
+            String path = String.join(" > ", ancestors);
+            if (!normalizedQuery.isBlank() && !normalize(path).contains(normalizedQuery)) {
+                continue;
+            }
+            String ref = refsBySectionId.get(section.getSectionId());
+            if (ref != null && !ref.isBlank()) {
+                result.add(new StructureItem(paper.getPaperId(), paper.getPaperTitle(), ref, "SECTION",
+                        section.getSectionTitle(), level, path, section.getDisplayOrder(),
+                        section.getPageNumberFrom(), section.getPageNumberTo()));
+            }
+        }
+        return result;
+    }
+
+    private List<StructureItem> pageStructure(Paper paper, PaperReadingModel model, Integer pageFrom, Integer pageTo) {
+        if (pageFrom != null && pageTo != null && pageFrom > pageTo) {
+            throw new IllegalArgumentException("page_from must not be greater than page_to");
+        }
+        return locationRepository
+                .findByPaperIdAndModelVersionAndLocationTypeOrderByPageNumberAscIdAsc(
+                        paper.getPaperId(), model.getModelVersion(), PaperLocationType.PAGE).stream()
+                .filter(location -> pageFrom == null || location.getPageNumber() >= pageFrom)
+                .filter(location -> pageTo == null || location.getPageNumber() <= pageTo)
+                .map(location -> new StructureItem(paper.getPaperId(), paper.getPaperTitle(), location.getLocationRef(),
+                        "PAGE", location.getSectionTitle(), null, "", location.getDisplayOrder(),
+                        location.getPageNumber(), location.getPageNumber()))
+                .toList();
+    }
+
+    private boolean isEvidenceLocation(PaperLocation location) {
+        return location.getLocationType() == PaperLocationType.PASSAGE
+                || location.getLocationType() == PaperLocationType.TABLE
+                || location.getLocationType() == PaperLocationType.FIGURE;
     }
 
     private boolean firstPage(Map<String, Object> payload) {
@@ -483,11 +606,15 @@ public class CorpusRetrievalService {
     }
 
     private List<String> normalizeElementTypes(List<String> values) {
-        return values == null ? List.of() : values.stream()
+        List<String> normalized = values == null ? List.of() : values.stream()
                 .filter(value -> value != null && !value.isBlank())
                 .map(value -> value.trim().toLowerCase(Locale.ROOT))
                 .distinct()
                 .toList();
+        if (normalized.stream().anyMatch(value -> !Set.of("passage", "table", "figure").contains(value))) {
+            throw new IllegalArgumentException("element_types must contain only passage, table, or figure");
+        }
+        return normalized;
     }
 
     private Set<String> normalizedSet(List<String> values) {
@@ -501,6 +628,18 @@ public class CorpusRetrievalService {
     private String stringPayload(Map<String, Object> payload, String key, String fallback) {
         Object value = payload == null ? null : payload.get(key);
         return value == null ? fallback : value.toString();
+    }
+
+    private Integer integerPayload(Map<String, Object> payload, String key, Integer fallback) {
+        Object value = payload == null ? null : payload.get(key);
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            return value == null ? fallback : Integer.parseInt(value.toString());
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
     }
 
     private String normalize(String value) {
@@ -518,6 +657,20 @@ public class CorpusRetrievalService {
 
     private String safe(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private String sha256(String value) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder result = new StringBuilder(digest.length * 2);
+            for (byte item : digest) {
+                result.append(String.format("%02x", item));
+            }
+            return result.toString();
+        } catch (NoSuchAlgorithmException error) {
+            throw new IllegalStateException(error);
+        }
     }
 
     public record PaperSearchQuery(Long userId, List<String> scopePaperIds, String queryText,
@@ -543,20 +696,46 @@ public class CorpusRetrievalService {
 
     public record LocationSearchQuery(Long userId, List<String> scopePaperIds, List<String> paperIds,
                                       String queryText, String sectionQuery, List<String> elementTypes,
-                                      Integer pageFrom, Integer pageTo, int topK) {
+                                      Integer pageFrom, Integer pageTo, int topK, List<String> sectionRefs) {
+        public LocationSearchQuery(Long userId, List<String> scopePaperIds, List<String> paperIds,
+                                   String queryText, String sectionQuery, List<String> elementTypes,
+                                   Integer pageFrom, Integer pageTo, int topK) {
+            this(userId, scopePaperIds, paperIds, queryText, sectionQuery, elementTypes,
+                    pageFrom, pageTo, topK, List.of());
+        }
+
         public LocationSearchQuery {
             scopePaperIds = scopePaperIds == null ? List.of() : List.copyOf(scopePaperIds);
             paperIds = paperIds == null ? List.of() : List.copyOf(paperIds);
             queryText = queryText == null ? "" : queryText.trim();
             sectionQuery = sectionQuery == null ? "" : sectionQuery.trim();
             elementTypes = elementTypes == null ? List.of() : List.copyOf(elementTypes);
+            sectionRefs = sectionRefs == null ? List.of() : List.copyOf(sectionRefs);
         }
     }
 
-    public record LocationReadQuery(Long userId, List<String> scopePaperIds, List<String> locationRefs) {
+    public record LocationReadQuery(Long userId,
+                                    List<String> scopePaperIds,
+                                    List<String> locationRefs,
+                                    List<CanonicalReadingLocationService.EvidencePayload> evidencePayloads) {
+        public LocationReadQuery(Long userId, List<String> scopePaperIds, List<String> locationRefs) {
+            this(userId, scopePaperIds, locationRefs, List.of());
+        }
+
         public LocationReadQuery {
             scopePaperIds = scopePaperIds == null ? List.of() : List.copyOf(scopePaperIds);
             locationRefs = locationRefs == null ? List.of() : List.copyOf(locationRefs);
+            evidencePayloads = evidencePayloads == null ? List.of() : List.copyOf(evidencePayloads);
+        }
+    }
+
+    public record StructureQuery(Long userId, List<String> scopePaperIds, List<String> paperIds,
+                                 String structureType, String sectionQuery, Integer pageFrom, Integer pageTo) {
+        public StructureQuery {
+            scopePaperIds = scopePaperIds == null ? List.of() : List.copyOf(scopePaperIds);
+            paperIds = paperIds == null ? List.of() : List.copyOf(paperIds);
+            structureType = structureType == null ? "SECTION" : structureType.trim();
+            sectionQuery = sectionQuery == null ? "" : sectionQuery.trim();
         }
     }
 
@@ -576,8 +755,31 @@ public class CorpusRetrievalService {
                                     double denseScore, double sparseScore, double fusedScore) {
     }
 
-    public record LocationSearchResult(List<LocationCandidate> locations, int matchedCount,
-                                       int returnedCount, String indexVersion) {
+    public record LocationSearchResult(List<LocationCandidate> locations,
+                                       List<CanonicalReadingLocationService.EvidencePayload> evidencePayloads,
+                                       int matchedCount,
+                                       int returnedCount,
+                                       String indexVersion) {
+        public LocationSearchResult(List<LocationCandidate> locations, int matchedCount,
+                                    int returnedCount, String indexVersion) {
+            this(locations, List.of(), matchedCount, returnedCount, indexVersion);
+        }
+
+        public LocationSearchResult {
+            locations = locations == null ? List.of() : List.copyOf(locations);
+            evidencePayloads = evidencePayloads == null ? List.of() : List.copyOf(evidencePayloads);
+        }
+    }
+
+    public record StructureItem(String paperId, String title, String locationRef, String structureType,
+                                String sectionTitle, Integer sectionLevel, String sectionPath,
+                                Integer displayOrder, Integer pageFrom, Integer pageTo) {
+    }
+
+    public record StructureResult(String structureType, List<StructureItem> items) {
+        public StructureResult {
+            items = items == null ? List.of() : List.copyOf(items);
+        }
     }
 
     private record ScoredPaper(double score, Paper paper) {

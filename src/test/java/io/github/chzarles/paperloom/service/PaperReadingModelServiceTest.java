@@ -51,6 +51,9 @@ class PaperReadingModelServiceTest {
     @Mock
     private PaperReadingElementRepository readingElementRepository;
 
+    @Mock
+    private PaperPassageService passageService;
+
     @Test
     void successfulBuildCreatesCurrentReadyModel() {
         when(modelRepository.save(any(PaperReadingModel.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -64,7 +67,8 @@ class PaperReadingModelServiceTest {
                 sectionRepository,
                 locationRepository,
                 readingElementRepository,
-                new PaperReadingModelBuilder()
+                new PaperReadingModelBuilder(),
+                passageService
         );
 
         PaperReadingModel model = service.replaceFromParsedPaper(
@@ -94,7 +98,8 @@ class PaperReadingModelServiceTest {
                 sectionRepository,
                 locationRepository,
                 readingElementRepository,
-                new PaperReadingModelBuilder()
+                new PaperReadingModelBuilder(),
+                passageService
         );
 
         PaperReadingModel model = service.replaceFromParsedPaper(
@@ -126,7 +131,8 @@ class PaperReadingModelServiceTest {
                 sectionRepository,
                 locationRepository,
                 readingElementRepository,
-                new PaperReadingModelBuilder()
+                new PaperReadingModelBuilder(),
+                passageService
         );
 
         PaperReadingModel model = service.replaceFromParsedPaper("paper-a", parsedPaper("Readable text."), "user-a");
@@ -163,7 +169,8 @@ class PaperReadingModelServiceTest {
                 sectionRepository,
                 locationRepository,
                 readingElementRepository,
-                new PaperReadingModelBuilder()
+                new PaperReadingModelBuilder(),
+                passageService
         );
 
         PaperReadingModel first = service.replaceFromParsedPaper("paper-a", parsedPaper("Readable text."), "user-a");

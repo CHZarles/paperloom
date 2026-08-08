@@ -614,6 +614,7 @@ class PaperReadingModelRealPdfAuditTest {
         return switch (type) {
             case PAGE -> "page_ref_";
             case SECTION -> "section_ref_";
+            case PASSAGE -> "passage_ref_";
             case TABLE -> "table_ref_";
             case FIGURE -> "figure_ref_";
         };

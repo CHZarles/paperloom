@@ -76,11 +76,13 @@ Runtime 本身不持有长期会话状态。
 `JavaCorpusGateway` 才读取并原地补全对应 Metadata。正文 Reading Element 不再整批进入 Harness：
 
 - `search_paper_candidates` / `find_papers_by_identity` 调 Java Paper Corpus API；
-- `find_reading_locations` 调 Java 的 Qdrant Sparse BM25 检索，只获得候选 `location_ref`；
+- `search_paper_content` 调 Java 的 Qdrant Sparse BM25 检索，只获得候选 `location_ref`；
 - Java 对每个候选重新校验用户权限、锁定 Scope 和 Current Reading Model；
 - Java 只查询各论文 Current Reading Model 对应的词法索引合同，并校验 Collection Schema；
-- `read_locations` 再由 Java 从 MySQL 精确读取 Canonical Location；
-- Python 只在真实 Read 后生成 `ev_...`，继续维护 Disclosure 和 Evidence Ledger。
+- `get_paper_structure` 直接查 PAGE/SECTION 结构，不经过向量排名；
+- `read_paper_content` 对 PASSAGE/TABLE/FIGURE 使用本 Run 缓存的 Qdrant 正文和 Source Span；
+  PAGE/SECTION 才从 MySQL Reading Model 读取；
+- Python 只在真实 Read 后记录 Source Quote，继续维护 Disclosure 和本 Run 的引用集合。
 
 `DockerMySqlProductCorpusStore` 只供 Qdrant 产品探针和离线迁移诊断使用，不是 CLI 或运行时入口。
 Java Corpus Token 为空、Qdrant Collection 缺失、Current Model 不可检索或词法索引合同不一致时，
@@ -89,9 +91,9 @@ Java Corpus Token 为空、Qdrant Collection 缺失、Current Model 不可检索
 ## 当前检索
 
 产品检索由 Java 数据面执行：Java 将查询编码成 BM25 风格 Sparse Vector，Qdrant 在
-`lexical_bm25_v1` 上执行一次词法检索，Java 再做确定性的论文与 Lead Coverage，并从 MySQL Hydrate
-和验证候选。Qdrant Payload 不是 Evidence，Tool 仍只返回非引用 Preview 与 `location_ref`；
-`read_locations` 是唯一生成 Evidence ID 的入口。
+`lexical_bm25_v1` 上执行一次词法检索，Java 再做确定性的论文与 Lead Coverage，并验证候选的
+Model Version、正文 Hash 和 Source Span。Qdrant Payload 不是 Evidence，Tool 仍只返回非引用 Preview 与 `location_ref`；
+`read_paper_content` 是唯一返回可引用 `source_quote_ref` 的入口。
 
 Golden Fixture、离线 Audit 和单元测试继续使用 `ReadingCorpusTools` 的内存 BM25 Adapter，因此无需
 启动 Java 或 Qdrant。两条路径共享同一套模型可见 Tool Schema 和授权状态机。
@@ -102,8 +104,9 @@ Golden Fixture、离线 Audit 和单元测试继续使用 `ReadingCorpusTools` �
 | --- | --- | --- |
 | `search_paper_candidates` | 在固定 Corpus 内发现或浏览论文 Metadata，并公开 Paper | 否 |
 | `find_papers_by_identity` | 用 Title、Filename、DOI、arXiv ID、Author、Year 做唯一身份解析 | 否 |
-| `find_reading_locations` | 在已公开论文中通过 Java/Qdrant 找 Current Location | 否 |
-| `read_locations` | 读取已公开的准确 Location，并写入 Evidence Ledger | 是，唯一入口 |
+| `search_paper_content` | 在已公开论文中通过 Java/Qdrant 找 PASSAGE/TABLE/FIGURE | 否 |
+| `get_paper_structure` | 查看已公开论文的 PAGE/SECTION 结构 | 否 |
+| `read_paper_content` | 读取已公开的准确 Location，并返回 Source Quote | 是，唯一入口 |
 | `get_research_skill` | 按需读取研究范式指导 | 否 |
 | `submit_research_answer` | 提交 Outcome、Markdown 和 Fields，通过最终校验后结束 Run | 不创建；只能引用已知 Evidence |
 
@@ -115,17 +118,17 @@ Golden Fixture、离线 Audit 和单元测试继续使用 `ReadingCorpusTools` �
 ```text
 Java-authorized scope
 -> Candidate / Identity Tool 公开 Paper
--> Location Search 公开 Location
--> read_locations 读取 Location
--> Evidence ID 进入 Ledger
--> submit_research_answer 针对 Known Evidence 校验
+-> Content Search / Structure 公开 Location
+-> read_paper_content 读取 Location
+-> source_quote_ref 进入本 Run 引用集合
+-> submit_research_answer 针对 Known Source Quote 校验
 ```
 
 这几个集合在 `ResearchRunContext` 中独立记录。Tool Capture 同时保存调用前后的授权快照，因此离线
 诊断可以区分“Retriever 没找到”“Agent 没读”“读了没引用”和“只引用弱 Evidence”。
 
 `submit_research_answer` 必须独占最终 Tool Step。校验失败不会直接结束 Run，而是把结构化错误返回给
-同一个 Agent，让它修正非法 outcome、空 Markdown、手写数字引用或未知 evidence_id。更细的跨论文
+同一个 Agent，让它修正非法 outcome、空 Markdown、手写数字引用或未知 source_quote_ref。更细的跨论文
 Coverage、无引用内容和逐 Block 语义支撑留给离线 Scorer/Judge。
 
 ## 快速开始

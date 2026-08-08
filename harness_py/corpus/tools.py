@@ -4,8 +4,8 @@ from __future__ import annotations
 #
 # 构造时必须传 reader=...；不传 reader 时本文件不再提供 in-memory 兜底。
 # 单元测试 / 评测夹具走 corpus/in_memory_tools.py:InMemoryTools。
-# 五个 tool 方法（search_paper_candidates / find_papers_by_identity / find_reading_locations /
-# read_locations / get_citation_edges）都是 reader-only 委派：每个方法先看 self.reader，缺则报错。
+# 内容工具只公开 search_paper_content / get_paper_structure / read_paper_content；底层 transport
+# 仍可使用 locations/search 和 locations/read，避免把接口迁移泄露给模型。
 
 from dataclasses import dataclass, field
 from typing import Any
@@ -27,6 +27,7 @@ SEARCH_ELEMENT_TYPES = (
     "formula",
     "aside",
 )
+EVIDENCE_ELEMENT_TYPES = ("passage", "table", "figure")
 SEARCH_RESULT_LIMIT = 20
 SEARCH_SNIPPET_CHARS = 500
 PAPER_RESULT_LIMIT = 100
@@ -38,6 +39,7 @@ MODEL_REDACTED_FIELDS = {
     "sparse_score",
     "fused_score",
     "index_version",
+    "evidence_payloads",
 }
 
 
@@ -85,6 +87,7 @@ class ReadingCorpusTools:
     observations_by_evidence_id: dict[str, JsonMap] = field(default_factory=dict)
     authorized_paper_ids: set[str] = field(default_factory=set)
     disclosed_location_refs: set[str] = field(default_factory=set)
+    evidence_payloads_by_location_ref: dict[str, JsonMap] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.reader is None:
@@ -142,11 +145,10 @@ class ReadingCorpusTools:
                 },
             ),
             _tool_schema(
-                "find_reading_locations",
+                "search_paper_content",
                 (
-                    "Find relevant locations inside previously disclosed candidate papers. Returns "
-                    "non-citeable navigation previews and location refs. element_types are ranking "
-                    "hints because parser labels can be noisy. Use read_locations before making "
+                    "Search relevant passages, tables, and figures inside previously disclosed candidate papers. "
+                    "Returns non-citeable previews and location refs. Read selected refs before making "
                     "paper-content claims."
                 ),
                 {
@@ -156,9 +158,10 @@ class ReadingCorpusTools:
                         "query_text": {"type": "string"},
                         "paper_ids": {"type": "array", "items": {"type": "string"}},
                         "section_query": {"type": "string"},
+                        "section_refs": {"type": "array", "items": {"type": "string"}},
                         "element_types": {
                             "type": "array",
-                            "items": {"type": "string", "enum": list(SEARCH_ELEMENT_TYPES)},
+                            "items": {"type": "string", "enum": list(EVIDENCE_ELEMENT_TYPES)},
                         },
                         "page_from": {"type": "integer", "minimum": 1},
                         "page_to": {"type": "integer", "minimum": 1},
@@ -168,10 +171,29 @@ class ReadingCorpusTools:
                 },
             ),
             _tool_schema(
-                "read_locations",
+                "get_paper_structure",
                 (
-                    "Read exact paper content from location refs returned by find_reading_locations. "
-                    "This is the only tool that creates citeable paper-content evidence."
+                    "Browse the section outline or page structure of previously disclosed papers. This returns "
+                    "only navigation metadata and location refs, never paper body text or citations."
+                ),
+                {
+                    "type": "object",
+                    "required": ["paper_ids"],
+                    "properties": {
+                        "paper_ids": {"type": "array", "items": {"type": "string"}},
+                        "structure_type": {"type": "string", "enum": ["SECTION", "PAGE"]},
+                        "section_query": {"type": "string"},
+                        "page_from": {"type": "integer", "minimum": 1},
+                        "page_to": {"type": "integer", "minimum": 1},
+                    },
+                    "additionalProperties": False,
+                },
+            ),
+            _tool_schema(
+                "read_paper_content",
+                (
+                    "Read exact content from location refs returned by search_paper_content or get_paper_structure. "
+                    "Returns source_quote_ref values; only those values can be cited in the final answer."
                 ),
                 {
                     "type": "object",
@@ -205,8 +227,9 @@ class ReadingCorpusTools:
         return ToolResult(name, {
             "search_paper_candidates": self.search_paper_candidates,
             "find_papers_by_identity": self.find_papers_by_identity,
-            "find_reading_locations": self.find_reading_locations,
-            "read_locations": self.read_locations,
+            "search_paper_content": self.search_paper_content,
+            "get_paper_structure": self.get_paper_structure,
+            "read_paper_content": self.read_paper_content,
             "get_citation_edges": self.get_citation_edges,
         }[name](arguments))
 
@@ -230,22 +253,59 @@ class ReadingCorpusTools:
             )
         return payload
 
-    def find_reading_locations(self, arguments: JsonMap) -> JsonMap:
+    def search_paper_content(self, arguments: JsonMap) -> JsonMap:
         payload = self.reader.search_locations(arguments)
-        self.disclosed_location_refs.update(
+        disclosed = {
             str(child_map(item).get("location_ref"))
             for item in as_list(payload.get("locations"))
+            if child_map(item).get("location_ref")
+        }
+        self.disclosed_location_refs.update(
+            disclosed
+        )
+        self.evidence_payloads_by_location_ref.update({
+            location_ref: item
+            for raw in as_list(payload.get("evidence_payloads"))
+            if (item := child_map(raw))
+            if (location_ref := str(item.get("location_ref") or "").strip()) in disclosed
+        })
+        return payload
+
+    def get_paper_structure(self, arguments: JsonMap) -> JsonMap:
+        payload = self.reader.get_structure(arguments)
+        self.disclosed_location_refs.update(
+            str(child_map(item).get("location_ref"))
+            for item in as_list(payload.get("items"))
             if child_map(item).get("location_ref")
         )
         return payload
 
-    def read_locations(self, arguments: JsonMap) -> JsonMap:
-        payload = self.reader.read_locations(arguments)
+    def read_paper_content(self, arguments: JsonMap) -> JsonMap:
+        refs = [str(ref).strip() for ref in as_list(arguments.get("location_refs")) if str(ref).strip()]
+        if len(set(refs)) > SEARCH_RESULT_LIMIT:
+            return {"error": "too_many_location_refs", "items": []}
+        undisclosed = [ref for ref in dict.fromkeys(refs) if ref not in self.disclosed_location_refs]
+        if undisclosed:
+            return {"error": "location_ref_not_disclosed", "location_refs": undisclosed, "items": []}
+        payload = self.reader.read_locations({
+            **arguments,
+            "_evidence_payloads": [
+                self.evidence_payloads_by_location_ref[ref]
+                for ref in dict.fromkeys(refs)
+                if ref in self.evidence_payloads_by_location_ref
+            ],
+        })
         for raw in as_list(payload.get("items")):
             item = child_map(raw)
-            evidence_id = str(item.get("evidence_id") or "")
-            if evidence_id:
-                self.observations_by_evidence_id[evidence_id] = item
+            for raw_quote in as_list(item.get("source_quotes")):
+                quote = child_map(raw_quote)
+                source_quote_ref = str(quote.get("source_quote_ref") or "")
+                if source_quote_ref:
+                    self.observations_by_evidence_id[source_quote_ref] = {
+                        **item,
+                        **quote,
+                        "source_quote_ref": source_quote_ref,
+                    }
         return payload
 
     def get_citation_edges(self, arguments: JsonMap) -> JsonMap:

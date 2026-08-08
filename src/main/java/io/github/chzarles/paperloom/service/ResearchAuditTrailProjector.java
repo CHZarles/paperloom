@@ -122,7 +122,7 @@ public class ResearchAuditTrailProjector {
                 mergeEvidence(evidence, draft);
             }
         }
-        if ("find_reading_locations".equals(tool)) {
+        if ("search_paper_content".equals(tool) || "find_reading_locations".equals(tool)) {
             for (Map<String, Object> location : mapList(output.get("locations"))) {
                 EvidenceDraft draft = new EvidenceDraft();
                 draft.status = "candidate";
@@ -132,6 +132,11 @@ public class ResearchAuditTrailProjector {
                 draft.pageNumber = integerValue(firstNonBlank(location.get("page"), location.get("pageNumber")));
                 draft.sectionTitle = firstNonBlank(location.get("section"), location.get("sectionTitle"));
                 mergeEvidence(evidence, draft);
+            }
+        }
+        if ("read_paper_content".equals(tool)) {
+            for (Map<String, Object> item : mapList(output.get("sourceQuotes"))) {
+                mergeEvidence(evidence, evidenceFromReadItem(item));
             }
         }
         if ("read_locations".equals(tool)) {

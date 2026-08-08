@@ -877,7 +877,9 @@ class ConversationServiceTest {
         Map<String, Object> detail = detailOpt.get();
         assertEquals("source_quote_abc", detail.get("sourceQuoteRef"));
         assertEquals(false, detail.containsKey("bboxJson"));
-        assertEquals(List.of(), detail.get("visualRegions"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> regions = (List<Map<String, Object>>) detail.get("visualRegions");
+        assertEquals(2, regions.size());
         assertEquals(quote.getSourceSpanJson(), detail.get("sourceSpanJson"));
     }
 

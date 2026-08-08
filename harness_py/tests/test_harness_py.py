@@ -33,6 +33,12 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         self.assertIn("precision_fact_extraction", skills)
         self.assertIn("complex_constraint_combination", skills)
 
+    def test_research_skills_describe_the_current_content_read_tool(self) -> None:
+        standards = [skill.evidence_standard for skill in ResearchSkillRegistry().skills.values()]
+
+        self.assertIn("read_paper_content", " ".join(standards))
+        self.assertNotIn("read_locations", " ".join(standards))
+
     def test_committed_seed_dataset_runs_without_failed_cases(self) -> None:
         dataset = load_dataset("research/golden-data/manifest.yaml")
         harness = GoldenFixtureHarness()
@@ -110,7 +116,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         from harness_py.corpus.tools import model_facing_payload
 
         payload = model_facing_payload({
-            "evidence_id": "ev_1",
+            "source_quote_ref": "source_quote_1",
             "matched_anchor_id": "anchor_a",
             "matched_anchor_ids": ["anchor_a", "anchor_b"],
             "dense_score": 0.91,
@@ -120,7 +126,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
             "span_text": "Visible evidence.",
         })
 
-        self.assertEqual({"evidence_id": "ev_1", "span_text": "Visible evidence."}, payload)
+        self.assertEqual({"source_quote_ref": "source_quote_1", "span_text": "Visible evidence."}, payload)
 
     def test_structural_scorer_normalizes_equivalent_power_of_ten_notation(self) -> None:
         self.assertEqual(_scalar_string("1e-9"), _scalar_string("10^-9"))
@@ -137,7 +143,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
     def test_answer_after_reading_paper_evidence_can_submit_without_citation(self) -> None:
         error = answer_validation_error(
             {"outcome": "answered", "markdown": "The paper proposes a new method."},
-            {"ev_1": {"evidence_id": "ev_1", "citeable": True}},
+            {"source_quote_1": {"source_quote_ref": "source_quote_1", "citeable": True}},
         )
 
         self.assertEqual("", error)
@@ -148,10 +154,10 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
                 "outcome": "answered",
                 "markdown": (
                     "Unsupported summary.\n\n"
-                    "Supported detail. [[ev_1]]"
+                    "Supported detail. [[source_quote_1]]"
                 ),
             },
-            {"ev_1": {"evidence_id": "ev_1", "citeable": True}},
+            {"source_quote_1": {"source_quote_ref": "source_quote_1", "citeable": True}},
         )
 
         self.assertEqual("", error)
@@ -164,10 +170,10 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
                     "# Comparison\n\n"
                     "| Paper | Result |\n"
                     "| --- | --- |\n"
-                    "| A | Supported detail [[ev_1]] |"
+                    "| A | Supported detail [[source_quote_1]] |"
                 ),
             },
-            {"ev_1": {"evidence_id": "ev_1", "citeable": True}},
+            {"source_quote_1": {"source_quote_ref": "source_quote_1", "citeable": True}},
         )
 
         self.assertEqual("", error)
@@ -261,7 +267,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
 
         tools = InMemoryTools(dataset)
         tools.search_paper_candidates({"paper_ids": ["paper_live"], "limit": 1})
-        result = tools.find_reading_locations({
+        result = tools.search_paper_content({
             "query_text": "evaluation dimensions",
             "paper_ids": ["paper_live"],
             "top_k": 1,
@@ -294,14 +300,14 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         tools = InMemoryTools(dataset)
         tools.search_paper_candidates({"paper_ids": ["paper_live"], "limit": 1})
 
-        result = tools.find_reading_locations({
+        result = tools.search_paper_content({
             "query_text": "evaluation",
             "paper_ids": ["paper_live"],
             "top_k": 20,
         })
         definition = next(
             item for item in tools.definitions()
-            if item["function"]["name"] == "find_reading_locations"
+            if item["function"]["name"] == "search_paper_content"
         )
         parameters = definition["function"]["parameters"]["properties"]
 
@@ -309,17 +315,17 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         self.assertLessEqual(len(result["locations"][0]["preview"]), 500)
         self.assertNotIn("evidence_id", result["locations"][0])
         self.assertEqual({}, tools.observations_by_evidence_id)
-        invalid = tools.find_reading_locations({
+        invalid = tools.search_paper_content({
             "query_text": "evaluation",
             "paper_ids": ["paper_live"],
             "element_types": ["abstract"],
         })
         self.assertEqual("unsupported_element_types", invalid["error"])
-        read = tools.read_locations({"location_refs": [result["locations"][0]["location_ref"]]})
-        evidence_id = read["items"][0]["evidence_id"]
-        self.assertGreater(len(tools.observations_by_evidence_id[evidence_id]["span_text"]), 500)
+        read = tools.read_paper_content({"location_refs": [result["locations"][0]["location_ref"]]})
+        source_quote_ref = read["items"][0]["source_quotes"][0]["source_quote_ref"]
+        self.assertGreater(len(tools.observations_by_evidence_id[source_quote_ref]["span_text"]), 500)
         self.assertEqual(20, parameters["top_k"]["maximum"])
-        self.assertIn("paragraph", parameters["element_types"]["items"]["enum"])
+        self.assertIn("passage", parameters["element_types"]["items"]["enum"])
         self.assertIn("table", parameters["element_types"]["items"]["enum"])
 
     def test_location_search_deduplicates_identical_text_on_the_same_page(self) -> None:
@@ -344,7 +350,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         tools = InMemoryTools(dataset)
         tools.search_paper_candidates({"paper_ids": ["paper_live"], "limit": 1})
 
-        result = tools.find_reading_locations({
+        result = tools.search_paper_content({
             "query_text": "model architecture",
             "paper_ids": ["paper_live"],
             "top_k": 2,
@@ -400,7 +406,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         tools = InMemoryTools(dataset)
 
         identity = tools.find_papers_by_identity({"title": "Agent Evaluation"})
-        locations = tools.find_reading_locations({
+        locations = tools.search_paper_content({
             "query_text": "benchmark",
             "paper_ids": ["agent_eval_a"],
         })
@@ -457,7 +463,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         state = replace(
             ConversationState.new("conversation_refs"),
             selected_paper_ids=["paper_a", "paper_b"],
-            selected_evidence_ids=["ev_quote"],
+            selected_evidence_ids=["source_quote_quote"],
             evidence_items_by_id={
                 "paper_candidate_a": {
                     "evidence_id": "paper_candidate_a",
@@ -473,8 +479,8 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
                     "element_type": "paper_candidate",
                     "citeable": False,
                 },
-                "ev_quote": {
-                    "evidence_id": "ev_quote",
+                "source_quote_quote": {
+                    "source_quote_ref": "source_quote_quote",
                     "paper_id": "paper_a",
                     "title": "Paper A",
                     "element_type": "paragraph",
@@ -485,7 +491,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
 
         context = state.prompt_context(dataset)
 
-        self.assertEqual(["ev_quote"], [item["evidence_id"] for item in context["selected_evidence_refs"]])
+        self.assertEqual(["source_quote_quote"], [item["source_quote_ref"] for item in context["selected_evidence_refs"]])
 
     def test_incomplete_turn_preserves_selected_evidence_memory(self) -> None:
         dataset = self._synthetic_dataset()

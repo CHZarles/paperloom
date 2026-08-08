@@ -136,14 +136,14 @@ class ConversationState:
         answer = child_map(run.get("research_answer"))
         run_id = str(run.get("run_id") or "")
         ledger_items = {
-            str(item.get("evidence_id")): child_map(item)
+            str(child_map(item).get("source_quote_ref") or child_map(item).get("evidence_id")): child_map(item)
             for item in as_list(child_map(run.get("evidence_ledger")).get("items"))
-            if child_map(item).get("evidence_id")
+            if child_map(item).get("source_quote_ref") or child_map(item).get("evidence_id")
         }
         # 只让已验证的证据进入下一轮记忆，运行轨迹不回灌给模型。
         known_evidence = {**self.evidence_items_by_id, **ledger_items}
         cited_ids = _validated_ids(
-            as_list(answer.get("cited_evidence_ids")),
+            as_list(answer.get("cited_source_quote_refs") or answer.get("cited_evidence_ids")),
             known_evidence,
         )
         selected_evidence_ids = cited_ids or self.selected_evidence_ids
@@ -173,7 +173,7 @@ class ConversationState:
                     "turn_index": self.turn_index + 1,
                     "content": assistant_text,
                     "run_id": run_id,
-                    "cited_evidence_ids": cited_ids,
+                    "cited_source_quote_refs": cited_ids,
                 },
             ],
             evidence_items_by_id=known_evidence,
@@ -194,15 +194,15 @@ def _message_item(item: JsonMap) -> JsonMap:
         "content": content,
         **({"run_id": item.get("run_id")} if item.get("run_id") else {}),
         **(
-            {"cited_evidence_ids": _strings(item.get("cited_evidence_ids"))}
-            if item.get("cited_evidence_ids") else {}
+            {"cited_source_quote_refs": _strings(item.get("cited_source_quote_refs") or item.get("cited_evidence_ids"))}
+            if item.get("cited_source_quote_refs") or item.get("cited_evidence_ids") else {}
         ),
     }
 
 
 def _evidence_card(item: JsonMap) -> JsonMap:
     return {
-        "evidence_id": item.get("evidence_id"),
+        "source_quote_ref": item.get("source_quote_ref"),
         "paper_id": item.get("paper_id"),
         "title": item.get("title"),
         "section": item.get("section"),

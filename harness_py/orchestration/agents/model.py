@@ -11,6 +11,7 @@ import json
 from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Any, Iterator
+from urllib.parse import urlparse
 from uuid import uuid4
 
 import httpx
@@ -207,7 +208,7 @@ def _client(
     timeout_seconds: int,
     max_attempts: int,
 ) -> AsyncOpenAI:
-    http_client = httpx.AsyncClient(event_hooks={
+    http_client = httpx.AsyncClient(trust_env=not _is_loopback_url(provider.api_base_url), event_hooks={
         "request": [owner._record_request],
         "response": [owner._record_response],
     })
@@ -218,6 +219,10 @@ def _client(
         max_retries=max(0, max_attempts - 1),
         http_client=http_client,
     )
+
+
+def _is_loopback_url(url: str) -> bool:
+    return urlparse(url).hostname in {"127.0.0.1", "::1", "localhost"}
 
 
 def _safe_headers(headers: httpx.Headers) -> dict[str, str]:

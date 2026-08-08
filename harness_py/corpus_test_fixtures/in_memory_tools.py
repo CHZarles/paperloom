@@ -22,7 +22,7 @@ from ..corpus.pages import (
     normalize_text as _normalize,
     page_matches as _page_matches,
 )
-from ..corpus.tools import ReadingCorpusTools
+from ..corpus.tools import EVIDENCE_ELEMENT_TYPES, ReadingCorpusTools
 
 
 # 评分权重与常量：仅 in-memory 路径使用。
@@ -75,9 +75,16 @@ class ReadingDocument:
     table_screenshot_available: bool = False
     figure_screenshot_available: bool = False
 
-    def evidence_id(self) -> str:
+    def source_quote_ref(self) -> str:
         raw = f"{self.paper_id}:{self.location_ref}:{self.element_type}:{self.page}"
-        return "ev_" + hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
+        return "source_quote_" + hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
+
+    def evidence_element_type(self) -> str:
+        if self.element_type in {"table"}:
+            return "table"
+        if self.element_type in {"figure", "image", "chart"}:
+            return "figure"
+        return "passage"
 
     def to_location_candidate(self) -> JsonMap:
         return {
@@ -88,15 +95,12 @@ class ReadingDocument:
             "location_ref": self.location_ref,
             "section": self.section or "unsectioned",
             "page": self.page if self.page is not None else "unknown",
-            "element_type": self.element_type,
+            "element_type": self.evidence_element_type(),
             "preview": self.text[:500],
         }
 
-    def to_evidence_item(self) -> JsonMap:
+    def to_read_item(self) -> JsonMap:
         return {
-            "evidence_id": self.evidence_id(),
-            "matched_anchor_id": self.matched_anchor_id,
-            "matched_anchor_ids": list(self.matched_anchor_ids),
             "paper_id": self.paper_id,
             "title": self.title,
             "paper_version": self.paper_version,
@@ -104,7 +108,7 @@ class ReadingDocument:
             "page": self.page if self.page is not None else "unknown",
             "location": self.location_ref,
             "location_ref": self.location_ref,
-            "element_type": self.element_type,
+            "element_type": self.evidence_element_type(),
             "span_text": self.text,
             "bbox_or_cell_ref": self.bbox_json,
             "bbox_json": self.bbox_json,
@@ -118,11 +122,16 @@ class ReadingDocument:
             "pdf_evidence_available": self.pdf_evidence_available,
             "table_screenshot_available": self.table_screenshot_available,
             "figure_screenshot_available": self.figure_screenshot_available,
-            "retrieval_strategy": "source_quote_reading",
-            "relevance_score": 1.0,
-            "evidence_quality": "verified",
-            "supports_claim_ids": [],
-            "refutes_claim_ids": [],
+            "source_quotes": [{
+                "source_quote_ref": self.source_quote_ref(),
+                "paper_id": self.paper_id,
+                "paper_version": self.paper_version,
+                "location_ref": self.location_ref,
+                "page": self.page if self.page is not None else "unknown",
+                "page_end": self.page if self.page is not None else "unknown",
+                "section": self.section or "unsectioned",
+                "content": self.text,
+            }],
         }
 
 
@@ -214,7 +223,7 @@ class InMemoryTools(ReadingCorpusTools):
 
     # ---- 位置 + 引文 ----
 
-    def find_reading_locations(self, arguments: JsonMap) -> JsonMap:
+    def search_paper_content(self, arguments: JsonMap) -> JsonMap:
         query = str(arguments.get("query_text") or "").strip()
         section_query = str(arguments.get("section_query") or "").strip()
         top_k = max(1, min(int(arguments.get("top_k") or 8), 20))
@@ -230,7 +239,7 @@ class InMemoryTools(ReadingCorpusTools):
             }
         paper_ids = set(paper_id_list)
         element_types = {str(value) for value in as_list(arguments.get("element_types")) if value}
-        unsupported_types = sorted(element_types - set(SEARCH_ELEMENT_TYPES))
+        unsupported_types = sorted(element_types - set(EVIDENCE_ELEMENT_TYPES))
         if unsupported_types:
             return {
                 "error": "unsupported_element_types",
@@ -313,7 +322,7 @@ class InMemoryTools(ReadingCorpusTools):
                 score += SECTION_SCORE_WEIGHT * bm25_score(
                     query_token_list, document_section_tokens, section_statistics
                 )
-            if score > 0 and element_types and document.element_type in element_types:
+            if score > 0 and element_types and document.evidence_element_type() in element_types:
                 score += 0.25
             if section_tokens:
                 score += _section_hint_score(section_query, document.section, document.text)
@@ -409,7 +418,7 @@ class InMemoryTools(ReadingCorpusTools):
             "coverage": "complete" if len(locations) >= matched_count else "truncated",
         }
 
-    def read_locations(self, arguments: JsonMap) -> JsonMap:
+    def read_paper_content(self, arguments: JsonMap) -> JsonMap:
         location_refs = [str(value) for value in as_list(arguments.get("location_refs")) if value]
         if not location_refs:
             return {"error": "location_refs_required", "items": []}
@@ -424,15 +433,71 @@ class InMemoryTools(ReadingCorpusTools):
         items: list[JsonMap] = []
         seen: set[str] = set()
         for document in docs:
-            if document.evidence_id() in seen:
+            if document.source_quote_ref() in seen:
                 continue
-            seen.add(document.evidence_id())
-            item = document.to_evidence_item()
-            # 只有真正读取过的位置才会生成可引用 evidence_id。
-            self.observations_by_evidence_id[item["evidence_id"]] = item
+            seen.add(document.source_quote_ref())
+            item = document.to_read_item()
+            source_quote = child_map(item["source_quotes"][0])
+            self.observations_by_evidence_id[document.source_quote_ref()] = {
+                **item,
+                **source_quote,
+                "source_quote_ref": document.source_quote_ref(),
+            }
             items.append(item)
         missing = [ref for ref in location_refs if ref not in self.documents_by_location]
         return {"items": items, "missing_location_refs": missing}
+
+    def get_paper_structure(self, arguments: JsonMap) -> JsonMap:
+        paper_ids = {str(value) for value in as_list(arguments.get("paper_ids")) if value}
+        if not paper_ids:
+            return {"error": "paper_ids_required", "items": []}
+        if any(paper_id not in self.authorized_paper_ids for paper_id in paper_ids):
+            return {"error": "paper_not_authorized_for_reading", "items": []}
+        structure_type = str(arguments.get("structure_type") or "SECTION").upper()
+        if structure_type == "PAGE":
+            page_from = _optional_int(arguments.get("page_from"))
+            page_to = _optional_int(arguments.get("page_to"))
+            items = [
+                {
+                    "paper_id": doc.paper_id,
+                    "title": doc.title,
+                    "location_ref": doc.location_ref,
+                    "structure_type": "PAGE",
+                    "page_from": doc.page,
+                    "page_to": doc.page,
+                    "section_title": doc.section or None,
+                }
+                for doc in self.documents
+                if doc.paper_id in paper_ids
+                and doc.surface_kind == "page"
+                and (page_from is None or (_optional_int(doc.page) or 0) >= page_from)
+                and (page_to is None or (_optional_int(doc.page) or 0) <= page_to)
+            ]
+        else:
+            query = _normalize(str(arguments.get("section_query") or ""))
+            seen: set[tuple[str, str]] = set()
+            items = []
+            for doc in self.documents:
+                key = (doc.paper_id, doc.section)
+                if doc.paper_id not in paper_ids or not doc.section or key in seen:
+                    continue
+                if query and query not in _normalize(doc.section):
+                    continue
+                seen.add(key)
+                items.append({
+                    "paper_id": doc.paper_id,
+                    "title": doc.title,
+                    "location_ref": doc.location_ref,
+                    "structure_type": "SECTION",
+                    "section_title": doc.section,
+                    "section_level": 1,
+                    "section_path": doc.section,
+                    "display_order": len(items) + 1,
+                    "page_from": doc.page,
+                    "page_to": doc.page,
+                })
+        self.disclosed_location_refs.update(str(item["location_ref"]) for item in items)
+        return {"structure_type": structure_type, "items": items}
 
     def get_citation_edges(self, arguments: JsonMap) -> JsonMap:
         paper_id = str(arguments.get("paper_id") or "")

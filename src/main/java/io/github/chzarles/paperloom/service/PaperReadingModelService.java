@@ -25,19 +25,22 @@ public class PaperReadingModelService {
     private final PaperLocationRepository locationRepository;
     private final PaperReadingElementRepository readingElementRepository;
     private final PaperReadingModelBuilder builder;
+    private final PaperPassageService passageService;
 
     public PaperReadingModelService(PaperReadingModelRepository modelRepository,
                                     PaperPageRepository pageRepository,
                                     PaperSectionRepository sectionRepository,
                                     PaperLocationRepository locationRepository,
                                     PaperReadingElementRepository readingElementRepository,
-                                    PaperReadingModelBuilder builder) {
+                                    PaperReadingModelBuilder builder,
+                                    PaperPassageService passageService) {
         this.modelRepository = modelRepository;
         this.pageRepository = pageRepository;
         this.sectionRepository = sectionRepository;
         this.locationRepository = locationRepository;
         this.readingElementRepository = readingElementRepository;
         this.builder = builder;
+        this.passageService = passageService;
     }
 
     @Transactional
@@ -82,6 +85,7 @@ public class PaperReadingModelService {
         sectionRepository.saveAll(result.sections());
         locationRepository.saveAll(result.locations());
         readingElementRepository.saveAll(result.readingElements());
+        passageService.rebuild(paperId, modelVersion, userId);
         modelRepository.clearCurrentModels(paperId, modelVersion);
 
         int readableCharCount = result.pages().stream()

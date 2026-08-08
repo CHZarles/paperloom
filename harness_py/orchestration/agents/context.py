@@ -140,5 +140,5 @@ class ResearchRunContext:
         return {
             "authorized_paper_ids": sorted(self.corpus.authorized_paper_ids),
             "disclosed_location_refs": sorted(self.corpus.disclosed_location_refs),
-            "evidence_ids": sorted(self.corpus.observations_by_evidence_id),
+            "source_quote_refs": sorted(self.corpus.observations_by_evidence_id),
         }

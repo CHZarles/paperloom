@@ -165,7 +165,7 @@ def _technical_failure_run(run_id: str, case_id: str, question: str, message: st
         "summary": "The research turn failed technically.",
         "markdown": "The research turn failed technically.",
         "fields": {},
-        "cited_evidence_ids": [],
+        "cited_source_quote_refs": [],
     }
     now = utc_now_iso()
     return {

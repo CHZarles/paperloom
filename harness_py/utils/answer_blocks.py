@@ -7,8 +7,8 @@ from .models import JsonMap, as_list
 
 NON_MATERIAL_UNCITED_BLOCK_KINDS = frozenset({"heading", "table_header"})
 _NUMERIC_CITATION = re.compile(r"(?<!\[)\[(\d+)\]")
-_EVIDENCE_CITATION = re.compile(r"\[\[(ev_[A-Za-z0-9_-]+)\]\]")
-_LEGACY_EVIDENCE_CITATION = re.compile(r"(?<!\[)\[(ev_[A-Za-z0-9_-]+)\](?!\])")
+_EVIDENCE_CITATION = re.compile(r"\[\[((?:source_quote|ev)_[A-Za-z0-9_-]+)\]\]")
+_LEGACY_EVIDENCE_CITATION = re.compile(r"(?<!\[)\[((?:source_quote|ev)_[A-Za-z0-9_-]+)\](?!\])")
 _LIST_ITEM = re.compile(r"^\s*(?:[-+*]|\d+[.)])\s+")
 _TABLE_SEPARATOR = re.compile(r"^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*$")
 
@@ -17,7 +17,7 @@ def answer_blocks(answer: JsonMap) -> tuple[list[JsonMap], list[str]]:
     markdown = _answer_body(str(answer.get("markdown") or ""))
     cited_ids = [
         str(item).strip()
-        for item in as_list(answer.get("cited_evidence_ids"))
+        for item in as_list(answer.get("cited_source_quote_refs") or answer.get("cited_evidence_ids"))
         if str(item).strip()
     ]
     raw_blocks = _markdown_blocks(markdown)

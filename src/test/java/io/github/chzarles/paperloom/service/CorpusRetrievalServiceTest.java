@@ -6,11 +6,16 @@ import io.github.chzarles.paperloom.model.PaperLocationType;
 import io.github.chzarles.paperloom.model.PaperReadingModel;
 import io.github.chzarles.paperloom.model.PaperReadingModelStatus;
 import io.github.chzarles.paperloom.model.PaperRetrievalIndexStatus;
+import io.github.chzarles.paperloom.model.PaperSection;
 import io.github.chzarles.paperloom.repository.PaperLocationRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
+import io.github.chzarles.paperloom.repository.PaperSectionRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -54,6 +59,9 @@ class CorpusRetrievalServiceTest {
 
         assertEquals(Set.of("location-a", "location-b"), result.locations().stream()
                 .map(CorpusRetrievalService.LocationCandidate::locationRef)
+                .collect(Collectors.toSet()));
+        assertEquals(Set.of("location-a", "location-b"), result.evidencePayloads().stream()
+                .map(CanonicalReadingLocationService.EvidencePayload::locationRef)
                 .collect(Collectors.toSet()));
         ArgumentCaptor<LocationRetrievalRequest> request =
                 ArgumentCaptor.forClass(LocationRetrievalRequest.class);
@@ -241,7 +249,7 @@ class CorpusRetrievalServiceTest {
     }
 
     @Test
-    void staleQdrantCandidateIsRejectedBeforeCanonicalHydration() {
+    void staleQdrantCandidateIsRejectedWithoutCanonicalHydration() {
         Fixture fixture = new Fixture();
         List<String> scope = List.of("paper-a");
         fixture.authorize(scope);
@@ -250,14 +258,13 @@ class CorpusRetrievalServiceTest {
                 candidate("paper-a", "rm-stale", "stale-ref", 0.9)
         ));
         fixture.locations(locationFor("paper-a", "rm-stale", "stale-ref"));
-        fixture.canonical();
 
         CorpusRetrievalService.LocationSearchResult result = fixture.service.searchLocations(
                 new CorpusRetrievalService.LocationSearchQuery(
                         7L, scope, scope, "query", "", List.of(), null, null, 8));
 
         assertEquals(0, result.returnedCount());
-        verify(fixture.readService).read(List.of(), scope);
+        verifyNoInteractions(fixture.readService);
     }
 
     @Test
@@ -301,6 +308,57 @@ class CorpusRetrievalServiceTest {
         verifyNoInteractions(fixture.paperService, fixture.modelRepository, fixture.readService);
     }
 
+    @Test
+    void exactEvidenceReadUsesTheSearchPayloadInsteadOfHydratingContent() {
+        Fixture fixture = new Fixture();
+        List<String> scope = List.of("paper-a");
+        fixture.authorize(scope);
+        fixture.models(readyModel("paper-a", "rm-1"));
+        String content = "Qdrant payload content.";
+        CanonicalReadingLocationService.EvidencePayload payload =
+                new CanonicalReadingLocationService.EvidencePayload(
+                        "paper-a", "rm-1", "passage-ref", "PASSAGE", content, sha256(content), "{}");
+        CanonicalReadingLocationService.ReadBatch batch =
+                new CanonicalReadingLocationService.ReadBatch(List.of(), List.of("passage-ref"));
+        when(fixture.readService.read(List.of("passage-ref"), scope, List.of(payload))).thenReturn(batch);
+
+        fixture.service.readLocations(new CorpusRetrievalService.LocationReadQuery(
+                7L, scope, List.of("passage-ref"), List.of(payload)));
+
+        verify(fixture.readService).read(List.of("passage-ref"), scope, List.of(payload));
+    }
+
+    @Test
+    void sectionStructureReturnsMetadataWithoutQdrantSearch() {
+        Fixture fixture = new Fixture();
+        List<String> scope = List.of("paper-a");
+        fixture.authorize(scope);
+        fixture.models(readyModel("paper-a", "rm-1"));
+        PaperSection section = new PaperSection();
+        section.setSectionId("section-a");
+        section.setSectionTitle("Methods");
+        section.setSectionLevel(2);
+        section.setDisplayOrder(4);
+        section.setPageNumberFrom(3);
+        section.setPageNumberTo(5);
+        PaperLocation sectionLocation = new PaperLocation();
+        sectionLocation.setSourceObjectId("section-a");
+        sectionLocation.setLocationRef("section_ref_a");
+        when(fixture.locationRepository.findByPaperIdAndModelVersionAndLocationTypeOrderByPageNumberAscIdAsc(
+                "paper-a", "rm-1", PaperLocationType.SECTION)).thenReturn(List.of(sectionLocation));
+        when(fixture.sectionRepository.findByPaperIdAndModelVersionOrderByPageNumberFromAscDisplayOrderAsc(
+                "paper-a", "rm-1")).thenReturn(List.of(section));
+
+        CorpusRetrievalService.StructureResult result = fixture.service.getStructure(
+                new CorpusRetrievalService.StructureQuery(7L, scope, scope, "SECTION", "", null, null));
+
+        assertEquals("SECTION", result.structureType());
+        assertEquals(1, result.items().size());
+        assertEquals("section_ref_a", result.items().get(0).locationRef());
+        assertEquals("Methods", result.items().get(0).sectionPath());
+        verifyNoInteractions(fixture.retriever, fixture.searchability);
+    }
+
     private static RetrievalCandidates retrieval(
             RankedLocationCandidate... candidates) {
         return new RetrievalCandidates(
@@ -309,12 +367,16 @@ class CorpusRetrievalServiceTest {
 
     private static RankedLocationCandidate candidate(
             String paperId, String modelVersion, String locationRef, double score) {
+        String content = "Canonical content for " + paperId;
         return new RankedLocationCandidate(
                 locationRef,
                 Map.of(
                         "paper_id", paperId,
                         "model_version", modelVersion,
                         "location_ref", locationRef,
+                        "content_text", content,
+                        "content_hash", sha256(content),
+                        "source_span_json", "{}",
                         "element_types", List.of("paragraph")
                 ),
                 score,
@@ -325,15 +387,19 @@ class CorpusRetrievalServiceTest {
 
     private static RankedLocationCandidate leadCandidate(
             String paperId, String modelVersion, String locationRef, double score) {
+        String content = "Canonical abstract for " + paperId;
         return new RankedLocationCandidate(
                 locationRef,
                 Map.of(
                         "paper_id", paperId,
                         "model_version", modelVersion,
                         "location_ref", locationRef,
-                        "location_type", "SECTION",
+                        "location_type", "PASSAGE",
                         "section_path", "Abstract",
                         "page_number", 1,
+                        "content_text", content,
+                        "content_hash", sha256(content),
+                        "source_span_json", "{}",
                         "element_types", List.of("paragraph")
                 ),
                 score,
@@ -366,9 +432,23 @@ class CorpusRetrievalServiceTest {
         location.setLocationRef(locationRef);
         location.setPaperId(paperId);
         location.setModelVersion(modelVersion);
-        location.setLocationType(PaperLocationType.SECTION);
+        location.setLocationType(PaperLocationType.PASSAGE);
         location.setPageNumber(1);
+        location.setSourceSpanJson("{}");
         return location;
+    }
+
+    private static String sha256(String value) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder result = new StringBuilder(digest.length * 2);
+            for (byte item : digest) {
+                result.append(String.format("%02x", item));
+            }
+            return result.toString();
+        } catch (NoSuchAlgorithmException error) {
+            throw new IllegalStateException(error);
+        }
     }
 
     private static CanonicalReadingLocationService.CanonicalLocation canonicalFor(
@@ -383,11 +463,14 @@ class CorpusRetrievalServiceTest {
         private final PaperService paperService = mock(PaperService.class);
         private final PaperReadingModelRepository modelRepository = mock(PaperReadingModelRepository.class);
         private final PaperLocationRepository locationRepository = mock(PaperLocationRepository.class);
+        private final PaperSectionRepository sectionRepository = mock(PaperSectionRepository.class);
         private final CanonicalReadingLocationService readService = mock(CanonicalReadingLocationService.class);
+        private final PaperSourceQuoteReadService sourceQuoteReadService = mock(PaperSourceQuoteReadService.class);
         private final PaperSearchabilityService searchability = mock(PaperSearchabilityService.class);
         private final ReadingLocationRetriever retriever = mock(ReadingLocationRetriever.class);
         private final CorpusRetrievalService service = new CorpusRetrievalService(
-                paperService, modelRepository, locationRepository, readService, searchability, retriever);
+                paperService, modelRepository, locationRepository, sectionRepository, readService, sourceQuoteReadService,
+                searchability, retriever);
 
         private Fixture() {
             when(searchability.isSearchable(any(PaperReadingModel.class))).thenReturn(true);

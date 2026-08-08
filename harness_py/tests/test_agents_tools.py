@@ -113,7 +113,7 @@ class AgentsToolsTest(unittest.TestCase):
         ))
         context.trace.extend([
             {
-                "tool_name": "find_reading_locations",
+                "tool_name": "search_paper_content",
                 "arguments": {"paper_ids": ["synthetic_paper", "other_paper"]},
                 "result": {"locations": [
                     {"paper_id": "synthetic_paper", "location_ref": "loc_1"},
@@ -121,23 +121,23 @@ class AgentsToolsTest(unittest.TestCase):
                 ]},
             },
             {
-                "tool_name": "read_locations",
+                "tool_name": "read_paper_content",
                 "arguments": {"location_refs": ["loc_1", "loc_other"]},
                 "result": {"items": [
-                    {"evidence_id": "ev_synthetic", "paper_id": "synthetic_paper"},
-                    {"evidence_id": "ev_other", "paper_id": "other_paper"},
+                    {"paper_id": "synthetic_paper", "source_quotes": [{"source_quote_ref": "source_quote_synthetic"}]},
+                    {"paper_id": "other_paper", "source_quotes": [{"source_quote_ref": "source_quote_other"}]},
                 ]},
             },
         ])
         context.corpus.observations_by_evidence_id.update({
-            "ev_synthetic": {
-                "evidence_id": "ev_synthetic",
+            "source_quote_synthetic": {
+                "source_quote_ref": "source_quote_synthetic",
                 "paper_id": "synthetic_paper",
                 "element_type": "paragraph",
                 "span_text": "Synthetic evidence.",
             },
-            "ev_other": {
-                "evidence_id": "ev_other",
+            "source_quote_other": {
+                "source_quote_ref": "source_quote_other",
                 "paper_id": "other_paper",
                 "element_type": "paragraph",
                 "span_text": "Other evidence.",
@@ -153,7 +153,7 @@ class AgentsToolsTest(unittest.TestCase):
 
         payload = json.loads(_invoke_final(context, tool_context, {
             "outcome": "answered",
-            "markdown": "Synthetic Paper is supported [[ev_synthetic]], while Other Paper differs.",
+            "markdown": "Synthetic Paper is supported [[source_quote_synthetic]], while Other Paper differs.",
         }))
 
         self.assertTrue(payload["accepted"])

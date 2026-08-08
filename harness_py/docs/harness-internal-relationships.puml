@@ -28,7 +28,7 @@ agents_runtime ..> tools : tool call dispatch
 tools ..> tools_facade : search_paper_candidates / find_* / read_*
 tools_facade ..> gateway : reader.search_papers / search_locations / read_locations
 gateway ..> java : POST /internal/v1/corpus/*\n(HTTP, Java Corpus API)
-tools ..> ctx : update authorized_paper_ids /\ndisclosed_location_refs /\nobservations_by_evidence_id
+tools ..> ctx : search_paper_content / get_paper_structure\nupdate authorized_paper_ids / disclosed_location_refs\nread_paper_content records source_quote_refs
 agents_runtime ..> tools : build_harness_run → final draft
 agents_runtime ..> ctx : ctx.completed_at, ctx.total_tokens
 agents_runtime ..> livechat : TurnExecutionResult(run)

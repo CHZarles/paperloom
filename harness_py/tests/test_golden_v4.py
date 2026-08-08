@@ -316,7 +316,7 @@ class GoldenV4Test(unittest.TestCase):
         tools = InMemoryTools(dataset)
         tools.search_paper_candidates({"paper_ids": [paper_id], "limit": 1})
 
-        result = tools.find_reading_locations({
+        result = tools.search_paper_content({
             "paper_ids": [paper_id],
             "query_text": "scripts reset environment deterministic initial state",
             "top_k": 8,
@@ -327,7 +327,7 @@ class GoldenV4Test(unittest.TestCase):
         self.assertEqual((anchor_id,), grounded.matched_anchor_ids)
         self.assertEqual(2, grounded.page)
 
-    def test_expanded_multi_paper_query_keeps_both_human_gap_anchors(self) -> None:
+    def test_search_excludes_papers_without_reading_model_passages(self) -> None:
         from harness_py.corpus_test_fixtures.in_memory_tools import InMemoryTools
 
         dataset = load_dataset("research/golden-data/manifest-expanded.yaml")
@@ -335,24 +335,12 @@ class GoldenV4Test(unittest.TestCase):
         paper_ids = ["gaia_2024", "webarena_2024"]
         tools.authorized_paper_ids.update(paper_ids)
 
-        result = tools.find_reading_locations({
-            "element_types": ["paragraph", "table"],
+        result = tools.search_paper_content({
             "paper_ids": paper_ids,
             "query_text": "human performance gap",
             "top_k": 8,
         })
-        matched = {
-            anchor_id
-            for item in result["locations"]
-            for anchor_id in tools.documents_by_location[
-                item["location_ref"]
-            ].matched_anchor_ids
-        }
-
-        self.assertTrue({
-            "gaia_human_gpt4_gap",
-            "webarena_gpt4_human_gap",
-        }.issubset(matched), matched)
+        self.assertEqual([], result["locations"])
 
     def test_multifacet_location_search_keeps_architecture_and_training_candidates(self) -> None:
         from harness_py.corpus_test_fixtures.in_memory_tools import InMemoryTools
@@ -363,7 +351,7 @@ class GoldenV4Test(unittest.TestCase):
             "limit": 2,
         })
 
-        bert_result = tools.find_reading_locations({
+        bert_result = tools.search_paper_content({
             "paper_ids": ["bert_2018"],
             "query_text": (
                 "pre-training masked language model next sentence prediction "
@@ -373,13 +361,12 @@ class GoldenV4Test(unittest.TestCase):
         })
         bert_locations = [item["location_ref"] for item in bert_result["locations"]]
 
-        comparison_result = tools.find_reading_locations({
+        comparison_result = tools.search_paper_content({
             "paper_ids": ["attention_is_all_you_need_2017", "bert_2018"],
             "query_text": (
                 "encoder decoder bidirectional masked language model next sentence "
                 "prediction training objective"
             ),
-            "element_types": ["paragraph", "heading", "table"],
             "top_k": 20,
         })
         comparison_locations = [item["location_ref"] for item in comparison_result["locations"]]

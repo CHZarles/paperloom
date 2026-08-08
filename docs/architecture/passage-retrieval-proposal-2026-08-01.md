@@ -22,7 +22,7 @@ Source Quote + MinerU Source Span
   -> 负责最终引用和前端 PDF 展示
 ```
 
-Passage 是检索锚点。Agent 先用 `search_paper_content` 找到相关 Passage，再用 `read_source_quotes` 读取
+Passage 是检索锚点。Agent 先用 `search_paper_content` 找到相关 Passage，再用 `read_paper_content` 读取
 精确原文。需要论文目录时调用 `get_paper_structure`，需要同一 Section 的其他内容时带 `section_ref` 继续
 搜索，不引入额外的 Section Map。
 
@@ -201,7 +201,7 @@ source overlap           = 0
 
 Section 归属优先通过 `PaperSection.reading_order_from/to` 判断，不只比较 Section Title 字符串。
 
-跨页只属于 Passage 检索和阅读层。`read_source_quotes` 会按 Page get-or-create 并返回多个
+跨页只属于 Passage 检索和阅读层。`read_paper_content` 会按 Page get-or-create 并返回多个
 `PaperSourceQuote`，每个 Quote 仍只对应一页，因此不要求前端展示一条跨页引用。
 
 ### 6.3 合并和拆分
@@ -354,13 +354,13 @@ Reading Model / Passage Builder creates PaperLocation
   -> Qdrant indexes location_ref, or MySQL exposes structure ref
   -> search_paper_content / get_paper_structure discloses location_ref
   -> Agent selects relevant refs
-  -> read_source_quotes(location_refs)
+  -> read_paper_content(location_refs)
   -> validate authorization + Current Model version
   -> read canonical content + Source Span from Qdrant payload for evidence refs
   -> get-or-create page-scoped PaperSourceQuote
 ```
 
-Agent 不能自行构造 Ref；`read_source_quotes` 只接受本 Run 已由 Search 或 Structure 披露的 Ref。
+Agent 不能自行构造 Ref；`read_paper_content` 只接受本 Run 已由 Search 或 Structure 披露的 Ref。
 
 ### 7.2 形式化示例
 
@@ -390,7 +390,7 @@ PaperLocation[L] = {
 loc("passage_ref_91f2") = PaperLocation[L]
 ```
 
-`search_paper_content(P, query)` 返回 `L`。Agent 调用 `read_source_quotes([L])` 后，因为该 Passage 覆盖两页，
+`search_paper_content(P, query)` 返回 `L`。Agent 调用 `read_paper_content([L])` 后，因为该 Passage 覆盖两页，
 后端返回两个 Quote：
 
 ```text
@@ -490,7 +490,7 @@ Ordinal 是 Passage 顺序事实来源。构建时验证：
 ordinal 连续
 ```
 
-Agent 把 `search_paper_content` 返回的 Passage Ref 传给 `read_source_quotes`：
+Agent 把 `search_paper_content` 返回的 Passage Ref 传给 `read_paper_content`：
 
 ```json
 {
@@ -530,9 +530,9 @@ Harness 只维护本 Run 已披露的 Location Ref 和可引用 `source_quote_re
 约束：
 
 - Seed 必须已经由 `search_paper_content` 或 `get_paper_structure` 披露；
-- `read_source_quotes.location_refs` 最多 20 项；
+- `read_paper_content.location_refs` 最多 20 项；
 - Section、Passage 和结构化证据必须属于同一 Paper 和 Current Reading Model；
-- Agent 只能引用本 Run 中 `read_source_quotes` 返回过的 `source_quote_ref`，不能引用 Search Preview；
+- Agent 只能引用本 Run 中 `read_paper_content` 返回过的 `source_quote_ref`，不能引用 Search Preview；
 - Unsectioned Passage 不伪造 Section Ref；
 - Read 不自动加载父 Section、相邻 Passage 或其他 Location。
 
@@ -600,7 +600,7 @@ Mismatch。由于本方案在停止服务后整体重建 Collection，不设计 
 `search_paper_content` 只负责这一条 Evidence Retrieval 路径。它接受 `paper_ids`、`query_text`、可选
 `section_refs`、Page 范围、Element Type 和 Top K，返回不可引用的 Preview 与 Location Ref，不承担论文
 结构查询。Qdrant Hit 虽然带完整正文，但模型可见结果仍只发送短 Preview；Harness 在本 Run 内按
-`location_ref` 保留完整 Payload，只有后续 `read_source_quotes` 才把选中的正文送给 Agent。这样正文直接
+`location_ref` 保留完整 Payload，只有后续 `read_paper_content` 才把选中的正文送给 Agent。这样正文直接
 来自 Qdrant，又不会让一次 Top K Search 把全部全文塞进上下文。
 
 ### 10.2 PAGE/SECTION Structure Lookup
@@ -630,7 +630,7 @@ section_query
 ```
 
 该请求按 `PaperSection.display_order` 返回 Section 标题、层级、页码和 Section Ref，就是按需 Outline。因为
-这个能力已经存在于 Structure Lookup，`read_source_quotes` 不再自动附带整篇论文 Outline。
+这个能力已经存在于 Structure Lookup，`read_paper_content` 不再自动附带整篇论文 Outline。
 
 Structure Lookup 只返回结构元数据，不返回 `section_text`、`page_text`、Passage 正文或 `source_quote_ref`，也不能
 作为引用：
@@ -641,7 +641,7 @@ PAGE    -> page_ref, page_number, section_title
 ```
 
 不传筛选条件时，SECTION 模式返回全部 Outline 条目，但仍然只是标题目录。需要正文时，Agent 再把明确选中
-的 Section/Page Ref 交给 `read_source_quotes`，避免“看目录”就把整篇论文正文塞进上下文。
+的 Section/Page Ref 交给 `read_paper_content`，避免“看目录”就把整篇论文正文塞进上下文。
 
 接口规则：
 
@@ -673,7 +673,7 @@ page_location_refs
 不新增目录表。
 
 `search_paper_content` 仍然按 Passage 排名，不把整个 Section 放回 Qdrant。Section 信息只是轻量结构坐标；
-真正读取时，`read_source_quotes` 只返回明确选中 Ref 的精确正文和 Source Quote，不自动扩展上下文。
+真正读取时，`read_paper_content` 只返回明确选中 Ref 的精确正文和 Source Quote，不自动扩展上下文。
 
 ## 11. Passage 与前端证据
 
@@ -681,7 +681,7 @@ Passage 是检索对象，不是前端展示对象。
 
 ### 11.1 只保留一个可引用对象
 
-可引用对象只保留现有 `PaperSourceQuote`。`read_source_quotes` 直接按 Page get-or-create 并返回它：
+可引用对象只保留现有 `PaperSourceQuote`。`read_paper_content` 直接按 Page get-or-create 并返回它：
 
 ```text
 PaperSourceQuote
@@ -692,7 +692,7 @@ PaperSourceQuote
   consumer: Agent 引用、历史引用、Reference Detail、PDF Evidence Panel
 ```
 
-Passage 构建时不创建 Quote。只有 Agent 调用 `read_source_quotes` 读取某个 Location Ref 时才创建或复用
+Passage 构建时不创建 Quote。只有 Agent 调用 `read_paper_content` 读取某个 Location Ref 时才创建或复用
 Quote。`search_paper_content` 返回的 Preview 没有 `source_quote_ref`，因此不能引用。
 
 正文读取来源按 Ref 类型固定：
@@ -707,7 +707,7 @@ PAGE/SECTION         -> 读取 MySQL Reading Model；它们不进入 Qdrant
 ### 11.2 读取与引用
 
 ```text
-read_source_quotes(passage_ref)
+read_paper_content(passage_ref)
   -> 单页 Passage: get-or-create 1 个 PaperSourceQuote
   -> 跨页 Passage: 每页 get-or-create 1 个 PaperSourceQuote
   -> Agent 直接引用 source_quote_ref
@@ -757,8 +757,14 @@ PDF 原文高亮
 ```text
 search_paper_content    -> 在已知论文内检索 PASSAGE/TABLE/FIGURE
 get_paper_structure     -> 查看 SECTION Outline 或 PAGE 结构
-read_source_quotes      -> 把 Location Ref 读取成可直接引用的 PaperSourceQuote
+read_paper_content      -> 把 Location Ref 读取为正文并返回可引用的 PaperSourceQuote
 ```
+
+### 12.1 Read Tool 命名
+
+读工具定名为 `read_paper_content`。它的输入是 Search 或 Structure 已披露的 `location_refs`，输出才包含
+`source_quote_ref`。`read_source_quotes` 会误导 Agent 以为输入是 Quote Ref，因此不使用该名称；系统尚未
+上线，不保留 Alias。
 
 Tool 数量比当前固定集合增加一个，但删除了 `location_types` 路由和两个相似名称。每个 Tool 只有一条明显
 路径，Agent 不需要先理解 Qdrant/MySQL Family 才能选 Tool。
@@ -768,7 +774,7 @@ Tool 数量比当前固定集合增加一个，但删除了 `location_types` 路
 ```text
 找论文
   -> search_paper_content
-  -> read_source_quotes
+  -> read_paper_content
   -> disclosed_source_quote_refs
   -> submit_research_answer
 ```
@@ -779,7 +785,7 @@ Tool 数量比当前固定集合增加一个，但删除了 `location_types` 路
 search_paper_content
   -> 返回 PASSAGE/TABLE/FIGURE
   -> Passage 指出相关原文和所属 Section
-  -> read_source_quotes 返回命中证据全文和 Source Quote
+  -> read_paper_content 返回命中证据全文和 Source Quote
   -> 证据足够则回答
   -> 不足则带 parent_section_ref 和更具体 Query 再次搜索
   -> 需要整篇 Outline 时调用 get_paper_structure
@@ -799,9 +805,9 @@ Tool 描述需要增加以下规则：
 
 - 内容事实使用 `search_paper_content`；
 - Outline、指定 Section 或 Page 使用 `get_paper_structure`；
-- Passage 是检索锚点，`read_source_quotes` 只读取明确选中的 Ref，不自动读取整个 Section；
+- Passage 是检索锚点，`read_paper_content` 只读取明确选中的 Ref，不自动读取整个 Section；
 - 需要补充上下文时，使用 `search_paper_content(section_refs=[...])` 继续检索；
-- 回答只能引用 `read_source_quotes` 返回的 `source_quote_ref`，不能引用 Search Preview；
+- 回答只能引用 `read_paper_content` 返回的 `source_quote_ref`，不能引用 Search Preview；
 
 ## 13. Golden Data 不在本次范围
 
@@ -899,7 +905,7 @@ Passage 构建过程：
 - `search_paper_content` 不接受 PAGE/SECTION 参数；
 - `get_paper_structure` 不接受 Evidence Query 参数；
 - 未披露 Location Ref 不能读取正文或创建 Source Quote；
-- 一次 `read_source_quotes` 最多接受 20 个 Ref；
+- 一次 `read_paper_content` 最多接受 20 个 Ref；
 - Read 不自动返回父 Section、相邻 Passage 或其他 Ref 的正文；
 - Section Path、Ordinal、页码和前后标题与 Structure Lookup 一致；
 - `get_paper_structure(structure_type=SECTION)` 可以按 `display_order` 返回完整 Outline；
@@ -919,7 +925,7 @@ Passage 构建过程：
 - Qdrant 只包含 Current Model 的 PASSAGE/TABLE/FIGURE；
 - Point Count 与 Eligible PASSAGE/TABLE/FIGURE Count 一致；
 - 抽样 Qdrant Payload 与 MySQL 构建源的 Location Ref、正文 Hash 和 Source Span 完全一致；
-- `read_source_quotes` 对 Evidence Ref 不执行逐 Hit MySQL 正文 Hydration；
+- `read_paper_content` 对 Evidence Ref 不执行逐 Hit MySQL 正文 Hydration；
 - PAGE/SECTION Structure Lookup 不依赖 Qdrant；
 - Technical Error = 0；
 - Projection Mismatch = 0。

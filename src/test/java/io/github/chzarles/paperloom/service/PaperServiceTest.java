@@ -13,6 +13,7 @@ import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.repository.PaperSectionRepository;
 import io.github.chzarles.paperloom.repository.PaperSourceQuoteRepository;
+import io.github.chzarles.paperloom.repository.PaperPassageRepository;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.RemoveObjectArgs;
@@ -55,6 +56,9 @@ class PaperServiceTest {
 
     @Mock
     private PaperSourceQuoteRepository paperSourceQuoteRepository;
+
+    @Mock
+    private PaperPassageRepository paperPassageRepository;
 
     @Mock
     private PaperReadingElementRepository paperReadingElementRepository;
@@ -105,6 +109,7 @@ class PaperServiceTest {
         ReflectionTestUtils.setField(paperService, "paperPublicationRepository", paperPublicationRepository);
         ReflectionTestUtils.setField(paperService, "paperSearchabilityService", paperSearchabilityService);
         ReflectionTestUtils.setField(paperService, "paperSourceQuoteRepository", paperSourceQuoteRepository);
+        ReflectionTestUtils.setField(paperService, "paperPassageRepository", paperPassageRepository);
         ReflectionTestUtils.setField(paperService, "paperReadingElementRepository", paperReadingElementRepository);
         ReflectionTestUtils.setField(paperService, "paperLocationRepository", paperLocationRepository);
         ReflectionTestUtils.setField(paperService, "paperSectionRepository", paperSectionRepository);
@@ -228,6 +233,7 @@ class PaperServiceTest {
         verify(uploadService).deleteFileMark("only-hash", "2");
         verify(qdrantIndexService).deleteByPaperId("only-hash");
         verify(paperSourceQuoteRepository).deleteByPaperId("only-hash");
+        verify(paperPassageRepository).deleteByPaperId("only-hash");
         verify(paperReadingElementRepository).deleteByPaperId("only-hash");
         verify(paperLocationRepository).deleteByPaperId("only-hash");
         verify(paperSectionRepository).deleteByPaperId("only-hash");

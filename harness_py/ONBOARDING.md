@@ -38,7 +38,7 @@ OpenAI Agents SDK 工具循环
       |
       v
 submit_research_answer
-  - 确定性校验答案和 evidence_id
+  - 确定性校验答案和 source_quote_ref
   - 校验失败：把错误返回模型，继续循环
   - 校验通过：成为 Runner 的 final_output
       |
@@ -223,7 +223,7 @@ OpenAI-compatible API。它说明了接入兼容供应商的一般方法：
 4. 一个 `Runner.run()` 执行模型与工具循环。
 5. 每次工具调用都会经过 Harness 的确定性授权检查。
 6. 模型用 `submit_research_answer` 提交用户可见答案。
-7. Harness 校验 outcome、Markdown、引用格式和 evidence_id。
+7. Harness 校验 outcome、Markdown、引用格式和 `source_quote_ref`。
 8. 校验失败会作为工具错误返回同一个 Runner；校验通过才形成 `final_output`。
 9. `build_harness_run()` 生成统一 Run；`ConversationState.updated_from_run()` 只把已接受答案和
    已验证证据带入下一轮。
@@ -246,24 +246,25 @@ OpenAI-compatible API。它说明了接入兼容供应商的一般方法：
 search_paper_candidates / find_papers_by_identity
   -> 公开并授权 paper_id
 
-find_reading_locations
+search_paper_content / get_paper_structure
   -> 只接受已授权 paper_id，公开 location_ref
 
-read_locations
-  -> 只接受已公开 location_ref，生成可引用 evidence_id
+read_paper_content
+  -> 只接受已公开 location_ref，返回可引用 source_quote_ref
 
 submit_research_answer
-  -> 只接受旧记忆或本轮真实生成的 evidence_id
+  -> 只接受旧记忆或本轮真实返回的 source_quote_ref
 ```
 
-论文卡片和位置预览只能用于导航。只有 `read_locations` 返回的正文片段可以支持论文内容
+论文卡片和位置预览只能用于导航。只有 `read_paper_content` 返回的正文片段可以支持论文内容
 声明。这条规则由代码校验，不依赖模型自觉。
 
 产品运行时与离线 Fixture 共用这条授权链，但检索实现不同：
 
 - 产品运行时由 `JavaCorpusGatewayReader` 调 Java Corpus API；Java 将查询编码为 BM25 风格 Sparse
   Vector，在 `lexical_bm25_v1` 上只执行一次 Qdrant 检索，再做确定性的论文与 Canonical Lead
-  Coverage，并从 MySQL Hydrate、授权和验证 Current Location；
+  Coverage，验证 Current Location、正文 Hash 和 Source Span；选中的 PASSAGE/TABLE/FIGURE 正文
+  由本 Run 缓存的 Qdrant Payload 读取，PAGE/SECTION 才读取 MySQL；
 - `load_metadata_dataset()` 只根据锁定的 `scope.paper_ids` 建立轻量 Paper 外壳，不发 Java 请求；
   `search_paper_candidates` 或 `find_papers_by_identity` 实际运行后才原地补全论文 Metadata；
 - Java 检索只接受 Current Reading Model 已激活的词法索引合同；Collection 缺失、Schema 不是
@@ -292,15 +293,15 @@ surface。
 - `markdown`：用户最终看到的内容；
 - `fields`：可选产品结构化字段，不自动等于 Golden Fact Contract。
 
-论文内容引用写成 `[[evidence_id]]`。`answer_validation_error()` 会拒绝未知 evidence_id、错误
+论文内容引用写成 `[[source_quote_...]]`。`answer_validation_error()` 会拒绝未知 `source_quote_ref`、错误
 引用格式、非法 outcome 和空 Markdown；最终提交和其他工具放在同一步也会被 Runtime 拒绝。
 `build_harness_run()` 再把内部 evidence marker 渲染成最终引用，并生成标准化结果。
 
 离线 `BehaviorScorer` 的 Content 维度默认检查用户可见 `markdown`。只有确定性 Fixture 明确声明
 `fields_schema=golden-facts/v1` 时，评分器才逐 Key 校验 `fields`。普通模型输出即使包含
-`evidence_id` 等字段，也不会因此被解释为已经承诺输出全部 Golden Facts。
+`source_quote_ref` 等字段，也不会因此被解释为已经承诺输出全部 Golden Facts。
 
-逐 Block 语义支撑留给离线 Scorer/Judge，在线最终提交只做格式、Outcome 和 Evidence ID
+逐 Block 语义支撑留给离线 Scorer/Judge，在线最终提交只做格式、Outcome 和 Source Quote
 可引用性校验。
 
 ### Transport 契约

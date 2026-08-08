@@ -36,7 +36,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 })
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-@Import({PaperReadingModelService.class, PaperReadingModelBuilder.class})
+@Import({PaperReadingModelService.class, PaperReadingModelBuilder.class, PaperPassageService.class,
+        StructuralPassageBuilder.class})
 class PaperReadingModelElementServiceTest {
 
     @Autowired
@@ -83,7 +84,7 @@ class PaperReadingModelElementServiceTest {
         assertEquals(1, modelRepository.findByPaperIdOrderByCreatedAtDesc("paper-elements").size());
         assertEquals(1, pageRepository.countByPaperIdAndModelVersion("paper-elements", model.getModelVersion()));
         assertEquals(1, sectionRepository.countByPaperIdAndModelVersion("paper-elements", model.getModelVersion()));
-        assertEquals(3, locationRepository.countByPaperIdAndModelVersion("paper-elements", model.getModelVersion()));
+        assertEquals(4, locationRepository.countByPaperIdAndModelVersion("paper-elements", model.getModelVersion()));
     }
 
     private ParsedPaper parsedPaperWithSeparateTableCaption() {

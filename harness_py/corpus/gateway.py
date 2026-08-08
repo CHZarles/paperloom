@@ -14,6 +14,7 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Protocol
+from urllib.parse import urlparse
 
 import httpx
 
@@ -32,6 +33,9 @@ class CorpusReader(Protocol):
         ...
 
     def read_locations(self, arguments: JsonMap) -> JsonMap:
+        ...
+
+    def get_structure(self, arguments: JsonMap) -> JsonMap:
         ...
 
 
@@ -64,6 +68,7 @@ class JavaCorpusGateway:
             headers=headers,
             timeout=httpx.Timeout(20.0, connect=5.0),
             limits=httpx.Limits(max_connections=64, max_keepalive_connections=16),
+            trust_env=not _is_loopback_url(base_url),
         )
 
     def reader(
@@ -174,12 +179,14 @@ class JavaCorpusGatewayReader:
             "page_from": arguments.get("page_from"),
             "page_to": arguments.get("page_to"),
             "top_k": int(arguments.get("top_k") or 8),
+            "section_refs": unique_strings(arguments.get("section_refs")),
         })
 
     def read_locations(self, arguments: JsonMap) -> JsonMap:
         response = self._post("/internal/v1/corpus/locations/read", {
             **self._context(),
             "location_refs": unique_strings(arguments.get("location_refs")),
+            "evidence_payloads": as_list(arguments.get("_evidence_payloads")),
         })
         items: list[JsonMap] = []
         for raw in as_list(response.get("items")):
@@ -187,16 +194,23 @@ class JavaCorpusGatewayReader:
             location_ref = str(item.get("location_ref") or "")
             element_type = str(item.get("element_type") or "paragraph")
             page = item.get("page")
-            source_kind = str(item.get("source_kind") or _source_kind(element_type))
-            evidence_id = _evidence_id(
-                str(item.get("paper_id") or ""),
-                location_ref,
-                element_type,
-                page,
-            )
             source_object_id = str(item.get("source_object_id") or "") or None
+            quotes = [
+                {
+                    "source_quote_ref": str(quote.get("source_quote_ref") or ""),
+                    "paper_id": quote.get("paper_id") or item.get("paper_id"),
+                    "paper_version": quote.get("paper_version") or item.get("paper_version"),
+                    "location_ref": quote.get("location_ref") or location_ref,
+                    "page": quote.get("page"),
+                    "page_end": quote.get("page_end"),
+                    "section": quote.get("section") or item.get("section") or "unsectioned",
+                    "content": quote.get("content") or "",
+                    "source_span_json": quote.get("source_span_json"),
+                }
+                for raw_quote in as_list(item.get("source_quotes"))
+                if (quote := child_map(raw_quote)).get("source_quote_ref")
+            ]
             items.append({
-                "evidence_id": evidence_id,
                 "paper_id": item.get("paper_id"),
                 "title": item.get("title"),
                 "original_filename": item.get("original_filename"),
@@ -212,7 +226,7 @@ class JavaCorpusGatewayReader:
                 "bbox_json": item.get("bbox_json"),
                 "parser_name": item.get("parser_name"),
                 "parser_version": item.get("parser_version"),
-                "source_kind": source_kind,
+                "source_kind": str(item.get("source_kind") or _source_kind(element_type)),
                 "source_object_id": source_object_id,
                 "table_id": source_object_id if element_type == "table" else None,
                 "figure_id": source_object_id if element_type in {"figure", "chart"} else None,
@@ -222,16 +236,22 @@ class JavaCorpusGatewayReader:
                 "table_screenshot_available": _bool(item.get("table_screenshot_available")),
                 "figure_screenshot_available": _bool(item.get("figure_screenshot_available")),
                 "asset_warnings": unique_strings(item.get("asset_warnings")),
-                "retrieval_strategy": "source_quote_reading",
-                "relevance_score": 1.0,
-                "evidence_quality": "verified",
-                "supports_claim_ids": [],
-                "refutes_claim_ids": [],
+                "source_quotes": quotes,
             })
         return {
             "items": items,
             "missing_location_refs": unique_strings(response.get("missing_location_refs")),
         }
+
+    def get_structure(self, arguments: JsonMap) -> JsonMap:
+        return self._post("/internal/v1/corpus/locations/structure", {
+            **self._context(),
+            "paper_ids": unique_strings(arguments.get("paper_ids")),
+            "structure_type": str(arguments.get("structure_type") or "SECTION"),
+            "section_query": str(arguments.get("section_query") or ""),
+            "page_from": arguments.get("page_from"),
+            "page_to": arguments.get("page_to"),
+        })
 
     def _context(self) -> JsonMap:
         return {
@@ -274,6 +294,10 @@ def _paper_record(card: JsonMap) -> JsonMap:
         "product_db": {"original_filename": card.get("filename")},
         "source_assets": {"reading_model_source": "java_corpus_gateway"},
     }
+
+
+def _is_loopback_url(url: str) -> bool:
+    return urlparse(url).hostname in {"127.0.0.1", "::1", "localhost"}
 
 
 def _evidence_id(paper_id: str, location_ref: str, element_type: str, page: object) -> str:
