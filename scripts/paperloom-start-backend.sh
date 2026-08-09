@@ -28,6 +28,15 @@ load_env() {
   done <.env
 }
 
+configure_runtime() {
+  PORT="${SERVER_PORT:-8081}"
+  PID_FILE="${PAPERLOOM_BACKEND_PID_FILE:-.runtime/backend-${PORT}.pid}"
+  LOG_FILE="${PAPERLOOM_BACKEND_LOG_FILE:-.runtime/logs/backend-${PORT}.log}"
+  JAR="${PAPERLOOM_BACKEND_JAR:-target/paperloom-server-0.1.0-SNAPSHOT.jar}"
+  MYSQL_CONTAINER="${PAPERLOOM_MYSQL_CONTAINER:-paperloom-mysql}"
+  PROBE_URL="http://127.0.0.1:${PORT}/api/v1/users/me"
+}
+
 apply_local_ports() {
   local mysql_container mysql_port
   mysql_container="${PAPERLOOM_MYSQL_CONTAINER:-$MYSQL_CONTAINER}"
@@ -84,8 +93,6 @@ start() {
     return 0
   fi
   [[ -f "$JAR" ]] || { echo "Backend jar not found: ${JAR}" >&2; exit 1; }
-  load_env
-  PORT="${SERVER_PORT:-$PORT}"
   apply_local_ports
   mkdir -p "$(dirname "$PID_FILE")" "$(dirname "$LOG_FILE")"
   nohup java -jar "$JAR" >"$LOG_FILE" 2>&1 &
@@ -104,6 +111,9 @@ start() {
   tail -n 100 "$LOG_FILE" >&2 || true
   exit 1
 }
+
+load_env
+configure_runtime
 
 case "$COMMAND" in
   start) start ;;
