@@ -1,16 +1,59 @@
 package io.github.chzarles.paperloom.service;
 
+import io.github.chzarles.paperloom.exception.QuotaExceededException;
+import io.github.chzarles.paperloom.service.embedding.EmbeddingProvider;
+import io.github.chzarles.paperloom.service.embedding.EmbeddingProviderFactory;
 import io.github.chzarles.paperloom.service.RankedLocationCandidate;
 import io.github.chzarles.paperloom.service.fusion.ReciprocalRankFusion;
 import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class HybridReadingLocationRetrieverTest {
+
+    @Test
+    void chargesSuccessfulDenseQueriesAndDoesNotBypassQuotaExhaustion() {
+        QdrantReadingLocationRetriever sparse = mock(QdrantReadingLocationRetriever.class);
+        EmbeddingProviderFactory providers = mock(EmbeddingProviderFactory.class);
+        EmbeddingProvider provider = mock(EmbeddingProvider.class);
+        QdrantClient qdrant = mock(QdrantClient.class);
+        UsageQuotaService quota = mock(UsageQuotaService.class);
+        RetrievalCandidates sparseResult = new RetrievalCandidates(List.of(), 0, "index-v1");
+        UsageQuotaService.TokenReservation reservation = new UsageQuotaService.TokenReservation(
+                "embedding", "user-1", "", "", 8, 8, 0, false, true);
+        LocationRetrievalRequest request = new LocationRetrievalRequest(
+                "user-1", Map.of("paper-a", "rm-1"), "中文问题", "", Set.of(), null, null, 10);
+
+        when(sparse.retrieve(request)).thenReturn(sparseResult);
+        when(qdrant.isHybridContract()).thenReturn(true);
+        when(providers.activeProvider()).thenReturn(provider);
+        when(quota.reserveEmbeddingTokens("user-1", List.of("中文问题"))).thenReturn(reservation);
+        when(quota.estimateEmbeddingTokens(List.of("中文问题"))).thenReturn(8);
+        when(provider.embedQueries(List.of("中文问题"))).thenReturn(Mono.just(List.of(new float[]{1.0f})));
+        when(qdrant.filter(Map.of("paper-a", "rm-1"), null, null, Set.of())).thenReturn(Map.of());
+        when(qdrant.searchDense(any(float[].class), eq(Map.of()), eq(100))).thenReturn(List.of());
+
+        assertEquals(sparseResult, new HybridReadingLocationRetriever(sparse, providers, qdrant, quota)
+                .retrieve(request));
+        verify(quota).settleReservation(reservation, 8);
+
+        when(quota.reserveEmbeddingTokens("user-1", List.of("中文问题")))
+                .thenThrow(new QuotaExceededException("no embedding quota", 0));
+        assertThrows(QuotaExceededException.class, () ->
+                new HybridReadingLocationRetriever(sparse, providers, qdrant, quota).retrieve(request));
+    }
 
     @Test
     void fusesSparseAndDenseCandidatesByReciprocalRankFusion() {

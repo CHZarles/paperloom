@@ -3,6 +3,7 @@ package io.github.chzarles.paperloom.controller;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.github.chzarles.paperloom.service.CorpusRetrievalService;
 import io.github.chzarles.paperloom.service.PaperSourceQuoteReadService;
+import io.github.chzarles.paperloom.service.ReadingModelQdrantIndexService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -29,12 +30,37 @@ public class InternalCorpusController {
     private static final Logger logger = LoggerFactory.getLogger(InternalCorpusController.class);
 
     private final CorpusRetrievalService retrievalService;
+    private final ReadingModelQdrantIndexService indexService;
     private final String internalToken;
 
     public InternalCorpusController(CorpusRetrievalService retrievalService,
+                                    ReadingModelQdrantIndexService indexService,
                                     @Value("${research-harness.internal-token:}") String internalToken) {
         this.retrievalService = retrievalService;
+        this.indexService = indexService;
         this.internalToken = internalToken == null ? "" : internalToken.trim();
+    }
+
+    @PostMapping("/locations/export")
+    public Map<String, Object> exportCurrentModelCandidates(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestBody CandidateExportRequest request) {
+        authorize(authorization);
+        if (request.paperId() == null || request.paperId().isBlank()) {
+            throw new IllegalArgumentException("paper_id is required");
+        }
+        ReadingModelQdrantIndexService.CandidateExport export =
+                indexService.exportCurrentModelLocations(request.paperId().trim());
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("paper_id", export.paperId());
+        response.put("model_version", export.modelVersion());
+        response.put("model_status", export.modelStatus());
+        response.put("retrieval_index_status", export.retrievalIndexStatus());
+        response.put("retrieval_index_contract", export.retrievalIndexContract());
+        response.put("parser_name", export.parserName());
+        response.put("parser_version", export.parserVersion());
+        response.put("candidates", export.candidates().stream().map(this::exportCandidate).toList());
+        return response;
     }
 
     @PostMapping("/papers/search")
@@ -218,6 +244,21 @@ public class InternalCorpusController {
         return result;
     }
 
+    private Map<String, Object> exportCandidate(ReadingModelQdrantIndexService.IndexedLocation candidate) {
+        Map<String, Object> payload = candidate.payload();
+        Map<String, Object> result = new LinkedHashMap<>();
+        put(result, "product_paper_id", candidate.paperId());
+        put(result, "model_version", candidate.modelVersion());
+        put(result, "location_ref", candidate.locationRef());
+        put(result, "location_type", payload.get("location_type"));
+        put(result, "section", payload.get("section_path"));
+        put(result, "page", candidate.pageNumber());
+        put(result, "content", payload.get("content_text"));
+        put(result, "content_hash", payload.get("content_hash"));
+        put(result, "source_span", payload.get("source_span_json"));
+        return result;
+    }
+
     private Map<String, Object> canonicalLocation(io.github.chzarles.paperloom.service.CanonicalReadingLocationService.CanonicalLocation item) {
         Map<String, Object> result = new LinkedHashMap<>();
         put(result, "paper_id", item.paperId());
@@ -362,6 +403,9 @@ public class InternalCorpusController {
             @JsonProperty("content_hash") String contentHash,
             @JsonProperty("source_span_json") String sourceSpanJson
     ) {
+    }
+
+    public record CandidateExportRequest(@JsonProperty("paper_id") String paperId) {
     }
 
     public record StructureRequest(

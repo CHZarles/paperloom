@@ -8,7 +8,7 @@ import java.util.Map;
 
 /**
  * Reciprocal Rank Fusion (RRF) merges multiple ranked result lists into a single
- * ordering. For each item, score = sum of 1 / (k + rank) across lists where the
+ * ordering. For each item, score = sum of weight / (k + rank) across lists where the
  * item appears. Items absent from a list do not contribute.
  *
  * <p>Default k=10 prioritises top-rank sources (rank 0 contributes 1/11 instead of
@@ -35,7 +35,7 @@ public final class ReciprocalRankFusion {
             List<T> items = source.items();
             for (int rank = 0; rank < items.size(); rank++) {
                 T item = items.get(rank);
-                double contribution = 1.0 / (k + rank + 1L);
+                double contribution = source.weight() / (k + rank + 1L);
                 scores.merge(item, contribution, Double::sum);
             }
         }
@@ -44,7 +44,10 @@ public final class ReciprocalRankFusion {
         return new RrfResult<>(ordered, scores);
     }
 
-    public record RankedList<T>(String source, List<T> items) {
+    public record RankedList<T>(String source, List<T> items, double weight) {
+        public RankedList(String source, List<T> items) {
+            this(source, items, 1.0);
+        }
     }
 
     public record RrfResult<T>(List<T> orderedItems, Map<T, Double> scores) {

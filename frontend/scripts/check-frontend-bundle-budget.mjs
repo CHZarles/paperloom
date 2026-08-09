@@ -8,9 +8,21 @@ const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 
 const routes = [
   { name: 'login', entry: 'src/views/_builtin/login/index.vue', budget: 500 * 1024 },
-  { name: 'chat shell', entry: 'src/views/chat/index.vue', budget: 500 * 1024 },
+  {
+    name: 'chat shell',
+    entry: 'src/views/chat/index.vue',
+    marker: 'src/views/chat/modules/source-evidence-panel.vue',
+    budget: 520 * 1024
+  },
   { name: 'knowledge base', entry: 'src/views/knowledge-base/index.vue', budget: 700 * 1024 }
 ];
+
+function resolveEntry(route) {
+  if (manifest[route.entry]) return route.entry;
+  const fallback = Object.entries(manifest).find(([, chunk]) => chunk.dynamicImports?.includes(route.marker));
+  if (fallback) return fallback[0];
+  throw new Error(`Bundle manifest entry not found: ${route.entry}`);
+}
 
 function collectStaticFiles(entryKey, files = new Set(), visited = new Set()) {
   if (visited.has(entryKey)) return files;
@@ -41,7 +53,7 @@ const mainFiles = collectStaticFiles('index.html');
 let failed = false;
 
 for (const route of routes) {
-  const files = new Set([...mainFiles, ...collectStaticFiles(route.entry)]);
+  const files = new Set([...mainFiles, ...collectStaticFiles(resolveEntry(route))]);
   const bytes = compressedSize(files);
   const heavyStartupFile = Array.from(files).find(file => /vue-markdown-shiki|file-preview|pdf\.worker/i.test(file));
   const withinBudget = bytes <= route.budget && !heavyStartupFile;

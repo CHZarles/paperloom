@@ -43,4 +43,14 @@ class ReciprocalRankFusionTest {
         );
         assertEquals(List.of("X", "Y", "Z"), fused.orderedItems());
     }
+
+    @Test
+    void sourceWeightPreservesStrongLexicalHits() {
+        RrfResult<String> fused = ReciprocalRankFusion.fuse(
+                new RankedList<>("sparse", List.of("lexical", "shared"), 3.0),
+                new RankedList<>("dense", List.of("dense", "shared"))
+        );
+
+        assertEquals(List.of("shared", "lexical", "dense"), fused.orderedItems());
+    }
 }

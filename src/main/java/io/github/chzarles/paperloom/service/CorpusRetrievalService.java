@@ -172,6 +172,7 @@ public class CorpusRetrievalService {
         Set<String> sectionRefs = normalizedSet(query.sectionRefs());
         RetrievalCandidates retrieval = readingLocationRetriever.retrieve(
                 new LocationRetrievalRequest(
+                        String.valueOf(query.userId()),
                         activeModels,
                         query.queryText(),
                         query.sectionQuery(),

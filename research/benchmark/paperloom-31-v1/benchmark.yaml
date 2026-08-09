@@ -1,0 +1,138 @@
+schema_version: paperloom-benchmark-config/v1
+dataset_id: paperloom-31-v1
+papers:
+- id: paper_01_attention_is_all_you_need
+  title: Attention Is All You Need
+  file: papers/01-Attention_is_All_You_Need.pdf
+  source_pdf_sha256: bdfaa68d8984f0dc02beaca527b76f207d99b666d31d1da728ee0728182df697
+- id: paper_02_gpt_1
+  title: Improving Language Understanding by Generative Pre-Training
+  file: papers/02-GPT-1.pdf
+  source_pdf_sha256: eb81a65e0856bd38e855e1f1de6ee12e7c3eb92ae05c8270d345a475beb631d0
+- id: paper_03_bert
+  title: 'BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding'
+  file: papers/03-BERT.pdf
+  source_pdf_sha256: 5692a5514787a8c6727b4ff3b726a3385798bc68e12138d1d4af83947e2acf6e
+- id: paper_04_transformer_xl
+  title: 'Transformer-XL: Attentive Language Models Beyond a Fixed-Length Context'
+  file: papers/04-Transformer-XL.pdf
+  source_pdf_sha256: 6aa192b22820267309e8e7c501c514a3a3055256d9c8691b106c7f53f9098671
+- id: paper_05_gpt_2
+  title: Language Models are Unsupervised Multitask Learners
+  file: papers/05-GPT-2.pdf
+  source_pdf_sha256: d9d852e2894556e73f53cb22b7c605a9643d6f0b19bf604b429ed6192fa24f4e
+- id: paper_06_ernie
+  title: 'ERNIE: Enhanced Language Representation with Informative Entities'
+  file: papers/06-ERNIE.pdf
+  source_pdf_sha256: 90c20dc9ec5b9fcafc8dad7435561d479bbc4d132dadb52687620a6d042167aa
+- id: paper_07_distilbert
+  title: 'DistilBERT, a distilled version of BERT: smaller, faster, cheaper and lighter'
+  file: papers/07-DistilBERT.pdf
+  source_pdf_sha256: a70c78e2b4db85bfee7696e19829571a3b05f69c616db5c039f6f4eb33b1a0b6
+- id: paper_08_t5
+  title: Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer
+  file: papers/08-T5.pdf
+  source_pdf_sha256: ad07e47cedf437a4156419ce5d3076e08a3e59bbfd6dac7cc53df1009cdcbe7f
+- id: paper_09_rag
+  title: Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks
+  file: papers/09-RAG.pdf
+  source_pdf_sha256: 23e3249e9a1e75418d82efecab0ea8c4d033b89c93742f63208d47ce01f21233
+- id: paper_10_gpt_3
+  title: Language Models are Few-Shot Learners
+  file: papers/10-GPT-3.pdf
+  source_pdf_sha256: 97fd272f1fdfc18677462d0292f5fbf26ca86b4d1b485c2dba03269b643a0e83
+- id: paper_11_autoprompt
+  title: 'AutoPrompt: Eliciting Knowledge from Language Models with Automatically Generated Prompts'
+  file: papers/11-AutoPrompt.pdf
+  source_pdf_sha256: 9e77217618c4164472ba73f01c2371ce4a59c2ee8d307c83a874abe5f631129a
+- id: paper_12_roformer_rope
+  title: 'RoFormer: Enhanced Transformer with Rotary Position Embedding'
+  file: papers/12-RoFormer_RoPE.pdf
+  source_pdf_sha256: e9a481fbe1c8a20b7b1fa566b13102a1896c7829fa9a8b4c80528452a5ddaf79
+- id: paper_13_lora
+  title: 'LoRA: Low-Rank Adaptation of Large Language Models'
+  file: papers/13-LoRA.pdf
+  source_pdf_sha256: e9a0d3128767db616085dc0f4e6e455e672e89af823e8ed1282793682787395a
+- id: paper_14_codex
+  title: Evaluating Large Language Models Trained on Code
+  file: papers/14-Codex.pdf
+  source_pdf_sha256: ebae72ea0e8a5eb2ecbccdb985aec6cc1254a7c4d29e6d4de7866db1e66c4855
+- id: paper_15_flan
+  title: Finetuned Language Models Are Zero-Shot Learners
+  file: papers/15-FLAN.pdf
+  source_pdf_sha256: 7126b83c5590b9eb4b6e6027446cb88c0aeff132e47d88e9407982b1f7fad044
+- id: paper_16_glam
+  title: 'GLaM: Efficient Scaling of Language Models with Mixture-of-Experts'
+  file: papers/16-GLaM.pdf
+  source_pdf_sha256: 7b52d17e09bb59e2afc00237a35e6ee67189b663bc0c6d23f2f280b080a62e47
+- id: paper_17_webgpt
+  title: 'WebGPT: Browser-assisted question-answering with human feedback'
+  file: papers/17-WebGPT.pdf
+  source_pdf_sha256: acad8d9fd55a30b94de9dfdae413e10b21e07bde54d767b2405b31341739cedb
+- id: paper_18_chain_of_thought
+  title: Chain-of-Thought Prompting Elicits Reasoning in Large Language Models
+  file: papers/18-Chain-of-Thought.pdf
+  source_pdf_sha256: 7d9f878c23b460e4566aa4ec9201b1abfb3b8faefb2b1356e411cb90fef72a12
+- id: paper_19_palm
+  title: 'PaLM: Scaling Language Modeling with Pathways'
+  file: papers/19-PaLM.pdf
+  source_pdf_sha256: 1e88f1f3027cd1abecb1713c1c08a89137c7730582549ec7ca78ca329f3f975d
+- id: paper_20_instructgpt
+  title: Training language models to follow instructions with human feedback
+  file: papers/20-InstructGPT.pdf
+  source_pdf_sha256: c1984bb50a5b90fddb895fdc3a0f72e5bc977148c9f63ef6040cbe7a3e1f0d98
+- id: paper_21_lets_verify_step_by_step
+  title: Let's Verify Step by Step
+  file: papers/21-Lets_Verify_Step_by_Step.pdf
+  source_pdf_sha256: fbd170e2042c32950c3fe97d3a558d89e8a8dffaadc942e774ccb4b751abc123
+- id: paper_22_llm_int8
+  title: 'LLM.int8(): 8-bit Matrix Multiplication for Transformers at Scale'
+  file: papers/22-LLM.int8.pdf
+  source_pdf_sha256: 40da3ce2d38eb3baa8b638cab093bd048178205c1eb4d0671e79c108f72906bf
+- id: paper_23_react
+  title: 'ReAct: Synergizing Reasoning and Acting in Language Models'
+  file: papers/23-ReAct.pdf
+  source_pdf_sha256: f285b0971ae4a790e402fb93966bed3adde2cf0a04977d08b2b40d6ab0cace69
+- id: paper_24_toolformer
+  title: 'Toolformer: Language Models Can Teach Themselves to Use Tools'
+  file: papers/24-Toolformer.pdf
+  source_pdf_sha256: 6d7483d94653008e40c2058a1c22441c92e3713dae278b6361e8efc447c99522
+- id: paper_25_llama
+  title: 'LLaMA: Open and Efficient Foundation Language Models'
+  file: papers/25-LLaMA.pdf
+  source_pdf_sha256: 2e663675ae36ad12adb2f5a05281bac2747ecf8d23d92bedd9f937a89fee7136
+- id: paper_26_gpt_4
+  title: GPT-4 Technical Report
+  file: papers/26-GPT-4.pdf
+  source_pdf_sha256: c33a66dadca2388d7b172d6293b00dc32b71110c6f38fafe0d41112e61be7774
+- id: paper_27_qlora
+  title: 'QLoRA: Efficient Finetuning of Quantized LLMs'
+  file: papers/27-QLoRA.pdf
+  source_pdf_sha256: 33a4e757c19d6ea8d3cca8958fce8fe405e290272e135c99ee66065c775d5bd1
+- id: paper_28_phi_1
+  title: Textbooks Are All You Need
+  file: papers/28-Phi-1.pdf
+  source_pdf_sha256: f2d7bc256626c20439601bccd12adbb4b4457763bc75ccda4509f00b4809cd89
+- id: paper_29_rlaif
+  title: 'RLAIF vs. RLHF: Scaling Reinforcement Learning from Human Feedback with AI Feedback'
+  file: papers/29-RLAIF.pdf
+  source_pdf_sha256: 2fe7b8b57b81bfc7f5b8086f152ed3861ae839c2000fc2ab2dfed559f121164a
+- id: paper_30_weak_to_strong_generalization
+  title: 'Weak-to-Strong Generalization: Eliciting Strong Capabilities with Weak Supervision'
+  file: papers/30-Weak-to-Strong_Generalization.pdf
+  source_pdf_sha256: 1f655c3d9a5cfaab535e2c0b1901b56dd9260c15a79ac6b237ef548c03041098
+- id: paper_31_graph_rag
+  title: 'From Local to Global: A GraphRAG Approach to Query-Focused Summarization'
+  file: papers/31-Graph_RAG.pdf
+  source_pdf_sha256: 730f1a9f38d16689900969a3eeeb1b31e45eda1dcc1f37a043afa90aff76c867
+target_policy:
+  per_paper: 1
+  passage_count: 22
+  table_count: 6
+  figure_count: 3
+generation:
+  provider: minimax
+  model: MiniMax-M3
+  prompt_version: paperloom-query-generator-v2
+  temperature: 0
+  max_attempts: 5

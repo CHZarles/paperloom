@@ -27,13 +27,16 @@ public class ModelProviderConfigService {
 
     private final ModelProviderConfigRepository repository;
     private final SecretCryptoService secretCryptoService;
+    private final String minimaxApiKey;
     private volatile ScopeSettingsView currentSettings;
     private volatile ScopeSettingsView embeddingSettings;
 
     public ModelProviderConfigService(ModelProviderConfigRepository repository,
-                                      SecretCryptoService secretCryptoService) {
+                                      SecretCryptoService secretCryptoService,
+                                      @Value("${MINIMAX_API_KEY:}") String minimaxApiKey) {
         this.repository = repository;
         this.secretCryptoService = secretCryptoService;
+        this.minimaxApiKey = minimaxApiKey == null ? "" : minimaxApiKey.trim();
         this.currentSettings = defaultSettings();
         this.embeddingSettings = defaultEmbeddingSettings();
     }
@@ -169,6 +172,9 @@ public class ModelProviderConfigService {
             if (hasValue(apiKey)) {
                 return Optional.of(apiKey);
             }
+        }
+        if ("minimax".equalsIgnoreCase(provider) && hasValue(minimaxApiKey)) {
+            return Optional.of(minimaxApiKey);
         }
         return Optional.empty();
     }

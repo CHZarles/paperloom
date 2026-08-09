@@ -28,6 +28,7 @@ from ..corpus.tools import (
     SEARCH_RESULT_LIMIT,
     _invalid_integer,
     identity_search_preflight,
+    normalize_paper_search_arguments,
     paper_search_preflight,
     recoverable_error,
     reading_location_preflight,
@@ -169,6 +170,7 @@ class InMemoryTools(ReadingCorpusTools):
     # ---- 论文元数据 ----
 
     def search_paper_candidates(self, arguments: JsonMap) -> JsonMap:
+        arguments = normalize_paper_search_arguments(arguments)
         error = paper_search_preflight(arguments)
         if error:
             return error
@@ -305,6 +307,7 @@ class InMemoryTools(ReadingCorpusTools):
         eligible_documents = [
             document for document in all_eligible_documents
             if document.surface_kind != "page"
+            and (not element_types or document.evidence_element_type() in element_types)
         ]
 
         body_tokens = [tokenize(document.text) for document in eligible_documents]
@@ -355,8 +358,6 @@ class InMemoryTools(ReadingCorpusTools):
                 score += SECTION_SCORE_WEIGHT * bm25_score(
                     query_token_list, document_section_tokens, section_statistics
                 )
-            if score > 0 and element_types and document.evidence_element_type() in element_types:
-                score += 0.25
             if section_tokens:
                 score += _section_hint_score(section_query, document.section, document.text)
             if query and _normalize(query) in _normalize(document.text):

@@ -280,12 +280,27 @@ def _bounded_read_payload(context: ResearchRunContext, payload: JsonMap, limit: 
     for ref in all_refs - visible_refs:
         context.corpus.observations_by_evidence_id.pop(ref, None)
     if projected:
-        return {**payload, "items": projected}
+        omitted_location_refs = [
+            str(child_map(item).get("location_ref") or "")
+            for item in items[len(projected):]
+            if child_map(item).get("location_ref")
+        ]
+        return {
+            **payload,
+            "items": projected,
+            "truncated": bool(omitted_location_refs),
+            "omitted_location_refs": omitted_location_refs,
+        }
     return {
         "error": "source_unit_exceeds_model_budget",
         "error_code": "SOURCE_UNIT_EXCEEDS_MODEL_BUDGET",
         "recoverable": True,
         "next_action": "get_paper_structure",
+        "omitted_location_refs": [
+            str(child_map(item).get("location_ref") or "")
+            for item in items
+            if child_map(item).get("location_ref")
+        ],
         "locations": [
             {
                 "paper_id": child_map(item).get("paper_id"),
@@ -323,6 +338,10 @@ def _invoke_final(
         validation_error = answer_validation_error(
             draft,
             known_evidence,
+            require_content_citations=any(
+                item.get("tool_name") in {"search_paper_content", "read_paper_content"}
+                for item in context.trace
+            ),
         )
     accepted = not validation_error
     visible = {"accepted": accepted}

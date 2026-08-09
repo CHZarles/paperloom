@@ -123,6 +123,11 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
             "sparse_score": 0.82,
             "fused_score": 0.03,
             "index_version": "reading-model-v1",
+            "source_span_json": "{\"spans\":[]}",
+            "bbox_json": "[]",
+            "bbox_or_cell_ref": "cell-A1",
+            "parser_name": "mineru",
+            "parser_version": "2.0",
             "span_text": "Visible evidence.",
         })
 
@@ -140,15 +145,16 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
 
         self.assertEqual("", error)
 
-    def test_answer_after_reading_paper_evidence_can_submit_without_citation(self) -> None:
+    def test_answer_after_reading_paper_evidence_requires_citation(self) -> None:
         error = answer_validation_error(
             {"outcome": "answered", "markdown": "The paper proposes a new method."},
             {"source_quote_1": {"source_quote_ref": "source_quote_1", "citeable": True}},
+            require_content_citations=True,
         )
 
-        self.assertEqual("", error)
+        self.assertIn("require citations", error)
 
-    def test_answer_after_reading_allows_uncited_blocks_once_a_known_citation_exists(self) -> None:
+    def test_answer_after_reading_rejects_uncited_material_blocks(self) -> None:
         error = answer_validation_error(
             {
                 "outcome": "answered",
@@ -158,9 +164,10 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
                 ),
             },
             {"source_quote_1": {"source_quote_ref": "source_quote_1", "citeable": True}},
+            require_content_citations=True,
         )
 
-        self.assertEqual("", error)
+        self.assertIn("block_1", error)
 
     def test_answer_after_reading_allows_uncited_structure(self) -> None:
         error = answer_validation_error(
@@ -174,6 +181,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
                 ),
             },
             {"source_quote_1": {"source_quote_ref": "source_quote_1", "citeable": True}},
+            require_content_citations=True,
         )
 
         self.assertEqual("", error)

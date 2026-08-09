@@ -85,6 +85,9 @@ class MiniMaxEmbeddingProviderTest {
         assertEquals(true, body.contains("\"model\":\"embo-01\""));
         assertEquals(true, body.contains("\"texts\":[\"alpha\",\"beta\"]"));
         assertEquals(true, body.contains("\"type\":\"db\""));
+
+        provider.embedQueries(List.of("question")).block();
+        assertEquals(true, lastRequestBody.get().contains("\"type\":\"query\""));
     }
 
     @Test

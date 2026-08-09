@@ -269,6 +269,13 @@ public class QdrantClient {
     public Map<String, Object> filter(Map<String, String> activeModels,
                                       Integer pageFrom,
                                       Integer pageTo) {
+        return filter(activeModels, pageFrom, pageTo, Set.of());
+    }
+
+    public Map<String, Object> filter(Map<String, String> activeModels,
+                                      Integer pageFrom,
+                                      Integer pageTo,
+                                      Set<String> elementTypes) {
         List<Map<String, Object>> must = new ArrayList<>();
         if (activeModels != null && !activeModels.isEmpty()) {
             if (activeModels.size() == 1) {
@@ -285,6 +292,7 @@ public class QdrantClient {
                 Map<String, Object> filter = new LinkedHashMap<>();
                 filter.put("should", activePairs);
                 addPageRange(must, pageFrom, pageTo);
+                addElementTypes(must, elementTypes);
                 if (!must.isEmpty()) {
                     filter.put("must", must);
                 }
@@ -292,6 +300,7 @@ public class QdrantClient {
             }
         }
         addPageRange(must, pageFrom, pageTo);
+        addElementTypes(must, elementTypes);
         return must.isEmpty() ? Map.of() : Map.of("must", must);
     }
 
@@ -301,6 +310,18 @@ public class QdrantClient {
         }
         if (pageTo != null) {
             must.add(Map.of("key", "page_number", "range", Map.of("lte", pageTo)));
+        }
+    }
+
+    private void addElementTypes(List<Map<String, Object>> must, Set<String> elementTypes) {
+        List<String> types = elementTypes == null ? List.of() : elementTypes.stream()
+                .filter(value -> value != null && !value.isBlank())
+                .map(value -> value.trim().toLowerCase(java.util.Locale.ROOT))
+                .distinct()
+                .sorted()
+                .toList();
+        if (!types.isEmpty()) {
+            must.add(Map.of("key", "element_types", "match", Map.of("any", types)));
         }
     }
 

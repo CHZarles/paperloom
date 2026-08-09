@@ -40,6 +40,11 @@ MODEL_REDACTED_FIELDS = {
     "fused_score",
     "index_version",
     "evidence_payloads",
+    "source_span_json",
+    "bbox_json",
+    "bbox_or_cell_ref",
+    "parser_name",
+    "parser_version",
 }
 
 
@@ -234,6 +239,7 @@ class ReadingCorpusTools:
         }[name](arguments))
 
     def search_paper_candidates(self, arguments: JsonMap) -> JsonMap:
+        arguments = normalize_paper_search_arguments(arguments)
         error = paper_search_preflight(arguments)
         if error:
             return error
@@ -385,6 +391,14 @@ def paper_search_preflight(arguments: JsonMap) -> JsonMap | None:
     return None
 
 
+def normalize_paper_search_arguments(arguments: JsonMap) -> JsonMap:
+    return {
+        key: value
+        for key, value in arguments.items()
+        if not (key in {"year_from", "year_to"} and value == 0)
+    }
+
+
 def identity_search_preflight(arguments: JsonMap) -> JsonMap | None:
     identity_keys = {"paper_id", "title", "filename", "doi", "arxiv_id", "authors", "year"}
     hints = {key: value for key, value in arguments.items() if key in identity_keys and value not in (None, "", [])}
@@ -478,15 +492,16 @@ def reading_location_preflight(
     *,
     key: str = "location_refs",
 ) -> tuple[list[str], JsonMap | None]:
+    next_action = "read_paper_content" if key == "location_refs" else "search_paper_content"
     refs = [str(value).strip() if value is not None else "" for value in as_list(arguments.get(key))]
     if not refs or any(not ref for ref in refs):
-        return [], recoverable_error("location_refs_required", "TOOL_ARGUMENTS_INVALID", "search_paper_content", result_key)
+        return [], recoverable_error("location_refs_required", "TOOL_ARGUMENTS_INVALID", next_action, result_key)
     if len(set(refs)) != len(refs) or len(refs) > SEARCH_RESULT_LIMIT:
-        return [], recoverable_error("location_refs_invalid", "TOOL_ARGUMENTS_INVALID", "search_paper_content", result_key)
+        return [], recoverable_error("location_refs_invalid", "TOOL_ARGUMENTS_INVALID", next_action, result_key)
     undisclosed = [ref for ref in refs if ref not in disclosed_location_refs]
     if undisclosed:
         return [], recoverable_error(
-            "location_ref_not_disclosed", "LOCATION_NOT_DISCLOSED", "search_paper_content", result_key,
+            "location_ref_not_disclosed", "LOCATION_NOT_DISCLOSED", next_action, result_key,
             location_refs=undisclosed,
         )
     return refs, None

@@ -3,6 +3,7 @@ package io.github.chzarles.paperloom.controller;
 import io.github.chzarles.paperloom.service.CorpusRetrievalService;
 import io.github.chzarles.paperloom.service.CanonicalReadingLocationService;
 import io.github.chzarles.paperloom.service.PaperSourceQuoteReadService;
+import io.github.chzarles.paperloom.service.ReadingModelQdrantIndexService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -22,10 +23,11 @@ class InternalCorpusControllerTest {
     @Test
     void blankInternalTokenRejectsCorpusRequests() throws Exception {
         CorpusRetrievalService retrievalService = mock(CorpusRetrievalService.class);
+        ReadingModelQdrantIndexService indexService = mock(ReadingModelQdrantIndexService.class);
         when(retrievalService.searchPapers(any())).thenReturn(
                 new CorpusRetrievalService.PaperSearchResult("", List.of(), 0, 0, "complete", null));
         MockMvc mvc = MockMvcBuilders.standaloneSetup(
-                new InternalCorpusController(retrievalService, "")
+                new InternalCorpusController(retrievalService, indexService, "")
         ).build();
 
         mvc.perform(post("/internal/v1/corpus/papers/search")
@@ -43,10 +45,11 @@ class InternalCorpusControllerTest {
     @Test
     void locationSearchPreservesModelVisibleCoverageContract() throws Exception {
         CorpusRetrievalService retrievalService = mock(CorpusRetrievalService.class);
+        ReadingModelQdrantIndexService indexService = mock(ReadingModelQdrantIndexService.class);
         when(retrievalService.searchLocations(any())).thenReturn(
                 new CorpusRetrievalService.LocationSearchResult(List.of(), 12, 8, "test-index"));
         MockMvc mvc = MockMvcBuilders.standaloneSetup(
-                new InternalCorpusController(retrievalService, "internal-secret")
+                new InternalCorpusController(retrievalService, indexService, "internal-secret")
         ).build();
 
         mvc.perform(post("/internal/v1/corpus/locations/search")
@@ -69,6 +72,7 @@ class InternalCorpusControllerTest {
     @Test
     void locationReadExposesCanonicalVisualEvidenceFields() throws Exception {
         CorpusRetrievalService retrievalService = mock(CorpusRetrievalService.class);
+        ReadingModelQdrantIndexService indexService = mock(ReadingModelQdrantIndexService.class);
         when(retrievalService.readLocations(any())).thenReturn(
                 new PaperSourceQuoteReadService.ReadResult(
                         List.of(new PaperSourceQuoteReadService.ReadItem(
@@ -101,7 +105,7 @@ class InternalCorpusControllerTest {
                 )
         );
         MockMvc mvc = MockMvcBuilders.standaloneSetup(
-                new InternalCorpusController(retrievalService, "internal-secret")
+                new InternalCorpusController(retrievalService, indexService, "internal-secret")
         ).build();
 
         mvc.perform(post("/internal/v1/corpus/locations/read")
@@ -123,5 +127,37 @@ class InternalCorpusControllerTest {
                 .andExpect(jsonPath("$.items[0].figure_screenshot_available").value(false))
                 .andExpect(jsonPath("$.items[0].asset_warnings").isArray())
                 .andExpect(jsonPath("$.items[0].source_quotes[0].source_quote_ref").value("source_quote_a"));
+    }
+
+    @Test
+    void currentModelCandidateExportReturnsMySqlPayloadWithoutSearch() throws Exception {
+        CorpusRetrievalService retrievalService = mock(CorpusRetrievalService.class);
+        ReadingModelQdrantIndexService indexService = mock(ReadingModelQdrantIndexService.class);
+        when(indexService.exportCurrentModelLocations("paper-a")).thenReturn(
+                new ReadingModelQdrantIndexService.CandidateExport(
+                        "paper-a", "rm-current", "READING_MODEL_READY", "READY", "hybrid-v1",
+                        "mineru", "1", List.of(new ReadingModelQdrantIndexService.IndexedLocation(
+                        "paper-a", "rm-current", "passage_ref_a", 3, "search text", java.util.Map.of(
+                        "location_type", "PASSAGE",
+                        "section_path", "Methods",
+                        "content_text", "Canonical passage text.",
+                        "content_hash", "hash-a",
+                        "source_span_json", "{\"spans\":[]}"
+                )))));
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(
+                new InternalCorpusController(retrievalService, indexService, "internal-secret")
+        ).build();
+
+        mvc.perform(post("/internal/v1/corpus/locations/export")
+                        .header("Authorization", "Bearer internal-secret")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"paper_id":"paper-a"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.model_version").value("rm-current"))
+                .andExpect(jsonPath("$.candidates[0].location_ref").value("passage_ref_a"))
+                .andExpect(jsonPath("$.candidates[0].section").value("Methods"))
+                .andExpect(jsonPath("$.candidates[0].content").value("Canonical passage text."));
     }
 }

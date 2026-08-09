@@ -101,7 +101,7 @@ class ModelProviderConfigServiceTest {
     }
 
     private ModelProviderConfigService service() {
-        return new ModelProviderConfigService(repository, secretCryptoService);
+        return new ModelProviderConfigService(repository, secretCryptoService, "");
     }
 
     private ModelProviderConfig provider(String scope, String code, boolean enabled, boolean active) {

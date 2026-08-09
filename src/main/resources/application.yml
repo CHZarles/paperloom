@@ -103,11 +103,11 @@ usage-quota:
   retention-days: ${USAGE_QUOTA_RETENTION_DAYS:35}
   llm:
     enabled: ${USAGE_QUOTA_LLM_ENABLED:true}
-    init-tokens: ${USAGE_QUOTA_LLM_INIT_TOKENS:128000} # 新用户的初始 LLM 余额
+    init-tokens: ${USAGE_QUOTA_LLM_INIT_TOKENS:10000000} # 新用户的初始 LLM 余额
   embedding:
     enabled: ${USAGE_QUOTA_EMBEDDING_ENABLED:true}
-    init-tokens: ${USAGE_QUOTA_EMBEDDING_INIT_TOKENS:10000} # token 总量使用策略下，新用户的初始可用token数
-    admin-init-tokens: ${USAGE_QUOTA_EMBEDDING_ADMIN_INIT_TOKENS:100000} # 管理员初始 Embedding Token
+    init-tokens: ${USAGE_QUOTA_EMBEDDING_INIT_TOKENS:10000000} # 新用户的初始 Embedding 余额
+    admin-init-tokens: ${USAGE_QUOTA_EMBEDDING_ADMIN_INIT_TOKENS:10000000} # 管理员初始 Embedding 余额
 
 paper:
   parsing:

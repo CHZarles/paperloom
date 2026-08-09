@@ -270,6 +270,20 @@ public class ReadingModelQdrantIndexService {
         return qdrantClient.indexedPaperIds(limit);
     }
 
+    public CandidateExport exportCurrentModelLocations(String paperId) {
+        PaperReadingModel model = currentReadyModel(paperId);
+        return new CandidateExport(
+                model.getPaperId(),
+                model.getModelVersion(),
+                model.getModelStatus().name(),
+                model.getRetrievalIndexStatus() == null ? "" : model.getRetrievalIndexStatus().name(),
+                model.getRetrievalIndexContract() == null ? "" : model.getRetrievalIndexContract(),
+                model.getParserName() == null ? "" : model.getParserName(),
+                model.getParserVersion() == null ? "" : model.getParserVersion(),
+                buildIndexedLocations(model.getPaperId(), model.getModelVersion())
+        );
+    }
+
     public List<IndexedLocation> buildIndexedLocations(String paperId, String modelVersion) {
         List<PaperReadingElement> elements = elementRepository
                 .findByPaperIdAndModelVersionOrderByPageNumberAscReadingOrderAscIdAsc(paperId, modelVersion);
@@ -499,6 +513,16 @@ public class ReadingModelQdrantIndexService {
                                   Integer pageNumber,
                                   String searchableText,
                                   Map<String, Object> payload) {
+    }
+
+    public record CandidateExport(String paperId,
+                                  String modelVersion,
+                                  String modelStatus,
+                                  String retrievalIndexStatus,
+                                  String retrievalIndexContract,
+                                  String parserName,
+                                  String parserVersion,
+                                  List<IndexedLocation> candidates) {
     }
 
     private record ResolvedLocation(String indexText,

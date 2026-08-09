@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import SettingsPanel from '../personal-center/modules/settings-panel.vue';
 import ChatList from './modules/chat-list.vue';
 import InputBox from './modules/input-box.vue';
 import ConversationSidebar from './modules/conversation-sidebar.vue';
-import ReferenceEvidencePage from './modules/reference-evidence-page.vue';
-import SourceEvidencePanel from './modules/source-evidence-panel.vue';
 import ResearchProcessPanel from './modules/research-process-panel.vue';
+
+const SettingsPanel = defineAsyncComponent(() => import('../personal-center/modules/settings-panel.vue'));
+const ReferenceEvidencePage = defineAsyncComponent(() => import('./modules/reference-evidence-page.vue'));
+const SourceEvidencePanel = defineAsyncComponent(() => import('./modules/source-evidence-panel.vue'));
 
 const route = useRoute();
 const showReferenceEvidence = computed(() => route.query.evidence === 'reference');

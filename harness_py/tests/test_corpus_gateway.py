@@ -158,7 +158,12 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         dataset = reader.load_metadata_dataset()
         tools = ReadingCorpusTools(dataset, reader=reader)
 
-        paper_result = tools.search_paper_candidates({"query_text": "", "limit": 100})
+        paper_result = tools.search_paper_candidates({
+            "query_text": "",
+            "year_from": 0,
+            "year_to": 0,
+            "limit": 100,
+        })
         location_result = tools.search_paper_content({
             "paper_ids": ["paper-a"],
             "query_text": "canonical content",
@@ -168,6 +173,9 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         self.assertEqual(1, paper_result["returned_count"])
         self.assertEqual("location_ref_a", location_result["locations"][0]["location_ref"])
         self.assertEqual("complete", location_result["coverage"])
+        paper_request = next(payload for path, payload in gateway.calls if path.endswith("/papers/search"))
+        self.assertIsNone(paper_request["year_from"])
+        self.assertIsNone(paper_request["year_to"])
         self.assertNotIn("evidence_payloads", model_facing_payload(location_result))
         self.assertNotIn("evidence_id", location_result["locations"][0])
         self.assertEqual({}, tools.observations_by_evidence_id)
@@ -205,6 +213,7 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         result = tools.read_paper_content({"location_refs": ["location_ref_hidden"]})
 
         self.assertEqual("location_ref_not_disclosed", result["error"])
+        self.assertEqual("read_paper_content", result["next_action"])
         self.assertFalse(any(path.endswith("/locations/read") for path, _ in gateway.calls))
 
     def test_java_and_in_memory_adapters_share_the_same_core_tool_contract(self) -> None:

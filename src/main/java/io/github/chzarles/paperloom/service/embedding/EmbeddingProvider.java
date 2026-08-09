@@ -12,6 +12,8 @@ public interface EmbeddingProvider {
 
     Mono<List<float[]>> embed(List<String> texts);
 
+    Mono<List<float[]>> embedQueries(List<String> texts);
+
     String modelName();
 
     int dimension();

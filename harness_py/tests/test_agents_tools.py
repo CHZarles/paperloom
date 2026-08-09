@@ -10,6 +10,7 @@ from agents.tool_context import ToolContext
 from harness_py.orchestration.agents.context import ResearchRunContext
 from harness_py.orchestration.agents.tools import (
     FINAL_TOOL_NAME,
+    _bounded_read_payload,
     _invoke_final,
     _normalize_structured_arguments,
     build_agent_tools,
@@ -158,3 +159,56 @@ class AgentsToolsTest(unittest.TestCase):
 
         self.assertTrue(payload["accepted"])
         self.assertIsNone(payload["validation_error"])
+
+        for call_id, markdown, expected_error in (
+            ("call_uncited", "An uncited paper claim.", "require citations"),
+            ("call_think", "<think>hidden</think> Supported. [[source_quote_synthetic]]", "internal reasoning"),
+        ):
+            context.tool_call_groups[call_id] = (FINAL_TOOL_NAME,)
+            rejected = json.loads(_invoke_final(
+                context,
+                ToolContext(
+                    context=context,
+                    tool_name=FINAL_TOOL_NAME,
+                    tool_call_id=call_id,
+                    tool_arguments="{}",
+                ),
+                {"outcome": "answered", "markdown": markdown},
+            ))
+            self.assertFalse(rejected["accepted"])
+            self.assertIn(expected_error, rejected["validation_error"])
+
+    def test_bounded_read_reports_omitted_locations(self) -> None:
+        dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()
+        context = ResearchRunContext(TurnExecutionInput(
+            dataset=dataset,
+            case_id="bounded_read",
+            run_id="run_bounded_read",
+            question="hello",
+            conversation_messages=[],
+            research_memory=ResearchMemory(),
+        ))
+        items = [
+            {
+                "location_ref": f"loc_{index}",
+                "content": "x" * 80,
+                "source_quotes": [{"source_quote_ref": f"source_quote_{index}"}],
+            }
+            for index in (1, 2)
+        ]
+        context.corpus.observations_by_evidence_id.update({
+            f"source_quote_{index}": {"source_quote_ref": f"source_quote_{index}"}
+            for index in (1, 2)
+        })
+        payload = {"items": items}
+        first_item_size = len(json.dumps(
+            {"items": items[:1]},
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ))
+
+        visible = _bounded_read_payload(context, payload, first_item_size)
+
+        self.assertTrue(visible["truncated"])
+        self.assertEqual(["loc_2"], visible["omitted_location_refs"])
+        self.assertNotIn("source_quote_2", context.corpus.observations_by_evidence_id)

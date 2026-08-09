@@ -115,6 +115,19 @@ class QdrantClientTest {
     }
 
     @Test
+    void scopeFilterNarrowsSearchToRequestedElementTypes() {
+        Map<String, Object> filter = client.filter(
+                Map.of("paper-a", "rm-a"), 2, 4, Set.of("figure", "table"));
+
+        JsonNode json = objectMapper.valueToTree(filter);
+        JsonNode elementTypes = json.path("must").get(4);
+        assertEquals("element_types", elementTypes.path("key").asText());
+        assertEquals(Set.of("figure", "table"), Set.of(
+                elementTypes.path("match").path("any").get(0).asText(),
+                elementTypes.path("match").path("any").get(1).asText()));
+    }
+
+    @Test
     void retrievalVerificationRejectsMissingCollectionWithoutProvisioningIt() {
         IllegalStateException error = assertThrows(
                 IllegalStateException.class,

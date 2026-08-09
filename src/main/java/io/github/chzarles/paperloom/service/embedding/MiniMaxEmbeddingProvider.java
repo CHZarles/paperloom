@@ -36,12 +36,21 @@ public class MiniMaxEmbeddingProvider implements EmbeddingProvider {
 
     @Override
     public Mono<List<float[]>> embed(List<String> texts) {
+        return embed(texts, "db");
+    }
+
+    @Override
+    public Mono<List<float[]>> embedQueries(List<String> texts) {
+        return embed(texts, "query");
+    }
+
+    private Mono<List<float[]>> embed(List<String> texts, String type) {
         if (texts == null || texts.isEmpty()) {
             return Mono.just(List.of());
         }
         java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
         body.put("model", model);
-        body.put("type", "db");
+        body.put("type", type);
         body.put("texts", texts);
         return webClient.post()
                 .uri(PATH)

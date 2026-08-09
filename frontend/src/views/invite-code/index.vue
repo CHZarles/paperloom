@@ -121,7 +121,7 @@ const columns = computed<DataTableColumns<Api.InviteCode.Item>>(() => [
     minWidth: 240,
     render: row => (
       <div class="min-w-0">
-        <div class="truncate text-3.5 leading-5 font-mono">{row.code}</div>
+        <div class="break-all text-3.5 font-semibold leading-5 font-mono">{row.code}</div>
         <div class="mt-2 flex flex-wrap gap-2">
           <NButton
             size="tiny"
@@ -315,7 +315,7 @@ async function handleCreate() {
     maxUses: Number(model.value.maxUses),
     expiresAt: null
   };
-  const { error } = isEditing.value
+  const result = isEditing.value
     ? await fetchUpdateInviteCode(editingId.value!, payload)
     : await fetchCreateInviteCode({
         ...payload,
@@ -323,8 +323,15 @@ async function handleCreate() {
         count: Number(model.value.count)
       });
 
-  if (!error) {
-    window.$message?.success(isEditing.value ? '邀请码已更新' : `已创建 ${Number(model.value.count)} 个邀请码`);
+  if (!result.error) {
+    const createdCodes =
+      !isEditing.value && Array.isArray(result.data) ? result.data.map(item => item.code).filter(Boolean) : [];
+    const successMessage = isEditing.value
+      ? '邀请码已更新'
+      : createdCodes.length === 1
+        ? `邀请码已创建：${createdCodes[0]}`
+        : `已创建 ${Number(model.value.count)} 个邀请码`;
+    window.$message?.success(successMessage);
     closeDialog();
     await getData();
   }
@@ -422,14 +429,12 @@ onMounted(() => {
           :columns="columns"
           :data="data"
           size="small"
-          :flex-height="!appStore.isMobile"
           :scroll-x="1100"
           :loading="loading"
           remote
           :row-key="row => row.id"
           :pagination="mobilePagination"
           :checked-row-keys="checkedRowKeys"
-          class="sm:h-full"
           @update:checked-row-keys="handleCheck"
         />
       </div>

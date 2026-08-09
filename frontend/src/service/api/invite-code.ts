@@ -10,7 +10,7 @@ export function fetchCreateInviteCode(data: {
   count?: number;
   expiresAt?: string | null;
 }) {
-  return request({
+  return request<Api.InviteCode.Item[]>({
     url: '/admin/invite-codes',
     method: 'post',
     data
@@ -39,7 +39,7 @@ export function fetchUpdateInviteCode(
     expiresAt?: string | null;
   }
 ) {
-  return request({
+  return request<Api.InviteCode.Item>({
     url: `/admin/invite-codes/${id}`,
     method: 'put',
     data

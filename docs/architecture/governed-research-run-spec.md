@@ -136,7 +136,7 @@ The browser never supplies this object.
 
 ### 5.2 Wire format
 
-Run limits govern execution rounds, elapsed time, and payload size. They do not preflight token
+Run limits govern elapsed time and payload size. They do not preflight token
 usage or set a provider output-token cap.
 
 ```json
@@ -145,7 +145,6 @@ usage or set a provider output-token cap.
     "include_trace": true,
     "run_limits": {
       "schema_version": "paperloom-run-limits/v1",
-      "max_model_calls": 12,
       "max_wall_clock_ms": 600000,
       "max_model_visible_tool_chars": 16000,
       "max_history_chars": 32000
@@ -163,7 +162,6 @@ per-user tuning controls.
 
 | Field | Enforcement point | Terminal code |
 | --- | --- | --- |
-| `max_model_calls` | Before another SDK model call starts. | `RUN_MODEL_CALL_LIMIT` |
 | `max_wall_clock_ms` | Before/after every model and Corpus operation; also wraps the whole Runner. | `RUN_DEADLINE_EXCEEDED` |
 | `max_model_visible_tool_chars` | When projecting a successful tool result for the model. | `RUN_CONTEXT_BUDGET_EXHAUSTED` only when no legal projection fits |
 | `max_history_chars` | When building request-local Session history. | `RUN_CONTEXT_BUDGET_EXHAUSTED` only when mandatory current inputs cannot fit |
@@ -213,21 +211,21 @@ class RunControl:
     terminal_reason: str | None = None
     last_completed_boundary: dict[str, str] | None = None
 
-    def before_model_call(self, provider_request: JsonMap) -> int: ...
+    def start_model_call(self) -> None: ...
     def record_model_usage(self, usage: Usage) -> None: ...
     def before_tool_call(self, tool_name: str) -> None: ...
     def after_boundary(self, kind: str, operation_id: str) -> None: ...
     def check_cancelled_or_expired(self) -> None: ...
 ```
 
-`before_model_call` either returns the clamped provider output limit or raises a typed controlled
-termination. `record_model_usage` is called exactly once for every provider response, including a
+`start_model_call` records the model-call count and checks cancellation or deadline; it does not
+impose a call-count limit. `record_model_usage` is called exactly once for every provider response, including a
 response later rejected by final-answer validation. `after_boundary` is called only after a completed
 model call, tool call, or final validation; it is the source of `last_completed_boundary`.
 
 `ResearchRunContext` may expose these counters for trace construction, but it must not maintain a
-second independent token or deadline calculation. `MAX_AGENT_TURNS` is removed as a standalone
-policy constant and becomes the resolved `RunLimits.max_model_calls` value.
+second independent token or deadline calculation. `Runner.run(max_turns=None)` keeps research
+continuation unbounded until a valid final submission, cancellation, or deadline.
 
 ## 6. Error Contract
 
@@ -251,7 +249,6 @@ the frontend and must not expose raw exception messages.
 | `CORPUS_UNAVAILABLE` | Terminal system error | None. |
 | `CORPUS_AUTHENTICATION_FAILED` | Terminal system error | None. |
 | `CORPUS_CONTRACT_VIOLATION` | Terminal system error | None. |
-| `RUN_MODEL_CALL_LIMIT` | Controlled limit | None. |
 | `RUN_TOKEN_BUDGET_EXHAUSTED` | Controlled limit | None. |
 | `RUN_TOKEN_BUDGET_OVERSHOOT` | Controlled limit | None. |
 | `RUN_CONTEXT_BUDGET_EXHAUSTED` | Controlled limit | None. |
@@ -428,7 +425,6 @@ Add `LIMITED` to Python `ExecutionStatus`, Java `ProductResultStatus`, and `Prod
 specific stop reasons:
 
 ```text
-MAX_MODEL_CALLS
 TOKEN_BUDGET_EXHAUSTED
 CONTEXT_BUDGET_EXHAUSTED
 DEADLINE_EXCEEDED
@@ -506,13 +502,13 @@ src/main/java/.../InternalCorpusController.java
 
 1. Build `RunControl` once in `ResearchHarnessService`; thread it through `TurnExecutionInput`,
    `ResearchRunContext`, the provider adapter, and the Java Corpus reader.
-2. Check model-call count and deadline in Hooks before the SDK performs a call.
-3. Compute serialized-request upper bounds in the provider adapter, clamp per-call output tokens,
-   and record actual usage after every response.
+2. Record model-call count and check the deadline in Hooks before the SDK performs a call.
+3. Compute serialized-request upper bounds in the provider adapter and record actual usage after
+   every response without setting a provider output-token cap.
 4. Apply remaining deadline to provider and Corpus I/O; catch the control exceptions outside
    `Runner.run` and build a `LIMITED` result rather than `FAILED_TECHNICAL`.
-5. Resolve `RunLimits` in Java, reserve the complete Run token ceiling atomically, and settle/release
-   against the cumulative usage returned by Python on every terminal path.
+5. Resolve `RunLimits` in Java, reserve one token as the balance gate, and settle actual cumulative
+   usage returned by Python on every terminal path.
 6. Use the same deadline in the Redis worker rather than relying on its lock heartbeat.
 
 Primary files:
@@ -539,8 +535,8 @@ generation and makes no Harness request; a completed run is settled from provide
 2. Emit `run_limited`, `job_completed`, `job_failed`, and `job_cancelled` consistently in HTTP and Redis.
 3. Map the new status and diagnostics through `ResearchHarnessResultMapper`, `ChatHandler`, Redis
    generation state, TypeScript declarations, and chat message rendering.
-4. Update maintained architecture, product requirement, and prompt text so they no longer describe
-   unlimited rounds or the old text-only continuation behavior.
+4. Update maintained architecture, product requirement, and prompt text so they describe unlimited
+   rounds and no longer describe the old text-only continuation behavior.
 
 Primary files:
 
@@ -560,11 +556,11 @@ frontend/src/views/chat/modules/chat-message.vue
 
 Deploy in this order:
 
-1. Java recognizes `LIMITED`, `control`, and the new terminal diagnostics but continues to send the
-   old `max_completion_tokens` field.
+1. Java recognizes `LIMITED`, `control`, and the new terminal diagnostics while tolerating older
+   Harness responses that omit them.
 2. Python accepts absent `run_limits` by resolving the documented server defaults, then begins
    returning `control` and `LIMITED`.
-3. Java begins sending resolved `run_limits` and reserves by the new complete-Run ceiling.
+3. Java begins sending resolved `run_limits` and reserves one token as the balance gate.
 4. Frontend consumes `reasonCode` and limited terminal results. Only then remove compatibility
    emission of `answer_completed` and legacy recoverable error strings.
 
@@ -586,9 +582,7 @@ fields throughout the rollout.
 | Java 401/503 | `CORPUS_AUTHENTICATION_FAILED`/`CORPUS_UNAVAILABLE`; terminal. |
 | Empty search | Success with an empty result, never technical failure. |
 | Rejected final submission | Recoverable validation result and another allowed model turn. |
-| Repeated non-final loop | `LIMITED` with `RUN_MODEL_CALL_LIMIT` exactly at the configured call count. |
 | Token reserve insufficient before a call | No provider request; `LIMITED/RUN_TOKEN_BUDGET_EXHAUSTED`. |
-| Provider usage overshoot | Usage recorded; no next call; `LIMITED/RUN_TOKEN_BUDGET_OVERSHOOT`. |
 | Deadline during provider or Corpus I/O | Bounded elapsed time and `LIMITED/RUN_DEADLINE_EXCEEDED`. |
 | Cancellation at every boundary | `CANCELLED`, no active Run, no durable memory update. |
 | Large repeated tool outputs | Projected request stays below the input and payload budgets; exact evidence remains citeable. |
@@ -599,7 +593,7 @@ fields throughout the rollout.
 | Scenario | Required assertion |
 | --- | --- |
 | Payload creation | Java sends server-resolved `run_limits`; client input cannot override it. |
-| Quota | Reservation covers the configured complete-Run ceiling; settlement records actual cumulative use and releases unused reserve. |
+| Quota | One-token reservation rejects an empty balance; settlement records actual cumulative use. |
 | Harness `LIMITED` response | Mapper returns `ProductResultStatus.LIMITED` and the correct stop reason. |
 | ChatHandler | A limited result persists an abstention message and clears the active generation without `markFailed`. |
 | Technical failure | A failed result remains failed and does not persist as a normal assistant answer. |

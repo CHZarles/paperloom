@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from ..utils.models import JsonMap
+from ..utils.answer_blocks import NON_MATERIAL_UNCITED_BLOCK_KINDS, answer_blocks
 from .research_skills import ResearchSkillRegistry
 
 
@@ -33,6 +34,9 @@ def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
         "the paper_id values returned by those discovery tools. Filenames such as paper_2018.pdf are not paper_ids "
         "and will be rejected. Without that prerequisite call, every read attempt returns "
         "paper_not_authorized_for_reading, so the answer cannot cite any paper content.\n\n"
+        "If paper discovery returns no candidates, retry once using only the requested paper title as query_text and "
+        "omit inferred author, venue, and year filters. Do not claim that a paper is absent from the corpus until this "
+        "unconstrained title search also returns no candidates.\n\n"
         "Use get_research_skill when a paradigm playbook would help. Skills are guidance, not gates, and may be "
         "combined. Candidate metadata and navigation previews are not citeable as paper content. Read exact locations "
         "before making paper-content claims. A citation does not license related general knowledge: every factual "
@@ -90,6 +94,8 @@ def final_answer_tool_definition() -> JsonMap:
 def answer_validation_error(
     final: JsonMap,
     known_evidence: dict[str, JsonMap],
+    *,
+    require_content_citations: bool = False,
 ) -> str:
     outcome = str(final.get("outcome") or "")
     markdown = final.get("markdown")
@@ -97,6 +103,8 @@ def answer_validation_error(
         return "invalid outcome"
     if not isinstance(markdown, str) or not markdown.strip():
         return "markdown is required"
+    if re.search(r"</?think(?:\s[^>]*)?>", markdown, flags=re.IGNORECASE):
+        return "remove internal reasoning from markdown"
     if _NUMERIC_CITATION_RE.search(markdown):
         return "use exact [[source_quote_...]] markers instead of numeric citations or a manually written Sources section"
     invalid_markers = sorted({
@@ -114,6 +122,18 @@ def answer_validation_error(
     unknown = sorted(cited - citeable)
     if unknown:
         return "unknown cited source quote refs: " + ", ".join(unknown)
+    if require_content_citations and outcome in {"answered", "partial"}:
+        if not citeable:
+            return "read_paper_content is required before answering paper-content claims"
+        blocks, _ = answer_blocks({"markdown": markdown})
+        uncited = [
+            str(block.get("block_id") or "")
+            for block in blocks
+            if block.get("kind") not in NON_MATERIAL_UNCITED_BLOCK_KINDS
+            and not block.get("evidence_ids")
+        ]
+        if uncited:
+            return "paper-content answer blocks require citations: " + ", ".join(uncited)
     if final.get("fields") is not None and not isinstance(final.get("fields"), dict):
         return "fields must be an object"
     return ""

@@ -17,16 +17,21 @@ import java.util.stream.Collectors;
 @Service
 public class HybridReadingLocationRetriever implements ReadingLocationRetriever {
 
+    private static final double SPARSE_RRF_WEIGHT = 3.0;
+
     private final QdrantReadingLocationRetriever sparseRetriever;
     private final EmbeddingProviderFactory embeddingProviderFactory;
     private final QdrantClient qdrantClient;
+    private final UsageQuotaService usageQuotaService;
 
     public HybridReadingLocationRetriever(QdrantReadingLocationRetriever sparseRetriever,
                                           EmbeddingProviderFactory embeddingProviderFactory,
-                                          QdrantClient qdrantClient) {
+                                          QdrantClient qdrantClient,
+                                          UsageQuotaService usageQuotaService) {
         this.sparseRetriever = sparseRetriever;
         this.embeddingProviderFactory = embeddingProviderFactory;
         this.qdrantClient = qdrantClient;
+        this.usageQuotaService = usageQuotaService;
     }
 
     @Override
@@ -47,18 +52,26 @@ public class HybridReadingLocationRetriever implements ReadingLocationRetriever 
         if (query.isBlank()) {
             return sparse;
         }
+        List<String> texts = List.of(query);
+        UsageQuotaService.TokenReservation reservation =
+                usageQuotaService.reserveEmbeddingTokens(request.userId(), texts);
         float[] denseVector;
         try {
-            List<float[]> vectors = provider.embed(List.of(query)).block();
+            List<float[]> vectors = provider.embedQueries(texts).block();
             denseVector = (vectors == null || vectors.isEmpty()) ? null : vectors.get(0);
         } catch (Exception e) {
+            usageQuotaService.abortReservation(reservation);
             return sparse;
         }
         if (denseVector == null) {
+            usageQuotaService.abortReservation(reservation);
             return sparse;
         }
+        usageQuotaService.settleReservation(
+                reservation,
+                usageQuotaService.estimateEmbeddingTokens(texts));
         Map<String, Object> filter = qdrantClient.filter(
-                request.activeModels(), request.pageFrom(), request.pageTo());
+                request.activeModels(), request.pageFrom(), request.pageTo(), request.elementTypeHints());
         List<RankedLocationCandidate> denseRanked;
         try {
             denseRanked = qdrantClient.searchDense(denseVector, filter, 100).stream()
@@ -82,7 +95,7 @@ public class HybridReadingLocationRetriever implements ReadingLocationRetriever 
         List<String> sparseOrder = sparseRanked.stream().map(RankedLocationCandidate::locationRef).toList();
         List<String> denseOrder = denseRanked.stream().map(RankedLocationCandidate::locationRef).toList();
         ReciprocalRankFusion.RrfResult<String> fused = ReciprocalRankFusion.fuse(
-                new ReciprocalRankFusion.RankedList<>("sparse", sparseOrder),
+                new ReciprocalRankFusion.RankedList<>("sparse", sparseOrder, SPARSE_RRF_WEIGHT),
                 new ReciprocalRankFusion.RankedList<>("dense", denseOrder)
         );
 

@@ -41,6 +41,15 @@ from .evaluation.product_runner import (
     product_reader_for_case,
     validate_product_scope,
 )
+from .evaluation.paperloom31 import (
+    PreparationError,
+    create_snapshot,
+    ensure_benchmark_config,
+    file_sha256 as benchmark_file_sha256,
+    prepare_papers,
+    run_benchmark,
+    scan_papers,
+)
 from .evaluation.retrieval import evaluate_product_retrieval
 from .evaluation.scoring import BehaviorScorer
 from .orchestration.live_chat import LiveResearchChatHarness
@@ -56,6 +65,67 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the Python research harness prototype.")
     parser.add_argument("--manifest", default="research/golden-data/manifest.yaml")
     subcommands = parser.add_subparsers(dest="command", required=True)
+    paperloom31_parser = subcommands.add_parser(
+        "paperloom31",
+        help="Prepare and run the PaperLoom-31 automated benchmark.",
+    )
+    paperloom31_commands = paperloom31_parser.add_subparsers(
+        dest="paperloom31_command",
+        required=True,
+    )
+    paperloom31_prepare = paperloom31_commands.add_parser(
+        "prepare",
+        help="Scan the corpus and prepare the first N papers through the product upload path.",
+    )
+    paperloom31_prepare.add_argument("--papers-dir", default="papers")
+    paperloom31_prepare.add_argument(
+        "--config",
+        default="research/benchmark/paperloom-31-v1/benchmark.yaml",
+    )
+    paperloom31_prepare.add_argument("--limit", type=int, default=1)
+    paperloom31_prepare.add_argument(
+        "--api-base-url",
+        default=os.getenv("PAPERLOOM_API_BASE_URL", "http://127.0.0.1:8081/api/v1"),
+    )
+    paperloom31_prepare.add_argument("--env-file", default=".env")
+    paperloom31_prepare.add_argument("--provider-source", choices=PROVIDER_SOURCE_CHOICES, default="env")
+    paperloom31_prepare.add_argument("--poll-timeout-seconds", type=int, default=1800)
+    paperloom31_prepare.add_argument("--poll-interval-seconds", type=float, default=5.0)
+    paperloom31_snapshot = paperloom31_commands.add_parser(
+        "snapshot",
+        help="Export Current Reading Model candidates and freeze generated benchmark cases.",
+    )
+    paperloom31_snapshot.add_argument("--papers-dir", default="papers")
+    paperloom31_snapshot.add_argument(
+        "--config",
+        default="research/benchmark/paperloom-31-v1/benchmark.yaml",
+    )
+    paperloom31_snapshot.add_argument(
+        "--snapshots-dir",
+        default="research/benchmark/local/snapshots",
+    )
+    paperloom31_snapshot.add_argument(
+        "--api-base-url",
+        default=os.getenv("PAPERLOOM_API_BASE_URL", "http://127.0.0.1:8081/api/v1"),
+    )
+    paperloom31_snapshot.add_argument("--env-file", default=".env")
+    paperloom31_snapshot.add_argument("--provider-source", choices=PROVIDER_SOURCE_CHOICES, default="env")
+    paperloom31_run = paperloom31_commands.add_parser(
+        "run",
+        help="Run L0/G0/L1/L2/L3 against one immutable PaperLoom-31 snapshot.",
+    )
+    paperloom31_run.add_argument("--snapshot", required=True)
+    paperloom31_run.add_argument(
+        "--config",
+        default="research/benchmark/paperloom-31-v1/benchmark.yaml",
+    )
+    paperloom31_run.add_argument("--runs-dir", default="research/benchmark/local/runs")
+    paperloom31_run.add_argument(
+        "--api-base-url",
+        default=os.getenv("PAPERLOOM_API_BASE_URL", "http://127.0.0.1:8081/api/v1"),
+    )
+    paperloom31_run.add_argument("--env-file", default=".env")
+    paperloom31_run.add_argument("--provider-source", choices=PROVIDER_SOURCE_CHOICES, default="env")
     subcommands.add_parser("validate", help="Load the dataset and validate deterministic fixture traces.")
     audit_parser = subcommands.add_parser("audit", help="Verify authored anchors against parsed reading models.")
     audit_parser.add_argument(
@@ -142,6 +212,118 @@ def main(argv: list[str] | None = None) -> int:
     claim_judge_parser.add_argument("--provider-source", choices=PROVIDER_SOURCE_CHOICES, default="db")
     claim_judge_parser.add_argument("--max-tokens", type=int, default=2200)
     args = parser.parse_args(argv)
+
+    if args.command == "paperloom31" and args.paperloom31_command == "prepare":
+        try:
+            papers = scan_papers(args.papers_dir)
+            provider = _provider(args.provider_source)
+            config_path = Path(args.config)
+            ensure_benchmark_config(
+                config_path,
+                papers,
+                generator_provider=provider.provider,
+                generator_model=provider.model,
+            )
+            prepared = prepare_papers(
+                papers,
+                limit=args.limit,
+                api_base_url=args.api_base_url,
+                env_path=args.env_file,
+                poll_timeout_seconds=args.poll_timeout_seconds,
+                poll_interval_seconds=args.poll_interval_seconds,
+            )
+        except PreparationError as error:
+            print(json.dumps({"error": "paperloom31_preparation_failed", **error.as_dict()}, indent=2), file=sys.stderr)
+            return 2
+        except Exception as error:
+            print(json.dumps({
+                "error": "paperloom31_preparation_failed",
+                "stage": "prepare",
+                "code": type(error).__name__,
+                "detail": str(error),
+            }, indent=2), file=sys.stderr)
+            return 2
+        print(json.dumps({
+            "dataset_id": "paperloom-31-v1",
+            "config": str(config_path),
+            "config_sha256": benchmark_file_sha256(config_path),
+            "configured_paper_count": len(papers),
+            "prepared_paper_count": len(prepared),
+            "papers": prepared,
+        }, indent=2, ensure_ascii=False))
+        return 0
+    if args.command == "paperloom31" and args.paperloom31_command == "snapshot":
+        try:
+            papers = scan_papers(args.papers_dir)
+            provider = _provider(args.provider_source)
+            path, snapshot_sha256, snapshot = create_snapshot(
+                args.config,
+                papers,
+                snapshots_dir=args.snapshots_dir,
+                provider=provider,
+                api_base_url=args.api_base_url,
+                env_path=args.env_file,
+            )
+        except PreparationError as error:
+            print(json.dumps({"error": "paperloom31_snapshot_failed", **error.as_dict()}, indent=2), file=sys.stderr)
+            return 2
+        except Exception as error:
+            print(json.dumps({
+                "error": "paperloom31_snapshot_failed",
+                "stage": "snapshot",
+                "code": type(error).__name__,
+                "detail": str(error),
+            }, indent=2), file=sys.stderr)
+            return 2
+        targets = child_map(snapshot.get("targets"))
+        print(json.dumps({
+            "dataset_id": snapshot.get("dataset_id"),
+            "snapshot": str(path),
+            "snapshot_sha256": snapshot_sha256,
+            "candidate_summary": snapshot.get("candidate_summary"),
+            "target_count": len(targets),
+            "target_types": {
+                location_type: sum(
+                    child_map(target).get("location_type") == location_type
+                    for target in targets.values()
+                )
+                for location_type in ("PASSAGE", "TABLE", "FIGURE")
+            },
+            "agent_case_count": len(snapshot.get("agent_cases") or []),
+        }, indent=2, ensure_ascii=False))
+        return 0
+    if args.command == "paperloom31" and args.paperloom31_command == "run":
+        try:
+            provider = _provider(args.provider_source)
+            path, report = run_benchmark(
+                args.snapshot,
+                config_path=args.config,
+                runs_dir=args.runs_dir,
+                provider=provider,
+                api_base_url=args.api_base_url,
+                env_path=args.env_file,
+            )
+        except PreparationError as error:
+            print(json.dumps({"error": "paperloom31_run_failed", **error.as_dict()}, indent=2), file=sys.stderr)
+            return 2
+        except Exception as error:
+            print(json.dumps({
+                "error": "paperloom31_run_failed",
+                "stage": "run",
+                "code": type(error).__name__,
+                "detail": str(error),
+            }, indent=2), file=sys.stderr)
+            return 2
+        print(json.dumps({
+            "out": str(path),
+            "run_id": report.get("run_id"),
+            "baseline": report.get("baseline"),
+            "internal_beta_gate": report.get("internal_beta_gate"),
+            "l1_metrics": child_map(report.get("l1")).get("metrics"),
+            "l2_metrics": child_map(report.get("l2")).get("metrics"),
+            "l3_hard_passed": child_map(report.get("l3")).get("hard_passed"),
+        }, indent=2, ensure_ascii=False))
+        return 0
 
     if args.command == "validate":
         dataset = load_dataset(args.manifest)

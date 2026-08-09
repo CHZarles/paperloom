@@ -17,10 +17,10 @@ import static org.mockito.Mockito.when;
 class QdrantReadingLocationRetrieverTest {
 
     @Test
-    void performsOneLexicalSearchAndUsesHintsOnlyAsDeterministicTieBreaks() {
+    void performsOneLexicalSearchWithinRequestedElementTypes() {
         QdrantClient qdrant = mock(QdrantClient.class);
         Map<String, Object> filter = Map.of("scope", "active-models");
-        when(qdrant.filter(Map.of("paper-a", "rm-1"), 2, 4)).thenReturn(filter);
+        when(qdrant.filter(Map.of("paper-a", "rm-1"), 2, 4, Set.of("table"))).thenReturn(filter);
         when(qdrant.searchLexical(any(), eq(filter), eq(100))).thenReturn(List.of(
                 hit("paragraph-ref", "paragraph", 0.8),
                 hit("table-ref", "table", 0.8),
@@ -31,6 +31,7 @@ class QdrantReadingLocationRetrieverTest {
 
         RetrievalCandidates result = retriever.retrieve(
                 new LocationRetrievalRequest(
+                        "user-1",
                         Map.of("paper-a", "rm-1"),
                         "Alpha alpha",
                         "Beta",
@@ -40,7 +41,7 @@ class QdrantReadingLocationRetrieverTest {
                         5
                 ));
 
-        assertEquals(List.of("best-ref", "table-ref", "paragraph-ref"), result.ranked().stream()
+        assertEquals(List.of("best-ref", "paragraph-ref", "table-ref"), result.ranked().stream()
                 .map(RankedLocationCandidate::locationRef).toList());
         assertEquals("lexical-index-v1", result.indexVersion());
         ArgumentCaptor<QdrantSparseVector> query = ArgumentCaptor.forClass(QdrantSparseVector.class);
