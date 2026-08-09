@@ -38,7 +38,6 @@ class RedisWorkerConfig:
     heartbeat_seconds: int = 10
     stale_pending_seconds: int = 120
     max_concurrent_runs: int = 1
-    max_completion_tokens: int = 3000
 
 
 class RedisResearchEventSink:
@@ -88,9 +87,7 @@ class RedisResearchWorker:
     def __init__(self, client: Any, config: RedisWorkerConfig, service: ResearchHarnessService | None = None) -> None:
         self.client = client
         self.config = config
-        self.service = service or ResearchHarnessService(
-            max_completion_tokens=config.max_completion_tokens,
-        )
+        self.service = service or ResearchHarnessService()
 
     def run_forever(self) -> None:
         self._ensure_group()
@@ -122,11 +119,13 @@ class RedisResearchWorker:
             return
 
         sink = RedisResearchEventSink(self.client, self.config, generation_id)
+        started_at_ms = _now_ms()
         status = self._read_status(generation_id)
         if _status_is_terminal(status):
             self.client.xack(self.config.jobs_key, self.config.group, message_id)
             return
         if status.get("status") == "RUNNING":
+            sink.emit("job_failed", _technical_terminal_payload("StalePendingJob", started_at_ms))
             self._terminal(sink, generation_id, "STALE_FAILED", "error", {
                 "error_type": "StalePendingJob",
                 "message": "research worker disappeared after starting this job",
@@ -157,7 +156,9 @@ class RedisResearchWorker:
             if not isinstance(payload, dict):
                 raise ValueError("payload_json must be a JSON object")
             if cancel_check():
-                self._terminal(sink, generation_id, "CANCELLED", "cancelled", {"message": "research job cancelled before start"})
+                terminal = _cancelled_terminal_payload(started_at_ms)
+                sink.emit("job_cancelled", terminal)
+                self._terminal(sink, generation_id, "CANCELLED", "cancelled", terminal)
                 self.client.xack(self.config.jobs_key, self.config.group, message_id)
                 return
 
@@ -178,15 +179,29 @@ class RedisResearchWorker:
                 })
 
             response = self.service.run_job(payload, sink.progress, cancel_check)
-            sink.emit("answer_completed")
-            self._terminal(sink, generation_id, "SUCCEEDED", "result", response)
+            terminal = _terminal_payload(response)
+            status = str(response.get("status") or "")
+            if status == "LIMITED":
+                sink.emit("run_limited", terminal)
+                sink.emit("job_completed", terminal)
+            elif status == "CANCELLED":
+                sink.emit("job_cancelled", terminal)
+            elif status == "FAILED_TECHNICAL":
+                sink.emit("job_failed", terminal)
+            else:
+                sink.emit("answer_completed")
+                sink.emit("job_completed", terminal)
+            self._terminal(sink, generation_id, "SUCCEEDED" if status not in {"CANCELLED", "FAILED_TECHNICAL"} else status,
+                           "result", response)
             self.client.xack(self.config.jobs_key, self.config.group, message_id)
         except HarnessCancelled as error:
-            self._terminal(sink, generation_id, "CANCELLED", "cancelled", {
-                "message": str(error) or "research job cancelled",
-            })
+            terminal = _cancelled_terminal_payload(started_at_ms)
+            sink.emit("job_cancelled", terminal)
+            self._terminal(sink, generation_id, "CANCELLED", "cancelled", terminal)
             self.client.xack(self.config.jobs_key, self.config.group, message_id)
         except Exception as error:
+            terminal = _technical_terminal_payload(type(error).__name__, started_at_ms)
+            sink.emit("job_failed", terminal)
             self._terminal(sink, generation_id, "FAILED", "error", {
                 "error_type": type(error).__name__,
                 "message": str(error),
@@ -333,6 +348,51 @@ def _xautoclaim_messages(result: Any) -> list[tuple[Any, Any]]:
 
 def _status_is_terminal(status: dict[str, Any]) -> bool:
     return str(status.get("status") or "") in {"SUCCEEDED", "FAILED", "CANCELLED", "STALE_FAILED"}
+
+
+def _terminal_payload(response: JsonMap) -> JsonMap:
+    control = child_map(response.get("control"))
+    usage = child_map(control.get("usage"))
+    return {
+        "status": response.get("status"),
+        "reasonCode": control.get("reason_code"),
+        "usage": usage,
+        "elapsedMs": usage.get("elapsed_ms"),
+    }
+
+
+def _cancelled_terminal_payload(started_at_ms: int) -> JsonMap:
+    elapsed_ms = max(0, _now_ms() - started_at_ms)
+    return {
+        "status": "CANCELLED",
+        "reasonCode": "RUN_CANCELLED",
+        "usage": {
+            "model_calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+            "elapsed_ms": elapsed_ms,
+        },
+        "elapsedMs": elapsed_ms,
+    }
+
+
+def _technical_terminal_payload(error_type: str, started_at_ms: int) -> JsonMap:
+    elapsed_ms = max(0, _now_ms() - started_at_ms)
+    return {
+        "status": "FAILED_TECHNICAL",
+        "reasonCode": "INTERNAL_UNEXPECTED",
+        "usage": {
+            "model_calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+            "elapsed_ms": elapsed_ms,
+        },
+        "elapsedMs": elapsed_ms,
+        "errorType": error_type,
+        "message": "The research service stopped unexpectedly.",
+    }
 
 
 def _now_ms() -> int:

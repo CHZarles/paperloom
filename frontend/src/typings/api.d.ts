@@ -76,6 +76,18 @@ declare namespace Api {
       role?: 'USER' | 'ADMIN';
       status: number;
       createdAt: string;
+      usage?: {
+        llm?: {
+          enabled: boolean;
+          usedTokens: number;
+          limitTokens: number;
+        };
+        embedding?: {
+          enabled: boolean;
+          usedTokens: number;
+          limitTokens: number;
+        };
+      };
     };
 
     type List = Common.PaginatingQueryRecord<Item>;
@@ -422,6 +434,8 @@ declare namespace Api {
       durationMs?: number;
       message?: string;
       errorType?: string;
+      reasonCode?: string;
+      elapsedMs?: number;
       input?: Record<string, any>;
       output?: Record<string, any>;
       usage?: {
@@ -683,6 +697,15 @@ declare namespace Api {
       plannerRounds?: number;
       attemptedQueries?: string[];
       fallbackUsed?: boolean;
+      resultStatus?: 'COMPLETED' | 'INCOMPLETE_PRECISE' | 'LIMITED' | 'FAILED' | 'CANCELLED' | string;
+      reasonCode?: string;
+      usage?: {
+        modelCalls?: number;
+        promptTokens?: number;
+        completionTokens?: number;
+        totalTokens?: number;
+        elapsedMs?: number;
+      };
     }
 
     interface Scope {

@@ -10,7 +10,9 @@ class ExecutionStatus(str, Enum):
     COMPLETED = "COMPLETED"
     NEEDS_CLARIFICATION = "NEEDS_CLARIFICATION"
     INCOMPLETE_PRECISE = "INCOMPLETE_PRECISE"
+    LIMITED = "LIMITED"
     FAILED_TECHNICAL = "FAILED_TECHNICAL"
+    CANCELLED = "CANCELLED"
 
 
 class ResearchOutcome(str, Enum):
@@ -55,7 +57,10 @@ def research_outcome_error(
     outcome_present: bool = True,
 ) -> str:
     normalized_status = normalize_execution_status(status)
-    if normalized_status == ExecutionStatus.FAILED_TECHNICAL.value:
+    if normalized_status in {
+        ExecutionStatus.FAILED_TECHNICAL.value,
+        ExecutionStatus.CANCELLED.value,
+    }:
         return "" if not outcome_present or outcome is None else "technical failures cannot declare a research outcome"
     if not outcome_present or outcome is None:
         return "answer.outcome must be present for non-technical execution"
@@ -68,4 +73,6 @@ def research_outcome_error(
         return "COMPLETED cannot declare outcome=needs_clarification"
     if normalized_status == ExecutionStatus.INCOMPLETE_PRECISE.value and normalized_outcome not in {"abstained", "partial"}:
         return "INCOMPLETE_PRECISE requires outcome=abstained or partial"
+    if normalized_status == ExecutionStatus.LIMITED.value and normalized_outcome != "abstained":
+        return "LIMITED requires outcome=abstained"
     return ""

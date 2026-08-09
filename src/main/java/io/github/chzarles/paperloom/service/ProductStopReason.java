@@ -2,6 +2,11 @@ package io.github.chzarles.paperloom.service;
 
 public enum ProductStopReason {
     COMPLETED,
+    MAX_MODEL_CALLS,
+    TOKEN_BUDGET_EXHAUSTED,
+    CONTEXT_BUDGET_EXHAUSTED,
+    DEADLINE_EXCEEDED,
+    CANCELLED,
     MAX_REACT_ROUNDS,
     TOOL_FAILED,
     ANSWER_SCHEMA_INVALID,

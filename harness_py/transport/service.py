@@ -12,6 +12,7 @@ import os
 import queue
 import threading
 import time
+from dataclasses import fields
 import uvicorn
 from starlette.applications import Starlette
 from starlette.concurrency import run_in_threadpool
@@ -25,6 +26,8 @@ from ..corpus.product_db_dataset import summarize_product_corpus
 from ..orchestration.conversation import ConversationState
 from ..orchestration.live_chat import LiveResearchChatHarness
 from ..orchestration.runtime import build_harness_runtime
+from ..orchestration.run_control import RunLimits
+from ..orchestration.run_control import RunControl
 from .provider_config import EnvProviderConfigStore
 
 
@@ -34,19 +37,14 @@ class ResearchHarnessService:
     def __init__(
         self,
         *,
-        max_completion_tokens: int = 3000,
         provider=None,
         harness=None,
         corpus_gateway=None,
     ):
         self.provider = provider or EnvProviderConfigStore().load_active_provider("llm")
         self.runtime_name = "agents_sdk"
-        self.max_completion_tokens = max_completion_tokens
         self.harness = harness or LiveResearchChatHarness(
-            build_harness_runtime(
-                self.provider,
-                max_completion_tokens=max_completion_tokens,
-            ),
+            build_harness_runtime(self.provider),
         )
         self.corpus_gateway = corpus_gateway or JavaCorpusGateway()
 
@@ -74,12 +72,15 @@ class ResearchHarnessService:
         raw_user_id = request.get("user_id")
         if raw_user_id in (None, ""):
             raise ValueError("user_id is required for the Java Corpus API")
+        limits = _run_limits(child_map(request.get("options")))
+        control = RunControl(limits, should_cancel=should_cancel)
         corpus_reader = self.corpus_gateway.reader(
             request_id=str(request.get("request_id") or ""),
             conversation_id=conversation_id,
             user_id=int(raw_user_id),
             scope_paper_ids=paper_ids,
             cancel_check=should_cancel,
+            run_control=control,
         )
         dataset = corpus_reader.load_metadata_dataset()
         state = _conversation_state(request, conversation_id, paper_ids)
@@ -91,6 +92,8 @@ class ResearchHarnessService:
             should_cancel=should_cancel,
             corpus_reader=corpus_reader,
             retry_context=child_map(request.get("retry")),
+            run_limits=limits,
+            run_control=control,
         )
         return _turn_response(request, run, next_state, dataset)
 
@@ -100,11 +103,8 @@ def serve(
     host: str = "127.0.0.1",
     port: int = 8091,
     internal_token: str = "",
-    max_completion_tokens: int = 3000,
 ) -> None:
-    service = ResearchHarnessService(
-        max_completion_tokens=max_completion_tokens,
-    )
+    service = ResearchHarnessService()
     token = internal_token or os.getenv("RESEARCH_HARNESS_INTERNAL_TOKEN", "")
     app = _service_app(service, token)
     print(json.dumps({
@@ -114,7 +114,6 @@ def serve(
         "provider": service.provider.public_diagnostics(),
         "runtime": service.runtime_name,
         "transport": "ndjson-stream",
-        "max_completion_tokens": service.max_completion_tokens,
     }, indent=2, sort_keys=True))
     uvicorn.run(app, host=host, port=port, log_level="info")
 
@@ -129,7 +128,6 @@ def _service_app(service: ResearchHarnessService, token: str) -> Starlette:
             "harness": service.runtime_name,
             "provider": service.provider.public_diagnostics(),
             "transport": "ndjson-stream",
-            "max_completion_tokens": service.max_completion_tokens,
         })
 
     async def turn(request: Request) -> JSONResponse:
@@ -180,6 +178,7 @@ def _stream_job(service: ResearchHarnessService, payload: JsonMap):
     disconnected = threading.Event()
     generation_id = str(payload.get("request_id") or "").strip()
     sequence = 0
+    started_monotonic = time.monotonic()
 
     def emit(event: JsonMap) -> None:
         nonlocal sequence
@@ -195,15 +194,21 @@ def _stream_job(service: ResearchHarnessService, payload: JsonMap):
         try:
             emit({"type": "job_started"})
             response = service.run_job(payload, emit, disconnected.is_set)
-            emit({"type": "answer_completed"})
-            events.put({"type": "result", "payload": response})
+            status = str(response.get("status") or "")
+            terminal = _terminal_event(response)
+            if status == "LIMITED":
+                emit({"type": "run_limited", **terminal})
+                emit({"type": "job_completed", **terminal})
+            elif status == "CANCELLED":
+                emit({"type": "job_cancelled", **terminal})
+            elif status == "FAILED_TECHNICAL":
+                emit({"type": "job_failed", **terminal})
+            else:
+                emit({"type": "answer_completed"})
+                emit({"type": "job_completed", **terminal})
+            emit({"type": "result", "payload": response})
         except Exception as error:
-            emit({
-                "type": "job_failed",
-                "status": "failed",
-                "errorType": type(error).__name__,
-                "message": str(error),
-            })
+            emit(_technical_failure_event(error, started_monotonic))
             events.put({
                 "type": "error",
                 "errorType": type(error).__name__,
@@ -255,6 +260,26 @@ def _conversation_state(request: JsonMap, conversation_id: str, paper_ids: list[
     })
 
 
+def _run_limits(options: JsonMap) -> RunLimits:
+    raw = child_map(options.get("run_limits"))
+    if not raw:
+        return RunLimits()
+    if raw.get("schema_version") != "paperloom-run-limits/v1":
+        raise ValueError("options.run_limits must use paperloom-run-limits/v1")
+    names = {item.name for item in fields(RunLimits)}
+    missing = sorted(names - set(raw))
+    unknown = sorted(set(raw) - names - {"schema_version"})
+    if missing or unknown:
+        raise ValueError(
+            "options.run_limits fields are invalid: "
+            + ", ".join([*(f"missing {name}" for name in missing), *(f"unknown {name}" for name in unknown)])
+        )
+    try:
+        return RunLimits(**{name: int(raw[name]) for name in names})
+    except (TypeError, ValueError) as error:
+        raise ValueError("options.run_limits values must be positive integers") from error
+
+
 def _turn_response(
     request: JsonMap,
     run: JsonMap,
@@ -276,6 +301,8 @@ def _turn_response(
     ]
     diagnostics = child_map(run.get("diagnostics"))
     include_trace = bool(child_map(request.get("options")).get("include_trace", True))
+    control = child_map(run.get("control"))
+    control_usage = child_map(control.get("usage"))
     response = {
         "request_id": request.get("request_id"),
         "conversation_id": state.conversation_id,
@@ -292,10 +319,11 @@ def _turn_response(
             ],
         },
         "usage": {
-            "prompt_tokens": diagnostics.get("prompt_tokens", 0),
-            "completion_tokens": diagnostics.get("completion_tokens", 0),
-            "total_tokens": diagnostics.get("total_tokens", 0),
+            "prompt_tokens": diagnostics.get("prompt_tokens", control_usage.get("prompt_tokens", 0)),
+            "completion_tokens": diagnostics.get("completion_tokens", control_usage.get("completion_tokens", 0)),
+            "total_tokens": diagnostics.get("total_tokens", control_usage.get("total_tokens", 0)),
         },
+        "control": control,
         "corpus": summarize_product_corpus(dataset).to_dict(),
     }
     if include_trace:
@@ -308,3 +336,33 @@ def _turn_response(
             "finish_reason": diagnostics.get("finish_reason"),
         }
     return response
+
+
+def _terminal_event(response: JsonMap) -> JsonMap:
+    control = child_map(response.get("control"))
+    usage = child_map(control.get("usage"))
+    return {
+        "status": response.get("status"),
+        "reasonCode": control.get("reason_code"),
+        "usage": usage,
+        "elapsedMs": usage.get("elapsed_ms"),
+    }
+
+
+def _technical_failure_event(error: Exception, started_monotonic: float) -> JsonMap:
+    elapsed_ms = round(max(0.0, time.monotonic() - started_monotonic) * 1000)
+    return {
+        "type": "job_failed",
+        "status": "FAILED_TECHNICAL",
+        "reasonCode": "INTERNAL_UNEXPECTED",
+        "usage": {
+            "model_calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+            "elapsed_ms": elapsed_ms,
+        },
+        "elapsedMs": elapsed_ms,
+        "errorType": type(error).__name__,
+        "message": "The research service stopped unexpectedly.",
+    }

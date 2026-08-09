@@ -17,13 +17,13 @@ class UsageBalanceQuotaServiceTest {
     void shouldSettleAgainstUserTokenBalanceOnly() {
         UserTokenService userTokenService = mock(UserTokenService.class);
         UsageBalanceQuotaService service = new UsageBalanceQuotaService(new UsageQuotaProperties(), userTokenService);
-        when(userTokenService.hasEnoughLlmTokens("42", 300)).thenReturn(true);
+        when(userTokenService.reserveLlmTokens("42", 300)).thenReturn(true);
 
         UsageQuotaService.TokenReservation reservation = service.reserveLlmTokens("42", 100, 200);
         service.settleReservation(reservation, 180);
 
         verify(userTokenService).incrementUserTotalRequestCount("llm", "42");
-        verify(userTokenService).consumeLlmTokens("42", 180);
+        verify(userTokenService).settleLlmTokenReservation("42", 300, 180);
     }
 
     @Test
@@ -36,7 +36,7 @@ class UsageBalanceQuotaServiceTest {
         UsageQuotaService.TokenReservation reservation = service.reserveLlmTokens("42", 100, 200);
 
         assertTrue(reservation.noop());
-        verify(userTokenService, never()).hasEnoughLlmTokens("42", 300);
+        verify(userTokenService, never()).reserveLlmTokens("42", 300);
     }
 
     @Test
@@ -54,7 +54,7 @@ class UsageBalanceQuotaServiceTest {
     void shouldFailFastWhenBalanceIsInsufficient() {
         UserTokenService userTokenService = mock(UserTokenService.class);
         UsageBalanceQuotaService service = new UsageBalanceQuotaService(new UsageQuotaProperties(), userTokenService);
-        when(userTokenService.hasEnoughLlmTokens("42", 300)).thenReturn(false);
+        when(userTokenService.reserveLlmTokens("42", 300)).thenReturn(false);
         when(userTokenService.getLlmTokenBalance("42")).thenReturn(120L);
 
         assertThrows(QuotaExceededException.class,

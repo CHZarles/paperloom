@@ -109,7 +109,6 @@ def main(argv: list[str] | None = None) -> int:
     serve_parser.add_argument("--host", default="127.0.0.1")
     serve_parser.add_argument("--port", type=int, default=8091)
     serve_parser.add_argument("--internal-token", default="")
-    serve_parser.add_argument("--max-tokens", type=int, default=3000)
     worker_parser = subcommands.add_parser("worker", help="Run a Redis Streams research harness worker.")
     worker_parser.add_argument("--redis-url", default=os.getenv("RESEARCH_HARNESS_REDIS_URL", "redis://127.0.0.1:6379/0"))
     worker_parser.add_argument("--group", default=os.getenv("RESEARCH_HARNESS_REDIS_GROUP", "paperloom-research-harness"))
@@ -126,7 +125,6 @@ def main(argv: list[str] | None = None) -> int:
     worker_parser.add_argument("--event-trim-maxlen", type=int, default=int(os.getenv("RESEARCH_HARNESS_EVENT_TRIM_MAXLEN", "500")))
     worker_parser.add_argument("--heartbeat-seconds", type=int, default=int(os.getenv("RESEARCH_HARNESS_WORKER_HEARTBEAT_SECONDS", "10")))
     worker_parser.add_argument("--stale-pending-seconds", type=int, default=int(os.getenv("RESEARCH_HARNESS_STALE_PENDING_SECONDS", "120")))
-    worker_parser.add_argument("--max-tokens", type=int, default=3000)
     judge_parser = subcommands.add_parser(
         "judge-calibrate",
         help="Compare one LLM judge with fixed human-labelled harness runs.",
@@ -360,7 +358,6 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         provider, harness = _live_harness(
             args.provider_source,
-            args.max_tokens,
             args.eval_dump,
         )
         runs = []
@@ -409,7 +406,6 @@ def main(argv: list[str] | None = None) -> int:
             host=args.host,
             port=args.port,
             internal_token=args.internal_token,
-            max_completion_tokens=args.max_tokens,
         )
         return 0
     if args.command == "worker":
@@ -431,7 +427,6 @@ def main(argv: list[str] | None = None) -> int:
             heartbeat_seconds=args.heartbeat_seconds,
             stale_pending_seconds=args.stale_pending_seconds,
             max_concurrent_runs=args.max_concurrent_runs,
-            max_completion_tokens=args.max_tokens,
         ))
         return 0
     if args.command == "judge-calibrate":
@@ -495,19 +490,14 @@ def main(argv: list[str] | None = None) -> int:
 def _add_runtime_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--provider-source", choices=PROVIDER_SOURCE_CHOICES, default="db")
     parser.add_argument("--eval-dump", default=os.getenv("EVAL_DUMP_DIR", ""))
-    parser.add_argument("--max-tokens", type=int, default=3000)
 
 
 def _live_harness(
     provider_source: str,
-    max_completion_tokens: int,
     eval_dump: str,
 ):
     provider = _provider(provider_source)
-    runtime = build_harness_runtime(
-        provider,
-        max_completion_tokens=max_completion_tokens,
-    )
+    runtime = build_harness_runtime(provider)
     return provider, LiveResearchChatHarness(runtime, eval_dump_dir=eval_dump or None)
 
 

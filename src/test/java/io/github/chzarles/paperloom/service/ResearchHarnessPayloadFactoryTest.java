@@ -47,6 +47,13 @@ class ResearchHarnessPayloadFactoryTest {
         assertEquals(List.of("paper-1"), memory.get("selected_paper_ids"));
         assertEquals(List.of("ev_1"), memory.get("selected_evidence_ids"));
         assertEquals(false, memory.containsKey("ignored"));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> options = (Map<String, Object>) body.get("options");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> limits = (Map<String, Object>) options.get("run_limits");
+        assertEquals("paperloom-run-limits/v1", limits.get("schema_version"));
+        assertEquals(12, limits.get("max_model_calls"));
     }
 
     @Test

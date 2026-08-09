@@ -15,15 +15,29 @@ public record ProductTurnResult(
         ReadingStatePatch readingStatePatch,
         ReadingResearchTrace researchTrace,
         ProductStopReason stopReason,
-        ProductResultStatus resultStatus
+        ProductResultStatus resultStatus,
+        Map<String, Object> diagnostics
 ) {
+    public ProductTurnResult(String finalAnswerMarkdown,
+                             AnswerEnvelope envelope,
+                             List<Map<String, Object>> references,
+                             List<ToolProgressEvent> progressEvents,
+                             List<Map<String, Object>> productStateItems,
+                             ReadingTurnArtifacts readingArtifacts,
+                             ReadingStatePatch readingStatePatch,
+                             ReadingResearchTrace researchTrace,
+                             ProductStopReason stopReason,
+                             ProductResultStatus resultStatus) {
+        this(finalAnswerMarkdown, envelope, references, progressEvents, productStateItems, readingArtifacts,
+                readingStatePatch, researchTrace, stopReason, resultStatus, Map.of());
+    }
     public ProductTurnResult(String finalAnswerMarkdown,
                              AnswerEnvelope envelope,
                              List<Map<String, Object>> references,
                              List<ToolProgressEvent> progressEvents,
                              ProductStopReason stopReason,
                              ProductResultStatus resultStatus) {
-        this(finalAnswerMarkdown, envelope, references, progressEvents, List.of(), null, null, null, stopReason, resultStatus);
+        this(finalAnswerMarkdown, envelope, references, progressEvents, List.of(), null, null, null, stopReason, resultStatus, Map.of());
     }
 
     public ProductTurnResult(String finalAnswerMarkdown,
@@ -33,7 +47,7 @@ public record ProductTurnResult(
                              List<Map<String, Object>> productStateItems,
                              ProductStopReason stopReason,
                              ProductResultStatus resultStatus) {
-        this(finalAnswerMarkdown, envelope, references, progressEvents, productStateItems, null, null, null, stopReason, resultStatus);
+        this(finalAnswerMarkdown, envelope, references, progressEvents, productStateItems, null, null, null, stopReason, resultStatus, Map.of());
     }
 
     public ProductTurnResult(String finalAnswerMarkdown,
@@ -46,7 +60,7 @@ public record ProductTurnResult(
                              ProductStopReason stopReason,
                              ProductResultStatus resultStatus) {
         this(finalAnswerMarkdown, envelope, references, progressEvents, productStateItems, readingArtifacts,
-                readingStatePatch, null, stopReason, resultStatus);
+                readingStatePatch, null, stopReason, resultStatus, Map.of());
     }
 
     public ProductTurnResult {
@@ -59,6 +73,7 @@ public record ProductTurnResult(
         researchTrace = researchTrace == null ? ReadingResearchTrace.empty() : researchTrace;
         stopReason = stopReason == null ? ProductStopReason.COMPLETED : stopReason;
         resultStatus = resultStatus == null ? ProductResultStatus.COMPLETED : resultStatus;
+        diagnostics = diagnostics == null ? Map.of() : Map.copyOf(diagnostics);
     }
 
     private static List<Map<String, Object>> copyMapList(List<Map<String, Object>> items) {

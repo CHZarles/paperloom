@@ -66,7 +66,7 @@ class RedisResearchHarnessTransportTest {
 
         UsageQuotaService quotaService = mock(UsageQuotaService.class);
         UsageQuotaService.TokenReservation reservation = UsageQuotaService.TokenReservation.noop("llm", "7");
-        when(quotaService.reserveLlmTokens(eq("7"), anyInt(), eq(3000))).thenReturn(reservation);
+        when(quotaService.reserveLlmTokens(eq("7"), anyInt(), eq(128000))).thenReturn(reservation);
         RedisResearchHarnessTransport transport = new RedisResearchHarnessTransport(
                 objectMapper,
                 redisTemplate,
@@ -158,7 +158,7 @@ class RedisResearchHarnessTransportTest {
                 .thenReturn(List.of(MapRecord.create(eventKey, error).withId(RecordId.of("2-0"))));
         UsageQuotaService quotaService = mock(UsageQuotaService.class);
         UsageQuotaService.TokenReservation reservation = UsageQuotaService.TokenReservation.noop("llm", "7");
-        when(quotaService.reserveLlmTokens(eq("7"), anyInt(), eq(3000))).thenReturn(reservation);
+        when(quotaService.reserveLlmTokens(eq("7"), anyInt(), eq(128000))).thenReturn(reservation);
         RedisResearchHarnessTransport transport = transport(objectMapper, redisTemplate, quotaService);
 
         assertThrows(Exception.class, () -> transport.submit(request(), event -> {}).get(1, TimeUnit.SECONDS));

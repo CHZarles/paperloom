@@ -100,13 +100,10 @@ public class RedisResearchHarnessTransport implements ResearchHarnessTransport {
             throw new IllegalArgumentException("The Python harness requires an authorized paper scope");
         }
         assertQueueCapacity();
-        int maxCompletionTokens = request.modelContext().maxCompletionTokens() > 0
-                ? request.modelContext().maxCompletionTokens()
-                : 3000;
         UsageQuotaService.TokenReservation reservation = usageQuotaService.reserveLlmTokens(
                 String.valueOf(request.userId()),
-                payloadFactory.estimatedPromptTokens(request),
-                maxCompletionTokens
+                0,
+                1
         );
         CompletableFuture<ProductTurnResult> future = new CompletableFuture<>();
         AtomicBoolean reservationFinished = new AtomicBoolean(false);

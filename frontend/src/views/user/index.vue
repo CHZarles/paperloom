@@ -61,6 +61,21 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, searchP
       )
     },
     {
+      key: 'usage',
+      title: '额度 已用 / 总量',
+      width: 210,
+      render: row => {
+        const llm = row.usage?.llm;
+        const embedding = row.usage?.embedding;
+        return (
+          <div class="token-usage-cell">
+            <div>LLM {formatQuota(llm)}</div>
+            <div>Embedding {formatQuota(embedding)}</div>
+          </div>
+        );
+      }
+    },
+    {
       key: 'operate',
       title: 'Actions / 操作',
       width: 180,
@@ -100,6 +115,10 @@ const registryStats = computed(() => [
 
 function formatNumber(value?: number | string | null) {
   return Number(value || 0).toLocaleString();
+}
+
+function formatQuota(quota?: { enabled: boolean; usedTokens: number; limitTokens: number }) {
+  return quota?.enabled ? `${formatNumber(quota.usedTokens)} / ${formatNumber(quota.limitTokens)}` : '-';
 }
 
 function shortId(value?: string) {
@@ -188,7 +207,7 @@ function openTokenDialog(row: Api.User.Item) {
         :columns="columns"
         :data="data"
         size="small"
-        :scroll-x="1172"
+        :scroll-x="1382"
         :loading="loading"
         remote
         :row-key="row => row.userId"
@@ -214,6 +233,11 @@ function openTokenDialog(row: Api.User.Item) {
 
 .user-registry-card {
   --user-line: var(--color-border);
+}
+
+.token-usage-cell {
+  line-height: 1.6;
+  white-space: nowrap;
 }
 
 .user-mobile-filter {

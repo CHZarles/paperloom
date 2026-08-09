@@ -14,6 +14,7 @@ from openai.types.responses import ResponseFunctionToolCall
 from harness_py.orchestration.agents.runtime import AgentsSdkHarnessRuntime
 from harness_py.orchestration.conversation import ConversationState
 from harness_py.orchestration.live_chat import LiveResearchChatHarness
+from harness_py.utils.errors import HarnessCancelled
 from harness_py.transport.provider_config import ProviderConfig
 from harness_py.tests import test_harness_py as _harness_tests
 
@@ -149,6 +150,23 @@ class AgentsRuntimeTest(unittest.TestCase):
             "Recovered after malformed tool arguments.",
             run["research_answer"]["markdown"],
         )
+
+    def test_cancelled_turn_returns_a_terminal_run(self) -> None:
+        dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()
+
+        class CancelledRuntime:
+            def run_turn(self, _turn):
+                raise HarnessCancelled("cancelled")
+
+        run, state = LiveResearchChatHarness(CancelledRuntime()).run_turn(
+            dataset,
+            ConversationState.new("cancelled_agents_test"),
+            "Stop",
+        )
+
+        self.assertEqual("CANCELLED", run["status"])
+        self.assertEqual("RUN_CANCELLED", run["control"]["reason_code"])
+        self.assertEqual(1, state.turn_index)
 
 class _ScriptedAgentsModel(Model):
     def __init__(self) -> None:

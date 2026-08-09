@@ -42,11 +42,11 @@ function phaseOf(input: PhaseInput): Phase {
   const type = eventTypeOf(input);
   if (type === 'job_failed' || type === 'job_cancelled') return 'error';
   if (input.tool === 'search_paper_candidates') return 'search';
-  if (input.tool === 'find_reading_locations') return 'locate';
-  if (input.tool === 'read_locations') return 'read';
+  if (input.tool === 'search_paper_content' || input.tool === 'get_paper_structure') return 'locate';
+  if (input.tool === 'read_paper_content') return 'read';
   if (input.tool === 'get_citation_edges') return 'cite';
   if (type === 'model_call_started' || type === 'model_call_completed') return 'think';
-  if (type === 'answer_completed') return 'answer';
+  if (type === 'answer_completed' || type === 'run_limited' || type === 'job_completed') return 'answer';
   return 'think';
 }
 
@@ -68,8 +68,8 @@ function locateHeadline(inputData: Record<string, any>): string {
 }
 
 function readHeadline(inputData: Record<string, any>, output: Record<string, any>): string {
-  const count = Number(output.evidenceCount || output.readCount || inputData.locationCount || 0);
-  return count > 0 ? `Read ${count} passage${count === 1 ? '' : 's'}` : 'Read passages';
+  const count = Number(output.sourceQuoteCount || output.readCount || inputData.locationCount || 0);
+  return count > 0 ? `Read ${count} location${count === 1 ? '' : 's'}` : 'Read paper content';
 }
 
 function citeHeadline(output: Record<string, any>): string {
@@ -93,7 +93,7 @@ function headlineOf(input: PhaseInput, phase: Phase): string {
     case 'think':
       return 'Reasoning';
     case 'answer':
-      return 'Answer prepared';
+      return eventTypeOf(input) === 'run_limited' ? 'Research limit reached' : 'Answer prepared';
     case 'error':
       return 'Research failed';
     default:
@@ -112,8 +112,8 @@ function locateDecisionText(input: Record<string, any>): string {
 }
 
 function readDecisionText(input: Record<string, any>, output: Record<string, any>): string {
-  const count = Number(output.evidenceCount || output.readCount || input.locationCount || 0);
-  return count > 0 ? `→ Read ${count} passage${count === 1 ? '' : 's'}` : '→ Read passages';
+  const count = Number(output.sourceQuoteCount || output.readCount || input.locationCount || 0);
+  return count > 0 ? `→ Read ${count} location${count === 1 ? '' : 's'}` : '→ Read paper content';
 }
 
 function decisionOf(_input: PhaseInput, allEvents: PhaseInput[], index: number): string {
@@ -127,16 +127,17 @@ function decisionOf(_input: PhaseInput, allEvents: PhaseInput[], index: number):
   switch (tool) {
     case 'search_paper_candidates':
       return searchDecisionText(nextInput);
-    case 'find_reading_locations':
+    case 'search_paper_content':
+    case 'get_paper_structure':
       return locateDecisionText(nextInput);
-    case 'read_locations':
+    case 'read_paper_content':
       return readDecisionText(nextInput, nextOutput);
     case 'get_citation_edges':
       return '→ Trace citation edges';
     default:
       break;
   }
-  if (type === 'answer_completed') return '→ Final answer';
+  if (type === 'answer_completed' || type === 'job_completed') return '→ Final answer';
   return '→ Reasoning';
 }
 
@@ -172,12 +173,12 @@ function itemsOf(input: PhaseInput, phase: Phase): PhaseItem[] {
       reference: String(l.locationRef || '')
     }));
   }
-  if (phase === 'read' && Array.isArray(output.evidence)) {
-    return output.evidence.slice(0, 10).map((e: any, i: number) => ({
-      key: e.evidenceId || i,
+  if (phase === 'read' && Array.isArray(output.sourceQuotes)) {
+    return output.sourceQuotes.slice(0, 10).map((e: any, i: number) => ({
+      key: e.sourceQuoteRef || i,
       title: [e.section, e.page ? `p. ${e.page}` : ''].filter(Boolean).join(' · '),
-      text: String(e.quote || '').slice(0, 240),
-      reference: String(e.evidenceId || '')
+      text: String(e.content || '').slice(0, 240),
+      reference: String(e.sourceQuoteRef || '')
     }));
   }
   return [];
@@ -224,23 +225,23 @@ watch(isRunning, value => {
   if (value) sawInFlight.value = true;
 });
 // Pulse plays while running, OR while events are still flowing (no
-// answer_completed yet). Combined with sawInFlight: if the panel ever saw
-// the research in flight, the pulse keeps going until events include
-// answer_completed.
+// a terminal event yet). Combined with sawInFlight: if the panel ever saw
+// the research in flight, the pulse keeps going until the run terminates.
 const isResearchActive = computed(
   () =>
     isRunning.value ||
     (sawInFlight.value &&
       events.value.length > 0 &&
-      !events.value.some(e => (e.eventType || e.type) === 'answer_completed'))
+      !events.value.some(e => ['job_completed', 'job_failed', 'job_cancelled'].includes(e.eventType || e.type)))
 );
 const MAX_VISIBLE_EVENTS = 100;
 
 function toolLabel(tool?: string, running = false) {
   const labels: Record<string, [string, string]> = {
     search_paper_candidates: ['Searching papers', 'Searched papers'],
-    find_reading_locations: ['Finding relevant locations', 'Found relevant locations'],
-    read_locations: ['Reading paper locations', 'Read paper locations'],
+    search_paper_content: ['Finding relevant locations', 'Found relevant locations'],
+    get_paper_structure: ['Inspecting paper structure', 'Inspected paper structure'],
+    read_paper_content: ['Reading paper locations', 'Read paper locations'],
     get_citation_edges: ['Tracing citations', 'Traced citations'],
     get_research_skill: ['Loading research guidance', 'Loaded research guidance']
   };

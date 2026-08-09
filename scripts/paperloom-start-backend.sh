@@ -22,7 +22,9 @@ load_env() {
     key="${BASH_REMATCH[1]}"
     value="${BASH_REMATCH[2]}"
     value="${value#\"}"; value="${value%\"}"
-    export "${key}=${value}"
+    if [[ -z "${!key+x}" ]]; then
+      export "${key}=${value}"
+    fi
   done <.env
 }
 
@@ -31,7 +33,7 @@ apply_local_ports() {
   mysql_container="${PAPERLOOM_MYSQL_CONTAINER:-$MYSQL_CONTAINER}"
   mysql_port="$(docker port "$mysql_container" 3306/tcp 2>/dev/null | sed -n '1s/.*://p' || true)"
   if [[ -n "$mysql_port" && "${SPRING_DATASOURCE_URL:-}" == jdbc:mysql://localhost:3306/* ]]; then
-    export SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL/jdbc:mysql:\/\/localhost:3306\//jdbc:mysql:\/\/localhost:${mysql_port}\/}"
+    export SPRING_DATASOURCE_URL="${SPRING_DATASOURCE_URL/jdbc:mysql:\/\/localhost:3306\//jdbc:mysql://localhost:${mysql_port}/}"
   fi
   export RESEARCH_HARNESS_BASE_URL="${RESEARCH_HARNESS_BASE_URL:-http://127.0.0.1:8091}"
 }

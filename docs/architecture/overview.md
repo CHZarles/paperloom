@@ -162,6 +162,7 @@ See the [Evaluation System](../evaluation/README.md).
 
 - [Reading Model and Agent Tools](reading-model-and-agent-tools.md)
 - [Evidence and Citations](evidence-and-citations.md)
+- [Governed Research Run Specification](governed-research-run-spec.md)
 - [Product Requirements](../reference/product-requirements.md)
 - [Research Harness Guide](../../harness_py/README.md)
 - [Architecture Decision Records](../adr/)

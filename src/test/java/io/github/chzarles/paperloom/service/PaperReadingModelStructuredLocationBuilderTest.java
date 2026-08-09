@@ -71,6 +71,15 @@ class PaperReadingModelStructuredLocationBuilderTest {
         assertEquals(2, sourceSpan.path("pageNumberTo").asInt());
         assertEquals("h1", sourceSpan.path("elementIds").get(0).asText());
         assertEquals("p2", sourceSpan.path("elementIds").get(2).asText());
+        assertEquals(3, sourceSpan.path("spans").size());
+        assertEquals("h1", sourceSpan.path("spans").get(0).path("parserElementId").asText());
+        assertEquals(0, sourceSpan.path("spans").get(0).path("content_char_from").asInt());
+        assertEquals(7, sourceSpan.path("spans").get(0).path("content_char_to").asInt());
+        assertEquals(2, sourceSpan.path("spans").get(2).path("pageNumber").asInt());
+        assertEquals("Method second page.", methods.getSectionText().substring(
+                sourceSpan.path("spans").get(2).path("content_char_from").asInt(),
+                sourceSpan.path("spans").get(2).path("content_char_to").asInt()));
+        assertFalse(sourceSpan.path("spans").get(2).path("elementSourceSpan").path("bbox").isMissingNode());
 
         JsonNode diagnostics = objectMapper.readTree(result.diagnosticsJson());
         assertEquals(2, diagnostics.path("sectionCount").asInt());

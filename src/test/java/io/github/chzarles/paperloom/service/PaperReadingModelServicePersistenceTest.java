@@ -15,8 +15,10 @@ import io.github.chzarles.paperloom.paper.parser.ParsedPaperMetadata;
 import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
 import io.github.chzarles.paperloom.repository.PaperLocationRepository;
 import io.github.chzarles.paperloom.repository.PaperPageRepository;
+import io.github.chzarles.paperloom.repository.PaperPassageRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.repository.PaperSectionRepository;
+import jakarta.persistence.Column;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -26,6 +28,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -63,6 +66,12 @@ class PaperReadingModelServicePersistenceTest {
 
     @Autowired
     private PaperReadingElementRepository readingElementRepository;
+
+    @Autowired
+    private PaperPassageRepository passageRepository;
+
+    @Autowired
+    private PaperPassageService passageService;
 
     @Test
     void successfulBuildPersistsCurrentModelPagesAndPageLocations() {
@@ -102,6 +111,26 @@ class PaperReadingModelServicePersistenceTest {
                 "paper-a",
                 model.getModelVersion()
         ));
+        assertEquals(1, passageRepository.findByPaperIdAndModelVersionOrderByDocumentOrdinalAsc(
+                "paper-a",
+                model.getModelVersion()
+        ).size());
+    }
+
+    @Test
+    void rebuildReplacesExistingPassagesBeforePersistingNewOnes() {
+        PaperReadingModel model = service.replaceFromParsedPaper(
+                "paper-a",
+                parsedPaperWithSection("Readable text.", 1),
+                "user-a"
+        );
+
+        passageService.rebuild("paper-a", model.getModelVersion(), "user-a");
+
+        assertEquals(1, passageRepository.findByPaperIdAndModelVersionOrderByDocumentOrdinalAsc(
+                "paper-a",
+                model.getModelVersion()
+        ).size());
     }
 
     @Test
@@ -175,6 +204,25 @@ class PaperReadingModelServicePersistenceTest {
         assertTrue(panel.getParentReadingElementId().startsWith("reading_element_"));
     }
 
+    @Test
+    void persistsSectionSourceSpanLargerThanMySqlTextLimit() throws NoSuchFieldException {
+        PaperReadingModel model = service.replaceFromParsedPaper(
+                "paper-large-span",
+                parsedPaperWithLargeSection(),
+                "user-a"
+        );
+
+        PaperSection section = sectionRepository.findByPaperIdAndModelVersionOrderByPageNumberFromAscDisplayOrderAsc(
+                "paper-large-span", model.getModelVersion()
+        ).get(0);
+
+        assertTrue(section.getSourceSpanJson().length() > 65_535);
+        assertEquals("LONGTEXT", PaperSection.class.getDeclaredField("sourceSpanJson")
+                .getAnnotation(Column.class).columnDefinition());
+        assertEquals("LONGTEXT", PaperLocation.class.getDeclaredField("sourceSpanJson")
+                .getAnnotation(Column.class).columnDefinition());
+    }
+
     private ParsedPaper parsedPaper(String text, Integer pageNumber) {
         return new ParsedPaper(
                 "MinerU",
@@ -233,6 +281,28 @@ class PaperReadingModelServicePersistenceTest {
                 List.of(),
                 List.of(),
                 List.of()
+        );
+    }
+
+    private ParsedPaper parsedPaperWithLargeSection() {
+        List<ParsedPaperElement> elements = new java.util.ArrayList<>();
+        elements.add(new ParsedPaperElement(
+                "h1", 1, 1, ParsedPaperElementType.HEADING, "Intro", null, 1, null, Map.of()
+        ));
+        IntStream.rangeClosed(2, 220).forEach(order -> elements.add(new ParsedPaperElement(
+                "p" + order,
+                1,
+                order,
+                ParsedPaperElementType.PARAGRAPH,
+                "Readable text " + order + ".",
+                "Intro",
+                null,
+                null,
+                Map.of()
+        )));
+        return new ParsedPaper(
+                "MinerU", "1.3.0", new ParsedPaperMetadata("paper.pdf", "Paper", "Ada", 1, null, null),
+                elements, Map.of(), "{}", List.of(), List.of(), List.of()
         );
     }
 

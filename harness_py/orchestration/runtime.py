@@ -12,6 +12,7 @@ from uuid import uuid4
 
 from ..utils.models import GoldenDataset, JsonMap
 from .memory import ResearchMemory
+from .run_control import RunControl, RunLimits
 
 if TYPE_CHECKING:
     from ..corpus.gateway import CorpusReader
@@ -45,6 +46,8 @@ class TurnExecutionInput:
     should_cancel: CancellationCheck | None = None
     eval_recorder: EvalRecorder | None = None
     retry_context: JsonMap = field(default_factory=dict)
+    run_limits: RunLimits = field(default_factory=RunLimits)
+    run_control: RunControl | None = None
 
 
 @dataclass(frozen=True)
@@ -63,14 +66,9 @@ class HarnessRuntime(Protocol):
 
 def build_harness_runtime(
     provider: ProviderConfig,
-    *,
-    max_completion_tokens: int = 3000,
 ) -> HarnessRuntime:
     """Construct the only production runtime: OpenAI Agents SDK."""
 
     from .agents.runtime import AgentsSdkHarnessRuntime
 
-    return AgentsSdkHarnessRuntime(
-        provider,
-        max_completion_tokens=max_completion_tokens,
-    )
+    return AgentsSdkHarnessRuntime(provider)

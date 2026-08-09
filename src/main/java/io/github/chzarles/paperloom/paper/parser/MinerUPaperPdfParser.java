@@ -14,7 +14,7 @@ import java.util.List;
 public class MinerUPaperPdfParser implements PaperPdfParser {
 
     private static final String PROVIDER_NAME = "MinerU";
-    private static final String PROVIDER_VERSION = "self-hosted";
+    private static final String PROVIDER_VERSION = "cloud-api-v4";
 
     private final MinerUParserClient minerUParserClient;
     private final MinerUOutputMapper minerUOutputMapper;

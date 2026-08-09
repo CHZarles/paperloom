@@ -21,9 +21,10 @@ public class ResearchHarnessPayloadFactory {
                 "reference_focus", request.memory()
         ));
         body.put("research_memory", researchMemory(request.memory()));
+        ResearchRunLimits limits = runLimits(request);
         body.put("options", Map.of(
                 "include_trace", true,
-                "max_completion_tokens", request.modelContext().maxCompletionTokens()
+                "run_limits", limits.toWire()
         ));
         body.put("retry", request.retryContext().isEmpty() ? null : request.retryContext());
         return body;
@@ -36,6 +37,10 @@ public class ResearchHarnessPayloadFactory {
             characters += message.getOrDefault("content", "").length();
         }
         return Math.max(1, (characters + 3) / 4);
+    }
+
+    public ResearchRunLimits runLimits(ProductTurnRequest request) {
+        return ResearchRunLimits.resolve(request.modelContext());
     }
 
     private Map<String, Object> researchMemory(Map<String, Object> memory) {

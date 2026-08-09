@@ -124,9 +124,10 @@ def test_worker_consumes_job_and_writes_ordered_terminal_events():
         "retry_context_loaded",
         "calling_tool",
         "answer_completed",
+        "job_completed",
         "result",
     ]
-    assert [int(fields["sequence"]) for _key, fields in client.events] == [1, 2, 3, 4, 5, 6]
+    assert [int(fields["sequence"]) for _key, fields in client.events] == [1, 2, 3, 4, 5, 6, 7]
     assert client.acks == [("paperloom:research:harness:jobs", "paperloom-research-harness", "1780000000000-0")]
     assert "paperloom:research:harness:lock:generation-1" in client.deleted
     result_payload = json.loads(client.events[-1][1]["payload_json"])

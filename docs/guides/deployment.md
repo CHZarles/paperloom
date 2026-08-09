@@ -10,7 +10,7 @@ Current assistant and evidence path:
 - Folio static frontend
 - Spring Boot backend
 - Python research harness workers
-- MinerU parser service
+- MinerU cloud parsing API
 - MySQL
 - MinIO
 - Qdrant
@@ -56,7 +56,8 @@ Production requirements include:
 - TLS at the public edge and trusted certificates for internal HTTPS connections;
 - `ADMIN_BOOTSTRAP_ENABLED=false` after initial provisioning;
 - explicit CORS origins;
-- private network access for data services, MinerU, and the research harness;
+- private network access for data services and the research harness;
+- a `PAPER_PARSING_MINERU_API_TOKEN` stored as a deployment secret;
 - `RESEARCH_HARNESS_TRANSPORT=redis` for production research chat; keep HTTP mode only as a
   development/debug rollback path;
 - persistent volumes and a tested backup policy;
@@ -79,7 +80,7 @@ CRUD API. WebSocket upgrade headers must be forwarded explicitly.
 
 1. Start and verify MySQL, Redis, Kafka, MinIO, and Qdrant.
 2. Apply the database schema or allow the configured migration mechanism to run.
-3. Start MinerU and confirm its health endpoint.
+3. Configure the MinerU cloud API token and verify it with one disposable PDF upload.
 4. Start one or more research harness workers:
 
    ```bash

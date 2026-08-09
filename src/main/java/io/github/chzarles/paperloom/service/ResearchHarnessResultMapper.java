@@ -26,6 +26,8 @@ public class ResearchHarnessResultMapper {
         ProductResultStatus resultStatus = switch (status) {
             case "FAILED_TECHNICAL" -> ProductResultStatus.FAILED;
             case "INCOMPLETE_PRECISE" -> ProductResultStatus.INCOMPLETE_PRECISE;
+            case "LIMITED" -> ProductResultStatus.LIMITED;
+            case "CANCELLED" -> ProductResultStatus.CANCELLED;
             default -> ProductResultStatus.COMPLETED;
         };
         AnswerType answerType = switch (status) {
@@ -34,6 +36,7 @@ public class ResearchHarnessResultMapper {
             default -> references.isEmpty() ? AnswerType.NON_EVIDENCE : AnswerType.EVIDENCE_ANSWER;
         };
         Map<String, Object> trace = objectMap(response.get("trace"));
+        Map<String, Object> control = objectMap(response.get("control"));
         AnswerEnvelope envelope = new AnswerEnvelope(
                 answerType,
                 markdown,
@@ -55,9 +58,38 @@ public class ResearchHarnessResultMapper {
                 readingArtifacts(request.userMessage(), trace, references, resultStatus),
                 readingStatePatch(references),
                 ReadingResearchTrace.empty(),
-                resultStatus == ProductResultStatus.FAILED ? ProductStopReason.TOOL_FAILED : ProductStopReason.COMPLETED,
-                resultStatus
+                stopReason(resultStatus, stringValue(control.get("reason_code"))),
+                resultStatus,
+                diagnostics(control, response.get("usage"))
         );
+    }
+
+    private ProductStopReason stopReason(ProductResultStatus status, String reasonCode) {
+        if (status == ProductResultStatus.FAILED) {
+            return ProductStopReason.TOOL_FAILED;
+        }
+        if (status == ProductResultStatus.CANCELLED) {
+            return ProductStopReason.CANCELLED;
+        }
+        if (status != ProductResultStatus.LIMITED) {
+            return ProductStopReason.COMPLETED;
+        }
+        return switch (reasonCode) {
+            case "RUN_MODEL_CALL_LIMIT" -> ProductStopReason.MAX_MODEL_CALLS;
+            case "RUN_CONTEXT_BUDGET_EXHAUSTED" -> ProductStopReason.CONTEXT_BUDGET_EXHAUSTED;
+            case "RUN_DEADLINE_EXCEEDED" -> ProductStopReason.DEADLINE_EXCEEDED;
+            default -> ProductStopReason.TOKEN_BUDGET_EXHAUSTED;
+        };
+    }
+
+    private Map<String, Object> diagnostics(Map<String, Object> control, Object usage) {
+        if (control.isEmpty() && !(usage instanceof Map<?, ?>)) {
+            return Map.of();
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("reasonCode", stringValue(control.get("reason_code")));
+        result.put("usage", objectMap(control.get("usage")).isEmpty() ? objectMap(usage) : objectMap(control.get("usage")));
+        return result;
     }
 
     public Map<String, Object> objectMap(Object value) {
@@ -88,10 +120,12 @@ public class ResearchHarnessResultMapper {
         for (Map<String, Object> citation : mapList(rawCitations)) {
             int referenceNumber = intValue(citation.get("reference_number"), fallbackNumber++);
             String evidenceId = stringValue(citation.get("evidence_id"));
+            String sourceQuoteRef = stringValue(citation.get("source_quote_ref"));
             String quote = stringValue(citation.get("span_text"));
             Map<String, Object> reference = new LinkedHashMap<>();
             reference.put("referenceNumber", referenceNumber);
-            reference.put("evidenceRef", evidenceId);
+            reference.put("evidenceRef", firstNonBlank(evidenceId, sourceQuoteRef));
+            reference.put("sourceQuoteRef", sourceQuoteRef);
             reference.put("paperId", citation.get("paper_id"));
             reference.put("paperTitle", citation.get("title"));
             reference.put("originalFilename", citation.get("original_filename"));

@@ -20,7 +20,9 @@ from agents import FunctionTool, FunctionToolResult, ToolsToFinalOutputResult
 from agents.run_context import RunContextWrapper
 from agents.tool_context import ToolContext
 
-from ...utils.models import JsonMap, child_map
+from ...utils.models import JsonMap, as_list, child_map
+from ...utils.errors import ResearchSystemError, RunLimitExceeded
+from ...corpus.gateway import CorpusGatewayError
 from ...corpus.tools import model_facing_payload
 from ..research_contract import (
     FINAL_TOOL_NAME,
@@ -40,8 +42,8 @@ from .model import TEXT_NUDGE_TOOL_NAME, TOOL_ARGUMENT_REPAIR_PREFIX
 def build_agent_tools(context: ResearchRunContext) -> list[FunctionTool]:
     """创建本轮 Agent 可见的全部工具。
 
-    工具由四类组成：研究方法指导、语料工具、最终提交工具，以及供应商返回纯文本时使用的
-    内部继续工具。工具列表按请求创建，因为 Corpus 能力可能随 Dataset 改变。
+    工具由四类组成：研究方法指导、语料工具、最终提交工具，以及修复截断工具调用的内部
+    继续工具。工具列表按请求创建，因为 Corpus 能力可能随 Dataset 改变。
     """
 
     definitions = [
@@ -51,12 +53,12 @@ def build_agent_tools(context: ResearchRunContext) -> list[FunctionTool]:
         *context.corpus.definitions(),
         # 最终答案也建模成工具，这样可以在 Runner 循环内部做确定性校验。
         final_answer_tool_definition(),
-        # 这是内部协议工具，不是用户功能。MiniMaxAgentsModel 在收到纯文本响应时调用它。
+        # 这是内部协议工具，不是用户功能。MiniMaxAgentsModel 用它修复损坏的工具参数。
         {
             "type": "function",
             "function": {
                 "name": TEXT_NUDGE_TOOL_NAME,
-                "description": "Continue after a text-only response and finish through the required submission tool.",
+                "description": "Repair malformed function-call arguments before retrying the required submission tool.",
                 "parameters": {
                     "type": "object",
                     "properties": {"content": {"type": "string"}},
@@ -105,8 +107,23 @@ def _function_tool(definition: JsonMap) -> FunctionTool:
         arguments, parse_error = _arguments(raw_arguments)
         if parse_error:
             # 参数解析失败属于可恢复的模型错误：返回结构化错误，让同一个 Agent Run 修正参数。
-            payload = {"error": "invalid_tool_arguments", "message": parse_error}
+            payload = {
+                "error": "invalid_tool_arguments",
+                "error_code": "TOOL_ARGUMENTS_INVALID",
+                "recoverable": True,
+                "next_action": name,
+            }
             context.trace.append(tool_trace_item(tool_context.tool_call_id, name, {}, payload))
+            context.emit_progress({
+                "type": "tool_completed",
+                "tool": name,
+                "status": "recoverable_error",
+                "durationMs": 0,
+                "input": {},
+                "output": progress_output(name, payload),
+                "evidenceIds": [],
+            })
+            context.control.after_boundary("tool_completed", tool_context.tool_call_id)
             return json.dumps(payload, ensure_ascii=False)
         if name == TEXT_NUDGE_TOOL_NAME:
             # 模型适配器把纯文本响应转换成这个内部调用。这里不接受纯文本为最终答案，而是
@@ -130,6 +147,8 @@ def _function_tool(definition: JsonMap) -> FunctionTool:
             return _invoke_final(context, tool_context, arguments)
         try:
             return _invoke_domain(context, tool_context, name, arguments)
+        except CorpusGatewayError as error:
+            raise ResearchSystemError(_corpus_reason_code(error)) from error
         except Exception as error:
             # 非预期业务异常继续抛给 SDK，但先记录足够的定位信息。
             recorder = context.turn.eval_recorder
@@ -197,7 +216,7 @@ def _invoke_domain(
         internal = context.corpus.call(name, arguments).payload
 
     # internal 可能包含仅供系统记录的字段；只把明确允许的部分返回给模型。
-    visible = child_map(model_facing_payload(internal))
+    visible = _bounded_model_payload(context, name, child_map(model_facing_payload(internal)))
 
     # react_trace 保存“模型调用了什么、模型看到了什么”，不保存任意内部对象。
     context.trace.append(tool_trace_item(tool_context.tool_call_id, name, arguments, visible))
@@ -205,15 +224,82 @@ def _invoke_domain(
     context.emit_progress({
         "type": "tool_completed",
         "tool": name,
-        "status": "success" if "error" not in visible else "failed",
+        "status": "recoverable_error" if "error" in visible else "success",
         "durationMs": round((perf_counter() - started) * 1000),
         "input": progress_input(name, arguments),
         "output": progress_output(name, visible),
         "evidenceIds": progress_evidence_ids(visible),
     })
     context.check_cancelled()
+    context.control.after_boundary("tool_completed", tool_context.tool_call_id)
     # FunctionTool 输出使用字符串；SDK 会把它包装成 tool output 继续下一轮模型调用。
     return json.dumps(visible, ensure_ascii=False)
+
+
+def _bounded_model_payload(context: ResearchRunContext, name: str, payload: JsonMap) -> JsonMap:
+    limit = context.control.limits.max_model_visible_tool_chars
+    if _payload_size(payload) <= limit:
+        return payload
+    if name == "read_paper_content":
+        return _bounded_read_payload(context, payload, limit)
+    for key in ("candidates", "matches", "locations", "items", "papers"):
+        values = as_list(payload.get(key))
+        if not values:
+            continue
+        projected: list[object] = []
+        for value in values:
+            candidate = {**payload, key: [*projected, value]}
+            if _payload_size(candidate) > limit:
+                break
+            projected.append(value)
+        if projected:
+            return {**payload, key: projected}
+    raise RunLimitExceeded("RUN_CONTEXT_BUDGET_EXHAUSTED")
+
+
+def _bounded_read_payload(context: ResearchRunContext, payload: JsonMap, limit: int) -> JsonMap:
+    items = as_list(payload.get("items"))
+    projected: list[object] = []
+    for item in items:
+        candidate = {**payload, "items": [*projected, item]}
+        if _payload_size(candidate) > limit:
+            break
+        projected.append(item)
+    visible_refs = {
+        str(child_map(quote).get("source_quote_ref") or "")
+        for item in projected
+        for quote in as_list(child_map(item).get("source_quotes"))
+        if child_map(quote).get("source_quote_ref")
+    }
+    all_refs = {
+        str(child_map(quote).get("source_quote_ref") or "")
+        for item in items
+        for quote in as_list(child_map(item).get("source_quotes"))
+        if child_map(quote).get("source_quote_ref")
+    }
+    for ref in all_refs - visible_refs:
+        context.corpus.observations_by_evidence_id.pop(ref, None)
+    if projected:
+        return {**payload, "items": projected}
+    return {
+        "error": "source_unit_exceeds_model_budget",
+        "error_code": "SOURCE_UNIT_EXCEEDS_MODEL_BUDGET",
+        "recoverable": True,
+        "next_action": "get_paper_structure",
+        "locations": [
+            {
+                "paper_id": child_map(item).get("paper_id"),
+                "location_ref": child_map(item).get("location_ref"),
+                "page": child_map(item).get("page"),
+                "section": child_map(item).get("section"),
+            }
+            for item in items
+        ],
+    }
+
+
+def _payload_size(payload: JsonMap) -> int:
+    return len(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
 
 
 def _invoke_final(
@@ -262,6 +348,7 @@ def _invoke_final(
             operation_id=tool_context.tool_call_id,
             payload={**payload, "submitted_draft": draft},
         )
+    context.control.after_boundary("answer_validation", tool_context.tool_call_id)
     return json.dumps(payload, ensure_ascii=False)
 
 
@@ -293,6 +380,14 @@ def _record_eval_tool(
             "state_after": context.state_snapshot(),
         },
     )
+
+
+def _corpus_reason_code(error: CorpusGatewayError) -> str:
+    if error.status_code == 401:
+        return "CORPUS_AUTHENTICATION_FAILED"
+    if error.status_code >= 500:
+        return "CORPUS_UNAVAILABLE"
+    return "CORPUS_CONTRACT_VIOLATION"
 
 
 def _arguments(raw: str) -> tuple[JsonMap, str]:

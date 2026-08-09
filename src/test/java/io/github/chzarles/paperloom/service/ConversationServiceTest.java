@@ -6,13 +6,16 @@ import io.github.chzarles.paperloom.model.Conversation;
 import io.github.chzarles.paperloom.model.ConversationSourceQuote;
 import io.github.chzarles.paperloom.model.ConversationSession;
 import io.github.chzarles.paperloom.model.Paper;
+import io.github.chzarles.paperloom.model.PaperReadingElement;
 import io.github.chzarles.paperloom.model.PaperSourceQuote;
+import io.github.chzarles.paperloom.model.PaperVisualAsset;
 import io.github.chzarles.paperloom.model.User;
 import io.github.chzarles.paperloom.repository.ConversationSourceQuoteRepository;
 import io.github.chzarles.paperloom.repository.ConversationRepository;
 import io.github.chzarles.paperloom.repository.ConversationSessionRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
+import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
 import io.github.chzarles.paperloom.repository.PaperSourceQuoteRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,6 +57,12 @@ class ConversationServiceTest {
 
     @Mock
     private PaperSourceQuoteRepository sourceQuoteRepository;
+
+    @Mock
+    private PaperReadingElementRepository readingElementRepository;
+
+    @Mock
+    private PaperVisualAssetService paperVisualAssetService;
 
     @Mock
     private PaperRepository paperRepository;
@@ -909,9 +918,21 @@ class ConversationServiceTest {
                 {
                   "pageNumber": 3,
                   "locationType": "TABLE",
-                  "bbox": {"pageNumber":3,"left":100,"top":120,"right":300,"bottom":180,"unit":"mineru_1000","coordinateSystem":"top_left_1000"}
+                  "bbox": {"pageNumber":3,"left":100,"top":120,"right":300,"bottom":180,"unit":"mineru_1000","coordinateSystem":"top_left_1000"},
+                  "spans": [{
+                    "parserElementId": "table-parser-3",
+                    "elementSourceSpan": {"parserElementId": "table-parser-3", "sourceObjectId": "table-3"}
+                  }]
                 }
                 """);
+        PaperReadingElement table = new PaperReadingElement();
+        table.setReadingElementId("reading-table-3");
+        table.setParserElementId("table-parser-3");
+        table.setSourceObjectId("table-3");
+        when(readingElementRepository.findByPaperIdAndModelVersionAndElementTypeOrderByPageNumberAscReadingOrderAscIdAsc(
+                "paper-1", "model-v1", "TABLE")).thenReturn(List.of(table));
+        when(paperVisualAssetService.findTableCropByReadingElementId("paper-1", "reading-table-3"))
+                .thenReturn(Optional.of(new PaperVisualAsset()));
         Paper paper = new Paper();
         paper.setPaperId("paper-1");
         paper.setPaperTitle("Parsed Paper Title");
@@ -938,6 +959,10 @@ class ConversationServiceTest {
         assertEquals("top_left_1000", regions.get(0).get("coordinateSystem"));
         assertEquals("LOCATION", regions.get(0).get("targetKind"));
         assertEquals("EXACT", regions.get(0).get("confidence"));
+        assertEquals("TABLE", detail.get("sourceKind"));
+        assertEquals("Table evidence.", detail.get("tableText"));
+        assertEquals("reading-table-3", detail.get("tableId"));
+        assertEquals(true, detail.get("tableScreenshotAvailable"));
     }
 
     @Test

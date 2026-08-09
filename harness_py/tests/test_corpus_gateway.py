@@ -91,6 +91,7 @@ class FakeGateway:
                         "page": 3,
                         "page_end": 3,
                         "section": "Methods",
+                        "content_kind": "TABLE",
                         "content": "Exact canonical content.",
                     }],
                 }],
@@ -177,6 +178,8 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         source_quote_ref = read_result["items"][0]["source_quotes"][0]["source_quote_ref"]
         self.assertEqual("source_quote_a", source_quote_ref)
         self.assertIn(source_quote_ref, tools.observations_by_evidence_id)
+        self.assertEqual("table", tools.observations_by_evidence_id[source_quote_ref]["element_type"])
+        self.assertEqual("TABLE", tools.observations_by_evidence_id[source_quote_ref]["source_kind"])
         self.assertEqual("passage", read_result["items"][0]["element_type"])
         self.assertEqual("TEXT", read_result["items"][0]["source_kind"])
         self.assertEqual(4, read_result["items"][0]["page_end"])
@@ -201,7 +204,7 @@ class JavaCorpusGatewayTest(unittest.TestCase):
 
         result = tools.read_paper_content({"location_refs": ["location_ref_hidden"]})
 
-        self.assertEqual("location_not_disclosed_for_reading", result["error"])
+        self.assertEqual("location_ref_not_disclosed", result["error"])
         self.assertFalse(any(path.endswith("/locations/read") for path, _ in gateway.calls))
 
     def test_java_and_in_memory_adapters_share_the_same_core_tool_contract(self) -> None:
@@ -219,6 +222,48 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         in_memory_definitions = InMemoryTools(dataset).definitions()
 
         self.assertEqual(in_memory_definitions, java_definitions)
+
+    def test_content_tools_reject_undisclosed_paper_ids_before_calling_java(self) -> None:
+        gateway = FakeGateway()
+        reader = JavaCorpusGatewayReader(
+            gateway=gateway,
+            request_id="request-1",
+            conversation_id="conversation-1",
+            user_id=7,
+            scope_paper_ids=["paper-a"],
+        )
+        tools = ReadingCorpusTools(reader.load_metadata_dataset(), reader=reader)
+
+        search = tools.search_paper_content({"paper_ids": ["paper-a.pdf"]})
+        structure = tools.get_paper_structure({"paper_ids": ["paper-a.pdf"]})
+
+        self.assertEqual("paper_not_authorized_for_reading", search["error"])
+        self.assertEqual("PAPER_ID_NOT_DISCLOSED", search["error_code"])
+        self.assertTrue(search["recoverable"])
+        self.assertEqual(["paper-a.pdf"], search["unauthorized_paper_ids"])
+        self.assertEqual("paper_not_authorized_for_reading", structure["error"])
+        self.assertEqual("PAPER_ID_NOT_DISCLOSED", structure["error_code"])
+        self.assertEqual(["paper-a.pdf"], structure["unauthorized_paper_ids"])
+        self.assertEqual([], gateway.calls)
+
+    def test_invalid_model_arguments_are_recoverable_before_java_io(self) -> None:
+        gateway = FakeGateway()
+        reader = JavaCorpusGatewayReader(
+            gateway=gateway,
+            request_id="request-1",
+            conversation_id="conversation-1",
+            user_id=7,
+            scope_paper_ids=["paper-a"],
+        )
+        tools = ReadingCorpusTools(reader.load_metadata_dataset(), reader=reader)
+
+        invalid_search = tools.search_paper_candidates({"limit": 0})
+        tools.authorized_paper_ids.add("paper-a")
+        invalid_content = tools.search_paper_content({"paper_ids": ["paper-a"], "top_k": "bad"})
+
+        self.assertEqual("TOOL_ARGUMENTS_INVALID", invalid_search["error_code"])
+        self.assertEqual("TOOL_ARGUMENTS_INVALID", invalid_content["error_code"])
+        self.assertEqual([], gateway.calls)
 
     def test_gateway_rejects_oversized_response(self) -> None:
         client = httpx.Client(

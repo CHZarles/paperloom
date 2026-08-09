@@ -359,7 +359,8 @@ public class PaperReadingModelBuilder {
                     sectionId,
                     pageNumberFrom,
                     pageNumberTo,
-                    elements
+                    elements,
+                    sectionText
             );
 
             PaperSection section = new PaperSection();
@@ -1185,7 +1186,8 @@ public class PaperReadingModelBuilder {
                                              String sourceObjectId,
                                              int pageNumberFrom,
                                              int pageNumberTo,
-                                             List<ReadableElement> elements) {
+                                             List<ReadableElement> elements,
+                                             String content) {
         List<String> elementIds = elements.stream()
                 .map(item -> item.element().elementId())
                 .filter(Objects::nonNull)
@@ -1211,12 +1213,66 @@ public class PaperReadingModelBuilder {
         sourceSpan.put("locationType", locationType.name());
         sourceSpan.put("sourceObjectId", sourceObjectId);
         sourceSpan.put("elementIds", elementIds);
+        sourceSpan.put("spans", contentSpansForElements(paper, elements, content));
         sourceSpan.put("readingOrderFrom", orders.stream().min(Integer::compareTo).orElse(null));
         sourceSpan.put("readingOrderTo", orders.stream().max(Integer::compareTo).orElse(null));
         sourceSpan.put("bbox", bboxes.isEmpty() ? null : bboxes);
         sourceSpan.put("sourceKinds", List.copyOf(sourceKinds));
         sourceSpan.put("rawArtifactRef", null);
         return writeJson(sourceSpan);
+    }
+
+    private List<Map<String, Object>> contentSpansForElements(ParsedPaper paper,
+                                                               List<ReadableElement> elements,
+                                                               String content) {
+        List<Map<String, Object>> spans = new ArrayList<>();
+        int offset = 0;
+        for (int index = 0; index < elements.size(); index++) {
+            ReadableElement readable = elements.get(index);
+            ParsedPaperElement element = readable.element();
+            int from = offset;
+            int to = from + readable.text().length();
+            if (to > content.length() || !content.substring(from, to).equals(readable.text())) {
+                throw new IllegalStateException("SECTION_CONTENT_SPAN_INVALID");
+            }
+            Map<String, Object> span = new LinkedHashMap<>();
+            span.put("parserElementId", element.elementId());
+            span.put("pageNumber", element.pageNumber());
+            span.put("readingOrder", element.readingOrder());
+            span.put("char_from", 0);
+            span.put("char_to", readable.text().length());
+            span.put("content_char_from", from);
+            span.put("content_char_to", to);
+            span.put("elementSourceSpan", parsedElementSourceSpan(paper, element));
+            spans.add(span);
+            offset = to;
+            if (index < elements.size() - 1) {
+                if (!content.startsWith("\n\n", offset)) {
+                    throw new IllegalStateException("SECTION_CONTENT_SPAN_INVALID");
+                }
+                offset += 2;
+            }
+        }
+        if (offset != content.length()) {
+            throw new IllegalStateException("SECTION_CONTENT_SPAN_INVALID");
+        }
+        return spans;
+    }
+
+    private Map<String, Object> parsedElementSourceSpan(ParsedPaper paper, ParsedPaperElement element) {
+        Map<String, Object> sourceSpan = new LinkedHashMap<>();
+        sourceSpan.put("parserName", paper.parserName());
+        sourceSpan.put("parserVersion", paper.parserVersion());
+        sourceSpan.put("parserElementId", element.elementId());
+        sourceSpan.put("sourceObjectId", element.elementId());
+        sourceSpan.put("elementType", element.elementType() == null ? "UNKNOWN" : element.elementType().name());
+        sourceSpan.put("contentListIndex", element.readingOrder());
+        sourceSpan.put("pageNumber", element.pageNumber());
+        sourceSpan.put("readingOrder", element.readingOrder());
+        sourceSpan.put("bbox", element.boundingBox());
+        sourceSpan.put("parserImagePath", parserImagePath(element.rawAttributes()));
+        sourceSpan.put("rawArtifactRef", null);
+        return sourceSpan;
     }
 
     private String resolveSectionTitle(List<ReadableElement> pageElements) {

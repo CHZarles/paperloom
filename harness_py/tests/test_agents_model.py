@@ -6,8 +6,10 @@ import tempfile
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from unittest.mock import AsyncMock, patch
 
-from agents import FunctionTool, ModelTracing
+from agents import FunctionTool, ModelResponse, ModelTracing, OpenAIChatCompletionsModel, Usage
+from openai.types.responses import ResponseOutputMessage, ResponseOutputText
 
 from harness_py.evaluation.eval_recorder import EvalRecorder
 from harness_py.orchestration.agents.context import ResearchRunContext
@@ -20,6 +22,7 @@ from harness_py.orchestration.agents.model import (
     provider_agents_model,
 )
 from harness_py.orchestration.memory import ResearchMemory
+from harness_py.orchestration.research_contract import FINAL_TOOL_NAME
 from harness_py.orchestration.runtime import TurnExecutionInput
 from harness_py.transport.provider_config import ProviderConfig
 from harness_py.tests import test_harness_py as _harness_tests
@@ -37,9 +40,9 @@ class AgentsModelTest(unittest.TestCase):
         ))
         try:
             self.assertIsInstance(model, OpenAIResponsesAgentsModel)
-            settings = model.research_settings(2048)
+            settings = model.research_settings()
             self.assertEqual("required", settings.tool_choice)
-            self.assertEqual(2048, settings.max_tokens)
+            self.assertIsNone(settings.max_tokens)
         finally:
             asyncio.run(model.close())
 
@@ -116,7 +119,7 @@ class AgentsModelTest(unittest.TestCase):
                     await model.get_response(
                         "System prompt",
                         [{"role": "user", "content": "Hello"}],
-                        model.research_settings(1234),
+                        model.research_settings(),
                         [tool],
                         None,
                         [],
@@ -155,12 +158,67 @@ class AgentsModelTest(unittest.TestCase):
 
         self.assertEqual("required", captured["tool_choice"])
         self.assertEqual({"type": "adaptive"}, captured["thinking"])
-        self.assertEqual(1234, captured["max_tokens"])
+        self.assertNotIn("max_tokens", captured)
         self.assertEqual(0.0, captured["temperature"])
         self.assertEqual(1.0, captured["top_p"])
         self.assertEqual("submit_research_answer", captured["tools"][0]["function"]["name"])
         self.assertEqual({"model.request", "model.response"}, event_kinds)
         self.assertNotIn("test-key", events_text)
+
+    def test_text_only_response_becomes_a_validated_final_submission(self) -> None:
+        model = MiniMaxAgentsModel(ProviderConfig(
+            scope="llm",
+            provider="minimax",
+            api_style="openai-compatible",
+            api_base_url="https://example.invalid/v1",
+            model="MiniMax-M3",
+            api_key="test-key",
+        ))
+        raw_response = ModelResponse(
+            output=[ResponseOutputMessage(
+                id="message_1",
+                content=[ResponseOutputText(
+                    annotations=[],
+                    text="A direct model answer.",
+                    type="output_text",
+                )],
+                role="assistant",
+                status="completed",
+                type="message",
+            )],
+            usage=Usage(requests=1, input_tokens=1, output_tokens=1, total_tokens=2),
+            response_id="response_1",
+        )
+
+        async def invoke():
+            try:
+                with patch.object(
+                    OpenAIChatCompletionsModel,
+                    "get_response",
+                    new=AsyncMock(return_value=raw_response),
+                ):
+                    return await model.get_response(
+                        "System prompt",
+                        [{"role": "user", "content": "Hello"}],
+                        model.research_settings(),
+                        [],
+                        None,
+                        [],
+                        ModelTracing.DISABLED,
+                        previous_response_id=None,
+                        conversation_id=None,
+                        prompt=None,
+                    )
+            finally:
+                await model.close()
+
+        response = asyncio.run(invoke())
+
+        self.assertEqual(FINAL_TOOL_NAME, response.output[0].name)
+        self.assertEqual(
+            {"outcome": "answered", "markdown": "A direct model answer."},
+            json.loads(response.output[0].arguments),
+        )
 
     def test_malformed_tool_arguments_become_a_valid_repair_call(self) -> None:
         class Handler(BaseHTTPRequestHandler):
@@ -227,7 +285,7 @@ class AgentsModelTest(unittest.TestCase):
                 return await model.get_response(
                     "System prompt",
                     [{"role": "user", "content": "Hello"}],
-                    model.research_settings(1234),
+                    model.research_settings(),
                     [tool],
                     None,
                     [],

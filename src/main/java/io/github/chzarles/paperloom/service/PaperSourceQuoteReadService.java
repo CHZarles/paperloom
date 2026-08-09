@@ -5,10 +5,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.chzarles.paperloom.model.PaperLocation;
 import io.github.chzarles.paperloom.model.PaperLocationType;
-import io.github.chzarles.paperloom.model.PaperReadingElement;
 import io.github.chzarles.paperloom.model.PaperSourceQuote;
 import io.github.chzarles.paperloom.repository.PaperLocationRepository;
-import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
 import io.github.chzarles.paperloom.repository.PaperSourceQuoteRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,19 +26,17 @@ public class PaperSourceQuoteReadService {
 
     private static final String PASSAGE_PAGE_POLICY = "passage-page-v1";
     private static final String LOCATION_POLICY = "location-page-v1";
+    private static final String SECTION_SEMANTIC_POLICY = "section-semantic-v2";
 
     private final PaperSourceQuoteRepository quoteRepository;
     private final PaperLocationRepository locationRepository;
-    private final PaperReadingElementRepository elementRepository;
     private final ObjectMapper objectMapper;
 
     public PaperSourceQuoteReadService(PaperSourceQuoteRepository quoteRepository,
                                        PaperLocationRepository locationRepository,
-                                       PaperReadingElementRepository elementRepository,
                                        ObjectMapper objectMapper) {
         this.quoteRepository = quoteRepository;
         this.locationRepository = locationRepository;
-        this.elementRepository = elementRepository;
         this.objectMapper = objectMapper;
     }
 
@@ -69,44 +65,76 @@ public class PaperSourceQuoteReadService {
 
     private List<PaperSourceQuote> passageQuotes(CanonicalReadingLocationService.CanonicalLocation location,
                                                   PaperLocation source) {
+        return pageScopedQuotes(location, source, PaperLocationType.PASSAGE, PASSAGE_PAGE_POLICY,
+                "PASSAGE_SOURCE_SPAN_INVALID", true, false);
+    }
+
+    private List<PaperSourceQuote> pageScopedQuotes(CanonicalReadingLocationService.CanonicalLocation location,
+                                                     PaperLocation source,
+                                                     PaperLocationType locationType,
+                                                     String splitPolicy,
+                                                     String invalidSpanCode,
+                                                     boolean allowLegacyOffsets,
+                                                     boolean splitSemanticKinds) {
         JsonNode root;
         try {
             root = objectMapper.readTree(source.getSourceSpanJson());
         } catch (JsonProcessingException error) {
-            throw new IllegalArgumentException("PASSAGE_SOURCE_SPAN_INVALID", error);
+            throw new IllegalArgumentException(invalidSpanCode, error);
         }
         if (root == null || !root.path("spans").isArray()) {
-            throw new IllegalArgumentException("PASSAGE_SOURCE_SPAN_INVALID");
+            throw new IllegalArgumentException(invalidSpanCode);
         }
-        Map<Integer, PageDraft> pages = new LinkedHashMap<>();
+        List<PageDraft> quotesByPageAndKind = new ArrayList<>();
         int fallbackOffset = 0;
         int sourceIndex = 0;
+        int previousTo = -2;
+        int previousPage = 0;
         for (JsonNode span : root.path("spans")) {
             int page = span.path("pageNumber").asInt(0);
-            int from = span.has("content_char_from") ? span.path("content_char_from").asInt(-1) : fallbackOffset;
+            int from = span.has("content_char_from")
+                    ? span.path("content_char_from").asInt(-1)
+                    : allowLegacyOffsets ? fallbackOffset : -1;
             int to = span.has("content_char_to")
                     ? span.path("content_char_to").asInt(-1)
-                    : fallbackOffset + Math.max(0, span.path("char_to").asInt() - span.path("char_from").asInt());
-            if (page <= 0 || from < 0 || to < from || to > location.spanText().length()) {
-                throw new IllegalArgumentException("PASSAGE_SOURCE_SPAN_INVALID");
+                    : allowLegacyOffsets
+                    ? fallbackOffset + Math.max(0, span.path("char_to").asInt() - span.path("char_from").asInt())
+                    : -1;
+            if (page <= 0 || page < previousPage || from != previousTo + 2
+                    || to < from || to > location.spanText().length()) {
+                throw new IllegalArgumentException(invalidSpanCode);
             }
             fallbackOffset = to + 2;
-            PageDraft draft = pages.computeIfAbsent(page, ignored -> new PageDraft(page));
+            previousTo = to;
+            previousPage = page;
+            String contentKind = splitSemanticKinds ? contentKind(source, span) : source.getContentKind();
+            PageDraft draft = quotesByPageAndKind.isEmpty() ? null : quotesByPageAndKind.get(quotesByPageAndKind.size() - 1);
+            if (draft == null || !draft.matches(page, contentKind)) {
+                draft = new PageDraft(page, contentKind);
+                quotesByPageAndKind.add(draft);
+            }
             draft.parts().add(location.spanText().substring(from, to));
             draft.spans().add(span);
             draft.readingOrderFrom = draft.readingOrderFrom == null ? span.path("readingOrder").asInt() : draft.readingOrderFrom;
             draft.readingOrderTo = span.path("readingOrder").asInt();
             sourceIndex++;
         }
-        if (pages.isEmpty() || sourceIndex == 0) {
-            throw new IllegalArgumentException("PASSAGE_SOURCE_SPAN_INVALID");
+        if (quotesByPageAndKind.isEmpty() || sourceIndex == 0) {
+            throw new IllegalArgumentException(invalidSpanCode);
+        }
+        String reconstructed = quotesByPageAndKind.stream()
+                .flatMap(page -> page.parts().stream())
+                .collect(Collectors.joining("\n\n"));
+        if (!location.spanText().equals(reconstructed)) {
+            throw new IllegalArgumentException(invalidSpanCode);
         }
         List<PaperSourceQuote> quotes = new ArrayList<>();
         int splitIndex = 0;
-        for (PageDraft page : pages.values()) {
+        for (PageDraft page : quotesByPageAndKind) {
             String content = String.join("\n\n", page.parts());
-            String spanJson = passagePageSpan(source, page);
-            quotes.add(getOrCreate(source, content, spanJson, page.pageNumber(), splitIndex++, PASSAGE_PAGE_POLICY));
+            String spanJson = pageSpan(source, page, locationType.name());
+            quotes.add(getOrCreate(source, content, spanJson, page.pageNumber(), splitIndex++, splitPolicy,
+                    page.contentKind()));
         }
         return quotes;
     }
@@ -116,64 +144,14 @@ public class PaperSourceQuoteReadService {
         if (source.getPageEndNumber() != null && !source.getPageEndNumber().equals(source.getPageNumber())) {
             throw new IllegalArgumentException("MULTI_PAGE_LOCATION_REQUIRES_PAGE_QUOTE_SPLIT");
         }
-        return getOrCreate(source, location.spanText(), source.getSourceSpanJson(), source.getPageNumber(), 0, LOCATION_POLICY);
+        return getOrCreate(source, location.spanText(), source.getSourceSpanJson(), source.getPageNumber(), 0,
+                LOCATION_POLICY, source.getContentKind());
     }
 
     private List<PaperSourceQuote> sectionQuotes(CanonicalReadingLocationService.CanonicalLocation location,
                                                   PaperLocation source) {
-        if (source.getPageEndNumber() == null || source.getPageEndNumber().equals(source.getPageNumber())) {
-            return List.of(locationQuote(location, source));
-        }
-        JsonNode sourceSpan;
-        try {
-            sourceSpan = objectMapper.readTree(source.getSourceSpanJson());
-        } catch (JsonProcessingException error) {
-            throw new IllegalArgumentException("SECTION_SOURCE_SPAN_INVALID", error);
-        }
-        List<String> parserIds = new ArrayList<>();
-        sourceSpan.path("elementIds").forEach(node -> {
-            String id = node.asText("").trim();
-            if (!id.isBlank()) {
-                parserIds.add(id);
-            }
-        });
-        if (parserIds.isEmpty()) {
-            throw new IllegalArgumentException("SECTION_SOURCE_SPAN_INVALID");
-        }
-        Map<Integer, PageDraft> pages = new LinkedHashMap<>();
-        int cursor = 0;
-        for (PaperReadingElement element : elementRepository
-                .findByPaperIdAndModelVersionOrderByPageNumberAscReadingOrderAscIdAsc(
-                        source.getPaperId(), source.getModelVersion())) {
-            if (!parserIds.contains(element.getParserElementId()) || element.getPageNumber() == null) {
-                continue;
-            }
-            String text = firstNonBlank(element.getBodyText(), element.getSearchableText());
-            int start = location.spanText().indexOf(text, cursor);
-            if (text.isBlank() || start < 0) {
-                throw new IllegalArgumentException("SECTION_SOURCE_SPAN_INVALID");
-            }
-            cursor = start + text.length();
-            PageDraft page = pages.computeIfAbsent(element.getPageNumber(), PageDraft::new);
-            page.parts().add(text);
-            page.readingOrderFrom = page.readingOrderFrom == null ? element.getReadingOrder() : page.readingOrderFrom;
-            page.readingOrderTo = element.getReadingOrder();
-            try {
-                page.spans().add(objectMapper.readTree(element.getSourceSpanJson()));
-            } catch (JsonProcessingException error) {
-                throw new IllegalArgumentException("SECTION_SOURCE_SPAN_INVALID", error);
-            }
-        }
-        if (pages.isEmpty()) {
-            throw new IllegalArgumentException("SECTION_SOURCE_SPAN_INVALID");
-        }
-        List<PaperSourceQuote> quotes = new ArrayList<>();
-        int splitIndex = 0;
-        for (PageDraft page : pages.values()) {
-            quotes.add(getOrCreate(source, String.join("\n\n", page.parts()), sectionPageSpan(source, page),
-                    page.pageNumber(), splitIndex++, LOCATION_POLICY));
-        }
-        return quotes;
+        return pageScopedQuotes(location, source, PaperLocationType.SECTION, SECTION_SEMANTIC_POLICY,
+                "SECTION_SOURCE_SPAN_INVALID", false, true);
     }
 
     private PaperSourceQuote getOrCreate(PaperLocation source,
@@ -181,7 +159,8 @@ public class PaperSourceQuoteReadService {
                                          String sourceSpanJson,
                                          Integer pageNumber,
                                          int splitIndex,
-                                         String policy) {
+                                         String policy,
+                                         String contentKind) {
         String hash = sha256(content);
         return quoteRepository.findFirstByPaperIdAndModelVersionAndLocationRefAndSplitPolicyVersionAndSplitIndexAndContentHash(
                         source.getPaperId(), source.getModelVersion(), source.getLocationRef(), policy, splitIndex, hash)
@@ -196,7 +175,7 @@ public class PaperSourceQuoteReadService {
                     quote.setPageNumber(pageNumber);
                     quote.setPageEndNumber(pageNumber);
                     quote.setSectionTitle(source.getSectionTitle());
-                    quote.setContentKind(source.getContentKind());
+                    quote.setContentKind(contentKind);
                     quote.setContent(content);
                     quote.setContentHash(hash);
                     quote.setSplitPolicyVersion(policy);
@@ -204,14 +183,6 @@ public class PaperSourceQuoteReadService {
                     quote.setSourceSpanJson(sourceSpanJson);
                     return quoteRepository.save(quote);
                 });
-    }
-
-    private String passagePageSpan(PaperLocation source, PageDraft page) {
-        return pageSpan(source, page, PaperLocationType.PASSAGE.name());
-    }
-
-    private String sectionPageSpan(PaperLocation source, PageDraft page) {
-        return pageSpan(source, page, PaperLocationType.SECTION.name());
     }
 
     private String pageSpan(PaperLocation source, PageDraft page, String locationType) {
@@ -247,6 +218,17 @@ public class PaperSourceQuoteReadService {
                 quote.getSectionTitle(), quote.getContentKind(), quote.getContent(), quote.getSourceSpanJson());
     }
 
+    private String contentKind(PaperLocation source, JsonNode span) {
+        String elementType = span.path("elementSourceSpan").path("elementType").asText("").trim();
+        return switch (elementType) {
+            case "TABLE" -> "TABLE";
+            case "FIGURE", "IMAGE" -> "FIGURE";
+            case "CHART" -> "CHART";
+            case "FORMULA" -> "FORMULA";
+            default -> source.getContentKind();
+        };
+    }
+
     private static String sha256(String value) {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
@@ -258,15 +240,6 @@ public class PaperSourceQuoteReadService {
         } catch (NoSuchAlgorithmException error) {
             throw new IllegalStateException(error);
         }
-    }
-
-    private static String firstNonBlank(String... values) {
-        for (String value : values) {
-            if (value != null && !value.isBlank()) {
-                return value.trim();
-            }
-        }
-        return "";
     }
 
     public record ReadResult(List<ReadItem> items, List<String> missingLocationRefs) {
@@ -289,17 +262,27 @@ public class PaperSourceQuoteReadService {
 
     private static final class PageDraft {
         private final int pageNumber;
+        private final String contentKind;
         private final List<String> parts = new ArrayList<>();
         private final List<JsonNode> spans = new ArrayList<>();
         private Integer readingOrderFrom;
         private Integer readingOrderTo;
 
-        private PageDraft(int pageNumber) {
+        private PageDraft(int pageNumber, String contentKind) {
             this.pageNumber = pageNumber;
+            this.contentKind = contentKind;
         }
 
         private int pageNumber() {
             return pageNumber;
+        }
+
+        private String contentKind() {
+            return contentKind;
+        }
+
+        private boolean matches(int pageNumber, String contentKind) {
+            return this.pageNumber == pageNumber && java.util.Objects.equals(this.contentKind, contentKind);
         }
 
         private List<String> parts() {

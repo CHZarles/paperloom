@@ -22,7 +22,18 @@ from ..corpus.pages import (
     normalize_text as _normalize,
     page_matches as _page_matches,
 )
-from ..corpus.tools import EVIDENCE_ELEMENT_TYPES, ReadingCorpusTools
+from ..corpus.tools import (
+    EVIDENCE_ELEMENT_TYPES,
+    ReadingCorpusTools,
+    SEARCH_RESULT_LIMIT,
+    _invalid_integer,
+    identity_search_preflight,
+    paper_search_preflight,
+    recoverable_error,
+    reading_location_preflight,
+    reading_paper_preflight,
+    reading_structure_preflight,
+)
 
 
 # 评分权重与常量：仅 in-memory 路径使用。
@@ -158,6 +169,9 @@ class InMemoryTools(ReadingCorpusTools):
     # ---- 论文元数据 ----
 
     def search_paper_candidates(self, arguments: JsonMap) -> JsonMap:
+        error = paper_search_preflight(arguments)
+        if error:
+            return error
         query = str(arguments.get("query_text") or "").strip()
         query_tokens = set(tokenize(query))
         allowed_ids = {str(value) for value in as_list(arguments.get("paper_ids")) if value}
@@ -201,6 +215,9 @@ class InMemoryTools(ReadingCorpusTools):
         }
 
     def find_papers_by_identity(self, arguments: JsonMap) -> JsonMap:
+        error = identity_search_preflight(arguments)
+        if error:
+            return error
         hints = {
             key: value
             for key, value in arguments.items()
@@ -224,32 +241,48 @@ class InMemoryTools(ReadingCorpusTools):
     # ---- 位置 + 引文 ----
 
     def search_paper_content(self, arguments: JsonMap) -> JsonMap:
+        paper_id_list, error = reading_paper_preflight(
+            arguments,
+            self.authorized_paper_ids,
+            "locations",
+        )
+        if error:
+            return error
+        if _invalid_integer(arguments, "top_k", minimum=1, maximum=SEARCH_RESULT_LIMIT):
+            return recoverable_error(
+                "invalid_top_k", "TOOL_ARGUMENTS_INVALID", "search_paper_content", "locations"
+            )
+        if any(_invalid_integer(arguments, key, minimum=1, maximum=None) for key in ("page_from", "page_to")):
+            return recoverable_error(
+                "invalid_page_range", "TOOL_ARGUMENTS_INVALID", "search_paper_content", "locations"
+            )
         query = str(arguments.get("query_text") or "").strip()
         section_query = str(arguments.get("section_query") or "").strip()
         top_k = max(1, min(int(arguments.get("top_k") or 8), 20))
-        paper_id_list = [str(value) for value in as_list(arguments.get("paper_ids")) if value]
-        if not paper_id_list:
-            return {"error": "paper_ids_required", "locations": []}
-        unauthorized = [paper_id for paper_id in paper_id_list if paper_id not in self.authorized_paper_ids]
-        if unauthorized:
-            return {
-                "error": "paper_not_authorized_for_reading",
-                "unauthorized_paper_ids": unauthorized,
-                "locations": [],
-            }
         paper_ids = set(paper_id_list)
         element_types = {str(value) for value in as_list(arguments.get("element_types")) if value}
         unsupported_types = sorted(element_types - set(EVIDENCE_ELEMENT_TYPES))
         if unsupported_types:
-            return {
-                "error": "unsupported_element_types",
-                "unsupported_element_types": unsupported_types,
-                "locations": [],
-            }
+            return recoverable_error(
+                "unsupported_element_types",
+                "TOOL_ARGUMENTS_INVALID",
+                "search_paper_content",
+                "locations",
+                unsupported_element_types=unsupported_types,
+            )
         page_from = _optional_int(arguments.get("page_from"))
         page_to = _optional_int(arguments.get("page_to"))
         if page_from is not None and page_to is not None and page_from > page_to:
-            return {"error": "invalid_page_range", "locations": []}
+            return recoverable_error(
+                "invalid_page_range",
+                "TOOL_ARGUMENTS_INVALID",
+                "search_paper_content",
+                "locations",
+            )
+        if as_list(arguments.get("section_refs")):
+            _, error = reading_location_preflight(arguments, self.disclosed_location_refs, "locations", key="section_refs")
+            if error:
+                return error
 
         query_token_list = tokenize(query)
         query_tokens = set(query_token_list)
@@ -419,16 +452,9 @@ class InMemoryTools(ReadingCorpusTools):
         }
 
     def read_paper_content(self, arguments: JsonMap) -> JsonMap:
-        location_refs = [str(value) for value in as_list(arguments.get("location_refs")) if value]
-        if not location_refs:
-            return {"error": "location_refs_required", "items": []}
-        unauthorized = [ref for ref in location_refs if ref not in self.disclosed_location_refs]
-        if unauthorized:
-            return {
-                "error": "location_not_disclosed_for_reading",
-                "unauthorized_location_refs": unauthorized,
-                "items": [],
-            }
+        location_refs, error = reading_location_preflight(arguments, self.disclosed_location_refs, "items")
+        if error:
+            return error
         docs = [self.documents_by_location[ref] for ref in location_refs if ref in self.documents_by_location]
         items: list[JsonMap] = []
         seen: set[str] = set()
@@ -448,11 +474,14 @@ class InMemoryTools(ReadingCorpusTools):
         return {"items": items, "missing_location_refs": missing}
 
     def get_paper_structure(self, arguments: JsonMap) -> JsonMap:
-        paper_ids = {str(value) for value in as_list(arguments.get("paper_ids")) if value}
-        if not paper_ids:
-            return {"error": "paper_ids_required", "items": []}
-        if any(paper_id not in self.authorized_paper_ids for paper_id in paper_ids):
-            return {"error": "paper_not_authorized_for_reading", "items": []}
+        paper_id_list, error = reading_structure_preflight(
+            arguments,
+            self.authorized_paper_ids,
+            "items",
+        )
+        if error:
+            return error
+        paper_ids = set(paper_id_list)
         structure_type = str(arguments.get("structure_type") or "SECTION").upper()
         if structure_type == "PAGE":
             page_from = _optional_int(arguments.get("page_from"))
@@ -500,11 +529,18 @@ class InMemoryTools(ReadingCorpusTools):
         return {"structure_type": structure_type, "items": items}
 
     def get_citation_edges(self, arguments: JsonMap) -> JsonMap:
-        paper_id = str(arguments.get("paper_id") or "")
-        if not self.dataset.citation_edges:
-            return {"error": "citation_graph_unavailable", "edges": []}
+        paper_id = str(arguments.get("paper_id") or "").strip()
+        if not paper_id:
+            return recoverable_error(
+                "paper_id_required", "TOOL_ARGUMENTS_INVALID", "find_papers_by_identity", "edges"
+            )
         if paper_id not in self.authorized_paper_ids:
-            return {"error": "paper_not_authorized_for_graph_traversal", "edges": []}
+            return recoverable_error(
+                "paper_not_authorized_for_reading", "PAPER_ID_NOT_DISCLOSED", "find_papers_by_identity", "edges",
+                unauthorized_paper_ids=[paper_id],
+            )
+        if not self.dataset.citation_edges:
+            return {"edges": [], "papers": [], "coverage": "unavailable"}
         edges = [
             dict(edge)
             for edge in self.dataset.citation_edges

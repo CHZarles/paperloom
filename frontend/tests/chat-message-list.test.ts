@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   applyGenerationStartToMessages,
-  shouldApplyLoadedConversationMessages
+  mergeLoadedConversationMessages
 } from '../src/store/modules/chat/message-list';
 
 const started = applyGenerationStartToMessages({
@@ -58,22 +58,33 @@ assert.equal(retried.messages[1].retryOfGenerationId, 'generation-parent');
 assert.equal(retried.messages[1].answerSlotId, 12);
 assert.equal(retried.messages[1].answerRevision, 2);
 
-assert.equal(
-  shouldApplyLoadedConversationMessages({
-    currentMessages: started.messages,
-    loadedMessages: [],
+assert.deepEqual(
+  mergeLoadedConversationMessages({
+    currentMessages: [
+      { role: 'user', content: 'Earlier question', conversationId: 'conversation-1' },
+      { role: 'assistant', content: 'Earlier answer', conversationId: 'conversation-1' },
+      ...started.messages
+    ],
+    loadedMessages: [
+      { role: 'user', content: 'Earlier question', conversationId: 'conversation-1' },
+      { role: 'assistant', content: 'Earlier answer', conversationId: 'conversation-1' }
+    ],
     targetConversationId: 'conversation-1'
   }),
-  false,
-  'empty history must not replace an in-flight first answer'
+  [
+    { role: 'user', content: 'Earlier question', conversationId: 'conversation-1' },
+    { role: 'assistant', content: 'Earlier answer', conversationId: 'conversation-1' },
+    ...started.messages
+  ],
+  'loaded history and an in-flight answer must both remain visible'
 );
 
-assert.equal(
-  shouldApplyLoadedConversationMessages({
+assert.deepEqual(
+  mergeLoadedConversationMessages({
     currentMessages: [],
     loadedMessages: [],
     targetConversationId: 'conversation-1'
   }),
-  true,
+  [],
   'empty history is valid when there is no in-flight answer'
 );

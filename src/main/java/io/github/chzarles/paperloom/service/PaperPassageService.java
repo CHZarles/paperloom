@@ -47,6 +47,7 @@ public class PaperPassageService {
         locationRepository.deleteByPaperIdAndModelVersionAndLocationType(
                 paperId, modelVersion, PaperLocationType.PASSAGE);
         passageRepository.deleteByPaperIdAndModelVersion(paperId, modelVersion);
+        passageRepository.flush();
         passageRepository.saveAll(result.passages());
         locationRepository.saveAll(result.locations());
         return result;

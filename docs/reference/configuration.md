@@ -42,8 +42,9 @@ Host-port overrides for `docs/docker-compose.yaml` use `MYSQL_HOST_PORT`, `REDIS
 | Variable | Purpose |
 | --- | --- |
 | `PAPER_PARSING_PROVIDER` | Normal product value is `mineru` |
-| `PAPER_PARSING_MINERU_BASE_URL` | MinerU API base URL |
-| `PAPERLOOM_MINERU_VENV_BIN` | Local launcher path containing `mineru-api` |
+| `PAPER_PARSING_MINERU_BASE_URL` | MinerU cloud API base URL, normally `https://mineru.net` |
+| `PAPER_PARSING_MINERU_API_TOKEN` | MinerU API management token; required to parse uploads |
+| `PAPER_PARSING_MINERU_MODEL_VERSION` | `pipeline`, `vlm` (default), or `MinerU-HTML` |
 
 The optional alternative parser is intended for explicit experiments, not silent production
 fallback.

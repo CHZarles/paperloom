@@ -57,7 +57,7 @@ public class PaperLocation {
     private Integer displayOrder;
 
     @Lob
-    @Column(name = "source_span_json", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "source_span_json", nullable = false, columnDefinition = "LONGTEXT")
     private String sourceSpanJson;
 
     @Column(name = "content_kind", nullable = false, length = 64)

@@ -204,10 +204,12 @@ const assistantIsStreaming = computed(
   () => props.msg.role === 'assistant' && ['pending', 'loading'].includes(props.msg.status || '')
 );
 // Keep the thinking animation alive across session switches and unmounts.
-// Once events have arrived for this message and answer_completed hasn't,
+// Once events have arrived for this message and no terminal event has arrived,
 // the research is still effectively running from the user's perspective —
 // even if upstream status transiently dropped to 'success'.
-const researchFinished = computed(() => researchEvents.value.some(e => (e.eventType || e.type) === 'answer_completed'));
+const researchFinished = computed(() =>
+  researchEvents.value.some(e => ['job_completed', 'job_failed', 'job_cancelled'].includes(e.eventType || e.type))
+);
 const assistantIsGenerating = computed(
   () =>
     props.msg.role === 'assistant' &&
@@ -254,6 +256,8 @@ function progressEventTitle(event: Api.Chat.ResearchProgressEvent) {
     return event.attempt && event.attempt > 1 ? `Thinking · pass ${event.attempt}` : 'Thinking';
   if (eventType === 'model_call_completed') return `Completed model pass ${event.attempt || ''}`.trim();
   if (eventType === 'answer_completed') return 'Preparing the answer';
+  if (eventType === 'run_limited') return 'Research limit reached';
+  if (eventType === 'job_completed') return 'Research completed';
   if (eventType === 'job_failed') return 'Research failed';
   if (eventType === 'job_cancelled') return 'Research cancelled';
   if (eventType === 'tool_started') return toolActionLabel(event.tool, true);
@@ -264,8 +268,9 @@ function progressEventTitle(event: Api.Chat.ResearchProgressEvent) {
 function toolActionLabel(tool?: string, running = false) {
   const labels: Record<string, [string, string]> = {
     search_paper_candidates: ['Searching papers', 'Searched papers'],
-    find_reading_locations: ['Finding relevant locations', 'Found relevant locations'],
-    read_locations: ['Reading paper locations', 'Read paper locations'],
+    search_paper_content: ['Finding relevant locations', 'Found relevant locations'],
+    get_paper_structure: ['Inspecting paper structure', 'Inspected paper structure'],
+    read_paper_content: ['Reading paper locations', 'Read paper locations'],
     get_citation_edges: ['Tracing citations', 'Traced citations'],
     get_research_skill: ['Loading research guidance', 'Loaded research guidance']
   };
@@ -289,6 +294,7 @@ function progressEventDetail(event: Api.Chat.ResearchProgressEvent) {
   if (eventType === 'job_failed') {
     return event.errorType ? `${event.errorType}: ${event.message || 'Research failed'}` : event.message || '';
   }
+  if (eventType === 'run_limited') return event.reasonCode || 'Execution limit reached';
   if (event.tool === 'search_paper_candidates') {
     const query = String(input.query || '').trim();
     const count = Number(output.resultCount || 0);
@@ -296,16 +302,16 @@ function progressEventDetail(event: Api.Chat.ResearchProgressEvent) {
       ? `${count} paper${count === 1 ? '' : 's'} returned${query ? ` for “${query}”` : ''}`
       : query || 'Searching the selected paper set';
   }
-  if (event.tool === 'find_reading_locations') {
+  if (event.tool === 'search_paper_content') {
     const query = String(input.query || '').trim();
     const count = Number(output.resultCount || 0);
     return eventType === 'tool_completed'
       ? `${count} location${count === 1 ? '' : 's'} found`
       : query || 'Locating relevant sections and pages';
   }
-  if (event.tool === 'read_locations') {
+  if (event.tool === 'read_paper_content') {
     const count = Number(output.readCount || input.locationCount || 0);
-    const evidenceCount = Number(output.evidenceCount || 0);
+    const evidenceCount = Number(output.sourceQuoteCount || 0);
     const pages = Array.isArray(output.pages) ? output.pages.join(', ') : '';
     if (eventType === 'tool_completed') {
       return `${count} location${count === 1 ? '' : 's'} read · ${evidenceCount} evidence passage${evidenceCount === 1 ? '' : 's'}${pages ? ` · pages ${pages}` : ''}`;

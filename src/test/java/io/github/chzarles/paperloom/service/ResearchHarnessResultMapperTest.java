@@ -29,6 +29,7 @@ class ResearchHarnessResultMapperTest {
                 "citations", List.of(Map.of(
                         "reference_number", 1,
                         "evidence_id", "ev_1",
+                        "source_quote_ref", "source_quote_1",
                         "paper_id", "paper-1",
                         "title", "Paper",
                         "span_text", "quoted text",
@@ -48,8 +49,25 @@ class ResearchHarnessResultMapperTest {
         assertEquals("answer [1]", result.finalAnswerMarkdown());
         assertEquals(1, result.references().size());
         assertEquals("ev_1", result.references().get(0).get("evidenceRef"));
+        assertEquals("source_quote_1", result.references().get(0).get("sourceQuoteRef"));
         assertEquals("PYTHON_RESEARCH_HARNESS", result.references().get(0).get("retrievalRoute"));
         assertEquals(1, result.productStateItems().size());
         assertEquals("paper_handle_paper-1", result.productStateItems().get(0).get("paperHandle"));
+    }
+
+    @Test
+    void mapsControlledLimitWithoutTurningItIntoAFailure() {
+        ResearchHarnessResultMapper mapper = new ResearchHarnessResultMapper(new ObjectMapper());
+        ProductTurnResult result = mapper.toProductResult(new ProductTurnRequest(
+                7L, "conversation-1", "generation-1", "question", SourceScope.manual(List.of("paper-1")),
+                List.of(), Map.of(), ProductModelContext.defaults()), Map.of(
+                "status", "LIMITED",
+                "answer", Map.of("markdown", "limit notice"),
+                "control", Map.of("reason_code", "RUN_MODEL_CALL_LIMIT", "usage", Map.of("total_tokens", 12))
+        ));
+
+        assertEquals(ProductResultStatus.LIMITED, result.resultStatus());
+        assertEquals(ProductStopReason.MAX_MODEL_CALLS, result.stopReason());
+        assertEquals("RUN_MODEL_CALL_LIMIT", result.diagnostics().get("reasonCode"));
     }
 }

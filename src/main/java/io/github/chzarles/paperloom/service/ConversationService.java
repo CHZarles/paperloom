@@ -1,18 +1,21 @@
 package io.github.chzarles.paperloom.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.chzarles.paperloom.exception.CustomException;
 import io.github.chzarles.paperloom.model.Conversation;
 import io.github.chzarles.paperloom.model.ConversationSession;
 import io.github.chzarles.paperloom.model.ConversationSourceQuote;
 import io.github.chzarles.paperloom.model.Paper;
+import io.github.chzarles.paperloom.model.PaperReadingElement;
 import io.github.chzarles.paperloom.model.PaperSourceQuote;
 import io.github.chzarles.paperloom.model.User;
 import io.github.chzarles.paperloom.repository.ConversationRepository;
 import io.github.chzarles.paperloom.repository.ConversationSessionRepository;
 import io.github.chzarles.paperloom.repository.ConversationSourceQuoteRepository;
 import io.github.chzarles.paperloom.repository.PaperSourceQuoteRepository;
+import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,6 +65,12 @@ public class ConversationService {
 
     @Autowired
     private PaperSourceQuoteRepository sourceQuoteRepository;
+
+    @Autowired
+    private PaperReadingElementRepository readingElementRepository;
+
+    @Autowired
+    private PaperVisualAssetService paperVisualAssetService;
 
     @Autowired(required = false)
     private ConversationScopeService conversationScopeService;
@@ -1047,6 +1056,9 @@ public class ConversationService {
         detail.put("anchorText", quote.getContent());
         detail.put("matchedChunkText", quote.getContent());
         detail.put("evidenceSnippet", quote.getContent());
+        if ("TABLE".equalsIgnoreCase(quote.getContentKind())) {
+            appendTableDetail(detail, quote);
+        }
         paper.ifPresent(resolvedPaper -> {
             if (resolvedPaper.getPaperTitle() != null && !resolvedPaper.getPaperTitle().isBlank()) {
                 detail.put("paperTitle", resolvedPaper.getPaperTitle());
@@ -1056,6 +1068,62 @@ public class ConversationService {
             }
         });
         return detail;
+    }
+
+    private void appendTableDetail(Map<String, Object> detail, PaperSourceQuote quote) {
+        detail.put("tableText", quote.getContent());
+        findTableElement(quote).ifPresent(table -> {
+            detail.put("tableId", table.getReadingElementId());
+            detail.put("tableScreenshotAvailable", paperVisualAssetService
+                    .findTableCropByReadingElementId(quote.getPaperId(), table.getReadingElementId())
+                    .isPresent());
+        });
+    }
+
+    private Optional<PaperReadingElement> findTableElement(PaperSourceQuote quote) {
+        Set<String> sourceElementIds = sourceElementIds(quote);
+        if (sourceElementIds.isEmpty()) {
+            return Optional.empty();
+        }
+        return readingElementRepository.findByPaperIdAndModelVersionAndElementTypeOrderByPageNumberAscReadingOrderAscIdAsc(
+                        quote.getPaperId(), quote.getModelVersion(), "TABLE")
+                .stream()
+                .filter(element -> sourceElementIds.contains(element.getParserElementId())
+                        || sourceElementIds.contains(element.getSourceObjectId()))
+                .findFirst();
+    }
+
+    private Set<String> sourceElementIds(PaperSourceQuote quote) {
+        String sourceSpanJson = quote.getSourceSpanJson();
+        if (sourceSpanJson == null || sourceSpanJson.isBlank()) {
+            return Set.of();
+        }
+        try {
+            JsonNode root = objectMapper.readTree(sourceSpanJson);
+            Set<String> ids = new LinkedHashSet<>();
+            collectSourceElementIds(root, ids);
+            if (root.path("spans").isArray()) {
+                root.path("spans").forEach(span -> collectSourceElementIds(span, ids));
+            }
+            return ids;
+        } catch (Exception error) {
+            logger.warn("解析 Source Quote 表格定位失败: sourceQuoteRef={}", quote.getSourceQuoteRef(), error);
+            return Set.of();
+        }
+    }
+
+    private void collectSourceElementIds(JsonNode span, Set<String> ids) {
+        addSourceElementId(ids, span.path("parserElementId").asText());
+        addSourceElementId(ids, span.path("sourceObjectId").asText());
+        JsonNode elementSourceSpan = span.path("elementSourceSpan");
+        addSourceElementId(ids, elementSourceSpan.path("parserElementId").asText());
+        addSourceElementId(ids, elementSourceSpan.path("sourceObjectId").asText());
+    }
+
+    private void addSourceElementId(Set<String> ids, String value) {
+        if (value != null && !value.isBlank()) {
+            ids.add(value.trim());
+        }
     }
 
     private void appendSourceSpanDetail(Map<String, Object> detail, PaperSourceQuote quote) {

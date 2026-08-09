@@ -36,6 +36,7 @@ from ..memory import RequestBackedSession, request_session_input
 from ..research_contract import research_agent_instructions
 from ..run_output import build_harness_run
 from ..runtime import HarnessRuntime, TurnExecutionInput, TurnExecutionResult
+from ..run_control import RunLimitExceeded, RunLimits
 from .context import ResearchRunContext
 from .model import bind_research_context, provider_agents_model
 from .tools import build_agent_tools, tools_to_final_output
@@ -100,7 +101,6 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
         self,
         provider: ProviderConfig | None = None,
         *,
-        max_completion_tokens: int = 3000,
         model: Model | None = None,
         model_settings: ModelSettings | None = None,
     ) -> None:
@@ -108,7 +108,6 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
             raise ValueError("provider or model is required")
         self.provider = provider
         self.injected_model = model
-        self.max_completion_tokens = max_completion_tokens
         self.model_settings = model_settings
 
     def run_turn(self, turn: TurnExecutionInput) -> TurnExecutionResult:
@@ -140,6 +139,7 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
                 "model_latency_ms": context.model_latency_ms,
             },
             harness_id=self.harness_id,
+            control=context.control.to_dict(),
         )
         # build_harness_run 会生成稳定的内部 ID；在线请求使用请求开始时分配的真实 run_id。
         run["run_id"] = turn.run_id
@@ -158,12 +158,11 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
         tools = build_agent_tools(context)
         settings = self.model_settings
         if settings is None and hasattr(model, "research_settings"):
-            settings = model.research_settings(self.max_completion_tokens)
+            settings = model.research_settings()
 
         # 自定义 Model 没提供设置时使用保守默认值：每一步必须走工具协议，允许模型一次提出
         # 多个工具调用。实际工具执行仍会在下方 RunConfig 中串行化。
         settings = settings or ModelSettings(
-            max_tokens=self.max_completion_tokens,
             tool_choice="required",
             parallel_tool_calls=True,
         )
@@ -183,7 +182,10 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
 
         # Session 只用请求提供的文本历史播种，并且只服务这一次 SDK Run。跨回合持久化由
         # ConversationState/Java 负责，避免出现两套互相冲突的会话记忆。
-        session = RequestBackedSession(turn.run_id, turn.conversation_messages)
+        session = RequestBackedSession(
+            turn.run_id,
+            _bounded_history(turn.conversation_messages, context.control.limits.max_history_chars),
+        )
         input_items: list[JsonMap] = []
         if turn.research_memory.evidence_items_by_id:
             # 旧证据不伪装成历史工具调用，而是以精简 evidence card 明确告诉模型“这些证据可
@@ -221,15 +223,22 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
             # Model 的 HTTP hooks 需要知道当前 ResearchRunContext。ContextVar 能跨 await 传递，
             # 又不会把项目参数硬塞进 SDK Model 的公共方法签名。
             with bind_research_context(context):
-                result = await Runner.run(
-                    agent,
-                    input_items,
-                    context=context,
-                    max_turns=None,
-                    hooks=ResearchRunHooks(),
-                    run_config=run_config,
-                    session=session,
-                )
+                try:
+                    result = await asyncio.wait_for(
+                        Runner.run(
+                            agent,
+                            input_items,
+                            context=context,
+                            max_turns=None,
+                            hooks=ResearchRunHooks(),
+                            run_config=run_config,
+                            session=session,
+                        ),
+                        timeout=context.control.remaining_seconds(),
+                    )
+                except asyncio.TimeoutError as error:
+                    context.control.terminal_reason = "RUN_DEADLINE_EXCEEDED"
+                    raise RunLimitExceeded("RUN_DEADLINE_EXCEEDED") from error
         finally:
             # 只关闭本方法自己创建的 Model。注入模型的生命周期由注入方管理。
             if owns_model:
@@ -254,6 +263,29 @@ def _evidence_card(item: JsonMap) -> JsonMap:
         "page": item.get("page"),
         "span_text": str(item.get("span_text") or "")[:900],
     }
+
+
+def _bounded_history(messages: list[JsonMap], max_chars: int) -> list[JsonMap]:
+    """Keep whole recent user/assistant pairs; never slice historic messages."""
+
+    pairs: list[list[JsonMap]] = []
+    index = 0
+    while index + 1 < len(messages):
+        user, assistant = messages[index], messages[index + 1]
+        if user.get("role") == "user" and assistant.get("role") == "assistant":
+            pairs.append([user, assistant])
+            index += 2
+        else:
+            index += 1
+    kept: list[list[JsonMap]] = []
+    used = 0
+    for pair in reversed(pairs):
+        size = sum(len(str(item.get("content") or "")) for item in pair)
+        if used + size > max_chars:
+            break
+        kept.append(pair)
+        used += size
+    return [item for pair in reversed(kept) for item in pair]
 
 
 def _retry_context_card(item: JsonMap) -> JsonMap:

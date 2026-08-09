@@ -99,21 +99,14 @@ paper:
     buffer-size: 8192
     max-memory-threshold: 0.8
     mineru:
-      base-url: ${PAPER_PARSING_MINERU_BASE_URL:http://mineru-api:8000}
-      health-path: ${PAPER_PARSING_MINERU_HEALTH_PATH:/health}
-      health-timeout-seconds: ${PAPER_PARSING_MINERU_HEALTH_TIMEOUT_SECONDS:5}
-      submit-path: ${PAPER_PARSING_MINERU_SUBMIT_PATH:/tasks}
-      file-field-name: ${PAPER_PARSING_MINERU_FILE_FIELD_NAME:files}
-      backend: ${PAPER_PARSING_MINERU_BACKEND:pipeline}
-      parse-method: ${PAPER_PARSING_MINERU_PARSE_METHOD:auto}
-      return-md: ${PAPER_PARSING_MINERU_RETURN_MD:true}
-      return-content-list: ${PAPER_PARSING_MINERU_RETURN_CONTENT_LIST:true}
-      return-middle-json: ${PAPER_PARSING_MINERU_RETURN_MIDDLE_JSON:true}
-      response-format-zip: ${PAPER_PARSING_MINERU_RESPONSE_FORMAT_ZIP:true}
-      status-path-template: ${PAPER_PARSING_MINERU_STATUS_PATH_TEMPLATE:/tasks/{taskId}}
-      result-path-template: ${PAPER_PARSING_MINERU_RESULT_PATH_TEMPLATE:/tasks/{taskId}/result}
+      base-url: ${PAPER_PARSING_MINERU_BASE_URL:https://mineru.net}
+      api-token: ${PAPER_PARSING_MINERU_API_TOKEN:}
+      model-version: ${PAPER_PARSING_MINERU_MODEL_VERSION:vlm}
+      enable-formula: ${PAPER_PARSING_MINERU_ENABLE_FORMULA:true}
+      enable-table: ${PAPER_PARSING_MINERU_ENABLE_TABLE:true}
       timeout-seconds: ${PAPER_PARSING_MINERU_TIMEOUT_SECONDS:3600}
       poll-interval-seconds: ${PAPER_PARSING_MINERU_POLL_INTERVAL_SECONDS:3}
+      max-result-in-memory-bytes: ${PAPER_PARSING_MINERU_MAX_RESULT_IN_MEMORY_BYTES:67108864}
 
 qdrant:
   base-url: ${QDRANT_BASE_URL:http://qdrant:6333}

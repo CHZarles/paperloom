@@ -19,6 +19,7 @@ def build_harness_run(
     duration_ms: int,
     diagnostics: JsonMap,
     harness_id: str,
+    control: JsonMap | None = None,
 ) -> JsonMap:
     outcome = str(final["outcome"])
     status = {
@@ -90,6 +91,7 @@ def build_harness_run(
         },
         "research_answer": answer,
         "final_answer": answer,
+        "control": control or {},
         "diagnostics": {
             "finish_reason": "model_submitted_answer",
             "tool_call_count": sum(

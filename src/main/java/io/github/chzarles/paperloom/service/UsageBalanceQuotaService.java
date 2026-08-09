@@ -39,15 +39,12 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
         int reserveTokens = Math.max(estimatedPromptTokens, 0) + Math.max(maxCompletionTokens, 0);
         reserveTokens = Math.max(reserveTokens, 1);
 
-        // 检查用户余额是否充足
-        if (!userTokenService.hasEnoughLlmTokens(userId, reserveTokens)) {
+        if (!userTokenService.reserveLlmTokens(userId, reserveTokens)) {
             Long balance = userTokenService.getLlmTokenBalance(userId);
             throw new QuotaExceededException(
                     "LLM Token 余额不足，预估需要：" + reserveTokens + ", 当前余额：" + balance, 0);
         }
 
-        // 用户余额模式下，不需要实际的 Redis 预留操作，只需要返回一个标记对象
-        // 实际扣减在 settleReservation 中进行，因此也不需要进行异常的恢复逻辑
         return new TokenReservation(
                 "llm", userId, "", "",
                 reserveTokens, reserveTokens,
@@ -108,17 +105,16 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
         if (reservation.quotaKey() != null && !reservation.quotaKey().isBlank()) {
             throw new IllegalArgumentException("Legacy daily quota reservations are no longer supported");
         }
-        if (actualTokens <= 0) {
-            return;
-        }
-
         try {
-            userTokenService.incrementUserTotalRequestCount(reservation.scope(), reservation.userId());
             if ("llm".equals(reservation.scope())) {
-                userTokenService.consumeLlmTokens(reservation.userId(), actualTokens);
-                logger.info("用户 {} 结算 LLM Token: {}, 剩余额度从预留中扣减",
-                        reservation.userId(), actualTokens);
-            } else if ("embedding".equals(reservation.scope())) {
+                userTokenService.settleLlmTokenReservation(
+                        reservation.userId(), reservation.reservedTokens(), actualTokens);
+                if (actualTokens > 0) {
+                    userTokenService.incrementUserTotalRequestCount(reservation.scope(), reservation.userId());
+                }
+                logger.info("用户 {} 结算 LLM Token: {}", reservation.userId(), actualTokens);
+            } else if ("embedding".equals(reservation.scope()) && actualTokens > 0) {
+                userTokenService.incrementUserTotalRequestCount(reservation.scope(), reservation.userId());
                 userTokenService.consumeEmbeddingTokens(reservation.userId(), actualTokens);
                 logger.info("用户 {} 结算 Embedding Token: {}, 剩余额度从预留中扣减",
                         reservation.userId(), actualTokens);
@@ -127,6 +123,13 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
             logger.error("结算用户 Token 失败：userId={}, scope={}, tokens={}",
                     reservation.userId(), reservation.scope(), actualTokens, e);
             throw e;
+        }
+    }
+
+    @Override
+    public void abortReservation(TokenReservation reservation) {
+        if (reservation != null && !reservation.noop() && "llm".equals(reservation.scope())) {
+            userTokenService.releaseLlmTokenReservation(reservation.userId(), reservation.reservedTokens());
         }
     }
 

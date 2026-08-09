@@ -8,6 +8,7 @@ MiniMax 使用 Chat Completions；Codex/OpenAI 类 Provider 可以使用 Respons
 from __future__ import annotations
 
 import json
+import asyncio
 from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Any, Iterator
@@ -21,11 +22,14 @@ from agents import (
     OpenAIChatCompletionsModel,
     OpenAIResponsesModel,
 )
-from openai import AsyncOpenAI
+from openai import APIConnectionError, APIStatusError, APITimeoutError, AsyncOpenAI
 from openai.types.responses import ResponseFunctionToolCall
 
 from ...transport.provider_config import ProviderConfig
+from ..research_contract import FINAL_TOOL_NAME
 from .context import ResearchRunContext
+from ...utils.errors import RunLimitExceeded
+from ...utils.errors import ResearchSystemError
 
 
 _ACTIVE_CONTEXT: ContextVar[ResearchRunContext | None] = ContextVar(
@@ -60,10 +64,17 @@ class _ObservedOpenAIModel:
         await self._client.close()
 
     async def get_response(self, *args, **kwargs):
+        context = _ACTIVE_CONTEXT.get()
         try:
-            response = await super().get_response(*args, **kwargs)
+            response = await asyncio.wait_for(
+                super().get_response(*args, **kwargs),
+                timeout=context.control.remaining_seconds() if context else None,
+            )
+        except asyncio.TimeoutError as error:
+            if context:
+                context.control.terminal_reason = "RUN_DEADLINE_EXCEEDED"
+            raise RunLimitExceeded("RUN_DEADLINE_EXCEEDED") from error
         except Exception as error:
-            context = _ACTIVE_CONTEXT.get()
             recorder = context.turn.eval_recorder if context else None
             if context and recorder:
                 recorder.append(
@@ -75,6 +86,9 @@ class _ObservedOpenAIModel:
                         "message": str(error),
                     },
                 )
+            reason_code = _provider_reason_code(error)
+            if reason_code:
+                raise ResearchSystemError(reason_code) from error
             raise
 
         response.output = [
@@ -90,9 +104,9 @@ class _ObservedOpenAIModel:
             if value
         )
         response.output = [ResponseFunctionToolCall(
-            arguments=json.dumps({"content": text}, ensure_ascii=False),
+            arguments=json.dumps({"outcome": "answered", "markdown": text}, ensure_ascii=False),
             call_id=f"call_text_nudge_{uuid4().hex}",
-            name=TEXT_NUDGE_TOOL_NAME,
+            name=FINAL_TOOL_NAME,
             type="function_call",
         )]
         return response
@@ -151,7 +165,7 @@ class MiniMaxAgentsModel(_ObservedOpenAIModel, OpenAIChatCompletionsModel):
         # 父类负责把 SDK Model 输入翻译成 Chat Completions 请求，再把响应翻译回 SDK item。
         super().__init__(model=provider.model, openai_client=client)
 
-    def research_settings(self, max_completion_tokens: int) -> ModelSettings:
+    def research_settings(self) -> ModelSettings:
         """返回适合研究工具循环的供应商设置。"""
 
         extra_body = None
@@ -161,7 +175,6 @@ class MiniMaxAgentsModel(_ObservedOpenAIModel, OpenAIChatCompletionsModel):
         return ModelSettings(
             temperature=0.0,
             top_p=1.0,
-            max_tokens=max_completion_tokens,
             # 每一步必须产生工具调用；最终用户答案也通过 submit_research_answer 工具提交。
             tool_choice="required",
             # 允许模型一次规划多个工具；Runtime 会为了授权状态一致性将实际执行串行化。
@@ -185,9 +198,8 @@ class OpenAIResponsesAgentsModel(_ObservedOpenAIModel, OpenAIResponsesModel):
         client = _client(self, provider, timeout_seconds, max_attempts)
         super().__init__(model=provider.model, openai_client=client)
 
-    def research_settings(self, max_completion_tokens: int) -> ModelSettings:
+    def research_settings(self) -> ModelSettings:
         return ModelSettings(
-            max_tokens=max_completion_tokens,
             tool_choice="required",
             parallel_tool_calls=True,
             store=False,
@@ -243,6 +255,16 @@ def _json_or_text(value: str) -> Any:
         return json.loads(value)
     except json.JSONDecodeError:
         return value
+
+
+def _provider_reason_code(error: Exception) -> str:
+    if isinstance(error, (asyncio.TimeoutError, httpx.TimeoutException, APITimeoutError)):
+        return "PROVIDER_TIMEOUT"
+    if isinstance(error, (httpx.HTTPError, APIConnectionError)):
+        return "PROVIDER_UNAVAILABLE"
+    if isinstance(error, APIStatusError):
+        return "PROVIDER_UNAVAILABLE" if error.status_code >= 500 else "PROVIDER_PROTOCOL_INVALID"
+    return ""
 
 
 def _repair_function_call(item: Any) -> Any:

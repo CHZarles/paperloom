@@ -117,7 +117,7 @@ chain-of-thought. See [Evaluation System](docs/evaluation/README.md).
 ## Quick Start
 
 Requirements: Java 17, Maven 3.8+, Node.js 18.20+, pnpm 8.7+, Python 3.11+, Docker Compose v2,
-and a separately installed MinerU service for real PDF ingestion.
+and a MinerU Cloud API token for real PDF ingestion.
 
 ```bash
 cp .env.example .env

@@ -78,7 +78,7 @@ public class PaperSourceQuote {
     private Integer splitIndex;
 
     @Lob
-    @Column(name = "source_span_json", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "source_span_json", nullable = false, columnDefinition = "LONGTEXT")
     private String sourceSpanJson;
 
     @CreationTimestamp

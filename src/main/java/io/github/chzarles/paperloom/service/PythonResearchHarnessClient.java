@@ -80,16 +80,14 @@ public class PythonResearchHarnessClient implements ResearchHarnessTransport {
             throw new IllegalArgumentException("The Python harness requires an authorized paper scope");
         }
         Map<String, Object> body = payloadFactory.requestBody(request);
-        int maxCompletionTokens = request.modelContext().maxCompletionTokens() > 0
-                ? request.modelContext().maxCompletionTokens()
-                : 3000;
         UsageQuotaService.TokenReservation reservation = usageQuotaService.reserveLlmTokens(
                 String.valueOf(request.userId()),
-                payloadFactory.estimatedPromptTokens(request),
-                maxCompletionTokens
+                0,
+                1
         );
         CompletableFuture<ProductTurnResult> future = new CompletableFuture<>();
         String generationId = request.generationId();
+        long startedAtMs = System.currentTimeMillis();
         AtomicBoolean reservationFinished = new AtomicBoolean(false);
         AtomicBoolean failureEventPublished = new AtomicBoolean(false);
         Consumer<Map<String, Object>> trackedProgressListener = event -> {
@@ -115,11 +113,21 @@ public class PythonResearchHarnessClient implements ResearchHarnessTransport {
                 future.completeExceptionally(error);
             } catch (Exception error) {
                 if (failureEventPublished.compareAndSet(false, true)) {
+                    long elapsedMs = Math.max(0L, System.currentTimeMillis() - startedAtMs);
                     publishProgress(progressListener, Map.of(
                             "type", "job_failed",
-                            "status", "failed",
+                            "status", "FAILED_TECHNICAL",
+                            "reasonCode", "INTERNAL_UNEXPECTED",
+                            "usage", Map.of(
+                                    "model_calls", 0,
+                                    "prompt_tokens", 0,
+                                    "completion_tokens", 0,
+                                    "total_tokens", 0,
+                                    "elapsed_ms", elapsedMs
+                            ),
+                            "elapsedMs", elapsedMs,
                             "errorType", error.getClass().getSimpleName(),
-                            "message", firstNonBlank(error.getMessage(), "The Python research harness failed")
+                            "message", "The research service stopped unexpectedly."
                     ));
                 }
                 future.completeExceptionally(error);

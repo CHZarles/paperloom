@@ -13,10 +13,10 @@ visible instead of being hidden behind a single launcher.
 - pnpm 8.7 or newer
 - Python 3.11 or newer
 - Docker with Docker Compose v2
-- MinerU installed separately for real PDF ingestion
+- A MinerU Cloud API token for real PDF ingestion
 
 Recommended local capacity is at least 6 GB of free memory because the repository's full local stack
-starts MySQL, MinIO, Redis, Kafka, Qdrant, the backend, and the parser together.
+starts MySQL, MinIO, Redis, Kafka, Qdrant, and the backend together.
 
 ## 1. Configure the Environment
 
@@ -75,22 +75,20 @@ MySQL is the canonical paper source. Qdrant stores a rebuildable candidate index
 Models. The Compose service requires an API key and binds its host ports to loopback; Java must use
 the same key. Kafka supports upload processing and Redis supports separate transient product concerns.
 
-## 3. Start MinerU
+## 3. Configure MinerU Cloud API
 
-PaperLoom expects a self-hosted MinerU API. Install MinerU using its official instructions, then
-point the launcher at the environment containing `mineru-api`:
+Create a token in [MinerU API management](https://mineru.net/apiManage/docs), then set it outside
+the repository or in your local `.env`:
 
 ```bash
-export PAPERLOOM_MINERU_VENV_BIN="$HOME/.local/share/paperloom-mineru/.venv/bin"
-scripts/paperloom-start-mineru.sh start
-scripts/paperloom-start-mineru.sh status
+PAPER_PARSING_MINERU_BASE_URL=https://mineru.net
+PAPER_PARSING_MINERU_API_TOKEN=replace-with-your-token
+PAPER_PARSING_MINERU_MODEL_VERSION=vlm
 ```
 
-The default endpoint is `http://127.0.0.1:8000/health`. Set
-`PAPER_PARSING_MINERU_BASE_URL` when using a different host or port.
-
-Paper processing fails explicitly when MinerU is unavailable. It does not silently downgrade the
-normal product path to a weaker parser.
+PaperLoom requests a short-lived MinerU upload URL, uploads the PDF directly to it, then polls the
+batch result and stores the returned ZIP artifact. The normal product path fails explicitly if the
+token is absent or MinerU rejects the task; it does not silently downgrade to a weaker parser.
 
 ## 4. Start the Research Harness
 
@@ -159,7 +157,6 @@ alone is not evidence that the model read or cited that location.
 ```bash
 scripts/paperloom-start-backend.sh stop
 scripts/paperloom-start-harness.sh stop
-scripts/paperloom-start-mineru.sh stop
 docker compose --env-file .env -f docs/docker-compose.yaml down
 ```
 

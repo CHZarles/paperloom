@@ -19,6 +19,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -83,10 +84,11 @@ public class UserTokenService {
         String value = stringRedisTemplate.opsForValue().get(key);
         if (StringUtils.isBlank(value)) {
             long initToken = resolveInitToken(userId, usageQuotaProperties.getLlm());
-            stringRedisTemplate.opsForValue().set(key, String.valueOf(initToken));
-            // 记录 Token 增加
-            recordTokenIncrease(userId, UserTokenRecord.TokenType.LLM, initToken, 0L, initToken, "注册赠送", null);
-            return initToken;
+            if (Boolean.TRUE.equals(stringRedisTemplate.opsForValue().setIfAbsent(key, String.valueOf(initToken)))) {
+                recordTokenIncrease(userId, UserTokenRecord.TokenType.LLM, initToken, 0L, initToken, "注册赠送", null);
+                return initToken;
+            }
+            value = stringRedisTemplate.opsForValue().get(key);
         }
         try {
             return Long.parseLong(value);
@@ -107,10 +109,11 @@ public class UserTokenService {
         String value = stringRedisTemplate.opsForValue().get(key);
         if (StringUtils.isBlank(value)) {
             long initToken = resolveInitToken(userId, usageQuotaProperties.getEmbedding());
-            stringRedisTemplate.opsForValue().set(key, String.valueOf(initToken));
-            // 添加 Embedding Token 增加记录
-            recordTokenIncrease(userId, UserTokenRecord.TokenType.EMBEDDING, initToken, 0L, initToken, "注册赠送", null);
-            return initToken;
+            if (Boolean.TRUE.equals(stringRedisTemplate.opsForValue().setIfAbsent(key, String.valueOf(initToken)))) {
+                recordTokenIncrease(userId, UserTokenRecord.TokenType.EMBEDDING, initToken, 0L, initToken, "注册赠送", null);
+                return initToken;
+            }
+            value = stringRedisTemplate.opsForValue().get(key);
         }
         try {
             return Long.parseLong(value);
@@ -145,6 +148,43 @@ public class UserTokenService {
 
         // 记录 Token 消耗（按天聚合）
         recordTokenConsume(userId, UserTokenRecord.TokenType.LLM, tokens, currentBalance, currentBalance - tokens);
+    }
+
+    public boolean reserveLlmTokens(String userId, long tokens) {
+        if (tokens <= 0) {
+            return true;
+        }
+        String key = buildLlmTokenKey(userId);
+        getLlmTokenBalance(userId);
+        Long remaining = stringRedisTemplate.execute(new DefaultRedisScript<>(
+                "local balance=tonumber(redis.call('GET', KEYS[1]) or '0'); "
+                        + "local amount=tonumber(ARGV[1]); "
+                        + "if balance < amount then return -1 end; "
+                        + "return redis.call('DECRBY', KEYS[1], amount)", Long.class),
+                List.of(key), String.valueOf(tokens));
+        return remaining != null && remaining >= 0;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void settleLlmTokenReservation(String userId, long reservedTokens, int actualTokens) {
+        long reserved = Math.max(0, reservedTokens);
+        int actual = Math.max(0, actualTokens);
+        String key = buildLlmTokenKey(userId);
+        long adjustment = reserved - actual;
+        if (adjustment != 0) {
+            stringRedisTemplate.opsForValue().increment(key, adjustment);
+        }
+        if (actual > 0) {
+            Long balanceAfter = getLlmTokenBalance(userId);
+            recordTokenConsume(userId, UserTokenRecord.TokenType.LLM, actual,
+                    balanceAfter + actual, balanceAfter);
+        }
+    }
+
+    public void releaseLlmTokenReservation(String userId, long tokens) {
+        if (tokens > 0) {
+            stringRedisTemplate.opsForValue().increment(buildLlmTokenKey(userId), tokens);
+        }
     }
 
     /**

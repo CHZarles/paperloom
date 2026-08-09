@@ -708,6 +708,15 @@ public class ChatHandler {
         if (answer.resultStatus() == ProductResultStatus.FAILED) {
             throw new RuntimeException(answer.finalAnswerMarkdown());
         }
+        if (answer.resultStatus() == ProductResultStatus.CANCELLED) {
+            cancelledGenerations.add(generationId);
+            chatGenerationStateService.markCancelled(generationId);
+            if (!responseFuture.isDone()) {
+                responseFuture.complete("");
+            }
+            cleanupGenerationState(generationId, null);
+            return;
+        }
         List<Map<String, Object>> productStateItems = sanitizeProductStateItems(answer.productStateItems());
         if (!productStateItems.isEmpty()) {
             generationProductStateItems.put(generationId, productStateItems);
@@ -797,6 +806,7 @@ public class ChatHandler {
         diagnostics.put("harness", "PYTHON_RESEARCH_HARNESS");
         diagnostics.put("resultStatus", answer.resultStatus().name());
         diagnostics.put("stopReason", answer.stopReason().name());
+        diagnostics.putAll(answer.diagnostics());
         if (answer.envelope() != null) {
             diagnostics.put("answerType", answer.envelope().answerType().name());
         }

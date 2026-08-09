@@ -25,24 +25,43 @@ export interface GenerationStartPayload {
   route?: string;
 }
 
-export function hasInFlightAssistant(messages: readonly ChatMessageListItem[], targetConversationId?: string) {
-  return messages.some(message => {
-    if (message.role !== 'assistant') return false;
-    if (!['pending', 'loading'].includes(message.status || '')) return false;
-    if (!targetConversationId) return true;
-    return !message.conversationId || message.conversationId === targetConversationId;
-  });
-}
-
-export function shouldApplyLoadedConversationMessages({
+export function mergeLoadedConversationMessages<T extends ChatMessageListItem>({
   currentMessages,
+  loadedMessages,
   targetConversationId
 }: {
-  currentMessages: readonly ChatMessageListItem[];
-  loadedMessages: readonly ChatMessageListItem[];
+  currentMessages: readonly T[];
+  loadedMessages: readonly T[];
   targetConversationId?: string;
 }) {
-  return !hasInFlightAssistant(currentMessages, targetConversationId);
+  let assistantIndex = -1;
+  for (let i = currentMessages.length - 1; i >= 0; i -= 1) {
+    const message = currentMessages[i];
+    if (
+      message?.role === 'assistant' &&
+      ['pending', 'loading'].includes(message.status || '') &&
+      (!targetConversationId || !message.conversationId || message.conversationId === targetConversationId)
+    ) {
+      assistantIndex = i;
+      break;
+    }
+  }
+  if (assistantIndex < 0) return [...loadedMessages];
+
+  const userIndex = findNearestUserIndex(currentMessages, assistantIndex);
+  const inFlightMessages = currentMessages.slice(userIndex >= 0 ? userIndex : assistantIndex, assistantIndex + 1);
+  return [
+    ...loadedMessages.filter(
+      loaded =>
+        !inFlightMessages.some(
+          inFlight =>
+            Boolean(inFlight.generationId) &&
+            inFlight.role === loaded.role &&
+            inFlight.generationId === loaded.generationId
+        )
+    ),
+    ...inFlightMessages
+  ];
 }
 
 export function applyGenerationStartToMessages<T extends ChatMessageListItem>({

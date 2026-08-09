@@ -15,6 +15,12 @@ assert.match(
 
 assert.match(
   chatStoreSource,
+  /window\.sessionStorage\.getItem\(CHAT_CLIENT_ID_STORAGE_KEY\)[\s\S]*window\.sessionStorage\.setItem\(CHAT_CLIENT_ID_STORAGE_KEY, clientId\)/,
+  'browser client id must survive a page refresh so active generation resume keeps its client scope'
+);
+
+assert.match(
+  chatStoreSource,
   /assistant\.conversationRecordId\s*=\s*snapshot\.conversationRecordId/,
   'active generation snapshots must restore the durable conversation record id for citation detail clicks'
 );

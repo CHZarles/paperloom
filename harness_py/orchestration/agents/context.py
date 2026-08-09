@@ -9,11 +9,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from time import perf_counter
 
-from ...utils.errors import HarnessCancelled
 from ...utils.models import JsonMap, utc_now_iso
 from ...corpus.tools import ReadingCorpusTools
 from ..research_skills import ResearchSkillRegistry
 from ..runtime import TurnExecutionInput
+from ..run_control import RunControl
 
 
 @dataclass
@@ -28,6 +28,7 @@ class ResearchRunContext:
     turn: TurnExecutionInput
     # 以下对象和字段都属于本轮运行，由 __post_init__ 或默认工厂创建。
     corpus: ReadingCorpusTools = field(init=False)
+    control: RunControl = field(init=False)
     skills: ResearchSkillRegistry = field(default_factory=ResearchSkillRegistry)
     trace: list[JsonMap] = field(default_factory=list)
     skills_used: list[str] = field(default_factory=list)
@@ -53,6 +54,10 @@ class ResearchRunContext:
             self.corpus = ReadingCorpusTools(self.turn.dataset, reader=self.turn.corpus_reader)
         else:
             self.corpus = InMemoryTools(self.turn.dataset)
+        self.control = self.turn.run_control or RunControl(
+            self.turn.run_limits,
+            should_cancel=self.turn.should_cancel,
+        )
         # 上一轮已经引用过的论文和位置可直接用于追问，其余仍走工具授权链。
         self.corpus.authorized_paper_ids.update(
             paper_id
@@ -72,8 +77,7 @@ class ResearchRunContext:
     def check_cancelled(self) -> None:
         """在模型调用和工具调用边界响应上游取消。"""
 
-        if self.turn.should_cancel and self.turn.should_cancel():
-            raise HarnessCancelled("research job cancelled")
+        self.control.check_cancelled_or_expired()
 
     def emit_progress(self, event: JsonMap) -> None:
         """把进度事件交给服务层；没有监听器时是空操作。"""
@@ -84,8 +88,8 @@ class ResearchRunContext:
     def begin_model_call(self) -> str:
         """开始一次模型请求，并分配本轮内稳定的 model_call_id。"""
 
-        self.check_cancelled()
-        self.model_call_count += 1
+        self.control.start_model_call()
+        self.model_call_count = self.control.model_calls_started
         self.current_model_call_id = f"model_{self.model_call_count}"
         self.current_model_started = perf_counter()
         self.emit_progress({"type": "model_call_started", "attempt": self.model_call_count})
@@ -96,9 +100,11 @@ class ResearchRunContext:
 
         duration_ms = round((perf_counter() - self.current_model_started) * 1000)
         self.model_latency_ms += duration_ms
-        self.prompt_tokens += prompt_tokens
-        self.completion_tokens += completion_tokens
-        self.total_tokens += total_tokens
+        self.control.record_model_usage(prompt_tokens, completion_tokens, total_tokens)
+        self.prompt_tokens = self.control.prompt_tokens
+        self.completion_tokens = self.control.completion_tokens
+        self.total_tokens = self.control.total_tokens
+        self.control.after_boundary("model_call_completed", self.current_model_call_id)
         self.emit_progress({
             "type": "model_call_completed",
             "attempt": self.model_call_count,

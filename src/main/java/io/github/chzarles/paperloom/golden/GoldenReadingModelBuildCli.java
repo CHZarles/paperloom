@@ -41,7 +41,7 @@ public final class GoldenReadingModelBuildCli {
         }
 
         ParsedPaper parsedPaper;
-        try (AnnotationConfigApplicationContext context = minerUContext(options.minerUBaseUrl());
+        try (AnnotationConfigApplicationContext context = minerUContext(options.minerUBaseUrl(), options.minerUApiToken());
              InputStream pdfInputStream = Files.newInputStream(options.pdf())) {
             MinerUParserClient client = context.getBean(MinerUParserClient.class);
             parsedPaper = new MinerUPaperPdfParser(client, new MinerUOutputMapper())
@@ -85,12 +85,12 @@ public final class GoldenReadingModelBuildCli {
         );
     }
 
-    private static AnnotationConfigApplicationContext minerUContext(String baseUrl) {
+    private static AnnotationConfigApplicationContext minerUContext(String baseUrl, String apiToken) {
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
         Map<String, Object> properties = new LinkedHashMap<>();
         properties.put("paper.parsing.mineru.base-url", baseUrl);
+        properties.put("paper.parsing.mineru.api-token", apiToken == null ? "" : apiToken);
         properties.put("paper.parsing.mineru.timeout-seconds", "1800");
-        properties.put("paper.parsing.mineru.health-timeout-seconds", "5");
         context.getEnvironment().getPropertySources().addFirst(new MapPropertySource("golden-export", properties));
         context.register(MinerUParserClient.class);
         context.refresh();
@@ -134,7 +134,8 @@ public final class GoldenReadingModelBuildCli {
             Path artifactsDir,
             String sourcePdfPath,
             String title,
-            String minerUBaseUrl
+            String minerUBaseUrl,
+            String minerUApiToken
     ) {
         static Options parse(String[] args) {
             Map<String, String> values = new LinkedHashMap<>();
@@ -153,7 +154,8 @@ public final class GoldenReadingModelBuildCli {
                     optionalPath(values.get("artifacts-dir")),
                     required(values, "source-pdf-path"),
                     required(values, "title"),
-                    values.getOrDefault("mineru-base-url", "http://127.0.0.1:8000")
+                    values.getOrDefault("mineru-base-url", "https://mineru.net"),
+                    values.getOrDefault("mineru-api-token", System.getenv("PAPER_PARSING_MINERU_API_TOKEN"))
             );
         }
 

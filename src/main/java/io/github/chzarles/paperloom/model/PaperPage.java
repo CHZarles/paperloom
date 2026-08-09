@@ -51,7 +51,7 @@ public class PaperPage {
     private String textStatus;
 
     @Lob
-    @Column(name = "source_span_json", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "source_span_json", nullable = false, columnDefinition = "LONGTEXT")
     private String sourceSpanJson;
 
     @Column(name = "parser_name", length = 64)

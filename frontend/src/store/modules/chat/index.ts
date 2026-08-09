@@ -1,12 +1,25 @@
 import { useWebSocket } from '@vueuse/core';
 import { request } from '@/service/request';
-import { applyGenerationStartToMessages, shouldApplyLoadedConversationMessages } from './message-list';
+import { applyGenerationStartToMessages, mergeLoadedConversationMessages } from './message-list';
+
+const CHAT_CLIENT_ID_STORAGE_KEY = 'paperloom:chat-client-id';
 
 function createChatClientId() {
-  if (globalThis.crypto?.randomUUID) {
-    return globalThis.crypto.randomUUID();
+  const createId = () =>
+    globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+
+  if (typeof window === 'undefined') return createId();
+
+  try {
+    const existing = window.sessionStorage.getItem(CHAT_CLIENT_ID_STORAGE_KEY);
+    if (existing) return existing;
+
+    const clientId = createId();
+    window.sessionStorage.setItem(CHAT_CLIENT_ID_STORAGE_KEY, clientId);
+    return clientId;
+  } catch {
+    return createId();
   }
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 }
 
 const CHAT_ROUTES = new Set<Api.Chat.Route>([
@@ -337,17 +350,11 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       return false;
     }
     const boundedMessages = messages.map(boundResearchEvents);
-    if (
-      !shouldApplyLoadedConversationMessages({
-        currentMessages: list.value,
-        loadedMessages: boundedMessages,
-        targetConversationId
-      })
-    ) {
-      return false;
-    }
-
-    list.value = boundedMessages;
+    list.value = mergeLoadedConversationMessages({
+      currentMessages: list.value,
+      loadedMessages: boundedMessages,
+      targetConversationId
+    });
     return true;
   }
 

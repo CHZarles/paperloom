@@ -3,21 +3,24 @@ package io.github.chzarles.paperloom.paper.parser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -28,53 +31,26 @@ public class MinerUParserClient {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Value("${paper.parsing.mineru.base-url:http://localhost:8000}")
+    @Value("${paper.parsing.mineru.base-url:https://mineru.net}")
     private String baseUrl;
 
-    @Value("${paper.parsing.mineru.health-path:/health}")
-    private String healthPath;
+    @Value("${paper.parsing.mineru.api-token:}")
+    private String apiToken;
 
-    @Value("${paper.parsing.mineru.submit-path:/tasks}")
-    private String submitPath;
+    @Value("${paper.parsing.mineru.model-version:vlm}")
+    private String modelVersion;
 
-    @Value("${paper.parsing.mineru.file-field-name:files}")
-    private String fileFieldName;
+    @Value("${paper.parsing.mineru.enable-formula:true}")
+    private boolean enableFormula;
 
-    @Value("${paper.parsing.mineru.backend:pipeline}")
-    private String backend;
+    @Value("${paper.parsing.mineru.enable-table:true}")
+    private boolean enableTable;
 
-    @Value("${paper.parsing.mineru.parse-method:auto}")
-    private String parseMethod;
-
-    @Value("${paper.parsing.mineru.return-md:true}")
-    private boolean returnMarkdown;
-
-    @Value("${paper.parsing.mineru.return-content-list:true}")
-    private boolean returnContentList;
-
-    @Value("${paper.parsing.mineru.return-middle-json:true}")
-    private boolean returnMiddleJson;
-
-    @Value("${paper.parsing.mineru.return-images:true}")
-    private boolean returnImages;
-
-    @Value("${paper.parsing.mineru.response-format-zip:true}")
-    private boolean responseFormatZip;
-
-    @Value("${paper.parsing.mineru.status-path-template:/tasks/{taskId}}")
-    private String statusPathTemplate;
-
-    @Value("${paper.parsing.mineru.result-path-template:/tasks/{taskId}/result}")
-    private String resultPathTemplate;
-
-    @Value("${paper.parsing.mineru.timeout-seconds:900}")
+    @Value("${paper.parsing.mineru.timeout-seconds:3600}")
     private long timeoutSeconds;
 
     @Value("${paper.parsing.mineru.poll-interval-seconds:3}")
     private long pollIntervalSeconds;
-
-    @Value("${paper.parsing.mineru.health-timeout-seconds:5}")
-    private long healthTimeoutSeconds;
 
     @Value("${paper.parsing.mineru.max-result-in-memory-bytes:67108864}")
     private int maxResultInMemoryBytes;
@@ -83,177 +59,213 @@ public class MinerUParserClient {
         if (pdfBytes == null || pdfBytes.length == 0) {
             throw new PaperParsingException("PDF bytes must not be empty");
         }
-        assertSidecarAvailable();
+
         WebClient client = buildClient();
-
-        JsonNode submitResponse = submitTask(client, pdfBytes, originalFilename);
-        MinerUParseResult immediate = parseResultFromJsonIfPresent(submitResponse, null);
-        if (immediate != null && immediate.hasStructuredOutput()) {
-            return immediate;
+        String filename = normalizeFilename(originalFilename);
+        JsonNode uploadRequest = requestUploadUrls(client, filename);
+        JsonNode data = data(uploadRequest, "request file upload URLs");
+        String batchId = requiredText(data, "batch_id", "request file upload URLs");
+        JsonNode fileUrls = data.path("file_urls");
+        if (!fileUrls.isArray() || fileUrls.isEmpty() || fileUrls.get(0).asText().isBlank()) {
+            throw new PaperParsingException("MinerU API did not return an upload URL");
         }
 
-        String taskId = firstText(submitResponse, "task_id", "taskId", "id");
-        if (taskId == null || taskId.isBlank()) {
-            throw new PaperParsingException("MinerU submit response did not contain task id");
-        }
-        waitUntilCompleted(client, taskId);
-        byte[] resultBytes = downloadResult(client, taskId);
-        return parseResultBytes(resultBytes);
+        uploadFile(fileUrls.get(0).asText(), pdfBytes);
+        JsonNode result = waitUntilCompleted(client, batchId);
+        String resultUrl = requiredText(result, "full_zip_url", "get parse result");
+        return parseResultBytes(downloadResult(client, resultUrl));
     }
 
     private WebClient buildClient() {
         int maxBytes = maxResultInMemoryBytes > 0 ? maxResultInMemoryBytes : DEFAULT_MAX_RESULT_IN_MEMORY_BYTES;
         return WebClient.builder()
-                .baseUrl(baseUrl)
+                .baseUrl(normalizeBaseUrl(baseUrl))
                 .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(maxBytes))
                 .build();
     }
 
-    private JsonNode submitTask(WebClient client, byte[] pdfBytes, String originalFilename) {
-        MultipartBodyBuilder multipart = new MultipartBodyBuilder();
-        multipart.part(normalizeFileFieldName(), new ByteArrayResource(pdfBytes) {
-                    @Override
-                    public String getFilename() {
-                        return originalFilename == null || originalFilename.isBlank() ? "paper.pdf" : originalFilename;
-                    }
-                })
-                .filename(originalFilename == null || originalFilename.isBlank() ? "paper.pdf" : originalFilename)
-                .contentType(MediaType.APPLICATION_PDF);
-        multipart.part("backend", normalizeBackend());
-        multipart.part("parse_method", normalizeParseMethod());
-        multipart.part("table_enable", "true");
-        multipart.part("formula_enable", "true");
-        multipart.part("return_md", Boolean.toString(returnMarkdown));
-        multipart.part("return_content_list", Boolean.toString(returnContentList));
-        multipart.part("return_middle_json", Boolean.toString(returnMiddleJson));
-        multipart.part("return_images", Boolean.toString(returnImages));
-        multipart.part("response_format_zip", Boolean.toString(responseFormatZip));
-
-        try {
-            String body = client.post()
-                    .uri(submitPath)
-                    .contentType(MediaType.MULTIPART_FORM_DATA)
-                    .body(BodyInserters.fromMultipartData(multipart.build()))
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block(Duration.ofSeconds(Math.max(30, timeoutSeconds)));
-            return body == null || body.isBlank() ? objectMapper.createObjectNode() : objectMapper.readTree(body);
-        } catch (Exception e) {
-            throw minerUUnavailable("Failed to submit PDF to MinerU sidecar at " + endpoint(submitPath), e);
-        }
+    private JsonNode requestUploadUrls(WebClient client, String filename) {
+        Map<String, Object> request = Map.of(
+                "files", List.of(Map.of("name", filename, "data_id", UUID.randomUUID().toString())),
+                "model_version", normalizeModelVersion(),
+                "enable_formula", enableFormula,
+                "enable_table", enableTable
+        );
+        return postJson(client, "/api/v4/file-urls/batch", request, "request file upload URLs");
     }
 
-    private void waitUntilCompleted(WebClient client, String taskId) {
-        long deadline = System.currentTimeMillis() + Duration.ofSeconds(timeoutSeconds).toMillis();
+    private JsonNode waitUntilCompleted(WebClient client, String batchId) {
+        long deadline = System.currentTimeMillis() + Duration.ofSeconds(Math.max(1, timeoutSeconds)).toMillis();
         while (System.currentTimeMillis() < deadline) {
-            JsonNode status = fetchStatus(client, taskId);
-            String state = firstText(status, "status", "state", "task_status");
-            String normalized = state == null ? "" : state.toLowerCase(Locale.ROOT);
-            if (normalized.equals("completed") || normalized.equals("complete")
-                    || normalized.equals("done") || normalized.equals("success")
-                    || normalized.equals("finished")) {
-                return;
+            JsonNode response = getJson(client, "/api/v4/extract-results/batch/{batchId}", batchId, "get parse result");
+            JsonNode results = data(response, "get parse result").path("extract_result");
+            if (!results.isArray() || results.isEmpty()) {
+                throw new PaperParsingException("MinerU API did not return the uploaded file result");
             }
-            if (normalized.equals("failed") || normalized.equals("error") || normalized.equals("interrupted")) {
-                String message = firstText(status, "error", "message", "detail");
-                throw new PaperParsingException("MinerU task failed: " + (message == null ? state : message));
+
+            JsonNode result = results.get(0);
+            String state = result.path("state").asText("").toLowerCase(Locale.ROOT);
+            if ("done".equals(state)) {
+                return result;
+            }
+            if ("failed".equals(state)) {
+                String message = result.path("err_msg").asText("MinerU parsing failed");
+                throw new PaperParsingException("MinerU parsing failed: " + message);
             }
             sleep();
         }
-        throw new PaperParsingException("MinerU task timed out after " + timeoutSeconds + " seconds");
+        throw new PaperParsingException("MinerU parsing timed out after " + timeoutSeconds + " seconds");
     }
 
-    private JsonNode fetchStatus(WebClient client, String taskId) {
+    private JsonNode postJson(WebClient client, String path, Object request, String operation) {
+        String body;
         try {
-            String body = client.get()
-                    .uri(statusPathTemplate, taskId)
+            body = client.post()
+                    .uri(path)
+                    .headers(headers -> headers.setBearerAuth(requiredApiToken()))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .bodyValue(request)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block(requestTimeout());
+        } catch (PaperParsingException e) {
+            throw e;
+        } catch (WebClientResponseException e) {
+            throw apiRejected(operation, e);
+        } catch (Exception e) {
+            throw apiUnavailable(operation, e);
+        }
+        return parseSuccessfulResponse(body, operation);
+    }
+
+    private JsonNode getJson(WebClient client, String path, String batchId, String operation) {
+        String body;
+        try {
+            body = client.get()
+                    .uri(path, batchId)
+                    .headers(headers -> headers.setBearerAuth(requiredApiToken()))
+                    .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
                     .bodyToMono(String.class)
                     .block(Duration.ofSeconds(30));
-            return body == null || body.isBlank() ? objectMapper.createObjectNode() : objectMapper.readTree(body);
+        } catch (PaperParsingException e) {
+            throw e;
+        } catch (WebClientResponseException e) {
+            throw apiRejected(operation, e);
         } catch (Exception e) {
-            throw minerUUnavailable("Failed to fetch MinerU task status from " + endpoint(statusPathTemplate), e);
+            throw apiUnavailable(operation, e);
+        }
+        return parseSuccessfulResponse(body, operation);
+    }
+
+    private JsonNode parseSuccessfulResponse(String body, String operation) {
+        try {
+            JsonNode response = objectMapper.readTree(body == null || body.isBlank() ? "{}" : body);
+            if (response.path("code").asInt(Integer.MIN_VALUE) == 0) {
+                return response;
+            }
+            String message = response.path("msg").asText("unknown API error");
+            throw new PaperParsingException("MinerU API failed to " + operation + ": " + message);
+        } catch (PaperParsingException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new PaperParsingException("MinerU API returned an invalid response while attempting to " + operation, e);
         }
     }
 
-    private byte[] downloadResult(WebClient client, String taskId) {
+    private JsonNode data(JsonNode response, String operation) {
+        JsonNode data = response.path("data");
+        if (data.isMissingNode() || data.isNull()) {
+            throw new PaperParsingException("MinerU API did not return data while attempting to " + operation);
+        }
+        return data;
+    }
+
+    private String requiredText(JsonNode node, String field, String operation) {
+        String value = node.path(field).asText("").trim();
+        if (value.isBlank()) {
+            throw new PaperParsingException("MinerU API did not return " + field + " while attempting to " + operation);
+        }
+        return value;
+    }
+
+    private void uploadFile(String uploadUrl, byte[] pdfBytes) {
+        HttpURLConnection connection = null;
+        try {
+            URL url = URI.create(uploadUrl).toURL();
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("PUT");
+            connection.setDoOutput(true);
+            connection.setConnectTimeout(requestTimeoutMillis());
+            connection.setReadTimeout(requestTimeoutMillis());
+            connection.setFixedLengthStreamingMode(pdfBytes.length);
+            try (OutputStream outputStream = connection.getOutputStream()) {
+                outputStream.write(pdfBytes);
+            }
+            int status = connection.getResponseCode();
+            if (status < 200 || status >= 300) {
+                throw new IOException("upload returned HTTP " + status);
+            }
+        } catch (Exception e) {
+            throw apiUnavailable("upload the PDF", e);
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    private byte[] downloadResult(WebClient client, String resultUrl) {
         try {
             return client.get()
-                    .uri(resultPathTemplate, taskId)
+                    .uri(URI.create(resultUrl))
                     .retrieve()
                     .bodyToMono(byte[].class)
-                    .block(Duration.ofSeconds(Math.max(30, timeoutSeconds)));
+                    .block(requestTimeout());
         } catch (Exception e) {
-            throw minerUUnavailable("Failed to download MinerU result from " + endpoint(resultPathTemplate), e);
+            throw apiUnavailable("download the parse result", e);
         }
     }
 
-    private void assertSidecarAvailable() {
-        URL url = buildUrl(healthPath);
-        int timeoutMillis = (int) Duration.ofSeconds(Math.max(1, healthTimeoutSeconds)).toMillis();
-        try {
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("GET");
-            connection.setConnectTimeout(timeoutMillis);
-            connection.setReadTimeout(timeoutMillis);
-            connection.setRequestProperty("User-Agent", "PaperLoom-MinerU-HealthCheck/1.0");
-            int status = connection.getResponseCode();
-            if (status < 200 || status >= 400) {
-                throw new IOException("MinerU health check returned HTTP " + status);
-            }
-        } catch (Exception e) {
-            throw minerUUnavailable(
-                    "MinerU sidecar unavailable at " + endpoint(healthPath)
-                            + ". Start the self-hosted MinerU service.",
-                    e
-            );
+    private String requiredApiToken() {
+        if (apiToken == null || apiToken.isBlank()) {
+            throw new PaperParsingException("PAPER_PARSING_MINERU_API_TOKEN is required for the MinerU cloud API");
         }
+        return apiToken.trim();
     }
 
-    private URL buildUrl(String path) {
-        try {
-            URI base = URI.create(normalizeBaseUrl(baseUrl));
-            String normalizedPath = path == null || path.isBlank() ? "/" : path.trim();
-            if (!normalizedPath.startsWith("/")) {
-                normalizedPath = "/" + normalizedPath;
-            }
-            return base.resolve(normalizedPath).toURL();
-        } catch (Exception e) {
-            throw new MinerUUnavailableException("Invalid MinerU sidecar URL: " + baseUrl, e);
-        }
+    private String normalizeFilename(String originalFilename) {
+        return originalFilename == null || originalFilename.isBlank() ? "paper.pdf" : originalFilename.trim();
     }
 
-    private PaperParsingException minerUUnavailable(String message, Exception cause) {
-        return new MinerUUnavailableException(message, cause);
+    private String normalizeModelVersion() {
+        return modelVersion == null || modelVersion.isBlank() ? "vlm" : modelVersion.trim();
     }
 
-    private String normalizeFileFieldName() {
-        return fileFieldName == null || fileFieldName.isBlank() ? "files" : fileFieldName.trim();
+    private Duration requestTimeout() {
+        return Duration.ofSeconds(Math.max(30, timeoutSeconds));
     }
 
-    private String normalizeBackend() {
-        return backend == null || backend.isBlank() ? "pipeline" : backend.trim();
-    }
-
-    private String normalizeParseMethod() {
-        return parseMethod == null || parseMethod.isBlank() ? "auto" : parseMethod.trim();
-    }
-
-    private String endpoint(String path) {
-        String normalizedBase = normalizeBaseUrl(baseUrl);
-        String normalizedPath = path == null || path.isBlank() ? "/" : path.trim();
-        if (!normalizedPath.startsWith("/")) {
-            normalizedPath = "/" + normalizedPath;
-        }
-        return normalizedBase + normalizedPath;
+    private int requestTimeoutMillis() {
+        return (int) Math.min(Integer.MAX_VALUE, requestTimeout().toMillis());
     }
 
     private String normalizeBaseUrl(String value) {
-        String normalized = value == null || value.isBlank() ? "http://localhost:8000" : value.trim();
+        String normalized = value == null || value.isBlank() ? "https://mineru.net" : value.trim();
         while (normalized.endsWith("/")) {
             normalized = normalized.substring(0, normalized.length() - 1);
         }
         return normalized;
+    }
+
+    private MinerUUnavailableException apiUnavailable(String operation, Exception cause) {
+        return new MinerUUnavailableException("MinerU cloud API unavailable while attempting to " + operation, cause);
+    }
+
+    private PaperParsingException apiRejected(String operation, WebClientResponseException cause) {
+        return new PaperParsingException("MinerU cloud API returned HTTP " + cause.getStatusCode().value()
+                + " while attempting to " + operation, cause);
     }
 
     private MinerUParseResult parseResultBytes(byte[] bytes) {
@@ -263,29 +275,7 @@ public class MinerUParserClient {
         if (isZip(bytes)) {
             return parseZip(bytes);
         }
-        try {
-            JsonNode json = objectMapper.readTree(bytes);
-            MinerUParseResult result = parseResultFromJsonIfPresent(json, bytes);
-            if (result != null && result.hasStructuredOutput()) {
-                return result;
-            }
-        } catch (Exception e) {
-            throw new PaperParsingException("MinerU result was neither zip nor supported JSON", e);
-        }
-        throw new PaperParsingException("MinerU result did not include content_list output");
-    }
-
-    private MinerUParseResult parseResultFromJsonIfPresent(JsonNode json, byte[] rawBytes) {
-        if (json == null || json.isMissingNode() || json.isNull()) {
-            return null;
-        }
-        String contentList = rawJson(json, "content_list", "contentList");
-        String middle = rawJson(json, "middle_json", "middle", "middleJson");
-        String markdown = firstText(json, "markdown", "md", "document");
-        if (contentList == null && markdown == null) {
-            return null;
-        }
-        return new MinerUParseResult(contentList, middle, markdown, rawBytes);
+        throw new PaperParsingException("MinerU result was not a ZIP archive");
     }
 
     private MinerUParseResult parseZip(byte[] zipBytes) {
@@ -301,7 +291,7 @@ public class MinerUParserClient {
                 String name = entry.getName().toLowerCase(Locale.ROOT);
                 if (name.endsWith("content_list.json")) {
                     contentList = readZipEntry(zipInputStream);
-                } else if (name.endsWith("middle.json")) {
+                } else if (name.endsWith("middle.json") || name.endsWith("layout.json")) {
                     middle = readZipEntry(zipInputStream);
                 } else if (name.endsWith(".md") && markdown == null) {
                     markdown = readZipEntry(zipInputStream);
@@ -316,44 +306,14 @@ public class MinerUParserClient {
         return new MinerUParseResult(contentList, middle, markdown, zipBytes);
     }
 
-    private String readZipEntry(ZipInputStream zipInputStream) throws Exception {
+    private String readZipEntry(ZipInputStream zipInputStream) throws IOException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         zipInputStream.transferTo(outputStream);
-        return outputStream.toString(java.nio.charset.StandardCharsets.UTF_8);
+        return outputStream.toString(StandardCharsets.UTF_8);
     }
 
     private boolean isZip(byte[] bytes) {
         return bytes.length >= 4 && bytes[0] == 'P' && bytes[1] == 'K';
-    }
-
-    private String firstText(JsonNode json, String... fields) {
-        if (json == null || fields == null) {
-            return null;
-        }
-        for (String field : fields) {
-            JsonNode value = json.path(field);
-            if (!value.isMissingNode() && !value.isNull() && !value.asText().isBlank()) {
-                return value.asText();
-            }
-        }
-        return null;
-    }
-
-    private String rawJson(JsonNode json, String... fields) {
-        if (json == null || fields == null) {
-            return null;
-        }
-        for (String field : fields) {
-            JsonNode value = json.path(field);
-            if (!value.isMissingNode() && !value.isNull()) {
-                try {
-                    return objectMapper.writeValueAsString(value);
-                } catch (Exception ignored) {
-                    return value.asText();
-                }
-            }
-        }
-        return null;
     }
 
     private void sleep() {
@@ -361,7 +321,7 @@ public class MinerUParserClient {
             Thread.sleep(Duration.ofSeconds(Math.max(1, pollIntervalSeconds)).toMillis());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new PaperParsingException("Interrupted while waiting for MinerU task", e);
+            throw new PaperParsingException("Interrupted while waiting for MinerU parsing", e);
         }
     }
 
@@ -371,8 +331,5 @@ public class MinerUParserClient {
             String markdown,
             byte[] rawResultZipBytes
     ) {
-        boolean hasStructuredOutput() {
-            return contentListJson != null && !contentListJson.isBlank();
-        }
     }
 }

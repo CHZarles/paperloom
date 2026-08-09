@@ -109,7 +109,7 @@ Human Label 和 Judge Calibration。
 ## 快速开始
 
 需要 Java 17、Maven 3.8+、Node.js 18.20+、pnpm 8.7+、Python 3.11+、Docker Compose v2。
-真实 PDF 导入还需要单独安装 MinerU。
+真实 PDF 导入需要配置 MinerU Cloud API Token。
 
 ```bash
 cp .env.example .env

@@ -39,6 +39,14 @@ class CorpusReader(Protocol):
         ...
 
 
+class CorpusGatewayError(RuntimeError):
+    def __init__(self, status_code: int, error_code: str, safe_message: str) -> None:
+        self.status_code = status_code
+        self.error_code = error_code
+        self.safe_message = safe_message
+        super().__init__(f"Java Corpus API returned HTTP {status_code}: {error_code}")
+
+
 class JavaCorpusGateway:
     """Reusable HTTP client for the Java-owned corpus and Qdrant retrieval plane."""
 
@@ -79,6 +87,7 @@ class JavaCorpusGateway:
         user_id: int,
         scope_paper_ids: list[str],
         cancel_check: Callable[[], bool] | None = None,
+        run_control=None,
     ) -> JavaCorpusGatewayReader:
         return JavaCorpusGatewayReader(
             gateway=self,
@@ -87,10 +96,12 @@ class JavaCorpusGateway:
             user_id=user_id,
             scope_paper_ids=scope_paper_ids,
             cancel_check=cancel_check or (lambda: False),
+            run_control=run_control,
         )
 
-    def post(self, path: str, payload: JsonMap) -> JsonMap:
-        with self.client.stream("POST", path, json=payload) as response:
+    def post(self, path: str, payload: JsonMap, timeout_seconds: float | None = None) -> JsonMap:
+        request_options = {} if timeout_seconds is None else {"timeout": timeout_seconds}
+        with self.client.stream("POST", path, json=payload, **request_options) as response:
             content_length = int(response.headers.get("content-length") or 0)
             if content_length > self.max_response_bytes:
                 raise RuntimeError("Java Corpus API response exceeded the configured size limit")
@@ -101,10 +112,19 @@ class JavaCorpusGateway:
                     raise RuntimeError("Java Corpus API response exceeded the configured size limit")
             if response.status_code != 200:
                 message = bytes(body[:1000]).decode("utf-8", errors="replace")
-                raise RuntimeError(f"Java Corpus API returned HTTP {response.status_code}: {message}")
-        result = json.loads(body)
+                try:
+                    payload = json.loads(message)
+                except json.JSONDecodeError:
+                    payload = {}
+                error_code = str(payload.get("error") or f"http_{response.status_code}")
+                safe_message = str(payload.get("message") or error_code)[:1000]
+                raise CorpusGatewayError(response.status_code, error_code, safe_message)
+        try:
+            result = json.loads(body)
+        except json.JSONDecodeError as error:
+            raise CorpusGatewayError(422, "invalid_corpus_response", "Corpus response was invalid") from error
         if not isinstance(result, dict):
-            raise RuntimeError("Java Corpus API response must be a JSON object")
+            raise CorpusGatewayError(422, "invalid_corpus_response", "Corpus response was invalid")
         return result
 
 
@@ -116,6 +136,7 @@ class JavaCorpusGatewayReader:
     user_id: int
     scope_paper_ids: list[str]
     cancel_check: Callable[[], bool] = field(default=lambda: False, repr=False)
+    run_control: object | None = field(default=None, repr=False)
     metadata_records_by_id: dict[str, JsonMap] = field(default_factory=dict)
 
     def load_metadata_dataset(self) -> GoldenDataset:
@@ -204,6 +225,9 @@ class JavaCorpusGatewayReader:
                     "page": quote.get("page"),
                     "page_end": quote.get("page_end"),
                     "section": quote.get("section") or item.get("section") or "unsectioned",
+                    "content_kind": quote.get("content_kind") or "",
+                    "element_type": _quote_element_type(quote.get("content_kind"), element_type),
+                    "source_kind": _source_kind(_quote_element_type(quote.get("content_kind"), element_type)),
                     "content": quote.get("content") or "",
                     "source_span_json": quote.get("source_span_json"),
                 }
@@ -271,9 +295,19 @@ class JavaCorpusGatewayReader:
                 record.update(_paper_record(card))
 
     def _post(self, path: str, payload: JsonMap) -> JsonMap:
+        if self.run_control is not None:
+            self.run_control.check_cancelled_or_expired()
         if self.cancel_check():
             raise HarnessCancelled("research job cancelled")
-        result = self.gateway.post(path, payload)
+        try:
+            if self.run_control is None:
+                result = self.gateway.post(path, payload)
+            else:
+                result = self.gateway.post(path, payload, self.run_control.remaining_seconds())
+        except httpx.HTTPError as error:
+            raise CorpusGatewayError(503, "corpus_unavailable", "Corpus service unavailable") from error
+        if self.run_control is not None:
+            self.run_control.check_cancelled_or_expired()
         if self.cancel_check():
             raise HarnessCancelled("research job cancelled")
         return result
@@ -329,6 +363,19 @@ def _source_kind(element_type: str) -> str:
     if normalized == "formula":
         return "FORMULA"
     return "TEXT"
+
+
+def _quote_element_type(content_kind: object, fallback: str) -> str:
+    normalized = str(content_kind or "").strip().lower()
+    if normalized == "table":
+        return "table"
+    if normalized == "figure":
+        return "figure"
+    if normalized == "chart":
+        return "chart"
+    if normalized == "formula":
+        return "formula"
+    return fallback
 
 
 def _env_file_value(path: Path, name: str) -> str:

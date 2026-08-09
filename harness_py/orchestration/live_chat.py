@@ -14,11 +14,12 @@ from pathlib import Path
 from typing import Callable
 
 from .conversation import ConversationState
-from ..utils.errors import HarnessCancelled
+from ..utils.errors import HarnessCancelled, ResearchSystemError, RunLimitExceeded
 from ..utils.models import RUN_TRACE_SCHEMA_VERSION, GoldenDataset, JsonMap, child_map, stable_id, utc_now_iso
 from ..evaluation.eval_recorder import EvalRecorder
 from .memory import ResearchMemory
 from .runtime import HarnessRuntime, TurnExecutionInput, new_run_id
+from .run_control import RunControl, RunLimits
 from ..corpus.gateway import CorpusReader
 
 
@@ -45,6 +46,8 @@ class LiveResearchChatHarness:
         case_id_override: str = "",
         corpus_reader: CorpusReader | None = None,
         retry_context: JsonMap | None = None,
+        run_limits: RunLimits | None = None,
+        run_control: RunControl | None = None,
     ) -> tuple[JsonMap, ConversationState]:
         """执行一轮用户消息，返回 Run 和下一轮要持久化的状态。"""
 
@@ -56,6 +59,7 @@ class LiveResearchChatHarness:
         # case_id 用于结果内部关联；run_id 则标识这一次真实执行。
         case_id = case_id_override or _live_case_id(scoped, state, user_message)
         run_id = new_run_id()
+        control = run_control or RunControl(run_limits, should_cancel=should_cancel)
         recorder = self._open_recorder(run_id)
         if recorder:
             recorder.append(
@@ -93,8 +97,21 @@ class LiveResearchChatHarness:
                 should_cancel=should_cancel,
                 eval_recorder=recorder,
                 retry_context=child_map(retry_context),
+                run_limits=control.limits,
+                run_control=control,
             ))
             run = result.run
+        except RunLimitExceeded as error:
+            run = _limited_run(run_id, case_id, user_message, error.reason_code, control)
+        except ResearchSystemError as error:
+            run = _technical_failure_run(
+                run_id,
+                case_id,
+                user_message,
+                str(error),
+                reason_code=error.reason_code,
+                control=control,
+            )
         except (HarnessCancelled, BrokenPipeError, ConnectionResetError) as error:
             if recorder:
                 recorder.append(
@@ -102,13 +119,7 @@ class LiveResearchChatHarness:
                     operation_id="run",
                     payload={"error_type": type(error).__name__, "message": str(error)},
                 )
-                self._finish_recorder(recorder, {
-                    "run_id": run_id,
-                    "status": "CANCELLED",
-                    "error_type": type(error).__name__,
-                    "message": str(error),
-                })
-            raise
+            run = _cancelled_run(run_id, case_id, user_message, control)
         except Exception as error:
             # 普通技术异常被收敛成 FAILED_TECHNICAL Run，调用方仍能得到稳定响应结构。
             if recorder:
@@ -117,7 +128,14 @@ class LiveResearchChatHarness:
                     operation_id="run",
                     payload={"error_type": type(error).__name__, "message": str(error)},
                 )
-            run = _technical_failure_run(run_id, case_id, user_message, str(error))
+            run = _technical_failure_run(
+                run_id,
+                case_id,
+                user_message,
+                str(error),
+                reason_code="INTERNAL_UNEXPECTED",
+                control=control,
+            )
         self._finish_recorder(recorder, run)
 
         # 只有已经形成 Run 的结果才能推进跨回合记忆；临时 Context 不会被直接持久化。
@@ -155,7 +173,15 @@ def _live_case_id(dataset: GoldenDataset, state: ConversationState, question: st
     return f"live_chat_{digest}"
 
 
-def _technical_failure_run(run_id: str, case_id: str, question: str, message: str) -> JsonMap:
+def _technical_failure_run(
+    run_id: str,
+    case_id: str,
+    question: str,
+    message: str,
+    *,
+    reason_code: str = "INTERNAL_UNEXPECTED",
+    control: RunControl | None = None,
+) -> JsonMap:
     answer = {
         "answer_id": stable_id("answer", case_id),
         "question_id": case_id,
@@ -192,6 +218,11 @@ def _technical_failure_run(run_id: str, case_id: str, question: str, message: st
         "citation_validation": {"passed": False, "error": "technical_failure"},
         "research_answer": answer,
         "final_answer": answer,
+        "control": {
+            "reason_code": reason_code,
+            "terminal_disposition": "FAILED_TECHNICAL",
+            **(control.to_dict() if control else {}),
+        },
         "diagnostics": {
             "finish_reason": "react_runtime_failed",
             "tool_call_count": 0,
@@ -200,6 +231,119 @@ def _technical_failure_run(run_id: str, case_id: str, question: str, message: st
     }
 
 
+def _limited_run(
+    run_id: str,
+    case_id: str,
+    question: str,
+    reason_code: str,
+    control: RunControl,
+) -> JsonMap:
+    markdown = (
+        "This research request reached its execution limit before a verifiable answer was ready. "
+        "Narrow the question or start a new turn."
+    )
+    answer = {
+        "answer_id": stable_id("answer", case_id),
+        "question_id": case_id,
+        "status": "LIMITED",
+        "outcome": "abstained",
+        "answer_type": "execution_limited",
+        "summary": markdown,
+        "markdown": markdown,
+        "fields": {},
+        "cited_source_quote_refs": [],
+    }
+    now = utc_now_iso()
+    return {
+        "schema_version": RUN_TRACE_SCHEMA_VERSION,
+        "run_id": run_id,
+        "question_id": case_id,
+        "case_id": case_id,
+        "harness_id": "python_skill_guided_react_harness_v1",
+        "started_at": now,
+        "completed_at": now,
+        "status": "LIMITED",
+        "result_status": "LIMITED",
+        "memory_update": {},
+        "skills_used": [],
+        "react_trace": [],
+        "paper_candidates": [],
+        "evidence_ledger": {
+            "ledger_id": stable_id("ledger", case_id),
+            "question_id": case_id,
+            "items": [],
+            "rejected_items": [],
+            "missing_evidence": [],
+        },
+        "citation_validation": {"passed": False, "error": reason_code},
+        "research_answer": answer,
+        "final_answer": answer,
+        "control": {
+            "reason_code": reason_code,
+            "terminal_disposition": "LIMITED",
+            **control.to_dict(),
+        },
+        "diagnostics": {
+            "finish_reason": reason_code,
+            "tool_call_count": 0,
+            "control": control.to_dict(),
+        },
+    }
+
+
+def _cancelled_run(
+    run_id: str,
+    case_id: str,
+    question: str,
+    control: RunControl,
+) -> JsonMap:
+    answer = {
+        "answer_id": stable_id("answer", case_id),
+        "question_id": case_id,
+        "status": "CANCELLED",
+        "outcome": None,
+        "answer_type": "cancelled",
+        "summary": "",
+        "markdown": "",
+        "fields": {},
+        "cited_source_quote_refs": [],
+    }
+    now = utc_now_iso()
+    return {
+        "schema_version": RUN_TRACE_SCHEMA_VERSION,
+        "run_id": run_id,
+        "question_id": case_id,
+        "case_id": case_id,
+        "harness_id": "python_skill_guided_react_harness_v1",
+        "started_at": now,
+        "completed_at": now,
+        "status": "CANCELLED",
+        "result_status": "CANCELLED",
+        "memory_update": {},
+        "skills_used": [],
+        "react_trace": [],
+        "paper_candidates": [],
+        "evidence_ledger": {
+            "ledger_id": stable_id("ledger", case_id),
+            "question_id": case_id,
+            "items": [],
+            "rejected_items": [],
+            "missing_evidence": [],
+        },
+        "citation_validation": {"passed": False, "error": "RUN_CANCELLED"},
+        "research_answer": answer,
+        "final_answer": answer,
+        "control": {
+            "reason_code": "RUN_CANCELLED",
+            "terminal_disposition": "CANCELLED",
+            **control.to_dict(),
+        },
+        "diagnostics": {
+            "finish_reason": "RUN_CANCELLED",
+            "tool_call_count": 0,
+            "control": control.to_dict(),
+        },
+    }
 def _dataset_for_scope(dataset: GoldenDataset, paper_ids: list[str]) -> GoldenDataset:
     scoped = set(paper_ids)
     if not scoped:

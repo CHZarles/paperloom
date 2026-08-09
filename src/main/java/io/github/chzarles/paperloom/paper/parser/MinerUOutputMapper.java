@@ -112,7 +112,7 @@ public class MinerUOutputMapper {
             Integer parserPageIndex = integer(page, "page_idx");
             int pageNumber = (parserPageIndex == null ? pageIndex : parserPageIndex) + 1;
             List<ParsedPaperPageBlock> blocks = new ArrayList<>();
-            appendPhysicalPageBlocks(page.path("preproc_blocks"), pageNumber, blocks);
+            appendPhysicalPageBlocks(page.path("preproc_blocks"), pageNumber, page.path("page_size"), blocks);
 
             Map<String, Object> pageAttributes = new LinkedHashMap<>();
             pageAttributes.put("source", "mineru_middle_json.preproc_blocks");
@@ -127,6 +127,7 @@ public class MinerUOutputMapper {
 
     private void appendPhysicalPageBlocks(JsonNode nodes,
                                           int pageNumber,
+                                          JsonNode pageSize,
                                           List<ParsedPaperPageBlock> target) {
         if (!nodes.isArray()) {
             return;
@@ -134,7 +135,7 @@ public class MinerUOutputMapper {
         for (JsonNode node : nodes) {
             JsonNode nested = node.path("blocks");
             if (nested.isArray() && !nested.isEmpty()) {
-                appendPhysicalPageBlocks(nested, pageNumber, target);
+                appendPhysicalPageBlocks(nested, pageNumber, pageSize, target);
                 continue;
             }
             String blockText = middleBlockText(node);
@@ -149,7 +150,7 @@ public class MinerUOutputMapper {
                     readingOrder,
                     normalizeKey(text(node, "type")),
                     blockText,
-                    boundingBox(node.path("bbox"), pageNumber),
+                    middleBoundingBox(node.path("bbox"), pageNumber, pageSize),
                     rawAttributes
             ));
         }
@@ -200,7 +201,7 @@ public class MinerUOutputMapper {
                         blockText,
                         null,
                         null,
-                        boundingBox(block.path("bbox"), pageNumber),
+                        middleBoundingBox(block.path("bbox"), pageNumber, page.path("page_size")),
                         rawAttributes
                 ));
             }
@@ -439,6 +440,27 @@ public class MinerUOutputMapper {
                 bboxNode.get(3).asDouble(),
                 bboxNode.get(2).asDouble(),
                 bboxNode.get(1).asDouble(),
+                "mineru_1000",
+                "top_left_1000"
+        );
+    }
+
+    private BoundingBox middleBoundingBox(JsonNode bboxNode, Integer pageNumber, JsonNode pageSize) {
+        if (bboxNode == null || !bboxNode.isArray() || bboxNode.size() != 4
+                || pageSize == null || !pageSize.isArray() || pageSize.size() < 2) {
+            return null;
+        }
+        double width = pageSize.get(0).asDouble();
+        double height = pageSize.get(1).asDouble();
+        if (width <= 0 || height <= 0) {
+            return null;
+        }
+        return new BoundingBox(
+                pageNumber,
+                bboxNode.get(0).asDouble() * 1000 / width,
+                bboxNode.get(3).asDouble() * 1000 / height,
+                bboxNode.get(2).asDouble() * 1000 / width,
+                bboxNode.get(1).asDouble() * 1000 / height,
                 "mineru_1000",
                 "top_left_1000"
         );

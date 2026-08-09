@@ -34,14 +34,12 @@ class ServiceTest(unittest.TestCase):
             provider=Provider(),
             harness=object(),
             corpus_gateway=object(),
-            max_completion_tokens=4321,
         )
 
         with TestClient(_service_app(service, "")) as client:
             response = client.get("/health")
 
         self.assertEqual(200, response.status_code)
-        self.assertEqual(4321, response.json()["max_completion_tokens"])
         self.assertEqual("MiniMax-M3", response.json()["provider"]["model"])
         self.assertNotIn("api_key", response.json()["provider"])
 
@@ -64,6 +62,7 @@ class ServiceTest(unittest.TestCase):
         class FixtureRuntime:
             def run_turn(self, turn):
                 self.retry_context = turn.retry_context
+                self.run_limits = turn.run_limits
                 run = GoldenFixtureHarness().run_case(turn.dataset, turn.dataset.cases[0])
                 run["run_id"] = turn.run_id
                 return TurnExecutionResult(run=run)
@@ -90,7 +89,15 @@ class ServiceTest(unittest.TestCase):
                 "target_revision": 2,
                 "previous_answer_markdown": "old",
             },
-            "options": {"include_trace": True},
+            "options": {
+                "include_trace": True,
+                "run_limits": {
+                    "schema_version": "paperloom-run-limits/v1",
+                    "max_wall_clock_ms": 10000,
+                    "max_model_visible_tool_chars": 1000,
+                    "max_history_chars": 1000,
+                },
+            },
         })
 
         self.assertEqual("request_1", response["request_id"])
