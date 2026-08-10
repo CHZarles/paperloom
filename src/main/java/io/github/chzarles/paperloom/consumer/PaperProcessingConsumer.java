@@ -6,6 +6,7 @@ import io.github.chzarles.paperloom.model.PaperReadingModelStatus;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.service.PaperService;
 import io.github.chzarles.paperloom.service.PaperSearchabilityService;
+import io.github.chzarles.paperloom.service.PaperPublicationService;
 import io.github.chzarles.paperloom.service.ParseService;
 import io.github.chzarles.paperloom.service.UploadService;
 import io.github.chzarles.paperloom.service.RetrievalIndexingService;
@@ -26,6 +27,7 @@ public class PaperProcessingConsumer {
     private final UploadService uploadService;
     private final PaperSearchabilityService searchabilityService;
     private final PaperReadingModelRepository readingModelRepository;
+    private final PaperPublicationService publicationService;
     @Autowired
     private KafkaConfig kafkaConfig;
 
@@ -36,7 +38,8 @@ public class PaperProcessingConsumer {
             PaperService paperService,
             UploadService uploadService,
             PaperSearchabilityService searchabilityService,
-            PaperReadingModelRepository readingModelRepository
+            PaperReadingModelRepository readingModelRepository,
+            PaperPublicationService publicationService
     ) {
         this.parseService = parseService;
         this.retrievalIndexingService = retrievalIndexingService;
@@ -44,6 +47,7 @@ public class PaperProcessingConsumer {
         this.uploadService = uploadService;
         this.searchabilityService = searchabilityService;
         this.readingModelRepository = readingModelRepository;
+        this.publicationService = publicationService;
     }
 
     @KafkaListener(topics = "#{kafkaConfig.getPaperProcessingTopic()}", groupId = "#{kafkaConfig.getPaperProcessingGroupId()}")
@@ -57,6 +61,7 @@ public class PaperProcessingConsumer {
                     model.getRetrievalIndexedLocationCount() == null ? 0 : model.getRetrievalIndexedLocationCount(),
                     model.getRetrievalIndexContract() == null ? "" : model.getRetrievalIndexContract()
             ));
+            publicationService.publishIfAdministrator(task.getPaperId(), task.getUserId());
             log.info("Canonical paper is already searchable; skipped duplicate processing: paperId={}", task.getPaperId());
             return;
         }
@@ -88,6 +93,7 @@ public class PaperProcessingConsumer {
             RetrievalIndexingService.IndexingResult indexingResult = retrievalIndexingService.indexWithMetrics(
                     task.getPaperId(), task.getUserId());
             paperService.markVectorizationCompleted(task.getPaperId(), indexingResult);
+            publicationService.publishIfAdministrator(task.getPaperId(), task.getUserId());
             log.info("论文词法检索索引完成，paperId: {}", task.getPaperId());
         } catch (Exception e) {
             paperService.markVectorizationFailed(task.getPaperId(), e);
@@ -114,6 +120,7 @@ public class PaperProcessingConsumer {
             RetrievalIndexingService.IndexingResult result = retrievalIndexingService.indexWithMetrics(
                     task.getPaperId(), requesterId);
             paperService.markVectorizationCompleted(task.getPaperId(), result);
+            publicationService.publishIfAdministrator(task.getPaperId(), task.getUserId());
         } catch (Exception e) {
             paperService.markVectorizationFailed(task.getPaperId(), e);
             log.error("Error retrying failed initial index task: {}", task, e);

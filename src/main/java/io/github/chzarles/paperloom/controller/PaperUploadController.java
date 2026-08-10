@@ -7,6 +7,7 @@ import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.service.FileTypeValidationService;
 import io.github.chzarles.paperloom.service.ParseService;
+import io.github.chzarles.paperloom.service.PaperPublicationService;
 import io.github.chzarles.paperloom.service.PaperSearchabilityService;
 import io.github.chzarles.paperloom.service.UploadService;
 import io.github.chzarles.paperloom.service.UserService;
@@ -55,6 +56,9 @@ public class PaperUploadController {
 
     @Autowired
     private PaperSearchabilityService paperSearchabilityService;
+
+    @Autowired
+    private PaperPublicationService paperPublicationService;
 
     public PaperUploadController(UploadService uploadService, KafkaTemplate<String, Object> kafkaTemplate) {
         this.uploadService = uploadService;
@@ -291,6 +295,7 @@ public class PaperUploadController {
                 paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_COMPLETED);
                 paper.setVectorizationErrorMessage(null);
                 paperRepository.save(paper);
+                paperPublicationService.publishIfAdministrator(request.paperId(), userId);
                 try {
                     uploadService.deleteFileMark(request.paperId(), userId);
                 } catch (Exception cleanupError) {

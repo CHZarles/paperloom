@@ -46,6 +46,13 @@ public class PaperPublicationService {
     }
 
     @Transactional
+    public void publishIfAdministrator(String paperId, String userId) {
+        if (userService.isAdminUser(userId)) {
+            publish(paperId, userId);
+        }
+    }
+
+    @Transactional
     public void unpublish(String paperId, String administratorId) {
         requireAdmin(administratorId);
         publicationRepository.deleteByPaperId(paperId);

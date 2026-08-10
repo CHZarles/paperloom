@@ -238,3 +238,48 @@ assert.equal(binaryPreviewSource.rangeChunkSize, 1048576);
 assert.equal(loadedBinaryRange.begin, 0);
 assert.deepEqual([...(loadedBinaryRange.chunk || [])], [0x25, 0x50, 0x44, 0x46]);
 assert.equal(binaryRangeHeaders[1].Accept, 'application/pdf, application/json');
+
+clearPdfPreviewByteLoadCacheForTest();
+
+let storedToken = 'stored-token-1';
+Object.defineProperty(globalThis, 'localStorage', {
+  configurable: true,
+  value: {
+    getItem: () => JSON.stringify(storedToken)
+  }
+});
+
+const refreshedTokenHeaders: string[] = [];
+const refreshedTokenPreview = await createPdfPreviewSource('/papers/paper-5/preview/pdf-data', {
+  fetchImpl: async (input, init) => {
+    refreshedTokenHeaders.push(String((init?.headers as Record<string, string>)?.Authorization || ''));
+    const url = String(input);
+    if (url.endsWith('/pdf-data')) {
+      return new Response(
+        JSON.stringify({
+          code: 200,
+          data: {
+            paperId: 'paper-5',
+            sourceFileSizeBytes: 8,
+            rangeUrl: '/papers/paper-5/preview/pdf-data/range'
+          }
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      );
+    }
+    return new Response(new Uint8Array([0x25, 0x50, 0x44, 0x46]), {
+      status: 206,
+      headers: { 'content-type': 'application/pdf' }
+    });
+  }
+});
+
+storedToken = 'stored-token-2';
+const refreshedRangeResult = new Promise(resolve => {
+  refreshedTokenPreview.range!.onDataRange = resolve;
+});
+refreshedTokenPreview.range!.requestDataRange(0, 4);
+await refreshedRangeResult;
+
+assert.deepEqual(refreshedTokenHeaders, ['Bearer stored-token-1', 'Bearer stored-token-2']);
+delete (globalThis as { localStorage?: Storage }).localStorage;

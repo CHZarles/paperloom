@@ -9,6 +9,7 @@ interface FetchPdfPreviewBytesOptions {
 
 interface NormalizedFetchOptions {
   authorization: string | null;
+  useStoredAuthorization: boolean;
   fetchImpl: typeof fetch;
   shouldAttachAuthHeaders: (url: string) => boolean;
 }
@@ -112,14 +113,15 @@ export async function createPdfPreviewSource(
 
 function normalizeFetchOptions(options: FetchPdfPreviewBytesOptions): NormalizedFetchOptions {
   return {
-    authorization: options.authorization ?? getStoredAuthorization(),
+    authorization: options.authorization ?? null,
+    useStoredAuthorization: options.authorization == null,
     fetchImpl: options.fetchImpl ?? ((input, init) => fetch(input, init)),
     shouldAttachAuthHeaders: options.shouldAttachAuthHeaders ?? (() => true)
   };
 }
 
 function buildPdfCacheKey(url: string, options: NormalizedFetchOptions) {
-  return `${url}\n${options.shouldAttachAuthHeaders(url) ? options.authorization || '' : ''}`;
+  return `${url}\n${options.shouldAttachAuthHeaders(url) ? resolveAuthorization(options) || '' : ''}`;
 }
 
 async function loadPdfPreviewSourcePayload(
@@ -264,11 +266,16 @@ function buildPdfPreviewHeaders(url: string, options: NormalizedFetchOptions, ac
     Accept: accept
   };
 
-  if (options.authorization && options.shouldAttachAuthHeaders(url)) {
-    headers.Authorization = options.authorization;
+  const authorization = resolveAuthorization(options);
+  if (authorization && options.shouldAttachAuthHeaders(url)) {
+    headers.Authorization = authorization;
   }
 
   return headers;
+}
+
+function resolveAuthorization(options: NormalizedFetchOptions) {
+  return options.useStoredAuthorization ? getStoredAuthorization() : options.authorization;
 }
 
 async function decodeOrDownloadPdfPreviewDataResponse(

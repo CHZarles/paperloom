@@ -4,6 +4,7 @@ import io.github.chzarles.paperloom.model.PaperProcessingTask;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.service.PaperService;
 import io.github.chzarles.paperloom.service.PaperSearchabilityService;
+import io.github.chzarles.paperloom.service.PaperPublicationService;
 import io.github.chzarles.paperloom.service.ParseService;
 import io.github.chzarles.paperloom.service.UploadService;
 import io.github.chzarles.paperloom.service.RetrievalIndexingService;
@@ -42,6 +43,9 @@ class PaperProcessingConsumerTest {
     @Mock
     private PaperReadingModelRepository readingModelRepository;
 
+    @Mock
+    private PaperPublicationService publicationService;
+
     private PaperProcessingConsumer consumer;
 
     @BeforeEach
@@ -49,7 +53,7 @@ class PaperProcessingConsumerTest {
         MockitoAnnotations.openMocks(this);
         consumer = new PaperProcessingConsumer(
                 parseService, retrievalIndexingService, paperService, uploadService,
-                searchabilityService, readingModelRepository);
+                searchabilityService, readingModelRepository, publicationService);
     }
 
     @Test
@@ -83,5 +87,6 @@ class PaperProcessingConsumerTest {
                 eq(paperId),
                 eq(new RetrievalIndexingService.IndexingResult(10, 2, "lexical-contract"))
         );
+        verify(publicationService).publishIfAdministrator(paperId, "1");
     }
 }
