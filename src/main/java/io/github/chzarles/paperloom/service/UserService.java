@@ -38,6 +38,7 @@ import java.util.HashSet;
 public class UserService {
 
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
+    private static final String GUEST_USERNAME = "游客";
 
     private static final Pattern PASSWORD_PATTERN = Pattern.compile(
             "^(?=.*[A-Za-z])(?=.*\\d).{6,18}$"
@@ -69,6 +70,9 @@ public class UserService {
 
     @Transactional
     public void registerUser(String username, String password, String inviteCode) {
+        if (GUEST_USERNAME.equals(username)) {
+            throw new CustomException("Username is reserved", HttpStatus.BAD_REQUEST);
+        }
         validateRegistrationPolicy(username, inviteCode);
         validatePassword(password);
 
@@ -88,6 +92,24 @@ public class UserService {
         userRepository.save(user);
 
         logger.info("User registered successfully: {}", username);
+    }
+
+    // ponytail: process-local lock is sufficient for the single backend instance; use a DB upsert when scaling out.
+    public synchronized User getOrCreateGuestUser() {
+        Optional<User> existing = userRepository.findByUsername(GUEST_USERNAME);
+        if (existing.isPresent()) {
+            User guest = existing.get();
+            if (guest.getRole() != User.Role.USER) {
+                throw new CustomException("Guest account has an invalid role", HttpStatus.CONFLICT);
+            }
+            return guest;
+        }
+
+        User guest = new User();
+        guest.setUsername(GUEST_USERNAME);
+        guest.setPassword(PasswordUtil.encode(java.util.UUID.randomUUID().toString()));
+        guest.setRole(User.Role.USER);
+        return userRepository.save(guest);
     }
 
     private void validateRegistrationPolicy(String username, String inviteCode) {

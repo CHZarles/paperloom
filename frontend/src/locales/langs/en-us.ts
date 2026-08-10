@@ -173,6 +173,7 @@ const local: App.I18n.Schema = {
       common: {
         loginOrRegister: 'Login / Register',
         login: 'Sign in',
+        guestLogin: 'Continue as guest',
         register: 'Sign up',
         userNamePlaceholder: 'Please enter user name',
         phonePlaceholder: 'Please enter phone number',

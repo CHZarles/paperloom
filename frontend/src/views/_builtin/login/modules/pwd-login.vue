@@ -102,6 +102,12 @@ async function handleSubmit() {
         </template>
         {{ $t('page.login.common.login') }}
       </NButton>
+      <NButton size="large" block :loading="authStore.loginLoading" @click="authStore.guestLogin">
+        <template #icon>
+          <icon-lucide:user-round />
+        </template>
+        {{ $t('page.login.common.guestLogin') }}
+      </NButton>
       <NButton block @click="toggleLoginModule('register')">
         <template #icon>
           <icon-lucide:ticket />

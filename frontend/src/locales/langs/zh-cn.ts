@@ -173,6 +173,7 @@ const local: App.I18n.Schema = {
       common: {
         loginOrRegister: '登录 / 注册',
         login: '登录账号',
+        guestLogin: '游客登录',
         register: '注册账号',
         userNamePlaceholder: '请输入用户名',
         phonePlaceholder: '请输入手机号',

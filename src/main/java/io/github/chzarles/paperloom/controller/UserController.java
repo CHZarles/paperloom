@@ -108,6 +108,27 @@ public class UserController {
         }
     }
 
+    @PostMapping("/guest-login")
+    public ResponseEntity<?> guestLogin() {
+        try {
+            User guest = userService.getOrCreateGuestUser();
+            String token = jwtUtils.generateToken(guest.getUsername());
+            String refreshToken = jwtUtils.generateRefreshToken(guest.getUsername());
+
+            return ResponseEntity.ok(Map.of("code", 200, "message", "Login successful", "data", Map.of(
+                    "token", token,
+                    "refreshToken", refreshToken
+            )));
+        } catch (CustomException e) {
+            return ResponseEntity.status(e.getStatus())
+                    .body(Map.of("code", e.getStatus().value(), "message", e.getMessage()));
+        } catch (Exception e) {
+            LogUtils.logBusinessError("GUEST_LOGIN", "guest", "游客登录异常: %s", e, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("code", 500, "message", "Internal server error"));
+        }
+    }
+
     // 获取当前用户信息
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(@RequestHeader("Authorization") String token) {

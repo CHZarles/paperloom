@@ -17,6 +17,10 @@ export function fetchLogin(username: string, password: string) {
   });
 }
 
+export function fetchGuestLogin() {
+  return request<Api.Auth.LoginToken>({ url: '/users/guest-login', method: 'post' });
+}
+
 export function fetchLogout() {
   return request({ url: '/users/logout', method: 'post' });
 }

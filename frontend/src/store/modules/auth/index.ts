@@ -2,7 +2,7 @@ import { computed, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { defineStore } from 'pinia';
 import { useLoading } from '@sa/hooks';
-import { fetchGetUserInfo, fetchLogin, fetchLogout } from '@/service/api';
+import { fetchGetUserInfo, fetchGuestLogin, fetchLogin, fetchLogout } from '@/service/api';
 import { useRouterPush } from '@/hooks/common/router';
 import { localStg } from '@/utils/storage';
 import { SetupStoreId } from '@/enum';
@@ -111,34 +111,37 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     const { data: loginToken, error } = await fetchLogin(userName, password);
 
     if (!error) {
-      const pass = await loginByToken(loginToken);
-
-      if (pass) {
-        // Check if the tab needs to be cleared
-        const isClear = checkTabClear();
-        let needRedirect = redirect;
-
-        if (isClear) {
-          // If the tab needs to be cleared,it means we don't need to redirect.
-          needRedirect = false;
-        }
-        await redirectFromLogin(needRedirect);
-
-        window.$notification?.success({
-          title: $t('page.login.common.loginSuccess'),
-          content: $t('page.login.common.welcomeBack', { userName: userInfo.username }),
-          duration: 4500
-        });
-
-        endLoading();
-        return true;
-      }
+      const pass = await completeLogin(loginToken, redirect);
+      endLoading();
+      return pass;
     } else {
       resetStore();
     }
 
     endLoading();
     return false;
+  }
+
+  async function guestLogin() {
+    startLoading();
+    const { data: loginToken, error } = await fetchGuestLogin();
+    const pass = !error && (await completeLogin(loginToken, true));
+    if (error) resetStore();
+    endLoading();
+    return pass;
+  }
+
+  async function completeLogin(loginToken: Api.Auth.LoginToken, redirect: boolean) {
+    const pass = await loginByToken(loginToken);
+    if (!pass) return false;
+
+    await redirectFromLogin(checkTabClear() ? false : redirect);
+    window.$notification?.success({
+      title: $t('page.login.common.loginSuccess'),
+      content: $t('page.login.common.welcomeBack', { userName: userInfo.username }),
+      duration: 4500
+    });
+    return true;
   }
 
   async function loginByToken(loginToken: Api.Auth.LoginToken) {
@@ -219,6 +222,7 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
     loginLoading,
     resetStore,
     login,
+    guestLogin,
     logout,
     initUserInfo,
     refreshUserInfo,

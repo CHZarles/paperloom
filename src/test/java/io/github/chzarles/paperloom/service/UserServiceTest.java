@@ -128,6 +128,24 @@ class UserServiceTest {
         assertEquals(HttpStatus.UNAUTHORIZED, exception.getStatus());
     }
 
+    @Test
+    void testGetOrCreateGuestUserCreatesAndReusesOrdinaryUser() {
+        User guest = new User();
+        guest.setUsername("游客");
+        guest.setRole(User.Role.USER);
+        when(userRepository.findByUsername("游客"))
+                .thenReturn(Optional.empty(), Optional.of(guest));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        User created = userService.getOrCreateGuestUser();
+        User reused = userService.getOrCreateGuestUser();
+
+        assertEquals("游客", created.getUsername());
+        assertEquals(User.Role.USER, created.getRole());
+        assertEquals(guest, reused);
+        verify(userRepository, times(1)).save(any(User.class));
+    }
+
 
 
 
