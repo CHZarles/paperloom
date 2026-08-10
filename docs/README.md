@@ -13,6 +13,8 @@ engineering-evolution records explain why it changed.
 - [Passage Retrieval Proposal](architecture/passage-retrieval-proposal-2026-08-01.md): proposed text-evidence unit, provenance, neighbor reading, indexing, evaluation, and rollout contract.
 - [Development Guide](guides/development.md): common commands, tests, and repository conventions.
 - [Deployment Guide](guides/deployment.md): production-oriented configuration and process layout.
+- [Wuyun + Cloudflare Tunnel 部署实录](guides/wuyun-cloudflare-tunnel-deployment.md)：实际私有源站与
+  公网域名接入步骤。
 - [Configuration Reference](reference/configuration.md): environment-variable groups and ownership.
 
 ## Product and Research

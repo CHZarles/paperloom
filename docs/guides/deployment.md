@@ -3,6 +3,9 @@
 This document describes the production shape rather than a provider-specific recipe. PaperLoom has
 multiple stateful services and should be deployed as an application stack, not as one standalone JAR.
 
+Wuyun 上通过 Cloudflare Tunnel 完成私有源站和公网域名部署的完整实录见
+[Wuyun + Cloudflare Tunnel 部署实录](wuyun-cloudflare-tunnel-deployment.md)。
+
 ## Components
 
 Current assistant and evidence path:
