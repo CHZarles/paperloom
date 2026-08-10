@@ -15,6 +15,7 @@ engineering-evolution records explain why it changed.
 - [Deployment Guide](guides/deployment.md): production-oriented configuration and process layout.
 - [Wuyun + Cloudflare Tunnel 部署实录](guides/wuyun-cloudflare-tunnel-deployment.md)：实际私有源站与
   公网域名接入步骤。
+- [运维指南](guides/operations.md)：上线后的检查、发布、备份、排障与密钥轮换。
 - [Configuration Reference](reference/configuration.md): environment-variable groups and ownership.
 
 ## Product and Research

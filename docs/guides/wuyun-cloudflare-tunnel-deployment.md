@@ -4,7 +4,7 @@
 
 - 完成时间：2026-08-10
 - 部署版本：`e97ea42`
-- 服务器项目目录：`/root/charles/paperloom`
+- 项目目录：`<paperloom-home>`
 - 公网域名：`paperloom.me`
 - 当前架构不开放 PaperLoom 的任何公网端口；只有 Cloudflare 对外提供 HTTPS。
 
@@ -53,12 +53,14 @@ corepack enable
 不要占用服务器已有项目的 `80` 和 `443`。选择未使用的本机端口，例如本文表格中的
 `18082`、`18880` 等。
 
-拉取项目：
+下面用 `PAPERLOOM_HOME` 和 `PAPERLOOM_BACKUP_ROOT` 代替服务器上的实际绝对路径。先按自己的目录
+替换它们，后续命令都使用这两个变量：
 
 ```bash
-mkdir -p /root/charles
-git clone git@github.com:CHZarles/paperloom.git /root/charles/paperloom
-cd /root/charles/paperloom
+export PAPERLOOM_HOME=<paperloom-home>
+export PAPERLOOM_BACKUP_ROOT=<paperloom-backup-root>
+git clone git@github.com:CHZarles/paperloom.git "$PAPERLOOM_HOME"
+cd "$PAPERLOOM_HOME"
 git pull --ff-only
 ```
 
@@ -141,7 +143,7 @@ SECURITY_ALLOWED_ORIGINS=http://localhost:18880,http://127.0.0.1:18880
 `docs/docker-compose.yaml` 会启动 MySQL、MinIO、Redis、Kafka、Qdrant 和 MinIO 初始化任务：
 
 ```bash
-cd /root/charles/paperloom
+cd "$PAPERLOOM_HOME"
 docker compose --env-file .env -f docs/docker-compose.yaml up -d
 docker compose --env-file .env -f docs/docker-compose.yaml ps
 ```
@@ -154,7 +156,7 @@ docker compose --env-file .env -f docs/docker-compose.yaml ps
 这次迁移了论文相关数据，但**没有**迁移用户、对话、额度和邀请码。服务器保留的迁移备份是：
 
 ```text
-/root/charles/paperloom-data/
+$PAPERLOOM_BACKUP_ROOT/
   paperloom-corpus.sql.gz
   minio/uploads/
   paperloom_reading_locations_hybrid_v1.snapshot
@@ -165,7 +167,7 @@ docker compose --env-file .env -f docs/docker-compose.yaml ps
 恢复 MySQL 中的论文元数据：
 
 ```bash
-gunzip -c /root/charles/paperloom-data/paperloom-corpus.sql.gz \
+gunzip -c "$PAPERLOOM_BACKUP_ROOT/paperloom-corpus.sql.gz" \
   | docker exec -i paperloom-mysql sh -c \
       'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot paperloom'
 ```
@@ -178,7 +180,7 @@ set -a
 set +a
 docker run --rm --network paperloom_default \
   -e "MC_HOST_target=http://${MINIO_ACCESS_KEY}:${MINIO_SECRET_KEY}@paperloom-minio:9000" \
-  -v /root/charles/paperloom-data/minio:/backup:ro \
+  -v "$PAPERLOOM_BACKUP_ROOT/minio:/backup:ro" \
   minio/mc:RELEASE.2025-05-21T01-59-54Z \
   mirror --overwrite /backup/uploads target/uploads
 ```
@@ -188,18 +190,18 @@ docker run --rm --network paperloom_default \
 ```bash
 curl --fail-with-body -X POST \
   -H "api-key: ${QDRANT_API_KEY}" \
-  -F "snapshot=@/root/charles/paperloom-data/paperloom_reading_locations_hybrid_v1.snapshot" \
+  -F "snapshot=@$PAPERLOOM_BACKUP_ROOT/paperloom_reading_locations_hybrid_v1.snapshot" \
   "http://127.0.0.1:6333/collections/${QDRANT_COLLECTION}/snapshots/upload?priority=snapshot"
 ```
 
 第一次迁移完成后的核对结果是：42 条上传记录、31 篇公开论文、35 篇已处理论文、3,193 个
 MinIO 对象（约 892 MiB）、2,981 个 Qdrant points。不要因为服务已启动就删除
-`/root/charles/paperloom-data`；它是可恢复备份，不是临时目录。
+`$PAPERLOOM_BACKUP_ROOT`；它是可恢复备份，不是临时目录。
 
 ## 5. 构建前后端与 Harness
 
 ```bash
-cd /root/charles/paperloom
+cd "$PAPERLOOM_HOME"
 mvn -DskipTests package
 
 /usr/bin/python3.13 -m venv .venv-harness
@@ -220,7 +222,8 @@ corepack pnpm --dir frontend build
 
 ## 6. 让后端和 Harness 随开机自动运行
 
-创建 `/etc/systemd/system/paperloom-harness.service`：
+下面两个 systemd 文件中的 `<paperloom-home>` 必须替换成实际项目目录。创建
+`/etc/systemd/system/paperloom-harness.service`：
 
 ```ini
 [Unit]
@@ -230,10 +233,10 @@ Wants=network-online.target docker.service
 
 [Service]
 Type=simple
-WorkingDirectory=/root/charles/paperloom
-EnvironmentFile=/root/charles/paperloom/.env
+WorkingDirectory=<paperloom-home>
+EnvironmentFile=<paperloom-home>/.env
 ExecStartPre=/usr/bin/docker compose --env-file .env -f docs/docker-compose.yaml up -d
-ExecStart=/root/charles/paperloom/.venv-harness/bin/python -u -m harness_py serve --host 127.0.0.1 --port 8091
+ExecStart=<paperloom-home>/.venv-harness/bin/python -u -m harness_py serve --host 127.0.0.1 --port 8091
 Restart=on-failure
 RestartSec=10
 TimeoutStopSec=30
@@ -253,10 +256,10 @@ Requires=paperloom-harness.service
 
 [Service]
 Type=simple
-WorkingDirectory=/root/charles/paperloom
-EnvironmentFile=/root/charles/paperloom/.env
+WorkingDirectory=<paperloom-home>
+EnvironmentFile=<paperloom-home>/.env
 ExecStartPre=/usr/bin/docker compose --env-file .env -f docs/docker-compose.yaml up -d
-ExecStart=/usr/bin/java -jar /root/charles/paperloom/target/paperloom-server-0.1.0-SNAPSHOT.jar
+ExecStart=/usr/bin/java -jar <paperloom-home>/target/paperloom-server-0.1.0-SNAPSHOT.jar
 Restart=on-failure
 RestartSec=10
 TimeoutStopSec=30
@@ -290,7 +293,7 @@ server {
   listen 127.0.0.1:18880;
   server_name _;
 
-  root /root/charles/paperloom/frontend/dist;
+  root <paperloom-home>/frontend/dist;
   index index.html;
 
   location ^~ /assets/ {
@@ -335,15 +338,14 @@ server {
 }
 ```
 
-Nginx worker 以 `www` 用户运行，而项目放在 `/root` 下。授予它读取前端所需的最小权限：
+Nginx worker 以 `www` 用户运行。授予它读取前端所需的最小权限；若项目的父目录不是 `755`，
+还要为每级父目录单独授予 `www` 仅可穿越的 `x` 权限：
 
 ```bash
-setfacl -m u:www:x /root
 setfacl -m u:www:rx \
-  /root/charles \
-  /root/charles/paperloom \
-  /root/charles/paperloom/frontend \
-  /root/charles/paperloom/frontend/dist
+  <paperloom-home> \
+  <paperloom-home>/frontend \
+  <paperloom-home>/frontend/dist
 nginx -t
 nginx -s reload
 ```
@@ -421,19 +423,21 @@ curl -o /dev/null -w '%{http_code}\n' https://<domain>/api/v1/users/me
 systemctl is-active paperloom-harness.service
 systemctl is-active paperloom-backend.service
 systemctl is-active cloudflared.service
-cd /root/charles/paperloom
+cd "$PAPERLOOM_HOME"
 docker compose --env-file .env -f docs/docker-compose.yaml ps
 ```
 
 本次正式上线的结果是：前端 `200`、未认证 API `403`、管理员登录 `200`，Harness、Backend、
 Cloudflared 三个 systemd 服务均为 `active`。
 
+上线后的检查、发布、备份与排障见[运维指南](operations.md)。
+
 ## 日常更新、排障与备份
 
 更新代码：
 
 ```bash
-cd /root/charles/paperloom
+cd "$PAPERLOOM_HOME"
 git pull --ff-only
 mvn -DskipTests package
 corepack pnpm --dir frontend install --frozen-lockfile
@@ -452,4 +456,4 @@ journalctl -u cloudflared -f
 
 备份时必须把 MySQL 和 MinIO 一起备份，Qdrant snapshot 一起保存。Qdrant 可以由 Current Reading
 Model 重建，但有 snapshot 能更快恢复。备份应放在运行项目目录外；已有
-`/root/charles/paperloom-data` 不应随意删除。
+`$PAPERLOOM_BACKUP_ROOT` 不应随意删除。
