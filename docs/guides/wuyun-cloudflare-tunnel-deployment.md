@@ -46,7 +46,7 @@ Cloudflare Tunnel。
 Docker 和 Nginx 是前置条件；缺少运行时可安装：
 
 ```bash
-apt-get install -y openjdk-21-jdk-headless python3.13 python3.13-venv acl
+apt-get install -y openjdk-21-jdk-headless python3.13 python3.13-venv acl jq
 corepack enable
 ```
 

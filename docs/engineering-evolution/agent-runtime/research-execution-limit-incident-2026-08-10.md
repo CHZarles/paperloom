@@ -128,7 +128,7 @@ run result
 
 #### Agent Action Trace 实现状态
 
-本地代码已经完成以下改造，尚未部署和复现：
+代码已经完成以下改造，并于 `2026-08-10 20:59 CST` 部署到线上：
 
 - Live Harness 优先读取 `AGENT_TRACE_DIR`，每个 Run 保存 `events.jsonl` 和 `result.json`；
 - `run.started` 保存上游 `request_id`，Harness 响应返回 `run_id`，Java Diagnostics 保存 `agentTraceRunId`；
@@ -138,7 +138,62 @@ run result
 - Trace 根目录、Run 目录和文件继续使用私有权限；
 - 运维文档增加通过 Generation ID 查找完整 Agent Trace 的命令。
 
-本地聚焦验证已通过：Python Recorder/Model/Service 共 9 个测试，Java `ResearchHarnessResultMapperTest` 通过。没有执行全量测试。
+本地聚焦验证已通过：Python Recorder/Model/Service 共 9 个测试，Java `ResearchHarnessResultMapperTest` 通过。没有执行全量测试。线上 Trace 目录为 `/var/log/paperloom/agent-traces`，权限 `0700`，保留 7 天且总量上限为 10 GiB。
+
+#### 开启 Trace 后的受控复现
+
+使用相同问题“你详细讲解seedream4.0这个工作”进行一次受控复现：
+
+- Conversation ID：`d6414216-3ec7-44a4-a908-3ab05a986355`
+- Generation ID：`ea04d1ae-1ee5-4c6e-aedb-cfc81dcb3897`
+- Agent Trace Run ID：`run_3d04d41abb1e41e993272f4c43763d88`
+- Conversation Record：`18`
+- 运行终态：`COMPLETED`
+- 端到端耗时：`267727 ms`
+- 模型调用：`18`
+- Prompt Token：`604242`
+- Completion Token：`50047`
+- 累计 Token：`654289`
+- 业务工具：搜索论文 1 次、读取结构 1 次、读取正文 9 次
+- 完整 Trace：`events.jsonl` 约 3.06 MB，`result.json` 约 0.91 MB
+
+第 12-18 次模型调用都在提交完整最终答案，Trace 中的 `answer.validation` 给出了确定原因：
+
+| 模型调用 | 答案字符 | 引用标记 | 未引用 Material Block | 结果 |
+| ---: | ---: | ---: | ---: | --- |
+| 12 | 6,138 | 0 | 108 | 拒绝 |
+| 13 | 11,594 | 69 | 28 | 拒绝 |
+| 14 | 11,902 | 74 | 14 | 拒绝 |
+| 15 | 12,557 | 86 | 4 | 拒绝 |
+| 16 | 12,712 | 89 | 3 | 拒绝 |
+| 17 | 12,712 | 89 | 3 | 拒绝 |
+| 18 | 12,505 | 88 | 0 | 接受 |
+
+最后两次拒绝都只剩三个块：
+
+```text
+block_45 paragraph: **单图编辑结论**：
+block_49 paragraph: **多图编辑结论**：
+block_55 paragraph: **主要观察**：
+```
+
+这些行只是后续引用列表的视觉分组标签，本身不包含论文事实。但 `answer_blocks` 只把 Markdown Heading 和 Table Header 视为可不引用的结构块；独立的粗体标签会被解析成普通 Paragraph，继而被当作必须引用的 Material Block。
+
+第 18 次模型调用没有获得新证据。它把标签和后面的首个事实、引用合并到同一段，例如把独立的“`**单图编辑结论**：`”改为“`**单图编辑结论**：GPT-Image-1 ... [[source_quote_...]]`”，校验随即通过。
+
+#### 已确认的根因链
+
+本次复现确认了当前代码的完整因果链：
+
+1. MiniMax 首次生成长答案时没有添加引用，确定性 Validator 正确拒绝了 108 个无引用事实块。
+2. 后续每轮模型都会重新生成完整答案并增加引用，而不是只修复缺失位置；旧草稿和校验结果继续进入下一轮上下文。
+3. 校验反馈只返回 `block_N`，没有返回对应文本。模型需要自己重新计算 Markdown Block 编号，导致最后三个位置连续两轮没有修正。
+4. Block Parser 又把三个非事实性的粗体分组标签识别成 Material Paragraph，制造了最后的误报。
+5. 七份长答案使 Prompt 累计到 60.42 万 Token，最终答案校验阶段成为主要延迟和成本来源。
+
+因此，Deadline 不是根因；它只是未收敛时的最后保险。系统性问题是“答案校验反馈不可定位 + Markdown 结构块分类不完整 + 每次失败都让模型重写整份长答案”的组合。
+
+Record 15 的历史原始模型 JSON 已经丢失，不能断言它每一次校验错误与本次完全相同。但本次在相同代码、模型、论文和问题上复现了相同的“正文读取结束后连续多轮无业务工具、Prompt 增长、最终答案迟迟不结束”模式，并用完整 Trace 确认了当前系统的具体失败机制。
 
 #### 与成功 Run 的对照
 
@@ -276,7 +331,9 @@ Reasoning
 | 2026-08-10 20:34 CST | 追踪 `answer.validation`、内部修复与线上持久化出口 | 确认校验细节只写可选 EvalRecorder，未进入生产 Research Events；决定复用现有事件链补两个无正文事件，不新增 Trace 子系统 |
 | 2026-08-10 20:42 CST | 根据运维调查需求重新评估观测粒度，并检查现有 `EvalRecorder` | 修正“只补摘要事件”的方案：生产需要完整 Agent Action Trace；复用现有模型/工具 JSON Recorder，增加滚动保留和适配器改写记录 |
 | 2026-08-10 20:53 CST | 产品化现有 Recorder，并增加滚动清理、Generation/Run 关联和适配器变换事件 | 本地实现完成；9 个聚焦 Python 测试和 1 个 Java 测试类通过，等待部署后用 Seedream 问题复现 |
+| 2026-08-10 20:59 CST | 发布 Commit `578abab`，配置 7 天/10 GiB 私有 Trace 并重启 Harness、Backend | 两个服务健康；Trace 目录权限 `0700`，Generation 与 Run 可以互相关联 |
+| 2026-08-10 21:04 CST | 用相同 Seedream 问题受控复现，并读取完整 Agent Action Trace | 复现成功；确认 7 次完整答案提交中前 6 次因无引用 Block 被拒，最后卡在三个被误判为 Material Paragraph 的粗体分组标签 |
 
 ## 下一步待证实
 
-下一步把本地 Agent Action Trace 改造部署到线上，配置服务器私有目录、7 天保留和 10 GiB 总量上限；随后只复现一次相同 Seedream 问题，并从完整模型请求、响应、Tool Call 和答案校验记录确定不收敛原因。
+下一步设计答案校验层的正式修复，目标同时满足：校验错误能直接定位到原文块、非事实结构标签不制造引用误报、单次修正不再要求模型盲目重写整份答案。修复前不改 Deadline 或 Token 额度规则。
