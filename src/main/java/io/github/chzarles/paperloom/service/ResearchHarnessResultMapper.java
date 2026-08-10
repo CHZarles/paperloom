@@ -60,7 +60,7 @@ public class ResearchHarnessResultMapper {
                 ReadingResearchTrace.empty(),
                 stopReason(resultStatus, stringValue(control.get("reason_code"))),
                 resultStatus,
-                diagnostics(control, response.get("usage"))
+                diagnostics(control, response.get("usage"), response.get("run_id"))
         );
     }
 
@@ -82,13 +82,17 @@ public class ResearchHarnessResultMapper {
         };
     }
 
-    private Map<String, Object> diagnostics(Map<String, Object> control, Object usage) {
-        if (control.isEmpty() && !(usage instanceof Map<?, ?>)) {
+    private Map<String, Object> diagnostics(Map<String, Object> control, Object usage, Object runId) {
+        String traceRunId = stringValue(runId);
+        if (control.isEmpty() && !(usage instanceof Map<?, ?>) && traceRunId.isBlank()) {
             return Map.of();
         }
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("reasonCode", stringValue(control.get("reason_code")));
         result.put("usage", objectMap(control.get("usage")).isEmpty() ? objectMap(usage) : objectMap(control.get("usage")));
+        if (!traceRunId.isBlank()) {
+            result.put("agentTraceRunId", traceRunId);
+        }
         return result;
     }
 

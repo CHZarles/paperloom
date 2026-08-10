@@ -101,6 +101,7 @@ class ServiceTest(unittest.TestCase):
         })
 
         self.assertEqual("request_1", response["request_id"])
+        self.assertTrue(str(response["run_id"]).startswith("run_"))
         self.assertEqual("COMPLETED", response["status"])
         self.assertEqual("42", response["answer"]["fields"]["answer"])
         self.assertEqual(1, len(response["research_memory"]["selected_evidence_ids"]))

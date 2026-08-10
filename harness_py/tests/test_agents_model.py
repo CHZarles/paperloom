@@ -280,29 +280,48 @@ class AgentsModelTest(unittest.TestCase):
             strict_json_schema=False,
         )
 
-        async def invoke():
+        async def invoke(context: ResearchRunContext):
             try:
-                return await model.get_response(
-                    "System prompt",
-                    [{"role": "user", "content": "Hello"}],
-                    model.research_settings(),
-                    [tool],
-                    None,
-                    [],
-                    ModelTracing.DISABLED,
-                    previous_response_id=None,
-                    conversation_id=None,
-                    prompt=None,
-                )
+                with bind_research_context(context):
+                    return await model.get_response(
+                        "System prompt",
+                        [{"role": "user", "content": "Hello"}],
+                        model.research_settings(),
+                        [tool],
+                        None,
+                        [],
+                        ModelTracing.DISABLED,
+                        previous_response_id=None,
+                        conversation_id=None,
+                        prompt=None,
+                    )
             finally:
                 await model.close()
 
-        try:
-            response = asyncio.run(invoke())
-        finally:
-            server.shutdown()
-            server.server_close()
-            thread.join(timeout=2)
+        dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()
+        with tempfile.TemporaryDirectory() as tmp:
+            recorder = EvalRecorder(tmp, "run_repair_test")
+            context = ResearchRunContext(TurnExecutionInput(
+                dataset=dataset,
+                case_id="repair_test",
+                run_id="run_repair_test",
+                question="Hello",
+                conversation_messages=[],
+                research_memory=ResearchMemory(),
+                eval_recorder=recorder,
+            ))
+            context.current_model_call_id = "model_1"
+            try:
+                response = asyncio.run(invoke(context))
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=2)
+            recorder.finish({"status": "COMPLETED"})
+            events = [
+                json.loads(line)
+                for line in recorder.events_path.read_text(encoding="utf-8").splitlines()
+            ]
 
         self.assertEqual(1, len(response.output))
         repaired = response.output[0]
@@ -310,3 +329,7 @@ class AgentsModelTest(unittest.TestCase):
         payload = json.loads(repaired.arguments)
         self.assertTrue(payload["content"].startswith(TOOL_ARGUMENT_REPAIR_PREFIX))
         self.assertIn("submit_research_answer", payload["content"])
+        transformed = next(event for event in events if event["kind"] == "model.output_transformed")
+        self.assertEqual("TOOL_ARGUMENTS_INVALID_OR_TRUNCATED", transformed["payload"]["reason_code"])
+        self.assertEqual("submit_research_answer", transformed["payload"]["source"]["name"])
+        self.assertEqual(TEXT_NUDGE_TOOL_NAME, transformed["payload"]["target"]["name"])

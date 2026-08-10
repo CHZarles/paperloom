@@ -73,7 +73,11 @@ fallback.
 | `RESEARCH_HARNESS_PYTHON` | Python executable for local launcher |
 | `MINIMAX_API_BASE_URL`, `MINIMAX_API_KEY`, `MINIMAX_MODEL` | Default research model provider |
 | `QDRANT_CONTRACT` | `sparse-only-v1` (default) or `sparse-dense-v1`; picks which Qdrant collection schema to use |
-| `EVAL_DUMP_DIR` | Optional saved-run output root |
+| `AGENT_TRACE_DIR` | Private production directory for complete per-Run model, tool, validation, and result JSON |
+| `AGENT_TRACE_RETENTION_DAYS` | Delete completed Agent traces older than this many days; default `7` |
+| `AGENT_TRACE_MAX_BYTES` | Delete oldest completed Runs until total trace storage is below this byte limit; default `10737418240` |
+| `AGENT_TRACE_INCOMPLETE_GRACE_HOURS` | Keep unfinished Run directories this long before treating them as abandoned; default `24` |
+| `EVAL_DUMP_DIR` | Optional offline-evaluation saved-run root; live service prefers `AGENT_TRACE_DIR` |
 
 The production research path is Java -> Redis Streams -> one or more `harness_py worker` processes.
 No load balancer is required between Java and Python. The HTTP harness server can stay available for

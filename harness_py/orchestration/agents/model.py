@@ -91,10 +91,19 @@ class _ObservedOpenAIModel:
                 raise ResearchSystemError(reason_code) from error
             raise
 
-        response.output = [
-            _repair_function_call(item)
-            for item in response.output
-        ]
+        repaired_output = []
+        for index, item in enumerate(response.output):
+            repaired = _repair_function_call(item)
+            repaired_output.append(repaired)
+            if repaired is not item:
+                _record_model_transform(
+                    context,
+                    reason_code="TOOL_ARGUMENTS_INVALID_OR_TRUNCATED",
+                    source=_function_call_payload(item),
+                    target=_function_call_payload(repaired),
+                    event_suffix=str(getattr(item, "call_id", "") or index),
+                )
+        response.output = repaired_output
         if any(getattr(item, "type", "") == "function_call" for item in response.output):
             return response
 
@@ -103,12 +112,20 @@ class _ObservedOpenAIModel:
             for value in (ItemHelpers.extract_text(item) for item in response.output)
             if value
         )
-        response.output = [ResponseFunctionToolCall(
+        final_call = ResponseFunctionToolCall(
             arguments=json.dumps({"outcome": "answered", "markdown": text}, ensure_ascii=False),
             call_id=f"call_text_nudge_{uuid4().hex}",
             name=FINAL_TOOL_NAME,
             type="function_call",
-        )]
+        )
+        _record_model_transform(
+            context,
+            reason_code="PLAIN_TEXT_RESPONSE_ADAPTED_TO_FINAL_ANSWER",
+            source={"type": "assistant_text", "text": text},
+            target=_function_call_payload(final_call),
+            event_suffix="plain_text",
+        )
+        response.output = [final_call]
         return response
 
     async def _record_request(self, request: httpx.Request) -> None:
@@ -265,6 +282,43 @@ def _provider_reason_code(error: Exception) -> str:
     if isinstance(error, APIStatusError):
         return "PROVIDER_UNAVAILABLE" if error.status_code >= 500 else "PROVIDER_PROTOCOL_INVALID"
     return ""
+
+
+def _record_model_transform(
+    context: ResearchRunContext | None,
+    *,
+    reason_code: str,
+    source: JsonMap,
+    target: JsonMap,
+    event_suffix: str,
+) -> None:
+    recorder = context.turn.eval_recorder if context else None
+    if not context or not recorder:
+        return
+    attempt = context.current_transport_attempt()
+    recorder.append(
+        kind="model.output_transformed",
+        operation_id=context.current_model_call_id,
+        attempt=attempt,
+        event_id=(
+            f"{context.turn.run_id}:{context.current_model_call_id}:"
+            f"model.output_transformed:{attempt}:{event_suffix}"
+        ),
+        payload={
+            "reason_code": reason_code,
+            "source": source,
+            "target": target,
+        },
+    )
+
+
+def _function_call_payload(item: Any) -> JsonMap:
+    return {
+        "type": str(getattr(item, "type", "") or ""),
+        "call_id": str(getattr(item, "call_id", "") or ""),
+        "name": str(getattr(item, "name", "") or ""),
+        "arguments": getattr(item, "arguments", None),
+    }
 
 
 def _repair_function_call(item: Any) -> Any:

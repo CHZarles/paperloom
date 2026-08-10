@@ -24,6 +24,7 @@ class ResearchHarnessResultMapperTest {
                 ProductModelContext.defaults()
         );
         Map<String, Object> response = Map.of(
+                "run_id", "run-trace-1",
                 "status", "COMPLETED",
                 "answer", Map.of("markdown", "answer [1]"),
                 "citations", List.of(Map.of(
@@ -51,6 +52,7 @@ class ResearchHarnessResultMapperTest {
         assertEquals("ev_1", result.references().get(0).get("evidenceRef"));
         assertEquals("source_quote_1", result.references().get(0).get("sourceQuoteRef"));
         assertEquals("PYTHON_RESEARCH_HARNESS", result.references().get(0).get("retrievalRoute"));
+        assertEquals("run-trace-1", result.diagnostics().get("agentTraceRunId"));
         assertEquals(1, result.productStateItems().size());
         assertEquals("paper_handle_paper-1", result.productStateItems().get(0).get("paperHandle"));
     }

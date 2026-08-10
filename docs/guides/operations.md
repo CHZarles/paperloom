@@ -166,6 +166,44 @@ curl -fsS http://127.0.0.1:8091/health
 
 这里后端返回 `403` 同样正常；Harness health 必须返回成功。
 
+### 查看 Agent Action Trace
+
+当研究回答超时、反复调用模型或 Tool Call 异常时，`journalctl` 只能看到服务级错误。完整 Agent
+轨迹位于 `.env` 的 `AGENT_TRACE_DIR`，每个 Run 一个私有目录：
+
+```text
+<AGENT_TRACE_DIR>/<run_id>/events.jsonl
+<AGENT_TRACE_DIR>/<run_id>/result.json
+```
+
+先从对话记录取得 `generationId`，再定位对应 Run：
+
+```bash
+TRACE_DIR="$(sed -n 's/^AGENT_TRACE_DIR=//p' "$PAPERLOOM_HOME/.env" | head -n 1)"
+GENERATION_ID=<generation-id>
+grep -rl --fixed-strings "\"request_id\":\"$GENERATION_ID\"" "$TRACE_DIR"/*/events.jsonl
+```
+
+查看模型交互、工具执行和答案校验：
+
+```bash
+jq -c 'select(.kind == "model.request" or .kind == "model.response" or
+              .kind == "model.output_transformed" or .kind == "tool.started" or
+              .kind == "tool.completed" or .kind == "tool.error" or
+              .kind == "answer.validation")' \
+  "$TRACE_DIR/<run_id>/events.jsonl"
+```
+
+这些文件含完整 Prompt、历史对话、论文正文、模型输出和工具参数，只能在服务器 SSH 中查看，不得放进
+公网目录、工单附件或 Git。Header 中的认证、Cookie 和 API Key 已由 Recorder 删除。
+
+Trace 会按 `AGENT_TRACE_RETENTION_DAYS` 删除过期 Run，并在总量超过 `AGENT_TRACE_MAX_BYTES` 时删除
+最旧的已完成 Run。检查当前占用：
+
+```bash
+du -sh "$TRACE_DIR"
+```
+
 ## 备份
 
 一次可恢复的 PaperLoom 备份至少包含三部分：

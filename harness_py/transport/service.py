@@ -94,6 +94,7 @@ class ResearchHarnessService:
             retry_context=child_map(request.get("retry")),
             run_limits=limits,
             run_control=control,
+            request_id=str(request.get("request_id") or ""),
         )
         return _turn_response(request, run, next_state, dataset)
 
@@ -305,6 +306,7 @@ def _turn_response(
     control_usage = child_map(control.get("usage"))
     response = {
         "request_id": request.get("request_id"),
+        "run_id": run.get("run_id"),
         "conversation_id": state.conversation_id,
         "status": run.get("status"),
         "answer": answer,

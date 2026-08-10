@@ -3,8 +3,11 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
 import threading
+from dataclasses import dataclass
 from pathlib import Path
+from time import time
 from time import monotonic_ns
 from typing import Any
 
@@ -15,12 +18,26 @@ EVENT_SCHEMA = "harness-eval-event/v1"
 RESULT_SCHEMA = "harness-eval-result/v1"
 
 
+@dataclass(frozen=True)
+class TraceRetention:
+    max_age_seconds: int
+    max_bytes: int
+    incomplete_grace_seconds: int = 86_400
+
+    def __post_init__(self) -> None:
+        if self.max_age_seconds <= 0 or self.max_bytes <= 0 or self.incomplete_grace_seconds <= 0:
+            raise ValueError("trace retention values must be positive")
+
+
 class EvalRecorder:
     """Small append-only per-run recorder for offline evaluation data."""
 
     def __init__(self, root: str | Path, run_id: str):
+        self.root = Path(root)
+        self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
+        os.chmod(self.root, 0o700)
         self.run_id = run_id
-        self.run_dir = Path(root) / run_id
+        self.run_dir = self.root / run_id
         self.run_dir.mkdir(parents=True, exist_ok=False, mode=0o700)
         os.chmod(self.run_dir, 0o700)
         self.events_path = self.run_dir / "events.jsonl"
@@ -120,3 +137,88 @@ class EvalRecorder:
         if not self._error:
             self._error = f"{type(error).__name__}: {error}"
             logging.getLogger(__name__).error("eval capture failed for run_id=%s: %s", self.run_id, error)
+
+
+def prune_trace_runs(
+    root: str | Path,
+    retention: TraceRetention,
+    *,
+    now: float | None = None,
+) -> dict[str, int]:
+    """Delete expired traces, then oldest completed runs until the directory is below its byte cap."""
+
+    root_path = Path(root)
+    if not root_path.exists():
+        return {"deleted_runs": 0, "deleted_bytes": 0, "remaining_bytes": 0}
+
+    current_time = time() if now is None else now
+    runs: list[dict[str, Any]] = []
+    for run_dir in root_path.iterdir():
+        if not run_dir.is_dir():
+            continue
+        size, modified_at = _run_dir_stats(run_dir)
+        runs.append({
+            "path": run_dir,
+            "size": size,
+            "modified_at": modified_at,
+            "completed": (run_dir / "result.json").is_file(),
+            "deleted": False,
+        })
+
+    total_bytes = sum(int(run["size"]) for run in runs)
+    deleted_runs = 0
+    deleted_bytes = 0
+
+    def remove(run: dict[str, Any]) -> None:
+        nonlocal total_bytes, deleted_runs, deleted_bytes
+        try:
+            shutil.rmtree(run["path"])
+        except OSError as error:
+            logging.getLogger(__name__).warning("agent trace cleanup failed for %s: %s", run["path"], error)
+            return
+        run["deleted"] = True
+        size = int(run["size"])
+        total_bytes -= size
+        deleted_runs += 1
+        deleted_bytes += size
+
+    for run in runs:
+        age = max(0.0, current_time - float(run["modified_at"]))
+        max_age = retention.max_age_seconds if run["completed"] else retention.incomplete_grace_seconds
+        if age >= max_age:
+            remove(run)
+
+    completed = sorted(
+        (run for run in runs if run["completed"] and not run["deleted"]),
+        key=lambda run: float(run["modified_at"]),
+    )
+    for run in completed:
+        if total_bytes <= retention.max_bytes:
+            break
+        remove(run)
+
+    if total_bytes > retention.max_bytes:
+        logging.getLogger(__name__).warning(
+            "agent trace directory remains over limit because only active runs remain: bytes=%s limit=%s",
+            total_bytes,
+            retention.max_bytes,
+        )
+    return {
+        "deleted_runs": deleted_runs,
+        "deleted_bytes": deleted_bytes,
+        "remaining_bytes": max(0, total_bytes),
+    }
+
+
+def _run_dir_stats(run_dir: Path) -> tuple[int, float]:
+    size = 0
+    modified_at = run_dir.stat().st_mtime
+    for item in run_dir.iterdir():
+        try:
+            stat = item.stat(follow_symlinks=False)
+        except OSError:
+            continue
+        modified_at = max(modified_at, stat.st_mtime)
+        if item.is_file() and not item.is_symlink():
+            size += stat.st_size
+    return size, modified_at

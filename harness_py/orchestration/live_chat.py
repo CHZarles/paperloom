@@ -16,7 +16,7 @@ from typing import Callable
 from .conversation import ConversationState
 from ..utils.errors import HarnessCancelled, ResearchSystemError, RunLimitExceeded
 from ..utils.models import RUN_TRACE_SCHEMA_VERSION, GoldenDataset, JsonMap, child_map, stable_id, utc_now_iso
-from ..evaluation.eval_recorder import EvalRecorder
+from ..evaluation.eval_recorder import EvalRecorder, TraceRetention, prune_trace_runs
 from .memory import ResearchMemory
 from .runtime import HarnessRuntime, TurnExecutionInput, new_run_id
 from .run_control import RunControl, RunLimits
@@ -32,9 +32,14 @@ class LiveResearchChatHarness:
         eval_dump_dir: str | Path | None = None,
     ):
         self.runtime = runtime
-        eval_dump_dir = eval_dump_dir or os.getenv("EVAL_DUMP_DIR")
+        agent_trace_dir = os.getenv("AGENT_TRACE_DIR", "").strip()
+        use_agent_trace = eval_dump_dir is None and bool(agent_trace_dir)
+        eval_dump_dir = eval_dump_dir or agent_trace_dir or os.getenv("EVAL_DUMP_DIR")
         self.eval_dump_dir = Path(eval_dump_dir) if eval_dump_dir else None
+        self.trace_retention = _trace_retention() if use_agent_trace and self.eval_dump_dir else None
         self.eval_capture_failures = 0
+        if self.trace_retention:
+            self._prune_traces()
 
     def run_turn(
         self,
@@ -48,6 +53,7 @@ class LiveResearchChatHarness:
         retry_context: JsonMap | None = None,
         run_limits: RunLimits | None = None,
         run_control: RunControl | None = None,
+        request_id: str = "",
     ) -> tuple[JsonMap, ConversationState]:
         """执行一轮用户消息，返回 Run 和下一轮要持久化的状态。"""
 
@@ -67,6 +73,7 @@ class LiveResearchChatHarness:
                 operation_id="run",
                 payload={
                     "case_id": case_id,
+                    "request_id": request_id or None,
                     "conversation_id": state.conversation_id,
                     "turn_index": state.turn_index + 1,
                     "question": user_message,
@@ -156,6 +163,16 @@ class LiveResearchChatHarness:
         if recorder and not recorder.finish(result):
             self.eval_capture_failures += 1
             logging.getLogger(__name__).error("eval capture failed for run_id=%s", recorder.run_id)
+        if recorder and self.trace_retention:
+            self._prune_traces()
+
+    def _prune_traces(self) -> None:
+        if self.eval_dump_dir is None or self.trace_retention is None:
+            return
+        try:
+            prune_trace_runs(self.eval_dump_dir, self.trace_retention)
+        except Exception as error:
+            logging.getLogger(__name__).error("agent trace cleanup failed: %s", error)
 
 
 def _live_case_id(dataset: GoldenDataset, state: ConversationState, question: str) -> str:
@@ -171,6 +188,27 @@ def _live_case_id(dataset: GoldenDataset, state: ConversationState, question: st
         ).encode("utf-8")
     ).hexdigest()[:12]
     return f"live_chat_{digest}"
+
+
+def _trace_retention() -> TraceRetention:
+    return TraceRetention(
+        max_age_seconds=_positive_env_int("AGENT_TRACE_RETENTION_DAYS", 7) * 86_400,
+        max_bytes=_positive_env_int("AGENT_TRACE_MAX_BYTES", 10 * 1024 * 1024 * 1024),
+        incomplete_grace_seconds=_positive_env_int("AGENT_TRACE_INCOMPLETE_GRACE_HOURS", 24) * 3_600,
+    )
+
+
+def _positive_env_int(name: str, default: int) -> int:
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError as error:
+        raise ValueError(f"{name} must be a positive integer") from error
+    if value <= 0:
+        raise ValueError(f"{name} must be a positive integer")
+    return value
 
 
 def _technical_failure_run(
