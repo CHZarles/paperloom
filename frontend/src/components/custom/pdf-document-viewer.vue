@@ -5,7 +5,7 @@ import { NButton, NSpin } from 'naive-ui';
 import { GlobalWorkerOptions, TextLayer, getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFPageProxy, RenderTask } from 'pdfjs-dist';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
-import workerSrc from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
+import workerSrc from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?worker&url';
 import { buildPdfEvidenceRects, evidencePageNumber, resolvePdfEvidenceRegions } from './pdf-evidence-regions';
 import type { PdfEvidenceRegionLike } from './pdf-evidence-regions';
 import { createPdfPreviewSource } from './pdf-preview-loader';
