@@ -5,4 +5,4 @@ ALTER TABLE users
 UPDATE users
 SET username = CONCAT('legacy_guest_disabled_', id),
     role = 'GUEST'
-WHERE username = '游客';
+WHERE HEX(username) = 'E6B8B8E5AEA2';
