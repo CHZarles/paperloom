@@ -97,6 +97,8 @@ app:
       # CLOSED: 完全关闭注册
       mode: ${APP_AUTH_REGISTRATION_MODE:INVITE_ONLY}
       invite-required: ${APP_AUTH_INVITE_REQUIRED:true}
+    guest:
+      daily-login-attempt-limit: ${APP_AUTH_GUEST_DAILY_LOGIN_ATTEMPT_LIMIT:100}
 
 usage-quota:
   # 用户全局 Token 余额；新用户按 init-tokens 发放，使用时按实际 Token 扣减

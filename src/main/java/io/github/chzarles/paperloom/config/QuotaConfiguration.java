@@ -22,8 +22,9 @@ public class QuotaConfiguration {
     private final UsageQuotaProperties usageQuotaProperties;
 
     @Bean
-    public UsageQuotaService usageQuotaService(UserTokenService userTokenService) {
-        return new UsageBalanceQuotaService(usageQuotaProperties, userTokenService);
+    public UsageQuotaService usageQuotaService(UserTokenService userTokenService,
+                                               UserRepository userRepository) {
+        return new UsageBalanceQuotaService(usageQuotaProperties, userTokenService, userRepository);
     }
 
     @Bean

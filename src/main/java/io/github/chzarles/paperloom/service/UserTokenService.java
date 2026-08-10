@@ -51,6 +51,14 @@ public class UserTokenService {
      */
     private static final String EMBEDDING_TOKEN_KEY_PREFIX = "user:token:embedding:";
 
+    private static final DefaultRedisScript<Long> TOKEN_RESERVATION_SCRIPT = new DefaultRedisScript<>(
+            "local balance=tonumber(redis.call('GET', KEYS[1]) or '0'); "
+                    + "local amount=tonumber(ARGV[1]); "
+                    + "if balance < amount then return -1 end; "
+                    + "return redis.call('DECRBY', KEYS[1], amount)",
+            Long.class
+    );
+
     private final StringRedisTemplate stringRedisTemplate;
 
     private final UsageQuotaProperties usageQuotaProperties;
@@ -156,11 +164,7 @@ public class UserTokenService {
         }
         String key = buildLlmTokenKey(userId);
         getLlmTokenBalance(userId);
-        Long remaining = stringRedisTemplate.execute(new DefaultRedisScript<>(
-                "local balance=tonumber(redis.call('GET', KEYS[1]) or '0'); "
-                        + "local amount=tonumber(ARGV[1]); "
-                        + "if balance < amount then return -1 end; "
-                        + "return redis.call('DECRBY', KEYS[1], amount)", Long.class),
+        Long remaining = stringRedisTemplate.execute(TOKEN_RESERVATION_SCRIPT,
                 List.of(key), String.valueOf(tokens));
         return remaining != null && remaining >= 0;
     }
@@ -187,33 +191,38 @@ public class UserTokenService {
         }
     }
 
-    /**
-     * 消耗用户的 Embedding Token
-     *
-     * @param userId 用户 ID
-     * @param tokens 消耗的 token 数量
-     * @throws CustomException 如果余额不足或用户不存在
-     */
-    @Transactional(rollbackFor = Exception.class)
-    public void consumeEmbeddingTokens(String userId, int tokens) {
+    public boolean reserveEmbeddingTokens(String userId, long tokens) {
         if (tokens <= 0) {
-            throw new CustomException("消耗的 Token 数量必须大于 0", HttpStatus.BAD_REQUEST);
+            return true;
         }
-
         String key = buildEmbeddingTokenKey(userId);
-        Long currentBalance = getEmbeddingTokenBalance(userId);
-
-        if (currentBalance < tokens) {
-            logger.warn("用户 {} 的 Embedding token 实际用量超过剩余额度：remain={}, consumer={}", userId, currentBalance, tokens);
-        }
-
-        stringRedisTemplate.opsForValue().increment(key, -tokens);
-        logger.info("用户 {} 消耗 Embedding Token: {}, 剩余：{}", userId, tokens, currentBalance - tokens);
-
-        // 记录 Token 消耗（按天聚合）
-        recordTokenConsume(userId, UserTokenRecord.TokenType.EMBEDDING, tokens, currentBalance, currentBalance - tokens);
+        getEmbeddingTokenBalance(userId);
+        Long remaining = stringRedisTemplate.execute(TOKEN_RESERVATION_SCRIPT,
+                List.of(key), String.valueOf(tokens));
+        return remaining != null && remaining >= 0;
     }
 
+    @Transactional(rollbackFor = Exception.class)
+    public void settleEmbeddingTokenReservation(String userId, long reservedTokens, int actualTokens) {
+        long reserved = Math.max(0, reservedTokens);
+        int actual = Math.max(0, actualTokens);
+        String key = buildEmbeddingTokenKey(userId);
+        long adjustment = reserved - actual;
+        if (adjustment != 0) {
+            stringRedisTemplate.opsForValue().increment(key, adjustment);
+        }
+        if (actual > 0) {
+            Long balanceAfter = getEmbeddingTokenBalance(userId);
+            recordTokenConsume(userId, UserTokenRecord.TokenType.EMBEDDING, actual,
+                    balanceAfter + actual, balanceAfter);
+        }
+    }
+
+    public void releaseEmbeddingTokenReservation(String userId, long tokens) {
+        if (tokens > 0) {
+            stringRedisTemplate.opsForValue().increment(buildEmbeddingTokenKey(userId), tokens);
+        }
+    }
 
     // 用于总的请求次数记录
     private String buildQuotaKey(String scope, String userId) {
@@ -338,18 +347,6 @@ public class UserTokenService {
      */
     public boolean hasEnoughLlmTokens(String userId, int tokens) {
         Long balance = getLlmTokenBalance(userId);
-        return balance >= tokens;
-    }
-
-    /**
-     * 检查用户是否有足够的 Embedding Token
-     *
-     * @param userId 用户 ID
-     * @param tokens 需要的 token 数量
-     * @return true-余额充足，false-余额不足
-     */
-    public boolean hasEnoughEmbeddingTokens(String userId, int tokens) {
-        Long balance = getEmbeddingTokenBalance(userId);
         return balance >= tokens;
     }
 

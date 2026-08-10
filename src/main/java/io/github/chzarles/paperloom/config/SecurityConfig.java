@@ -65,11 +65,19 @@ public class SecurityConfig {
                             .requestMatchers(
                                     "/api/v1/users/conversation/**",
                                     "/api/v1/users/conversations/**"
-                            ).hasAnyRole("USER", "ADMIN")
-                            // 搜索接口 - 普通用户和管理员都可访问
-                            .requestMatchers("/api/v1/papers/search/**").hasAnyRole("USER", "ADMIN")
+                            ).hasAnyRole("GUEST", "USER", "ADMIN")
+                            // 游客可以体验检索和聊天，但不能访问其他账户接口。
+                            .requestMatchers("/api/v1/papers/search/**").hasAnyRole("GUEST", "USER", "ADMIN")
                             // 聊天相关接口 - WebSocket停止Token获取
-                            .requestMatchers("/api/v1/chat/**").hasAnyRole("USER", "ADMIN")
+                            .requestMatchers("/api/v1/chat/**").hasAnyRole("GUEST", "USER", "ADMIN")
+                            .requestMatchers(
+                                    "/api/v1/users/me",
+                                    "/api/v1/users/usage",
+                                    "/api/v1/users/logout",
+                                    "/api/v1/users/logout-all"
+                            ).hasAnyRole("GUEST", "USER", "ADMIN")
+                            .requestMatchers("/api/v1/users/**").hasAnyRole("USER", "ADMIN")
+                            .requestMatchers("/api/v1/paper-collections/**").hasAnyRole("USER", "ADMIN")
                             // 管理员专属接口 - 系统状态、用户活动、用量和配置管理
                             .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                             // 其他请求需要认证

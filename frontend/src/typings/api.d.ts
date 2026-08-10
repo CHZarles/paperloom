@@ -40,7 +40,7 @@ declare namespace Api {
     interface UserInfo {
       id: number;
       username: string;
-      role: 'USER' | 'ADMIN';
+      role: 'GUEST' | 'USER' | 'ADMIN';
     }
   }
 
@@ -73,7 +73,7 @@ declare namespace Api {
     type Item = {
       userId: string;
       username: string;
-      role?: 'USER' | 'ADMIN';
+      role?: 'GUEST' | 'USER' | 'ADMIN';
       status: number;
       createdAt: string;
       usage?: {

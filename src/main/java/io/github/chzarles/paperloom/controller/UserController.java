@@ -111,7 +111,7 @@ public class UserController {
     @PostMapping("/guest-login")
     public ResponseEntity<?> guestLogin() {
         try {
-            User guest = userService.getOrCreateGuestUser();
+            User guest = userService.createGuestUser();
             String token = jwtUtils.generateToken(guest.getUsername());
             String refreshToken = jwtUtils.generateRefreshToken(guest.getUsername());
 

@@ -14,6 +14,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +32,8 @@ import java.util.stream.Collectors;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.time.Duration;
+import java.time.LocalDate;
 
 /**
  * UserService 类用于处理用户注册和认证相关的业务逻辑。
@@ -39,6 +43,13 @@ public class UserService {
 
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
     private static final String GUEST_USERNAME = "游客";
+    private static final Duration GUEST_LOGIN_ATTEMPT_TTL = Duration.ofDays(2);
+    private static final DefaultRedisScript<Long> GUEST_LOGIN_ATTEMPT_SCRIPT = new DefaultRedisScript<>(
+            "local count=redis.call('INCR', KEYS[1]); "
+                    + "if count == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end; "
+                    + "return count",
+            Long.class
+    );
 
     private static final Pattern PASSWORD_PATTERN = Pattern.compile(
             "^(?=.*[A-Za-z])(?=.*\\d).{6,18}$"
@@ -55,6 +66,9 @@ public class UserService {
 
     @Autowired
     private UsageQuotaService usageQuotaService;
+
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
 
     /**
      * 注册新用户。
@@ -94,22 +108,39 @@ public class UserService {
         logger.info("User registered successfully: {}", username);
     }
 
-    // ponytail: process-local lock is sufficient for the single backend instance; use a DB upsert when scaling out.
-    public synchronized User getOrCreateGuestUser() {
-        Optional<User> existing = userRepository.findByUsername(GUEST_USERNAME);
-        if (existing.isPresent()) {
-            User guest = existing.get();
-            if (guest.getRole() != User.Role.USER) {
-                throw new CustomException("Guest account has an invalid role", HttpStatus.CONFLICT);
-            }
-            return guest;
+    public User createGuestUser() {
+        enforceGuestLoginAttemptLimit();
+        User guest = new User();
+        guest.setUsername("guest_" + java.util.UUID.randomUUID());
+        guest.setPassword(PasswordUtil.encode(java.util.UUID.randomUUID().toString()));
+        guest.setRole(User.Role.GUEST);
+        return userRepository.save(guest);
+    }
+
+    private void enforceGuestLoginAttemptLimit() {
+        int limit = appAuthProperties.getGuest().getDailyLoginAttemptLimit();
+        if (limit <= 0) {
+            throw new CustomException("Guest login is unavailable", HttpStatus.SERVICE_UNAVAILABLE);
         }
 
-        User guest = new User();
-        guest.setUsername(GUEST_USERNAME);
-        guest.setPassword(PasswordUtil.encode(java.util.UUID.randomUUID().toString()));
-        guest.setRole(User.Role.USER);
-        return userRepository.save(guest);
+        Long attempts;
+        try {
+            attempts = stringRedisTemplate.execute(
+                    GUEST_LOGIN_ATTEMPT_SCRIPT,
+                    List.of("guest:login:attempts:" + LocalDate.now()),
+                    String.valueOf(GUEST_LOGIN_ATTEMPT_TTL.toSeconds())
+            );
+        } catch (Exception error) {
+            logger.warn("Guest login attempt guard unavailable", error);
+            throw new CustomException("Guest login is temporarily unavailable", HttpStatus.SERVICE_UNAVAILABLE);
+        }
+
+        if (attempts == null) {
+            throw new CustomException("Guest login is temporarily unavailable", HttpStatus.SERVICE_UNAVAILABLE);
+        }
+        if (attempts > limit) {
+            throw new CustomException("Guest login limit reached", HttpStatus.TOO_MANY_REQUESTS);
+        }
     }
 
     private void validateRegistrationPolicy(String username, String inviteCode) {

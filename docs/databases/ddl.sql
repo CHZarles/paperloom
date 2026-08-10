@@ -2,7 +2,7 @@ CREATE TABLE users (
                        id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '用户唯一标识',
                        username VARCHAR(255) NOT NULL UNIQUE COMMENT '用户名，唯一',
                        password VARCHAR(255) NOT NULL COMMENT '加密后的密码',
-                       role ENUM('USER', 'ADMIN') NOT NULL DEFAULT 'USER' COMMENT '用户角色',
+                       role ENUM('GUEST', 'USER', 'ADMIN') NOT NULL DEFAULT 'USER' COMMENT '用户角色',
                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
                        INDEX idx_username (username) COMMENT '用户名索引'

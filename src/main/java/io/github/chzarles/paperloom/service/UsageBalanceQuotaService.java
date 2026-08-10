@@ -4,7 +4,9 @@ import io.github.chzarles.paperloom.config.UsageQuotaProperties;
 import io.github.chzarles.paperloom.exception.QuotaExceededException;
 import io.github.chzarles.paperloom.model.DailyReqCountStat;
 import io.github.chzarles.paperloom.model.DailyUsageStat;
+import io.github.chzarles.paperloom.model.User;
 import io.github.chzarles.paperloom.model.UserTokenRecord;
+import io.github.chzarles.paperloom.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,22 +14,28 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class UsageBalanceQuotaService extends UsageQuotaService {
 
     private static final Logger logger = LoggerFactory.getLogger(UsageBalanceQuotaService.class);
+    private static final String GUEST_QUOTA_SUBJECT_ID = "guest-pool";
 
     private final UserTokenService userTokenService;
+    private final UserRepository userRepository;
     private final UsageQuotaProperties properties;
 
     public UsageBalanceQuotaService(UsageQuotaProperties properties,
-                                    UserTokenService userTokenService
+                                    UserTokenService userTokenService,
+                                    UserRepository userRepository
     ) {
         this.properties = properties;
         this.userTokenService = userTokenService;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -38,15 +46,16 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
 
         int reserveTokens = Math.max(estimatedPromptTokens, 0) + Math.max(maxCompletionTokens, 0);
         reserveTokens = Math.max(reserveTokens, 1);
+        String quotaSubjectId = resolveQuotaSubjectId(userId);
 
-        if (!userTokenService.reserveLlmTokens(userId, reserveTokens)) {
-            Long balance = userTokenService.getLlmTokenBalance(userId);
+        if (!userTokenService.reserveLlmTokens(quotaSubjectId, reserveTokens)) {
+            Long balance = userTokenService.getLlmTokenBalance(quotaSubjectId);
             throw new QuotaExceededException(
                     "LLM Token 余额不足，预估需要：" + reserveTokens + ", 当前余额：" + balance, 0);
         }
 
         return new TokenReservation(
-                "llm", userId, "", "",
+                "llm", quotaSubjectId, "", "",
                 reserveTokens, reserveTokens,
                 0, false, true
         );
@@ -59,17 +68,16 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
         }
 
         int estimatedTokens = Math.max(estimateEmbeddingTokens(texts), 1);
+        String quotaSubjectId = resolveQuotaSubjectId(userId);
 
-        // 检查用户余额是否充足
-        if (!userTokenService.hasEnoughEmbeddingTokens(userId, estimatedTokens)) {
-            Long balance = userTokenService.getEmbeddingTokenBalance(userId);
+        if (!userTokenService.reserveEmbeddingTokens(quotaSubjectId, estimatedTokens)) {
+            Long balance = userTokenService.getEmbeddingTokenBalance(quotaSubjectId);
             throw new QuotaExceededException(
                     "Embedding Token 余额不足，预估需要：" + estimatedTokens + ", 当前余额：" + balance, 0);
         }
 
-        // 用户余额模式下，不需要实际的 Redis 预留操作
         return new TokenReservation(
-                "embedding", userId, "", "",
+                "embedding", quotaSubjectId, "", "",
                 estimatedTokens, estimatedTokens,
                 0, false, true
         );
@@ -113,9 +121,12 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
                     userTokenService.incrementUserTotalRequestCount(reservation.scope(), reservation.userId());
                 }
                 logger.info("用户 {} 结算 LLM Token: {}", reservation.userId(), actualTokens);
-            } else if ("embedding".equals(reservation.scope()) && actualTokens > 0) {
-                userTokenService.incrementUserTotalRequestCount(reservation.scope(), reservation.userId());
-                userTokenService.consumeEmbeddingTokens(reservation.userId(), actualTokens);
+            } else if ("embedding".equals(reservation.scope())) {
+                userTokenService.settleEmbeddingTokenReservation(
+                        reservation.userId(), reservation.reservedTokens(), actualTokens);
+                if (actualTokens > 0) {
+                    userTokenService.incrementUserTotalRequestCount(reservation.scope(), reservation.userId());
+                }
                 logger.info("用户 {} 结算 Embedding Token: {}, 剩余额度从预留中扣减",
                         reservation.userId(), actualTokens);
             }
@@ -128,8 +139,13 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
 
     @Override
     public void abortReservation(TokenReservation reservation) {
-        if (reservation != null && !reservation.noop() && "llm".equals(reservation.scope())) {
+        if (reservation == null || reservation.noop()) {
+            return;
+        }
+        if ("llm".equals(reservation.scope())) {
             userTokenService.releaseLlmTokenReservation(reservation.userId(), reservation.reservedTokens());
+        } else if ("embedding".equals(reservation.scope())) {
+            userTokenService.releaseEmbeddingTokenReservation(reservation.userId(), reservation.reservedTokens());
         }
     }
 
@@ -146,15 +162,36 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
             return result;
         }
 
+        Set<String> guestUserIds = findGuestUserIds(userIds);
         for (String userId : userIds) {
+            String quotaSubjectId = guestUserIds.contains(userId) ? GUEST_QUOTA_SUBJECT_ID : userId;
             result.put(userId, new UserUsageSnapshot(
                     currentDay(),
                     userTokenService.getUserDailyChatCount(userId, LocalDate.now()),
-                    buildQuotaView("llm", userId, properties.getLlm()),
-                    buildQuotaView("embedding", userId, properties.getEmbedding())
+                    buildQuotaView("llm", quotaSubjectId, properties.getLlm()),
+                    buildQuotaView("embedding", quotaSubjectId, properties.getEmbedding())
             ));
         }
         return result;
+    }
+
+    private Set<String> findGuestUserIds(List<String> userIds) {
+        List<Long> numericUserIds = new ArrayList<>();
+        for (String userId : userIds) {
+            try {
+                numericUserIds.add(Long.parseLong(userId));
+            } catch (NumberFormatException ignored) {
+                // Non-user subjects such as system jobs keep their original quota identity.
+            }
+        }
+
+        Set<String> guestUserIds = new HashSet<>();
+        for (User user : userRepository.findAllById(numericUserIds)) {
+            if (user.getRole() == User.Role.GUEST) {
+                guestUserIds.add(String.valueOf(user.getId()));
+            }
+        }
+        return guestUserIds;
     }
 
     /**
@@ -186,6 +223,17 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
 
     private boolean isQuotaManaged(String userId) {
         return userId != null && !userId.isBlank() && !userId.startsWith("system");
+    }
+
+    private String resolveQuotaSubjectId(String userId) {
+        try {
+            return userRepository.findById(Long.parseLong(userId))
+                    .filter(user -> user.getRole() == User.Role.GUEST)
+                    .map(user -> GUEST_QUOTA_SUBJECT_ID)
+                    .orElse(userId);
+        } catch (NumberFormatException ignored) {
+            return userId;
+        }
     }
 
 

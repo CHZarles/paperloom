@@ -9,9 +9,14 @@ import org.springframework.stereotype.Component;
 public class AppAuthProperties {
 
     private final Registration registration = new Registration();
+    private final Guest guest = new Guest();
 
     public Registration getRegistration() {
         return registration;
+    }
+
+    public Guest getGuest() {
+        return guest;
     }
 
     public static class Registration {
@@ -32,6 +37,18 @@ public class AppAuthProperties {
 
         public void setInviteRequired(boolean inviteRequired) {
             this.inviteRequired = inviteRequired;
+        }
+    }
+
+    public static class Guest {
+        private int dailyLoginAttemptLimit = 100;
+
+        public int getDailyLoginAttemptLimit() {
+            return dailyLoginAttemptLimit;
+        }
+
+        public void setDailyLoginAttemptLimit(int dailyLoginAttemptLimit) {
+            this.dailyLoginAttemptLimit = dailyLoginAttemptLimit;
         }
     }
 }

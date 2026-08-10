@@ -13,6 +13,8 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.mockito.ArgumentCaptor;
 
 import java.time.LocalDateTime;
@@ -24,6 +26,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
@@ -40,10 +43,16 @@ class UserServiceTest {
     private AppAuthProperties.Registration registration;
 
     @Mock
+    private AppAuthProperties.Guest guestProperties;
+
+    @Mock
     private InviteCodeService inviteCodeService;
 
     @Mock
     private UsageQuotaService usageQuotaService;
+
+    @Mock
+    private StringRedisTemplate stringRedisTemplate;
 
     @InjectMocks
     private UserService userService;
@@ -52,8 +61,13 @@ class UserServiceTest {
     void setUp() {
         MockitoAnnotations.openMocks(this);
         when(appAuthProperties.getRegistration()).thenReturn(registration);
+        when(appAuthProperties.getGuest()).thenReturn(guestProperties);
         when(registration.getMode()).thenReturn(RegistrationMode.OPEN);
         when(registration.isInviteRequired()).thenReturn(false);
+        when(guestProperties.getDailyLoginAttemptLimit()).thenReturn(100);
+        when(stringRedisTemplate.execute(
+                any(DefaultRedisScript.class), anyList(), anyString()
+        )).thenReturn(1L);
     }
 
     @Test
@@ -129,21 +143,28 @@ class UserServiceTest {
     }
 
     @Test
-    void testGetOrCreateGuestUserCreatesAndReusesOrdinaryUser() {
-        User guest = new User();
-        guest.setUsername("游客");
-        guest.setRole(User.Role.USER);
-        when(userRepository.findByUsername("游客"))
-                .thenReturn(Optional.empty(), Optional.of(guest));
+    void testCreateGuestUserCreatesIndependentUsers() {
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        User created = userService.getOrCreateGuestUser();
-        User reused = userService.getOrCreateGuestUser();
+        User first = userService.createGuestUser();
+        User second = userService.createGuestUser();
 
-        assertEquals("游客", created.getUsername());
-        assertEquals(User.Role.USER, created.getRole());
-        assertEquals(guest, reused);
-        verify(userRepository, times(1)).save(any(User.class));
+        assertNotEquals(first.getUsername(), second.getUsername());
+        assertEquals(User.Role.GUEST, first.getRole());
+        assertEquals(User.Role.GUEST, second.getRole());
+        verify(userRepository, times(2)).save(any(User.class));
+    }
+
+    @Test
+    void testCreateGuestUserRejectsAttemptsAboveDailyLimit() {
+        when(stringRedisTemplate.execute(
+                any(DefaultRedisScript.class), anyList(), anyString()
+        )).thenReturn(101L);
+
+        CustomException exception = assertThrows(CustomException.class, userService::createGuestUser);
+
+        assertEquals(HttpStatus.TOO_MANY_REQUESTS, exception.getStatus());
+        verify(userRepository, never()).save(any(User.class));
     }
 
 
