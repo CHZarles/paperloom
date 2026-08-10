@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -77,6 +78,9 @@ public class SecurityConfig {
                                     "/api/v1/users/logout-all"
                             ).hasAnyRole("GUEST", "USER", "ADMIN")
                             .requestMatchers("/api/v1/users/**").hasAnyRole("USER", "ADMIN")
+                            // 游客聊天页会读取自己的集合列表；游客只能看到自己的空列表，不能创建或修改集合。
+                            .requestMatchers(HttpMethod.GET, "/api/v1/paper-collections")
+                            .hasAnyRole("GUEST", "USER", "ADMIN")
                             .requestMatchers("/api/v1/paper-collections/**").hasAnyRole("USER", "ADMIN")
                             // 管理员专属接口 - 系统状态、用户活动、用量和配置管理
                             .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
