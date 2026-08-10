@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.connection.stream.MapRecord;
@@ -23,8 +24,7 @@ import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -50,11 +50,7 @@ public class RedisResearchHarnessTransport implements ResearchHarnessTransport {
     private final Duration eventBlockTimeout;
     private final Duration statusTtl;
     private final Duration cancelTtl;
-    private final ExecutorService eventExecutor = Executors.newCachedThreadPool(runnable -> {
-        Thread thread = new Thread(runnable, "research-harness-redis-events");
-        thread.setDaemon(true);
-        return thread;
-    });
+    private final Executor eventExecutor;
     private final Map<String, ActiveRequest> activeRequests = new ConcurrentHashMap<>();
 
     public RedisResearchHarnessTransport(
@@ -71,7 +67,8 @@ public class RedisResearchHarnessTransport implements ResearchHarnessTransport {
             @Value("${research-harness.redis.event-read-timeout-seconds:930}") long eventReadTimeoutSeconds,
             @Value("${research-harness.redis.event-block-timeout-ms:2000}") long eventBlockTimeoutMs,
             @Value("${research-harness.redis.status-ttl-seconds:1800}") long statusTtlSeconds,
-            @Value("${research-harness.redis.cancel-ttl-seconds:1800}") long cancelTtlSeconds) {
+            @Value("${research-harness.redis.cancel-ttl-seconds:1800}") long cancelTtlSeconds,
+            @Qualifier("researchHarnessExecutor") Executor eventExecutor) {
         this.objectMapper = objectMapper;
         this.redisTemplate = redisTemplate;
         this.usageQuotaService = usageQuotaService;
@@ -86,6 +83,7 @@ public class RedisResearchHarnessTransport implements ResearchHarnessTransport {
         this.eventBlockTimeout = Duration.ofMillis(Math.max(100, eventBlockTimeoutMs));
         this.statusTtl = Duration.ofSeconds(Math.max(60, statusTtlSeconds));
         this.cancelTtl = Duration.ofSeconds(Math.max(60, cancelTtlSeconds));
+        this.eventExecutor = eventExecutor;
     }
 
     @Override
@@ -120,8 +118,8 @@ public class RedisResearchHarnessTransport implements ResearchHarnessTransport {
             }
         });
         try {
-            enqueue(request);
             eventExecutor.execute(() -> readEvents(request, progressListener, reservation, reservationFinished, future));
+            enqueue(request);
         } catch (Exception error) {
             future.completeExceptionally(error);
         }
@@ -144,12 +142,12 @@ public class RedisResearchHarnessTransport implements ResearchHarnessTransport {
     void shutdown() {
         activeRequests.values().forEach(active ->
                 active.future().completeExceptionally(new CancellationException("Research harness transport stopped")));
-        eventExecutor.shutdownNow();
     }
 
     private void assertQueueCapacity() {
         Long currentDepth = streamOps().size(jobStreamKey);
-        if (currentDepth != null && currentDepth > queueMaxDepth) {
+        // ponytail: this soft check can overshoot under concurrent submits; use Lua if the limit must be strict.
+        if (currentDepth != null && currentDepth >= queueMaxDepth) {
             throw new IllegalStateException("Research harness queue is busy");
         }
     }

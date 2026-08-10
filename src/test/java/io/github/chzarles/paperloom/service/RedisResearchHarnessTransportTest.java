@@ -14,6 +14,11 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -24,6 +29,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -66,7 +72,7 @@ class RedisResearchHarnessTransportTest {
 
         UsageQuotaService quotaService = mock(UsageQuotaService.class);
         UsageQuotaService.TokenReservation reservation = UsageQuotaService.TokenReservation.noop("llm", "7");
-        when(quotaService.reserveLlmTokens(eq("7"), anyInt(), eq(128000))).thenReturn(reservation);
+        when(quotaService.reserveLlmTokens(eq("7"), anyInt(), eq(1))).thenReturn(reservation);
         RedisResearchHarnessTransport transport = new RedisResearchHarnessTransport(
                 objectMapper,
                 redisTemplate,
@@ -81,7 +87,8 @@ class RedisResearchHarnessTransportTest {
                 5,
                 10,
                 1800,
-                1800
+                1800,
+                ForkJoinPool.commonPool()
         );
 
         List<Map<String, Object>> progressEvents = new ArrayList<>();
@@ -122,7 +129,8 @@ class RedisResearchHarnessTransportTest {
                 5,
                 10,
                 1800,
-                1800
+                1800,
+                ForkJoinPool.commonPool()
         );
 
         transport.cancel("generation-1");
@@ -158,7 +166,7 @@ class RedisResearchHarnessTransportTest {
                 .thenReturn(List.of(MapRecord.create(eventKey, error).withId(RecordId.of("2-0"))));
         UsageQuotaService quotaService = mock(UsageQuotaService.class);
         UsageQuotaService.TokenReservation reservation = UsageQuotaService.TokenReservation.noop("llm", "7");
-        when(quotaService.reserveLlmTokens(eq("7"), anyInt(), eq(128000))).thenReturn(reservation);
+        when(quotaService.reserveLlmTokens(eq("7"), anyInt(), eq(1))).thenReturn(reservation);
         RedisResearchHarnessTransport transport = transport(objectMapper, redisTemplate, quotaService);
 
         assertThrows(Exception.class, () -> transport.submit(request(), event -> {}).get(1, TimeUnit.SECONDS));
@@ -167,17 +175,43 @@ class RedisResearchHarnessTransportTest {
     }
 
     @Test
-    void rejectsWhenQueueDepthExceedsLimit() {
+    void rejectsWhenQueueDepthReachesLimit() {
         ObjectMapper objectMapper = new ObjectMapper();
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         @SuppressWarnings({"unchecked", "rawtypes"})
         StreamOperations streamOperations = mock(StreamOperations.class);
         when(redisTemplate.opsForStream()).thenReturn(streamOperations);
-        when(streamOperations.size("paperloom:research:harness:jobs")).thenReturn(201L);
+        when(streamOperations.size("paperloom:research:harness:jobs")).thenReturn(200L);
         UsageQuotaService quotaService = mock(UsageQuotaService.class);
         RedisResearchHarnessTransport transport = transport(objectMapper, redisTemplate, quotaService);
 
         assertThrows(IllegalStateException.class, () -> transport.submit(request(), event -> {}));
+    }
+
+    @Test
+    void rejectsBeforeEnqueueWhenExecutorIsFull() {
+        ObjectMapper objectMapper = new ObjectMapper();
+        StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        StreamOperations streamOperations = mock(StreamOperations.class);
+        @SuppressWarnings("unchecked")
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(redisTemplate.opsForStream()).thenReturn(streamOperations);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(streamOperations.size("paperloom:research:harness:jobs")).thenReturn(0L);
+        UsageQuotaService quotaService = mock(UsageQuotaService.class);
+        when(quotaService.reserveLlmTokens(anyString(), anyInt(), eq(1)))
+                .thenReturn(UsageQuotaService.TokenReservation.noop("llm", "7"));
+        Executor rejectingExecutor = runnable -> {
+            throw new RejectedExecutionException("busy");
+        };
+        RedisResearchHarnessTransport transport = transport(
+                objectMapper, redisTemplate, quotaService, rejectingExecutor);
+
+        CompletableFuture<ProductTurnResult> rejected = transport.submit(request(), event -> {});
+
+        assertThrows(CompletionException.class, rejected::join);
+        verify(streamOperations, never()).add(eq("paperloom:research:harness:jobs"), any(Map.class));
     }
 
     private ProductTurnRequest request() {
@@ -197,6 +231,13 @@ class RedisResearchHarnessTransportTest {
     private RedisResearchHarnessTransport transport(ObjectMapper objectMapper,
                                                     StringRedisTemplate redisTemplate,
                                                     UsageQuotaService quotaService) {
+        return transport(objectMapper, redisTemplate, quotaService, ForkJoinPool.commonPool());
+    }
+
+    private RedisResearchHarnessTransport transport(ObjectMapper objectMapper,
+                                                    StringRedisTemplate redisTemplate,
+                                                    UsageQuotaService quotaService,
+                                                    Executor eventExecutor) {
         return new RedisResearchHarnessTransport(
                 objectMapper,
                 redisTemplate,
@@ -211,7 +252,8 @@ class RedisResearchHarnessTransportTest {
                 5,
                 10,
                 1800,
-                1800
+                1800,
+                eventExecutor
         );
     }
 }

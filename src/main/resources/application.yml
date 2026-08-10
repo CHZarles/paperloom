@@ -138,6 +138,7 @@ paperloom:
 
 research-harness:
   transport: ${RESEARCH_HARNESS_TRANSPORT:http}
+  max-active-generations: ${RESEARCH_HARNESS_MAX_ACTIVE_GENERATIONS:16}
   user-retry-max-per-message: ${RESEARCH_HARNESS_USER_RETRY_MAX_PER_MESSAGE:3}
   base-url: ${RESEARCH_HARNESS_BASE_URL:http://127.0.0.1:8091}
   internal-token: ${RESEARCH_HARNESS_INTERNAL_TOKEN:}

@@ -3,6 +3,7 @@ package io.github.chzarles.paperloom.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PreDestroy;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,8 +25,7 @@ import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.Executor;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -43,11 +43,7 @@ public class PythonResearchHarnessClient implements ResearchHarnessTransport {
     private final HttpClient httpClient;
     private final URI streamUri;
     private final String internalToken;
-    private final ExecutorService requestExecutor = Executors.newCachedThreadPool(runnable -> {
-        Thread thread = new Thread(runnable, "research-harness-http");
-        thread.setDaemon(true);
-        return thread;
-    });
+    private final Executor requestExecutor;
     private final Map<String, ActiveRequest> activeRequests = new ConcurrentHashMap<>();
 
     public PythonResearchHarnessClient(
@@ -56,13 +52,15 @@ public class PythonResearchHarnessClient implements ResearchHarnessTransport {
             ResearchHarnessPayloadFactory payloadFactory,
             ResearchHarnessResultMapper resultMapper,
             @Value("${research-harness.base-url:http://127.0.0.1:8091}") String baseUrl,
-            @Value("${research-harness.internal-token:}") String internalToken) {
+            @Value("${research-harness.internal-token:}") String internalToken,
+            @Qualifier("researchHarnessExecutor") Executor requestExecutor) {
         this.objectMapper = objectMapper;
         this.usageQuotaService = usageQuotaService;
         this.payloadFactory = payloadFactory;
         this.resultMapper = resultMapper;
         this.streamUri = URI.create(baseUrl.replaceAll("/+$", "") + "/v1/research/stream");
         this.internalToken = internalToken == null ? "" : internalToken.trim();
+        this.requestExecutor = requestExecutor;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
@@ -172,7 +170,6 @@ public class PythonResearchHarnessClient implements ResearchHarnessTransport {
             active.future().completeExceptionally(new CancellationException("Research harness client stopped"));
             active.task().cancel(true);
         });
-        requestExecutor.shutdownNow();
     }
 
     private Map<String, Object> executeStream(Map<String, Object> body,

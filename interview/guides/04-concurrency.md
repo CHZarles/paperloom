@@ -17,7 +17,7 @@ PaperLoom 的并发重点不是“用了很多锁”，而是把请求状态、�
 | `ThreadPoolTaskExecutor` | Chat 完成监控，core=4、max=16、队列=200 | 队列满会拒绝，调用方有降级路径 |
 | `ArrayBlockingQueue` | `AsyncDiskProductTraceSink` 的有界 Trace 缓冲 | `offer` 失败时丢 Trace，不阻塞业务请求 |
 | `Executors.newFixedThreadPool` | Trace writer 后台写盘 | writer 线程为 daemon；Trace 不是强审计日志 |
-| `Executors.newCachedThreadPool` | Python harness HTTP 请求池 | 没有硬最大线程数，是当前真实的容量风险和改进点 |
+| `ThreadPoolTaskExecutor` | HTTP/Redis Harness 长任务，core=0、max=16、queue=0 | 满载快速拒绝；上限按 Java 实例生效 |
 
 ![PaperLoom 的并发状态、任务和连接边界](../assets/concurrency/01-paperloom-concurrency-map.png)
 
@@ -34,7 +34,7 @@ PaperLoom 的并发重点不是“用了很多锁”，而是把请求状态、�
 | Q5 | 18 | 线程有哪些常用的调度方法 | 选背 | `start`、`sleep`、`join`、`interrupt` |
 | Q6 | 20 | 线程有几种状态 | 必背 | 异步任务排查基础 |
 | Q7 | 23 | 什么是线程上下文切换 | 选背 | 线程数和 IO 等待的取舍 |
-| Q8 | 25 | 守护线程了解吗 | 选背 | Trace writer / HTTP worker 的 daemon 语义 |
+| Q8 | 25 | 守护线程了解吗 | 选背 | Trace daemon 与 Spring executor 生命周期 |
 | Q9 | 25 | 线程间有哪些通信方式 | 必背 | Future、共享 Map、队列和中断 |
 | Q10 | 28 | 请说说 sleep 和 wait 的区别 | 必背 | 取消与锁释放的追问 |
 | Q11 | 32 | 怎么保证线程安全 | 必背 | 项目最常被追问的总入口 |
@@ -141,7 +141,7 @@ PaperLoom 是一个 Java 进程，HTTP/WebSocket 请求、Chat 监控、Python h
 
 ### Q7-Q11：切换、守护、通信和线程安全
 
-线程上下文切换要保存寄存器、程序计数器、栈等执行上下文，再加载另一个线程；多核能并行，但线程数量超过核心和下游容量后，切换成本会明显增加。守护线程不会阻止 JVM 在所有用户线程退出后结束；PaperLoom 的 Trace writer 和 Python harness worker 明确设置为 daemon，因此它们不是关机时必须完成的强持久化任务。
+线程上下文切换要保存寄存器、程序计数器、栈等执行上下文，再加载另一个线程；多核能并行，但线程数量超过核心和下游容量后，切换成本会明显增加。守护线程不会阻止 JVM 在所有用户线程退出后结束；PaperLoom 的 Trace writer 明确设置为 daemon，而统一的 Harness executor 由 Spring 管理关闭，二者不要混答。
 
 ![请求任务、Future 与取消传播](../assets/concurrency/02-future-cancellation.png)
 
@@ -252,11 +252,11 @@ PaperLoom 的 `chatMonitorExecutor` 配置 core=4、max=16、queue=200；队列�
 
 `execute(Runnable)` 没有返回值，任务抛出的未捕获异常可交给线程的异常处理器；`submit` 返回 Future，异常通常被封装到 Future，调用 `get()` 才观察到。PaperLoom 用 `FutureTask` 包装 Python HTTP 流任务，用 `CompletableFuture` 把成功、失败和取消显式传给上层；研究失败会补发 `job_failed` 事件，取消会完成为 `CancellationException`。
 
-关闭线程池的标准顺序是 `shutdown()` 停止接收新任务并处理已有任务，`awaitTermination()` 等待截止时间，超时再 `shutdownNow()` 尝试中断。中断不是强杀：任务必须检查中断、让阻塞 IO/等待退出，并在捕获 `InterruptedException` 后恢复中断标志。Trace sink 关闭时先等待 3 秒，超时或被中断才 `shutdownNow()`；Python harness 的 `@PreDestroy` 会取消活动 Future 并关闭 request executor。
+关闭线程池的标准顺序是 `shutdown()` 停止接收新任务并处理已有任务，`awaitTermination()` 等待截止时间，超时再 `shutdownNow()` 尝试中断。中断不是强杀：任务必须检查中断、让阻塞 IO/等待退出，并在捕获 `InterruptedException` 后恢复中断标志。Trace sink 关闭时先等待 3 秒，超时或被中断才 `shutdownNow()`；Research Harness 的 `@PreDestroy` 取消活动 Future，统一 executor 的生命周期由 Spring 管理。
 
 线程数不能只套“CPU+1”公式。CPU 密集型通常接近 CPU 核数；IO 密集型可更多，但上限受远程服务并发、连接池、队列、内存、超时和业务 SLA 约束。应观测活跃线程、队列长度、任务等待时间、执行耗时、拒绝数、下游错误率和 CPU，而不是盲目加大 maxPoolSize。
 
-常见线程池可以概念性对比：Fixed 线程数固定、队列通常较长；Cached 按需创建并回收空闲线程，适合短任务但可能无限膨胀；Single 保证单线程顺序；Scheduled 用于延迟和周期任务。PaperLoom 的 Python harness 使用 `newCachedThreadPool` 且未设置硬最大线程数，这是明确的风险边界：不能说项目已经实现了完整背压，改进方向是显式有界 ThreadPoolExecutor、队列、超时和拒绝策略。
+常见线程池可以概念性对比：Fixed 线程数固定、队列通常较长；Cached 按需创建并回收空闲线程，适合短任务但可能无限膨胀；Single 保证单线程顺序；Scheduled 用于延迟和周期任务。PaperLoom 已把两个 Harness Transport 原有的 `newCachedThreadPool` 收敛为统一的 `researchHarnessExecutor`：core=0、max=16、queue=0、keepAlive=60 秒、`AbortPolicy`。它保留按需创建和空闲回收，但增加了硬线程上限和快速失败。
 
 线程池状态可按生命周期记：RUNNING 接收并处理任务，SHUTDOWN 不接新任务但处理队列，STOP 不处理队列并尝试中断，TIDYING 等待工作线程归零，TERMINATED 完成终止。动态修改参数要注意 setter 的线程安全、已存在工作线程的影响和队列容量不能随意变更，修改前后都要配合监控。
 
@@ -272,6 +272,24 @@ PaperLoom 的 `chatMonitorExecutor` 配置 core=4、max=16、queue=200；队列�
 
 Fork/Join 适合可递归拆分的 CPU 密集型任务，工作线程通过 work-stealing 处理其他队列中的任务；它不适合把阻塞 HTTP 请求直接无限提交进去。PaperLoom 的 Python harness 是外部 HTTP/NDJSON IO，不应包装成 Fork/Join 项目实践。
 
+### 项目优化案例：Research Harness 线程池有界化
+
+**背景：** HTTP Transport 需要用线程持续读取 NDJSON，Redis Transport 需要用线程阻塞读取生成事件；单个任务可能持续数秒到数分钟。原实现分别调用 `newCachedThreadPool`，其形式化参数是 core=0、max=`Integer.MAX_VALUE`、`SynchronousQueue`、keepAlive=60 秒。任务积压时不会进入队列，而是继续创建线程，风险会从 Java 线程栈、上下文切换传导到下游连接和模型服务。
+
+**优化思路：** 先限定资源边界，再讨论扩容。两个 Transport 只有一个会按配置激活，因此把执行器集中到已有的 `AsyncExecutorConfig`，由 Spring 管理生命周期；保留 core=0 和 queue=0，避免为低频长任务常驻线程，也避免在 Java 内形成不可见的长队列；把 max 显式限制为可配置的 16，满载用 `AbortPolicy` 快速失败。
+
+**关键难点：** Redis 原流程是先 `XADD` job，再向 event executor 提交监听任务。线程池有界后，如果提交被拒绝，Redis 会留下 Java 不再监听结果的孤儿任务。最终把顺序调整为先让 executor 接受事件监听任务，再执行 `XADD`；拒绝发生在任何 Redis job 写入之前。HTTP 的远程请求原本就在 executor 任务内部，拒绝时不会发出 HTTP 请求。
+
+**实现结果：** 新增统一的 `researchHarnessExecutor`，参数为 core=0、max=`research-harness.max-active-generations`（默认 16）、queue=0、keepAlive=60 秒、`AbortPolicy`，线程名前缀为 `research-harness-`。HTTP 和 Redis Transport 都只注入这一执行器，不再各自创建 cached pool，也不叠加同范围的 `Semaphore`。
+
+**验证与量化：** 配置测试核验了 core、max、keepAlive、`SynchronousQueue` 和拒绝策略；Redis Transport 测试核验 executor 拒绝时不会执行 `XADD`。本次相关测试共 6 项通过。可以量化的是：单个 Java 实例的 Harness 工作线程上限从实际上无界收敛为 16，Java 内等待队列容量为 0；这是一项过载稳定性优化，不是吞吐优化。在并发不超过 16 时不预设吞吐提升，超过 16 时主动拒绝而不是用更多线程换取短期吞吐。没有真实压测数据时不要声称“性能提升 X%”。
+
+**扩展边界：** 16 是保护性初值，不是脱离机器和下游容量算出的最优值。生产调优应结合 Java 实例内存、Python/模型服务并发额度、活跃线程、拒绝数、任务耗时和下游错误率做阶梯压测。该限制按 Java 实例生效，部署 `M` 个实例时理论总上限是 `16 × M`；如果以后需要跨实例的全局并发配额，再引入 Redis 原子计数或分布式 Semaphore，而不是现在同时维护两套限流。
+
+**面试版表达：**
+
+> 项目中的 Research Harness 属于长耗时 IO 任务，HTTP 模式要持续读取 NDJSON，Redis 模式要阻塞读取事件。原来两个实现都用了 `newCachedThreadPool`，最大线程数接近无界，并发增长时可能耗尽线程栈和下游连接。我把执行器集中到 Spring 配置，改成 core=0、max=16、SynchronousQueue、60 秒回收和 AbortPolicy：低峰按需创建，高峰最多 16 个，不在 Java 内排长队，满载快速失败。Redis 链路还有一个顺序问题，如果先 XADD 再提交线程，线程池拒绝会留下孤儿任务，所以我改成先申请事件监听线程，再写 Redis。相关 6 项测试通过，线程上限从无界收敛到单实例 16；这次提升的是过载稳定性和资源可预测性，没有压测前我不会虚报吞吐提升百分比。
+
 ## 两条项目链路
 
 ### 1. 研究请求：归属、Future、取消
@@ -283,7 +301,7 @@ activeRequests.putIfAbsent
       ├─ 已存在：拒绝重复执行
       └─ 成功：创建 FutureTask + CompletableFuture
                          ↓
-                  cached request executor
+                  bounded researchHarnessExecutor
                          ↓
                  读取 NDJSON，检查中断
              ┌───────────┴───────────┐
@@ -319,7 +337,7 @@ activeRequests.putIfAbsent
 | 项目用了哪些并发容器 | ChatSessionRegistry 的 ConcurrentHashMap + CopyOnWriteArrayList；ChatHandler/Python client 的状态 Map | 这些 Map 让多副本实例自动共享状态 |
 | Session 为什么用 COW | 广播遍历多、注册注销少，读快照不加锁 | COW 适合所有高并发写场景 |
 | WebSocket 如何避免并发发送 | 对具体 `WebSocketSession` 做 `synchronized`，其他 session 继续发送 | 一把全局锁保护所有用户；跨节点顺序已保证 |
-| 项目线程池 | chat monitor core 4/max 16/queue 200；Trace fixed writer；Python cached pool | 所有任务都进入同一个统一线程池 |
+| 项目线程池 | chat monitor core 4/max 16/queue 200；Harness core 0/max 16/queue 0；Trace fixed writer | 所有任务都进入同一个统一线程池 |
 | 队列满怎么办 | Trace `offer` 失败则丢弃并告警；Chat executor 触发拒绝并走代码中的降级 | 队列永远不会满，或通过无界队列解决一切 |
 | 取消是否强杀 | FutureTask `cancel(true)` + 读取循环检查中断 + Future 异常完成 | `cancel(true)` 能立即杀死远程 Python 任务 |
 | 线程安全依据 | 先看共享状态和复合操作，再选容器/锁/原子类 | “用了 ConcurrentHashMap 所以整个流程原子” |
@@ -329,11 +347,12 @@ activeRequests.putIfAbsent
 ## 对应代码
 
 - `../src/main/java/io/github/chzarles/paperloom/service/ChatSessionRegistry.java`：ConcurrentHashMap、CopyOnWriteArrayList、按 session 加锁发送。
-- `../src/main/java/io/github/chzarles/paperloom/service/PythonResearchHarnessClient.java`：cached request executor、ConcurrentHashMap、FutureTask、CompletableFuture、取消和中断检查。
+- `../src/main/java/io/github/chzarles/paperloom/service/PythonResearchHarnessClient.java`：注入有界 Harness executor、ConcurrentHashMap、FutureTask、CompletableFuture、取消和中断检查。
+- `../src/main/java/io/github/chzarles/paperloom/service/RedisResearchHarnessTransport.java`：先申请事件监听线程再 XADD、阻塞读取事件、拒绝时不创建孤儿 job。
 - `../src/main/java/io/github/chzarles/paperloom/service/ChatHandler.java`：generation 进程内状态 Map、`chatMonitorExecutor`、拒绝处理和完成回调。
-- `../src/main/java/io/github/chzarles/paperloom/config/AsyncExecutorConfig.java`：chat monitor executor 的 core/max/queue 和优雅停机配置。
+- `../src/main/java/io/github/chzarles/paperloom/config/AsyncExecutorConfig.java`：chat monitor 与 Research Harness executor 的 core/max/queue、拒绝策略和生命周期配置。
 - `../src/main/java/io/github/chzarles/paperloom/service/AsyncDiskProductTraceSink.java`：ArrayBlockingQueue、fixed writer pool、`offer` 丢弃、3 秒等待和 `shutdownNow`。
 
 ## 最后背一遍：项目版并发自我介绍
 
-> PaperLoom 的并发设计重点是隔离共享状态和异步任务。WebSocket 会话用 ConcurrentHashMap 管用户，再用 CopyOnWriteArrayList 保存连接；向同一 session 发送时只锁这个 session。研究请求用 generationId 做 key，activeRequests.putIfAbsent 防止同一进程重复执行，FutureTask 承载可取消的 HTTP 流，CompletableFuture 传递成功、失败和取消；`cancel(true)` 只是中断请求，NDJSON 读取循环还要主动检查中断。聊天监控线程池是 core 4、max 16、队列 200；产品 Trace 用有界 ArrayBlockingQueue，队列满时 offer 失败就丢 Trace，不阻塞业务，所以 Trace 不是强审计数据。Python harness 当前使用 cached thread pool，没有硬最大线程数，这是我会在生产化时补上的容量和背压边界。我不会把这些进程内结构说成跨节点一致，也不会把项目没有使用的 ThreadLocal、AQS 同步器或 Fork/Join 包装成实践。
+> PaperLoom 的并发设计重点是隔离共享状态和异步任务。WebSocket 会话用 ConcurrentHashMap 管用户，再用 CopyOnWriteArrayList 保存连接；向同一 session 发送时只锁这个 session。研究请求用 generationId 做 key，activeRequests.putIfAbsent 防止同一进程重复执行，FutureTask 承载可取消的 HTTP 流，CompletableFuture 传递成功、失败和取消；`cancel(true)` 只是中断请求，NDJSON 读取循环还要主动检查中断。聊天监控线程池是 core 4、max 16、队列 200；Research Harness 线程池是 core 0、max 16、队列 0、60 秒回收和 AbortPolicy；产品 Trace 用有界 ArrayBlockingQueue，队列满时 offer 失败就丢 Trace，不阻塞业务，所以 Trace 不是强审计数据。我不会把这些进程内结构说成跨节点一致，也不会把项目没有使用的 ThreadLocal、AQS 同步器或 Fork/Join 包装成实践。
