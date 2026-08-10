@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import { request } from '@/service/request';
 import ChatList from './modules/chat-list.vue';
 import InputBox from './modules/input-box.vue';
 import ConversationSidebar from './modules/conversation-sidebar.vue';
@@ -60,8 +61,27 @@ const connectionText = computed(() => {
   return '未连接';
 });
 
-function handleOpenReference(payload: NonNullable<typeof referencePayload.value>) {
-  referencePayload.value = payload;
+async function handleOpenReference(payload: NonNullable<typeof referencePayload.value>) {
+  let resolvedPayload = payload;
+  if (payload.conversationRecordId && payload.referenceNumber && !payload.visualRegions?.length) {
+    const { data, error } = await request<Api.Paper.ReferenceDetailResponse>({
+      url: 'papers/reference-detail',
+      params: {
+        conversationRecordId: payload.conversationRecordId,
+        referenceNumber: String(payload.referenceNumber)
+      }
+    });
+    if (!error && data) {
+      resolvedPayload = {
+        ...payload,
+        ...data,
+        paperTitle: data.paperTitle || payload.paperTitle,
+        referenceNumber: data.referenceNumber || payload.referenceNumber
+      };
+    }
+  }
+
+  referencePayload.value = resolvedPayload;
   activeReviewTab.value = 'evidence';
   pdfViewerOpen.value = false;
   referencePanelVisible.value = true;
