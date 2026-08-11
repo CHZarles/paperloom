@@ -2,7 +2,7 @@
 
 ## 文档状态
 
-- 事件状态：调查中
+- 事件状态：已解决（Commit `6fb894e` 已部署，线上同问题复现通过）
 - 首次记录：2026-08-10 18:16 CST
 - 线上环境：`https://paperloom.me`
 - 影响入口：共享游客账户
@@ -310,6 +310,27 @@ Prompt 仍会因为最新长草稿和新增正文证据而增长，但不再包�
 
 该 Parser 缺口已随后修复：标准 Markdown Thematic Break 被识别为 `thematic_break`，并与 Heading、Table Header 一样允许不带引用。3 个聚焦 Parser/Validator 检查通过；没有再次调用模型复现，因为新增规则是确定性语法分支，重复完整模型运行不会增加相应置信度。
 
+##### 7. 线上验收
+
+Commit `6fb894e` 推送并部署后，`2026-08-11` 在 `https://paperloom.me` 再次提交同一问题“你详细讲解seedream4.0这个工作”：
+
+- Agent Trace Run ID：`run_1ce98a516a8641b78d7db3ecf739d0a6`
+- 终态：`COMPLETED`
+- 端到端耗时：`184078 ms`
+- 模型调用：11
+- Prompt Token：193252
+- Completion Token：20135
+- 总 Token：213387
+- 最终答案校验：3 次，前 2 次拒绝，第 3 次接受
+
+第一次校验反馈直接包含缺少引用的 Block 类型与原文；第二次只剩两个引导段和八个列表项。Agent 随后读取了论文 `3.3` 相关正文，再次提交后通过；没有在同一错误上连续盲目重写。
+
+输入过滤也按设计生效：第 8-11 次模型请求中，每次最多只有一个历史 `submit_research_answer` Function Call，不再累积多份失败长草稿。
+
+线上 Trace 同时记录到一次 `_continue_research_turn`：MiniMax 已经生成修正答案，但该答案先被适配为内部继续调用，因此多了一次模型请求。该现象未导致本 Run 失败，与本次已修复的“校验反馈不可定位、失败草稿累积”属于独立问题。
+
+这次验收证明该线上故障链已能收敛，不证明所有问题都会在同样耗时和 Token 内完成。当前 Trace 仍不支持增加局部 Patch 协议。
+
 #### 与成功 Run 的对照
 
 Record 17 也表现出相同模式：
@@ -448,7 +469,9 @@ Reasoning
 | 2026-08-10 20:53 CST | 产品化现有 Recorder，并增加滚动清理、Generation/Run 关联和适配器变换事件 | 本地实现完成；9 个聚焦 Python 测试和 1 个 Java 测试类通过，等待部署后用 Seedream 问题复现 |
 | 2026-08-10 20:59 CST | 发布 Commit `578abab`，配置 7 天/10 GiB 私有 Trace 并重启 Harness、Backend | 两个服务健康；Trace 目录权限 `0700`，Generation 与 Run 可以互相关联 |
 | 2026-08-10 21:04 CST | 用相同 Seedream 问题受控复现，并读取完整 Agent Action Trace | 复现成功；确认 7 次完整答案提交中前 6 次因无引用 Block 被拒，最后卡在三个被误判为 Material Paragraph 的粗体分组标签 |
+| 2026-08-11 09:42-09:45 CST | 发布并部署 Commit `6fb894e` | 上线可定位校验反馈、有界失败草稿上下文和 Thematic Break 语法修复；Harness 与 Backend 分别于 09:45:09、09:45:10 进入 active |
+| 2026-08-11 10:00-10:03 CST | 在线上使用相同 Seedream 问题验收 | Run `run_1ce98a516a8641b78d7db3ecf739d0a6` 在 184.1 秒后完成；3 次校验收敛，每个修正请求最多保留一份历史失败提交 |
 
-## 下一步待证实
+## 后续观测
 
-下一步设计答案校验层的正式修复，目标同时满足：校验错误能直接定位到原文块、非事实结构标签不制造引用误报、单次修正不再要求模型盲目重写整份答案。修复前不改 Deadline 或 Token 额度规则。
+本事件关闭。保留现有滚动 Agent Trace，只在线上 Trace 再次证明“精确反馈后仍针对同一错误连续多次重写全文”时，才重新评估局部 Patch 协议。MiniMax 纯文本/内部继续调用的适配现象单独调查，不扩大本次修复范围。Deadline 和 Token 额度规则保持不变。
