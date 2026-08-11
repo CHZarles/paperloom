@@ -11,10 +11,13 @@ import io.github.chzarles.paperloom.utils.LogUtils;
 import lombok.Builder;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -109,16 +112,38 @@ public class UserController {
     }
 
     @PostMapping("/guest-login")
-    public ResponseEntity<?> guestLogin() {
+    public ResponseEntity<?> guestLogin(
+            @CookieValue(name = "paperloom_guest_session", required = false) String guestSession) {
         try {
-            User guest = userService.createGuestUser();
-            String token = jwtUtils.generateToken(guest.getUsername());
-            String refreshToken = jwtUtils.generateRefreshToken(guest.getUsername());
+            User guest = null;
+            String refreshToken = guestSession;
+            if (guestSession != null && jwtUtils.validateRefreshToken(guestSession)) {
+                String username = jwtUtils.extractUsernameFromToken(guestSession);
+                guest = userRepository.findByUsername(username)
+                        .filter(user -> user.getRole() == User.Role.GUEST)
+                        .orElse(null);
+            }
 
-            return ResponseEntity.ok(Map.of("code", 200, "message", "Login successful", "data", Map.of(
-                    "token", token,
-                    "refreshToken", refreshToken
-            )));
+            if (guest == null) {
+                guest = userService.createGuestUser();
+                refreshToken = jwtUtils.generateRefreshToken(guest.getUsername());
+            }
+
+            String token = jwtUtils.generateToken(guest.getUsername());
+            ResponseCookie sessionCookie = ResponseCookie.from("paperloom_guest_session", refreshToken)
+                    .httpOnly(true)
+                    .secure(true)
+                    .sameSite("Lax")
+                    .path("/api/v1/users/guest-login")
+                    .maxAge(Duration.ofDays(7))
+                    .build();
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.SET_COOKIE, sessionCookie.toString())
+                    .body(Map.of("code", 200, "message", "Login successful", "data", Map.of(
+                            "token", token,
+                            "refreshToken", refreshToken
+                    )));
         } catch (CustomException e) {
             return ResponseEntity.status(e.getStatus())
                     .body(Map.of("code", e.getStatus().value(), "message", e.getMessage()));
