@@ -84,9 +84,10 @@
 
 ## 7. 如何审计游客越权，并避免修复引入新的防刷漏洞？
 
-**当前状态：核心修复已于 2026-08-10 21:39 CST 以提交 `2e418d1` 部署。独立游客身份、GUEST
-最小权限、Redis 每日创建尝试总闸门、共享 LLM/Embedding 预算和 Embedding 原子预留已经生效；
-Cloudflare 来源限流和过期游客清理尚未实施，面试时必须说明这个边界。**
+**当前状态：核心修复已于 2026-08-10 21:39 CST 以提交 `2e418d1` 部署，浏览器匿名会话复用已于
+2026-08-11 以提交 `cd39333` 部署。独立游客身份、GUEST 最小权限、Redis 每日创建尝试总闸门、共享
+LLM/Embedding 预算、Embedding 原子预留和同浏览器身份复用已经生效；Cloudflare 来源限流和过期游客
+清理尚未实施，面试时必须说明这个边界。**
 
 **90 秒回答草稿：**
 
@@ -178,6 +179,9 @@ Token，不新增 Session 表或 Redis 模型。再次登录时只有“Refresh 
 - 两名游客的用量接口都读取共享余额；Redis 中存在 `guest-pool` 的 LLM/Embedding Key，不存在按
   游客 `11/12` 创建的独立 Token Key；公网首页 `200`、匿名 `/users/me` 为 `403`，Backend、Harness、
   Cloudflared 均为 `active`；
+- 公网使用同一个 Cookie Jar 连续请求两次 `guest-login`，两次都返回 `200`，随后 `/users/me` 都返回
+  同一个游客 ID `22`；Cookie 的 Path 为 `/api/v1/users/guest-login` 且带 Secure 标记。Controller 回归
+  测试同时验证复用分支不会调用 `createGuestUser`，也不会生成新的 Refresh Token；
 - 没有为了验证 `429` 人为创建剩余 96 个游客，也没有在本次发布中调用真实模型消耗共享额度；这些
   不能表述成生产实测。当前每日 100 次全局创建上限把数据增长限制在最多约 36,500 行/年，明确保留
   Cloudflare 来源限流和过期游客清理作为下一阶段，而不是声称防刷已经完全结束。
