@@ -106,8 +106,9 @@ try {
   });
   const seedPage = await seedContext.newPage();
   await navigate(seedPage, baseURL);
-  if (!savedStorageState) {
-    await seedPage.getByRole('button', { name: /游客登录|Continue as guest/ }).click();
+  const guestLoginButton = seedPage.getByRole('button', { name: /游客登录|Continue as guest/ });
+  if (await guestLoginButton.isVisible()) {
+    await guestLoginButton.click();
     await seedPage.waitForURL(/#\/chat/);
   }
   const storageState = await seedContext.storageState();

@@ -1,4 +1,4 @@
-# PaperLoom 七个项目难点面试稿
+# PaperLoom 八个项目难点面试稿
 
 下面不是编故事，而是把仓库已有实现和实验记录压缩成可口述版本。
 
@@ -195,3 +195,22 @@ Token，不新增 Session 表或 Redis 模型。再次登录时只有“Refresh 
 
 **必备追问：**认证与授权、RBAC、BOLA/IDOR、为什么前端守卫不是安全边界、联合归属查询、`403` 与
 `404`、共享账号的身份问题、限流、全局预算、临时数据生命周期、为什么不能只增加 GUEST 角色。
+
+## 8. 如何定位并优化 PDF 首屏显示性能？
+
+**90 秒回答：**
+
+> 我在线上发现 PDF 首次显示约需 3 秒。没有先凭感觉改 pdf.js，而是用 Playwright 驱动真实 Chrome，定义
+> “点击 Preview 到 Canvas 有尺寸且渲染遮罩消失”为 First Page Ready，对同一 PDF 做 5 组冷、热打开，
+> 并用 Resource Timing 拆分网络与渲染。数据显示冷打开中位数 3059 ms，其中约 2539 ms 在网络链路。
+> 沿请求链定位到前端已知 paperId 和 PDF 类型，却仍先请求 descriptor，而后端只返回可直接计算的
+> pdf-data 地址，形成无信息增量的串行往返。我增加 PDF 快速路径，非 PDF 保持原流程，后端 pdf-data
+> 继续鉴权。部署后同条件复测，冷打开中位数降到 2561 ms，提升 16.3%；热打开从 1380 ms 降到 886 ms，
+> 提升 35.8%。我没有声称 p95 改善，因为只有 5 个样本，而且一次 Range 请求抖到 1440 ms，使冷启动
+> 最大值反而升高。下一步应先拆分服务端文件读取、Cloudflare 传输和浏览器接收耗时。
+
+**证据文件：**`docs/performance/pdf-preview-round-trip-optimization-2026-08-11.md`、优化前后原始 JSON、
+`frontend/scripts/benchmark-pdf-preview.mjs`。
+
+**必备追问：**中位数与 p95、冷缓存和热缓存、Resource Timing、串行网络往返、前端快速路径与后端鉴权、
+为什么请求数比字节数更重要、Range 请求、如何避免性能测试自欺。
