@@ -253,7 +253,7 @@ decision = (
 ```text
 DirectSubmission = {
   kind: GREETING | CLARIFICATION | CAPABILITIES | OUT_OF_SCOPE,
-  locale: ZH_CN | EN,
+  language: ZH_CN | EN,
   question?: string
 }
 
@@ -262,16 +262,19 @@ CatalogSubmission = {
   view: COUNT | LIST,
   paper_ids?: PaperId[],
   fields?: CatalogField[],
-  locale: ZH_CN | EN
+  language: ZH_CN | EN
 }
 
 ResearchSubmission = {
   outcome: ANSWERED | PARTIAL | ABSTAINED,
+  language: ZH_CN | EN,
   markdown?: string,
   fields?: map[string, string],
   abstention_reason?: NO_MATCHING_PAPER | NO_SUPPORTING_SOURCE | OUT_OF_SCOPE
 }
 ```
+
+`language` 由模型根据当前对话选择。Runtime 不推断语言；它只在需要渲染固定文案时按该枚举选择中文或英文模板。
 
 任一提交被接受后，Runtime 将其规范化为现有产品链路可消费的答案：
 

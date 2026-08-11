@@ -139,7 +139,7 @@ submit_research_answer -> RESEARCH
 ```text
 DirectSubmission = {
   kind: GREETING | CLARIFICATION | CAPABILITIES | OUT_OF_SCOPE,
-  locale: ZH_CN | EN,
+  language: ZH_CN | EN,
   question?: string
 }
 
@@ -148,16 +148,19 @@ CatalogSubmission = {
   view: COUNT | LIST,
   paper_ids?: PaperId[],
   fields?: CatalogField[],
-  locale: ZH_CN | EN
+  language: ZH_CN | EN
 }
 
 ResearchSubmission = {
   outcome: ANSWERED | PARTIAL | ABSTAINED,
+  language: ZH_CN | EN,
   markdown?: string,
   fields?: map[string, string],
   abstention_reason?: NO_MATCHING_PAPER | NO_SUPPORTING_SOURCE | OUT_OF_SCOPE
 }
 ```
+
+`language` 由模型根据当前对话选择，不由 Runtime 检测字符或推断。`ANSWERED/PARTIAL` 的正文语言仍由模型生成；`DIRECT`、`CATALOG` 和 Research `ABSTAINED` 的固定文案由 Runtime 按该枚举选择模板。
 
 Runtime 根据提交 Tool 使用不同验收器和渲染器：
 
@@ -501,7 +504,7 @@ Direct Submission 不包含 `markdown`：
 
 ```text
 GREETING / CAPABILITIES / OUT_OF_SCOPE
-  -> Runtime 按 locale 渲染固定文案
+  -> Runtime 按 language 渲染固定文案
 
 CLARIFICATION
   -> 只接受一个有长度上限的 question 字段
