@@ -16,6 +16,7 @@ import PaperMobileList from './modules/paper-mobile-list.vue';
 const FilePreview = defineAsyncComponent(() => import('@/components/custom/file-preview.vue'));
 
 const authStore = useAuthStore();
+const canUploadPapers = computed(() => authStore.userInfo.role !== 'GUEST');
 const route = useRoute();
 const router = useRouter();
 const sidebarCollapsed = ref(typeof window !== 'undefined' ? window.innerWidth < 960 : false);
@@ -152,6 +153,7 @@ async function apiFn(params: PaperLibrarySearchParams = {}): Promise<FlatRespons
 }
 
 function canManageFile(row: Api.Paper.UploadTask) {
+  if (!canUploadPapers.value) return false;
   if (row.file && !row.userId) return true;
   return String(row.userId) === String(authStore.userInfo.id);
 }
@@ -1119,7 +1121,7 @@ async function onBeforeUpload(
                 </div>
               </template>
               <template #default>
-                <NButton size="small" type="primary" @click="handleUpload">
+                <NButton v-if="canUploadPapers" size="small" type="primary" @click="handleUpload">
                   <template #icon>
                     <icon-lucide:upload class="text-icon" />
                   </template>
@@ -1179,7 +1181,7 @@ async function onBeforeUpload(
         <CollectionsPanel v-else />
       </NCard>
     </main>
-    <UploadDialog v-model:visible="uploadVisible" />
+    <UploadDialog v-if="canUploadPapers" v-model:visible="uploadVisible" />
 
     <NModal
       v-model:show="settingsVisible"
