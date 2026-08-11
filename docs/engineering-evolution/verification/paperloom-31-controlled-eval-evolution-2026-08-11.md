@@ -371,3 +371,26 @@ Case Layout 或 Snapshot Schema 变化
 
 当前 `c818...` Snapshot 因 Query Generator 从 v2 升到 v3 且已确认存在歧义 Question，只作为历史记录；
 下一次 v3 Snapshot 通过检查后，才成为新的回归基线。
+
+## 10. Query Generator v3 Snapshot
+
+Snapshot：`407768f029f38ad4fa362d006d31da38b68aece42c1a3428b504d9ae8808112a`
+
+Generator 身份：
+
+```text
+provider            = minimax
+model               = MiniMax-M3
+prompt_version      = paperloom-query-generator-v3
+case_layout_version = paperloom-agent-case-layout-v4
+```
+
+原歧义 Codex Target 重新生成的问题为：
+
+> 附录B中展示的HumanEval随机问题及对应Codex-12B样本，其生成所使用的温度参数是多少？
+
+该问题明确保留“附录 B 中展示”的范围，只询问温度 `0.8`，不再把附录示例的 `8 samples` 与总体评测的
+`100 samples` 放入同一个未限定问题。Snapshot 结构校验通过：31 个 Target、16 个 Agent Case，Target
+类型仍为 22 Passage、6 Table、3 Figure。
+
+此 Snapshot 仍需完成一次全链路 Run；Run 通过后才成为当前 Baseline。
