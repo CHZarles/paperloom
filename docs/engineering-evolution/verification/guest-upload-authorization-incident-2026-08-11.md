@@ -1,7 +1,7 @@
 # 游客上传入口权限展示不一致排查报告
 
 日期：2026-08-11  
-状态：已修复，待部署验证
+状态：已修复并部署
 
 ## 1. 问题摘要
 
@@ -73,8 +73,16 @@ pnpm --dir frontend exec tsx tests/guest-upload-authorization-contract.test.ts
 pnpm --dir frontend typecheck
 ```
 
-结果：权限契约测试由失败转为通过，TypeScript 类型检查通过。部署后仍需验证游客页面不再显示上传入口，
-同时 USER/ADMIN 页面继续显示入口，线上 GUEST 上传 API 继续返回 403。
+结果：
+
+- 权限契约测试由失败转为通过，论文访问与发布契约测试通过；
+- TypeScript 类型检查、生产构建和前端 Bundle Budget 检查通过；
+- 提交 `df7b273` 已部署，公网首页返回 `200`，Backend 保持 `active`；
+- 部署后再次验证 `/users/me` 返回 GUEST，分片上传与合并接口继续返回 `403`。
+
+本地 Playwright 缺少 Chromium，下载在 171 MiB 的 20% 处超时，因此没有把浏览器截图或真实按钮点击写成
+已完成验证。源码权限契约与生产构建已经覆盖本次条件渲染，但仍需在可用浏览器中补一次视觉确认。目标文件
+还存在与本次修改无关的既有 ESLint 错误（函数参数过多、未使用参数），因此不能声称全量 Lint 通过。
 
 ## 7. 面试表达
 
