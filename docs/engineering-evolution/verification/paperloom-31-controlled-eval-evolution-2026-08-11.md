@@ -433,3 +433,76 @@ CATALOG Repair，后续正文工具被正确拒绝，最终只返回论文标题
 
 该 Snapshot 可以作为包含已知失败的冻结回归 Baseline，因为五个 Stage 已完整执行；它不是一个通过
 Internal Beta Gate 的发布基线。下一步不再重建试卷，而是在同一 Snapshot 上修复和比较 Agent 行为。
+
+## 11. Contract 失败的 Trace 诊断
+
+### 11.1 follow_up_01 是 Benchmark 上下文错误
+
+Trace 证明完整 Model Input 已包含 Snapshot 中冻结的历史：
+
+```text
+user:      该论文发表于哪个会议？
+assistant: Published as a conference paper at ICLR 2022
+user:      请为刚才的结论提供对应论文中的原文证据，并保留引用。
+```
+
+历史没有出现论文标题、Paper ID 或其他可解析身份。“该论文”没有先行词，Agent 无法知道 Expected Target
+是 FLAN。它先执行 Corpus Inventory，仍无法从 31 篇论文中唯一解析对象，随后提交
+`DIRECT / needs_clarification`。这是合理行为。
+
+因此该失败不是 Conversation History 丢失，也不是 Contract Router 错误，而是 Benchmark 构造时只写入
+Target Query 和 Expected Answer，却遗漏了建立代词指代所需的论文身份。正式修正应让历史首问使用与
+Single Paper Case 相同的标题限定，例如：
+
+```text
+请依据《FINETUNED LANGUAGE MODELS ARE ZERO-SHOT LEARNERS》回答：该论文发表于哪个会议？
+```
+
+### 11.2 research_llm_principles_01 是真实 Contract 选择失败
+
+Model Input 中的问题完整且主题明确：
+
+> 推荐和大语言模型原理相关的论文，并说明推荐理由。
+
+System Prompt 已规定 Metadata 不支持方法、发现、重要性或技术贡献，并规定 Paper Content Judgment 使用
+RESEARCH。但它没有用一个直接的 Contract 规则声明“带推荐理由的论文推荐属于 RESEARCH，而不是
+metadata-only list”。本轮模型执行了多次 Paper Candidate Search，随后主动调用
+`submit_catalog_answer`。
+
+Protocol Trace：
+
+```text
+ACTIVE(contract=None)
+  -> submit_catalog_answer
+  -> payload 因 Paper ID/Result Ref 不一致被拒绝
+  -> REPAIR(contract=CATALOG)
+  -> 正文读取工具全部被 ACTION_NOT_ALLOWED 拒绝
+  -> 修正 Catalog Payload
+  -> COMPLETE(contract=CATALOG)
+```
+
+Protocol Guard 行为符合设计：第一次 Submission 将 Contract 固定为 CATALOG，Repair 期间禁止切换协议。
+真正的问题发生在 Guard 之前：Runtime 没有一个独立、可校验的 Request Contract；它只能相信模型最终选择
+哪个 Submission Tool。因此状态机可以保证“选定 Contract 后按协议完成”，却不能保证“选择的 Contract
+符合用户意图”。
+
+### 11.3 已排除与保留的假设
+
+```text
+已排除：Conversation History 没有传给模型
+  证据：model.request 中存在全部三条历史消息
+
+已排除：Protocol 在模型不知情时把 RESEARCH 改成 CATALOG
+  证据：模型首先主动调用 submit_catalog_answer
+
+确认：follow_up Case 本身缺少可解析的论文先行词
+  证据：冻结 History 从未出现论文身份
+
+确认：推荐 Case 的 Contract 由最终 Submission Tool 隐式决定
+  证据：ACTIVE 初始 contract=None；首次 Submission 后锁定 CATALOG
+
+待设计：在 Agent 执行前显式确定 Request Contract，或继续依赖 Prompt 软约束
+```
+
+这两个失败不能用同一个补丁处理：Follow-up 应修 Benchmark Context；推荐 Case 需要决定 Runtime Contract
+是否从“模型最终提交时隐式选择”演进为“研究执行前显式选择并记录”。
