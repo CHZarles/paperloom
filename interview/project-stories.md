@@ -223,10 +223,18 @@ Token，不新增 Session 表或 Redis 模型。再次登录时只有“Refresh 
 尺寸稳定”后，热打开中位数从 915.3 ms 降到 528.7 ms，减少 386.6 ms，与被删除的等待完全吻合；冷打开
 仍受公网、动态组件和 pdf.js 冷初始化抖动影响，本轮没有宣称冷启动总耗时改善。
 
+**条件预加载补充：**继续分析发现 Viewer 与 Worker 的线上压缩传输约 `562 KB`，都在第一次点击后才开始。
+我没有在登录后全局预加载，而是只在用户进入文献库、列表非空且浏览器空闲时加载渲染器代码，不下载论文
+正文。实验前把保留线定为首开至少改善 300 ms，并让前后测试都在列表出现后等待 3 秒再点击。5 组线上
+样本中，冷打开中位数从 1958.5 ms 降到 1239.0 ms；其中 Viewer 启动和文档初始化合计减少约 542.8 ms，
+超过保留线。总降幅还有约 196 ms 来自 PDF 网络波动，我没有算作预加载收益。当前范围只覆盖文献库，用户
+进入但不点击会多下载约 562 KB；聊天引用场景尚未接入。
+
 **证据文件：**`docs/performance/pdf-preview-round-trip-optimization-2026-08-11.md`、
 `docs/performance/pdf-preview-standard-range-optimization-2026-08-11.md`、各轮原始 JSON 和
 `frontend/scripts/benchmark-pdf-preview.mjs`。
 
 **必备追问：**中位数与 p95、冷缓存和热缓存、Resource Timing、串行网络往返、前端快速路径与后端鉴权、
 为什么请求数比字节数更重要、HTTP Range/206/Content-Range、反向代理为什么会吞 Range、如何避免性能
-测试自欺、为什么暂缓图片方案、Vue 条件渲染与 nextTick、为什么用热缓存隔离前端耗时。
+测试自欺、为什么暂缓图片方案、Vue 条件渲染与 nextTick、为什么用热缓存隔离前端耗时、预加载的延迟与
+带宽权衡、为什么先定义实验保留线。

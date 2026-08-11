@@ -1,0 +1,393 @@
+{
+  "measuredAt": "2026-08-11T06:57:26.047Z",
+  "baseURL": "https://paperloom.me",
+  "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+  "machine": {
+    "arch": "arm64",
+    "cpu": "Apple M5",
+    "logicalCores": 10,
+    "memoryGiB": 32,
+    "platform": "darwin"
+  },
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "network": "unthrottled",
+  "previewDwellMs": 3000,
+  "iterations": 5,
+  "paperTitle": "02-GPT-1.pdf",
+  "cold": {
+    "summary": {
+      "medianMs": 1958.5,
+      "minMs": 1489.4,
+      "maxMs": 2337.1
+    },
+    "samples": [
+      {
+        "cacheState": "cold",
+        "firstPageReadyMs": 2015.3,
+        "networkReadyMs": 1487.8,
+        "renderAfterNetworkMs": 527.5,
+        "previewRequestCount": 1,
+        "previewTransferBytes": 541036,
+        "phaseMarks": {
+          "load-start": 322.5,
+          "source-ready": 1489.3,
+          "document-ready": 1918.7,
+          "page-ready": 1921.5,
+          "canvas-ready": 1992.3,
+          "text-layer-ready": 2010,
+          "first-page-ready": 2010.5
+        },
+        "resources": [
+          {
+            "durationMs": 1162.7,
+            "encodedBytes": 541036,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "responseEndMs": 1487.8,
+            "startMs": 325.1
+          }
+        ],
+        "preloadResources": [],
+        "pdfRequests": [
+          {
+            "contentRange": "bytes 0-541035/541036",
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "range": "bytes=0-1048575",
+            "status": 206
+          }
+        ]
+      },
+      {
+        "cacheState": "cold",
+        "firstPageReadyMs": 1736,
+        "networkReadyMs": 1272,
+        "renderAfterNetworkMs": 464,
+        "previewRequestCount": 1,
+        "previewTransferBytes": 541036,
+        "phaseMarks": {
+          "load-start": 277.9,
+          "source-ready": 1274.9,
+          "document-ready": 1666.9,
+          "page-ready": 1669.6,
+          "canvas-ready": 1714.8,
+          "text-layer-ready": 1730.7,
+          "first-page-ready": 1731.3
+        },
+        "resources": [
+          {
+            "durationMs": 991.5,
+            "encodedBytes": 541036,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "responseEndMs": 1272,
+            "startMs": 280.5
+          }
+        ],
+        "preloadResources": [],
+        "pdfRequests": [
+          {
+            "contentRange": "bytes 0-541035/541036",
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "range": "bytes=0-1048575",
+            "status": 206
+          }
+        ]
+      },
+      {
+        "cacheState": "cold",
+        "firstPageReadyMs": 1489.4,
+        "networkReadyMs": 1163.1,
+        "renderAfterNetworkMs": 326.3,
+        "previewRequestCount": 1,
+        "previewTransferBytes": 541036,
+        "phaseMarks": {
+          "load-start": 525,
+          "source-ready": 1164.3,
+          "document-ready": 1408.1,
+          "page-ready": 1411.1,
+          "canvas-ready": 1466.3,
+          "text-layer-ready": 1483.6,
+          "first-page-ready": 1484.2
+        },
+        "resources": [
+          {
+            "durationMs": 635.9,
+            "encodedBytes": 541036,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "responseEndMs": 1163.1,
+            "startMs": 527.2
+          }
+        ],
+        "preloadResources": [],
+        "pdfRequests": [
+          {
+            "contentRange": "bytes 0-541035/541036",
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "range": "bytes=0-1048575",
+            "status": 206
+          }
+        ]
+      },
+      {
+        "cacheState": "cold",
+        "firstPageReadyMs": 1958.5,
+        "networkReadyMs": 1487.6,
+        "renderAfterNetworkMs": 470.9,
+        "previewRequestCount": 1,
+        "previewTransferBytes": 541036,
+        "phaseMarks": {
+          "load-start": 264.2,
+          "source-ready": 1490.4,
+          "document-ready": 1888.2,
+          "page-ready": 1890.9,
+          "canvas-ready": 1939,
+          "text-layer-ready": 1954.3,
+          "first-page-ready": 1954.7
+        },
+        "resources": [
+          {
+            "durationMs": 1221.2,
+            "encodedBytes": 541036,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "responseEndMs": 1487.6,
+            "startMs": 266.4
+          }
+        ],
+        "preloadResources": [],
+        "pdfRequests": [
+          {
+            "contentRange": "bytes 0-541035/541036",
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "range": "bytes=0-1048575",
+            "status": 206
+          }
+        ]
+      },
+      {
+        "cacheState": "cold",
+        "firstPageReadyMs": 2337.1,
+        "networkReadyMs": 1134.4,
+        "renderAfterNetworkMs": 1202.7,
+        "previewRequestCount": 1,
+        "previewTransferBytes": 541036,
+        "phaseMarks": {
+          "load-start": 215.6,
+          "source-ready": 1136.2,
+          "document-ready": 2270.7,
+          "page-ready": 2273.4,
+          "canvas-ready": 2316.7,
+          "text-layer-ready": 2332.7,
+          "first-page-ready": 2333.2
+        },
+        "resources": [
+          {
+            "durationMs": 916.7,
+            "encodedBytes": 541036,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "responseEndMs": 1134.4,
+            "startMs": 217.7
+          }
+        ],
+        "preloadResources": [],
+        "pdfRequests": [
+          {
+            "contentRange": "bytes 0-541035/541036",
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "range": "bytes=0-1048575",
+            "status": 206
+          }
+        ]
+      }
+    ]
+  },
+  "warm": {
+    "summary": {
+      "medianMs": 515.1,
+      "minMs": 512.6,
+      "maxMs": 527.9
+    },
+    "samples": [
+      {
+        "cacheState": "warm",
+        "firstPageReadyMs": 512.9,
+        "networkReadyMs": 0,
+        "renderAfterNetworkMs": 512.9,
+        "previewRequestCount": 0,
+        "previewTransferBytes": 0,
+        "phaseMarks": {
+          "load-start": 380.9,
+          "source-ready": 385.4,
+          "document-ready": 450.3,
+          "page-ready": 452,
+          "canvas-ready": 499.6,
+          "text-layer-ready": 510.3,
+          "first-page-ready": 510.5
+        },
+        "resources": [],
+        "preloadResources": [
+          {
+            "durationMs": 260.3,
+            "encodedBytes": 170224,
+            "name": "/assets/pdf-document-viewer-CEOHO4zT.js"
+          },
+          {
+            "durationMs": 260.5,
+            "encodedBytes": 1794,
+            "name": "/assets/pdf-document-viewer-DscUDSAM.css"
+          },
+          {
+            "durationMs": 237.4,
+            "encodedBytes": 390282,
+            "name": "/assets/pdf.worker.min-gDT42O7I.js"
+          }
+        ],
+        "pdfRequests": []
+      },
+      {
+        "cacheState": "warm",
+        "firstPageReadyMs": 515.1,
+        "networkReadyMs": 0,
+        "renderAfterNetworkMs": 515.1,
+        "previewRequestCount": 0,
+        "previewTransferBytes": 0,
+        "phaseMarks": {
+          "load-start": 381.5,
+          "source-ready": 385.6,
+          "document-ready": 451.3,
+          "page-ready": 453.2,
+          "canvas-ready": 500,
+          "text-layer-ready": 510.7,
+          "first-page-ready": 511
+        },
+        "resources": [],
+        "preloadResources": [
+          {
+            "durationMs": 211.5,
+            "encodedBytes": 170224,
+            "name": "/assets/pdf-document-viewer-CEOHO4zT.js"
+          },
+          {
+            "durationMs": 131.3,
+            "encodedBytes": 1794,
+            "name": "/assets/pdf-document-viewer-DscUDSAM.css"
+          },
+          {
+            "durationMs": 269.4,
+            "encodedBytes": 390282,
+            "name": "/assets/pdf.worker.min-gDT42O7I.js"
+          }
+        ],
+        "pdfRequests": []
+      },
+      {
+        "cacheState": "warm",
+        "firstPageReadyMs": 527.9,
+        "networkReadyMs": 0,
+        "renderAfterNetworkMs": 527.9,
+        "previewRequestCount": 0,
+        "previewTransferBytes": 0,
+        "phaseMarks": {
+          "load-start": 395.7,
+          "source-ready": 399.2,
+          "document-ready": 466.9,
+          "page-ready": 468.6,
+          "canvas-ready": 514.6,
+          "text-layer-ready": 525.4,
+          "first-page-ready": 525.5
+        },
+        "resources": [],
+        "preloadResources": [
+          {
+            "durationMs": 458.3,
+            "encodedBytes": 170224,
+            "name": "/assets/pdf-document-viewer-CEOHO4zT.js"
+          },
+          {
+            "durationMs": 54.1,
+            "encodedBytes": 1794,
+            "name": "/assets/pdf-document-viewer-DscUDSAM.css"
+          },
+          {
+            "durationMs": 60.1,
+            "encodedBytes": 390282,
+            "name": "/assets/pdf.worker.min-gDT42O7I.js"
+          }
+        ],
+        "pdfRequests": []
+      },
+      {
+        "cacheState": "warm",
+        "firstPageReadyMs": 512.6,
+        "networkReadyMs": 0,
+        "renderAfterNetworkMs": 512.6,
+        "previewRequestCount": 0,
+        "previewTransferBytes": 0,
+        "phaseMarks": {
+          "load-start": 381.5,
+          "source-ready": 386.2,
+          "document-ready": 455.9,
+          "page-ready": 457.9,
+          "canvas-ready": 499.4,
+          "text-layer-ready": 510,
+          "first-page-ready": 510.1
+        },
+        "resources": [],
+        "preloadResources": [
+          {
+            "durationMs": 203.2,
+            "encodedBytes": 170224,
+            "name": "/assets/pdf-document-viewer-CEOHO4zT.js"
+          },
+          {
+            "durationMs": 169.8,
+            "encodedBytes": 1794,
+            "name": "/assets/pdf-document-viewer-DscUDSAM.css"
+          },
+          {
+            "durationMs": 280.6,
+            "encodedBytes": 390282,
+            "name": "/assets/pdf.worker.min-gDT42O7I.js"
+          }
+        ],
+        "pdfRequests": []
+      },
+      {
+        "cacheState": "warm",
+        "firstPageReadyMs": 525.5,
+        "networkReadyMs": 0,
+        "renderAfterNetworkMs": 525.5,
+        "previewRequestCount": 0,
+        "previewTransferBytes": 0,
+        "phaseMarks": {
+          "load-start": 380.7,
+          "source-ready": 384.8,
+          "document-ready": 450.4,
+          "page-ready": 452.2,
+          "canvas-ready": 499.7,
+          "text-layer-ready": 510.6,
+          "first-page-ready": 510.8
+        },
+        "resources": [],
+        "preloadResources": [
+          {
+            "durationMs": 165.8,
+            "encodedBytes": 170224,
+            "name": "/assets/pdf-document-viewer-CEOHO4zT.js"
+          },
+          {
+            "durationMs": 166,
+            "encodedBytes": 1794,
+            "name": "/assets/pdf-document-viewer-DscUDSAM.css"
+          },
+          {
+            "durationMs": 907.3,
+            "encodedBytes": 390282,
+            "name": "/assets/pdf.worker.min-gDT42O7I.js"
+          }
+        ],
+        "pdfRequests": []
+      }
+    ]
+  }
+}
