@@ -220,6 +220,60 @@ class AgentsModelTest(unittest.TestCase):
             json.loads(response.output[0].arguments),
         )
 
+    def test_text_only_response_does_not_publish_think_block(self) -> None:
+        model = MiniMaxAgentsModel(ProviderConfig(
+            scope="llm",
+            provider="minimax",
+            api_style="openai-compatible",
+            api_base_url="https://example.invalid/v1",
+            model="MiniMax-M3",
+            api_key="test-key",
+        ))
+        raw_response = ModelResponse(
+            output=[ResponseOutputMessage(
+                id="message_1",
+                content=[ResponseOutputText(
+                    annotations=[],
+                    text="<think>Internal reasoning.</think>\n\nA direct model answer.",
+                    type="output_text",
+                )],
+                role="assistant",
+                status="completed",
+                type="message",
+            )],
+            usage=Usage(requests=1, input_tokens=1, output_tokens=1, total_tokens=2),
+            response_id="response_1",
+        )
+
+        async def invoke():
+            try:
+                with patch.object(
+                    OpenAIChatCompletionsModel,
+                    "get_response",
+                    new=AsyncMock(return_value=raw_response),
+                ):
+                    return await model.get_response(
+                        "System prompt",
+                        [{"role": "user", "content": "Hello"}],
+                        model.research_settings(),
+                        [],
+                        None,
+                        [],
+                        ModelTracing.DISABLED,
+                        previous_response_id=None,
+                        conversation_id=None,
+                        prompt=None,
+                    )
+            finally:
+                await model.close()
+
+        response = asyncio.run(invoke())
+
+        self.assertEqual(
+            {"outcome": "answered", "markdown": "A direct model answer."},
+            json.loads(response.output[0].arguments),
+        )
+
     def test_malformed_tool_arguments_become_a_valid_repair_call(self) -> None:
         class Handler(BaseHTTPRequestHandler):
             def do_POST(self) -> None:

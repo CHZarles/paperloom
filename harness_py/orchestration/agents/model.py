@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import asyncio
+import re
 from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Any, Iterator
@@ -112,6 +113,7 @@ class _ObservedOpenAIModel:
             for value in (ItemHelpers.extract_text(item) for item in response.output)
             if value
         )
+        text = re.sub(r"<think(?:\s[^>]*)?>.*?</think>\s*", "", text, flags=re.IGNORECASE | re.DOTALL).strip()
         final_call = ResponseFunctionToolCall(
             arguments=json.dumps({"outcome": "answered", "markdown": text}, ensure_ascii=False),
             call_id=f"call_text_nudge_{uuid4().hex}",
