@@ -310,3 +310,64 @@ tool_calls        = 0
 3. 重建 Snapshot，确认 comparison Case 不再存在多解。
 4. 再评估推荐问题的 Contract 稳定性，不把两个问题混在一次修复中。
 ```
+
+## 9. Eval 版本与 Snapshot 生命周期
+
+一个 Snapshot 是不可修改的冻结试卷，但不是永久使用的唯一试卷。
+
+```text
+Benchmark Dataset
+  paperloom-31-v1
+  表示长期评测项目和 31 篇 PDF 的身份
+
+Snapshot
+  表示一次冻结的 Question、Expected Answer、Source Span、Case Layout、
+  Generator、Prompt 和 Reading Model 身份
+
+Run
+  表示某个 Agent/Harness/Model/Index 在指定 Snapshot 上的一次作答
+```
+
+同一 Snapshot 的有效期内，所有回归 Run 必须复用它，不能每次重新生成问题。这样 Agent Prompt、Harness、
+模型、检索算法或性能优化前后的结果才使用同一张试卷。
+
+以下变化不重建 Snapshot：
+
+```text
+Agent Prompt 或 Tool 使用策略变化
+Harness/Protocol 实现变化
+被测回答模型变化
+不改变 Reading Model/Index Contract 的查询或 Preview 实现变化
+性能优化
+```
+
+这些都是被测对象，应该在同一 Snapshot 上做前后对比。
+
+以下变化必须发布新 Snapshot：
+
+```text
+PDF 内容或清单变化
+MinerU/Reading Model 导致 Source Span 身份变化
+Retrieval Index Contract 变化
+Target 选择规则变化
+Question Generator 或 Prompt Version 变化
+Case Layout 或 Snapshot Schema 变化
+发现冻结 Question 存在歧义、错误 Oracle 或证据失效
+```
+
+发布新 Snapshot 后：
+
+```text
+旧 Snapshot 和旧 Run 保留，不覆盖、不迁移
+新 Snapshot 先建立自己的 Baseline
+不同 Snapshot 的绝对分数不直接宣称为代码回归
+后续修改继续复用新 Snapshot，直到再次触发换版条件
+```
+
+因此准确说法是：
+
+> 一个版本不是永久使用，而是在其语料、问题和证据契约仍然有效时持续复用；换版必须有明确原因，
+> 换版后重新建立基线。
+
+当前 `c818...` Snapshot 因 Query Generator 从 v2 升到 v3 且已确认存在歧义 Question，只作为历史记录；
+下一次 v3 Snapshot 通过检查后，才成为新的回归基线。
