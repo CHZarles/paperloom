@@ -393,4 +393,43 @@ case_layout_version = paperloom-agent-case-layout-v4
 `100 samples` 放入同一个未限定问题。Snapshot 结构校验通过：31 个 Target、16 个 Agent Case，Target
 类型仍为 22 Passage、6 Table、3 Figure。
 
-此 Snapshot 仍需完成一次全链路 Run；Run 通过后才成为当前 Baseline。
+### 10.1 首次全链路 Run
+
+Run：`20260811T134147Z-ebfe203a`
+
+```text
+baseline.established = true
+internal_beta_gate   = false
+L1 Recall@1          = 1.0000
+L2 Recall@5          = 0.7097
+L2 Recall@10         = 0.8387
+L3 Hard Pass         = 14 / 16
+Agent Model Calls    = 86
+Agent Total Tokens   = 763,849
+```
+
+`comparison_04` 已满足修正目标：两个 Target 均 `returned/read/cited=true`，回答附录 B 的温度为 `0.8`，
+Answer Quality 与 Grounding 均为 `PASS`。这证明 Query Scope 和 Preview 两项修复在真实链路中生效。
+
+本轮确定性 Gate 失败来自两个独立 Agent Contract 问题：
+
+```text
+follow_up_01
+  expected = RESEARCH
+  actual   = DIRECT / needs_clarification
+
+research_llm_principles_01
+  expected = RESEARCH
+  actual   = CATALOG / answered
+```
+
+推荐 Case 先执行多次 Paper Candidate Search，随后尝试 `submit_catalog_answer`；该提交把 Protocol 锁定到
+CATALOG Repair，后续正文工具被正确拒绝，最终只返回论文标题而没有推荐理由和 Source Quote。此前同一问题
+还出现过 `DIRECT / needs_clarification`，因此已经有重复证据证明 Contract 选择不稳定。
+
+语义 Judge 另发现 `comparison_02` 的 Answer Quality 为 `PASS`、Grounding 为 `FAIL`：GPT-3 Target 已召回，
+但没有正式读取或引用；回答使用了未被 Source Quote 支持的 Figure 3.13 细节。该问题不计入本轮 Contract
+根因，后续单独处理。
+
+该 Snapshot 可以作为包含已知失败的冻结回归 Baseline，因为五个 Stage 已完整执行；它不是一个通过
+Internal Beta Gate 的发布基线。下一步不再重建试卷，而是在同一 Snapshot 上修复和比较 Agent 行为。
