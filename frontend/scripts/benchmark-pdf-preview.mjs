@@ -9,6 +9,7 @@ const baseURL = process.env.PAPERLOOM_BENCHMARK_BASE_URL || 'https://paperloom.m
 const executablePath =
   process.env.PAPERLOOM_CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const iterations = Number(process.env.PAPERLOOM_BENCHMARK_ITERATIONS || 5);
+const previewDwellMs = Number(process.env.PAPERLOOM_BENCHMARK_PREVIEW_DWELL_MS || 0);
 const outputPath = process.env.PAPERLOOM_BENCHMARK_OUTPUT;
 const storageStatePath = process.env.PAPERLOOM_BENCHMARK_STORAGE;
 
@@ -54,6 +55,16 @@ async function waitForFirstPage(page) {
 }
 
 async function measureOpen(page, previewButton, cacheState) {
+  const preloadResources = await page.evaluate(() =>
+    performance
+      .getEntriesByType('resource')
+      .filter(entry => /pdf-document-viewer|pdf\.worker/.test(entry.name))
+      .map(entry => ({
+        durationMs: Math.round(entry.duration * 10) / 10,
+        encodedBytes: 'encodedBodySize' in entry ? entry.encodedBodySize : 0,
+        name: new URL(entry.name).pathname
+      }))
+  );
   const pdfRequests = [];
   const onResponse = response => {
     if (!response.url().includes('/preview/pdf-data')) return;
@@ -109,6 +120,7 @@ async function measureOpen(page, previewButton, cacheState) {
   return {
     ...metrics,
     previewRequestCount: Math.max(metrics.previewRequestCount, pdfRequests.length),
+    preloadResources,
     pdfRequests
   };
 }
@@ -158,6 +170,7 @@ try {
     await previewButton.waitFor();
     paperTitle ||= (await page.locator('.library-file-cell__name').first().textContent())?.trim() || 'unknown';
 
+    await delay(previewDwellMs);
     cold.push(await measureOpen(page, previewButton, 'cold'));
     await page.getByRole('button', { name: '关闭', exact: true }).click();
     await page.locator('.file-preview-container').waitFor({ state: 'detached' });
@@ -178,6 +191,7 @@ try {
     },
     viewport: { width: 1440, height: 1000 },
     network: 'unthrottled',
+    previewDwellMs,
     iterations,
     paperTitle,
     cold: { summary: summarize(cold), samples: cold },

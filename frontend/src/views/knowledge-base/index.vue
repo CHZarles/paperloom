@@ -13,7 +13,8 @@ import UploadDialog from './modules/upload-dialog.vue';
 import CollectionsPanel from './modules/collections-panel.vue';
 import PaperMobileList from './modules/paper-mobile-list.vue';
 
-const FilePreview = defineAsyncComponent(() => import('@/components/custom/file-preview.vue'));
+const loadFilePreview = () => import('@/components/custom/file-preview.vue');
+const FilePreview = defineAsyncComponent(loadFilePreview);
 
 const authStore = useAuthStore();
 const canUploadPapers = computed(() => authStore.userInfo.role !== 'GUEST');
@@ -373,6 +374,31 @@ const tableTasks = computed(() => {
   return [...localRows, ...remoteRows];
 });
 
+function preloadPdfPreviewAssets() {
+  loadFilePreview().catch(() => undefined);
+  if (document.getElementById('paperloom-pdf-worker-prefetch')) return;
+
+  import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?worker&url')
+    .then(({ default: pdfWorkerSrc }) => {
+      const link = document.createElement('link');
+      link.id = 'paperloom-pdf-worker-prefetch';
+      link.rel = 'prefetch';
+      link.as = 'script';
+      link.href = pdfWorkerSrc;
+      document.head.append(link);
+    })
+    .catch(() => undefined);
+}
+
+function schedulePdfPreviewPreload() {
+  if (!tableTasks.value.length) return;
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(preloadPdfPreviewAssets, { timeout: 2000 });
+    return;
+  }
+  setTimeout(preloadPdfPreviewAssets, 500);
+}
+
 const libraryStats = computed(() => {
   const rows = tableTasks.value;
   const searchable = rows.filter(item => isPaperSearchable(item)).length;
@@ -420,6 +446,7 @@ onMounted(async () => {
   syncLibraryViewport();
   window.addEventListener('resize', syncLibraryViewport);
   await getList();
+  schedulePdfPreviewPreload();
 });
 
 watch(
