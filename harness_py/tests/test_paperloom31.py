@@ -61,6 +61,7 @@ class Paperloom31PreparationTest(unittest.TestCase):
 
             self.assertEqual(first, second)
             self.assertEqual(31, len(first["papers"]))
+            self.assertEqual("paperloom-query-generator-v3", first["generation"]["prompt_version"])
 
     def test_target_selector_enforces_one_paper_and_fixed_type_counts(self) -> None:
         self.assertTrue(_looks_like_bibliography(

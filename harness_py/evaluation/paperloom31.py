@@ -43,7 +43,7 @@ DATASET_ID = "paperloom-31-v1"
 EXPECTED_PAPER_COUNT = 31
 UPLOAD_CHUNK_BYTES = 5 * 1024 * 1024
 SNAPSHOT_SCHEMA_VERSION = "paperloom-product-snapshot/v2"
-QUERY_PROMPT_VERSION = "paperloom-query-generator-v2"
+QUERY_PROMPT_VERSION = "paperloom-query-generator-v3"
 CASE_LAYOUT_VERSION = "paperloom-agent-case-layout-v4"
 EVIDENCE_TYPES = {"PASSAGE", "TABLE", "FIGURE"}
 MIN_PASSAGE_CHARS = 220
@@ -155,7 +155,7 @@ def ensure_benchmark_config(
         "generation": {
             "provider": generator_provider,
             "model": generator_model,
-            "prompt_version": "paperloom-query-generator-v1",
+            "prompt_version": QUERY_PROMPT_VERSION,
             "temperature": 0,
             "max_attempts": 2,
         },
@@ -204,6 +204,12 @@ def create_snapshot(
             "snapshot",
             "GENERATOR_IDENTITY_MISMATCH",
             f"config={generation.get('provider')}/{generation.get('model')}, active={provider.provider}/{provider.model}",
+        )
+    if generation.get("prompt_version") != QUERY_PROMPT_VERSION:
+        raise PreparationError(
+            "snapshot",
+            "GENERATOR_PROMPT_VERSION_MISMATCH",
+            f"config={generation.get('prompt_version')}, active={QUERY_PROMPT_VERSION}",
         )
 
     product_states = _product_states(papers, expected_titles, api_base_url, env_path)
@@ -533,8 +539,11 @@ def _generate_target_question(
                 "Generate one grounded PaperLoom benchmark item. Treat MinerU content as authoritative. "
                 "Write one atomic question in Chinese answerable only from the supplied units. Avoid multi-part "
                 "requests. Do not use outside knowledge or infer facts absent from those units. For comparisons, "
-                "preserve the exact direction stated by the source. answer_unit_ids must identify the exact units "
-                "that fully answer the question. Do not ask for the paper title and do not mention internal IDs."
+                "preserve the exact direction stated by the source. Preserve every scope qualifier needed to "
+                "distinguish the fact, including appendix, figure or table, illustrative example versus general "
+                "procedure, dataset or split, experiment phase, model size, metric, and condition. Never broaden a "
+                "local fact into a global setting. answer_unit_ids must identify the exact units that fully answer "
+                "the question. Do not ask for the paper title and do not mention internal IDs."
             ),
         },
         {"role": "user", "content": json.dumps(prompt, ensure_ascii=False)},
@@ -568,8 +577,9 @@ def _verify_generated_question(model: MiniMaxJudgeModel, result: dict[str, objec
             "content": (
                 "Verify a benchmark question against only the supplied evidence. Return PASS only when every part "
                 "is directly and unambiguously answered by the evidence. Return FAIL for outside knowledge, missing "
-                "requested details, reversed comparisons, unsupported singular/plural claims, or ambiguous subjects. "
-                "You must call submit_grounding_verdict."
+                "requested details, reversed comparisons, unsupported singular/plural claims, ambiguous subjects, "
+                "or omitted scope qualifiers that make an appendix, figure, table, example, dataset, phase, model, "
+                "metric, or condition sound more general than the evidence. You must call submit_grounding_verdict."
             ),
         },
         {"role": "user", "content": json.dumps({

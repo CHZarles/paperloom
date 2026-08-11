@@ -233,7 +233,7 @@ target_policy:
 generation:
   provider: "..."
   model: "..."
-  prompt_version: paperloom-query-generator-v2
+  prompt_version: paperloom-query-generator-v3
   temperature: 0
   max_attempts: 5
 ```
@@ -517,8 +517,9 @@ expected_answer = join(answer_spans)
 3. Answer Spans 归一化后至少包含 40 个字符；
 4. Question 不得包含 Location Ref、Product Paper ID 或完整正文；
 5. Question 不得完整复制 expected answer；
-6. 独立 Grounding Verifier 只查看 Question 和 Answer Spans；只有当原文直接、完整且无歧义地回答 Question 时才通过；
-7. 失败最多重试 5 次，仍失败则 Snapshot 生成失败。
+6. Question 必须保留决定答案范围的限定词，例如附录、图表、示例/总体流程、数据集、阶段、模型、指标和条件，不得把局部事实泛化为全局设置；
+7. 独立 Grounding Verifier 只查看 Question 和 Answer Spans；只有当原文直接、完整且无歧义地回答 Question，并且范围限定词没有丢失时才通过；
+8. 失败最多重试 5 次，仍失败则 Snapshot 生成失败。
 
 Generator 可能不是完全确定的，因此生成结果和 Generator 身份一起冻结。后续 Benchmark 不重新生成问题。
 

@@ -284,6 +284,9 @@ Oracle      = 8
 这类 Case 不能用于判断 Agent 是否命中唯一事实。自动问题生成规则需要保留 Source Span 中决定语义范围的
 章节、图表、示例/总体设置等限定词，而不是只保留数值和实体。
 
+实现：Query Generator 和现有 Grounding Verifier 均已加入范围保真规则，Prompt 版本升级为
+`paperloom-query-generator-v3`。Snapshot 创建现在会校验 Config Prompt Version，拒绝身份不一致的生成配置。
+
 ### 8.2 推荐 Case 暴露 Contract 不稳定
 
 `research_llm_principles_01` 在第二次 Run 中执行 Research 并给出 7 篇推荐；第三次 Run 却在第一次模型

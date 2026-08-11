@@ -133,6 +133,6 @@ target_policy:
 generation:
   provider: minimax
   model: MiniMax-M3
-  prompt_version: paperloom-query-generator-v2
+  prompt_version: paperloom-query-generator-v3
   temperature: 0
   max_attempts: 5
