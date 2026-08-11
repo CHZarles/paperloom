@@ -461,9 +461,15 @@ catalog_results_by_ref: dict[str, JsonMap]
 以及一个薄 Adapter：
 
 ```python
-def apply_protocol(self, event: ProtocolEvent, facts: ProtocolFacts) -> ProtocolDecision:
+def apply_protocol(
+    self,
+    event: ProtocolEvent,
+    facts: ProtocolFacts,
+    *,
+    tool_call_id: str,
+) -> ProtocolDecision:
     decision = decide(self.protocol_state, event, facts)
-    record_transition(self.protocol_state, event, facts, decision)
+    record_transition(tool_call_id, self.protocol_state, event, facts, decision)
     self.protocol_state = decision.next_state
     return decision
 ```
@@ -491,7 +497,7 @@ _continue_research_turn
 工具列表可以保持静态，避免依赖 Agents SDK 的动态 Tool 能力。每次 Tool 真正执行前，统一入口调用：
 
 ```text
-context.apply_protocol(ACTION_REQUESTED(tool_name), facts)
+context.apply_protocol(ACTION_REQUESTED(tool_name), facts, tool_call_id=tool_call_id)
 ```
 
 被状态拒绝的 Tool 不产生外部副作用，返回统一的 recoverable `PROTOCOL_ERROR`。允许的 Corpus Tool 继续走现有 `ReadingCorpusTools.call`；授权链和 Java 安全校验不迁移到 Protocol。

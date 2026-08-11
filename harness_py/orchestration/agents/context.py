@@ -11,9 +11,18 @@ from time import perf_counter
 
 from ...utils.models import JsonMap, utc_now_iso
 from ...corpus.tools import ReadingCorpusTools
-from ..research_skills import ResearchSkillRegistry
+from ..research_contract import (
+    ActionRequested,
+    ProtocolDecision,
+    ProtocolEvent,
+    ProtocolFacts,
+    ProtocolState,
+    SubmissionRequested,
+    decide,
+)
 from ..runtime import TurnExecutionInput
 from ..run_control import RunControl
+from ..research_skills import ResearchSkillRegistry
 
 
 @dataclass
@@ -45,6 +54,8 @@ class ResearchRunContext:
     tool_call_models: dict[str, str] = field(default_factory=dict)
     transport_attempts: dict[str, int] = field(default_factory=dict)
     final_draft: JsonMap | None = None
+    protocol_state: ProtocolState = field(default_factory=ProtocolState)
+    catalog_results_by_ref: dict[str, JsonMap] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         # 每轮创建独立的 Corpus 工具实例，因此授权集合不会泄漏到其他用户或其他请求。
@@ -148,3 +159,64 @@ class ResearchRunContext:
             "disclosed_location_refs": sorted(self.corpus.disclosed_location_refs),
             "source_quote_refs": sorted(self.corpus.observations_by_evidence_id),
         }
+
+    def apply_protocol(
+        self,
+        event: ProtocolEvent,
+        facts: ProtocolFacts,
+        *,
+        tool_call_id: str,
+    ) -> ProtocolDecision:
+        """执行一次纯协议决策，保存状态并记录可回放投影。"""
+
+        before = self.protocol_state
+        decision = decide(before, event, facts)
+        recorder = self.turn.eval_recorder
+        if recorder:
+            event_kind = "ACTION_REQUESTED" if isinstance(event, ActionRequested) else "SUBMISSION_REQUESTED"
+            recorder.append(
+                kind="protocol.transition",
+                operation_id=tool_call_id,
+                event_id=f"{self.turn.run_id}:{tool_call_id}:protocol.transition:{event_kind}",
+                payload={
+                    "model_call_id": self.tool_call_models.get(tool_call_id),
+                    "tool_call_id": tool_call_id,
+                    "before": _protocol_state_payload(before),
+                    "event": _protocol_event_payload(event),
+                    "facts": {
+                        "known_source_quote_refs": sorted(facts.known_source_quotes),
+                        "catalog_result_refs": sorted(facts.catalog_results),
+                        "sibling_tool_names": list(facts.sibling_tool_names),
+                    },
+                    "decision": {
+                        "accepted": bool(decision.model_result.get("accepted")),
+                        "issue_codes": list(decision.model_result.get("issue_codes") or []),
+                    },
+                    "after": _protocol_state_payload(decision.next_state),
+                },
+            )
+        self.protocol_state = decision.next_state
+        return decision
+
+
+def _protocol_state_payload(state: ProtocolState) -> JsonMap:
+    return {
+        "phase": state.phase.value,
+        "contract": state.contract.value if state.contract else None,
+        "submission_attempt": state.submission_attempt,
+        "validation_issues": list(state.validation_issues),
+    }
+
+
+def _protocol_event_payload(event: ProtocolEvent) -> JsonMap:
+    if isinstance(event, ActionRequested):
+        return {"kind": "ACTION_REQUESTED", "tool_name": event.tool_name}
+    assert isinstance(event, SubmissionRequested)
+    return {
+        "kind": "SUBMISSION_REQUESTED",
+        "contract": event.contract.value,
+        "accepted": event.accepted,
+        "issue_class": event.issue_class.value if event.issue_class else None,
+        "issue_codes": list(event.issue_codes),
+        "issues": [issue.to_dict() for issue in event.issues],
+    }

@@ -20,11 +20,63 @@ from harness_py.orchestration.agents.model import (
     TOOL_ARGUMENT_REPAIR_PREFIX,
 )
 from harness_py.orchestration.memory import ResearchMemory
+from harness_py.orchestration.research_contract import (
+    AnswerContract,
+    ProtocolFacts,
+    SubmissionIssueClass,
+    SubmissionRequested,
+    ValidationIssue,
+)
 from harness_py.orchestration.runtime import TurnExecutionInput
 from harness_py.tests import test_harness_py as _harness_tests
 
 
 class AgentsToolsTest(unittest.TestCase):
+    def test_context_applies_protocol_and_records_only_replayable_projection(self) -> None:
+        events = []
+
+        class Recorder:
+            def append(self, **event):
+                events.append(event)
+
+        dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()
+        context = ResearchRunContext(TurnExecutionInput(
+            dataset=dataset,
+            case_id="protocol_adapter",
+            run_id="run_protocol_adapter",
+            question="hello",
+            conversation_messages=[],
+            research_memory=ResearchMemory(),
+            eval_recorder=Recorder(),
+        ))
+        event = SubmissionRequested(
+            contract=AnswerContract.RESEARCH,
+            payload={"markdown": "draft must not be copied"},
+            accepted=False,
+            issue_class=SubmissionIssueClass.MISSING_CONTRACT_INPUT,
+            issue_codes=("UNKNOWN_SOURCE_REF",),
+            issues=(ValidationIssue(
+                "UNKNOWN_SOURCE_REF",
+                SubmissionIssueClass.MISSING_CONTRACT_INPUT,
+                unknown_source_quote_refs=("source_quote_missing",),
+            ),),
+        )
+
+        decision = context.apply_protocol(
+            event,
+            ProtocolFacts(known_source_quotes={
+                "source_quote_1": {"span_text": "source text must not be copied"},
+            }),
+            tool_call_id="call_protocol",
+        )
+
+        self.assertEqual(AnswerContract.RESEARCH, decision.next_state.contract)
+        self.assertEqual(decision.next_state, context.protocol_state)
+        self.assertEqual("protocol.transition", events[0]["kind"])
+        serialized = json.dumps(events[0], ensure_ascii=False)
+        self.assertNotIn("draft must not be copied", serialized)
+        self.assertNotIn("source text must not be copied", serialized)
+
     def test_structured_text_wrappers_decode_objects_and_scalars(self) -> None:
         self.assertEqual(
             {
