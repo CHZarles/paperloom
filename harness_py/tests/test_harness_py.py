@@ -20,7 +20,6 @@ from harness_py.evaluation.fact_assertions import _scalar_string
 from harness_py.evaluation.golden_fixture import GoldenFixtureHarness
 from harness_py.evaluation.scoring import BehaviorScorer
 from harness_py.orchestration.conversation import ConversationState
-from harness_py.orchestration.research_contract import answer_validation_error
 from harness_py.orchestration.research_skills import ResearchSkillRegistry
 from harness_py.transport.provider_config import EnvProviderConfigStore, decrypt_provider_key
 
@@ -136,64 +135,6 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
     def test_structural_scorer_normalizes_equivalent_power_of_ten_notation(self) -> None:
         self.assertEqual(_scalar_string("1e-9"), _scalar_string("10^-9"))
         self.assertEqual(_scalar_string("1e-9"), _scalar_string("10 ^ { - 9 }"))
-
-    def test_metadata_answer_does_not_require_paper_content_citation(self) -> None:
-        error = answer_validation_error(
-            {"outcome": "answered", "markdown": "There are five papers."},
-            {},
-        )
-
-        self.assertEqual("", error)
-
-    def test_answer_after_reading_paper_evidence_requires_citation(self) -> None:
-        error = answer_validation_error(
-            {"outcome": "answered", "markdown": "The paper proposes a new method."},
-            {"source_quote_1": {"source_quote_ref": "source_quote_1", "citeable": True}},
-            require_content_citations=True,
-        )
-
-        self.assertIn("require citations", error)
-
-    def test_answer_after_reading_rejects_uncited_material_blocks(self) -> None:
-        error = answer_validation_error(
-            {
-                "outcome": "answered",
-                "markdown": (
-                    "Unsupported summary.\n\n"
-                    "Supported detail. [[source_quote_1]]"
-                ),
-            },
-            {"source_quote_1": {"source_quote_ref": "source_quote_1", "citeable": True}},
-            require_content_citations=True,
-        )
-
-        self.assertIn("block_1", error)
-        self.assertIn("paragraph: Unsupported summary.", error)
-
-    def test_answer_after_reading_allows_uncited_structure(self) -> None:
-        error = answer_validation_error(
-            {
-                "outcome": "answered",
-                "markdown": (
-                    "# Comparison\n\n---\n\n"
-                    "| Paper | Result |\n"
-                    "| --- | --- |\n"
-                    "| A | Supported detail [[source_quote_1]] |"
-                ),
-            },
-            {"source_quote_1": {"source_quote_ref": "source_quote_1", "citeable": True}},
-            require_content_citations=True,
-        )
-
-        self.assertEqual("", error)
-
-    def test_answer_rejects_literal_evidence_id_placeholder(self) -> None:
-        error = answer_validation_error(
-            {"outcome": "answered", "markdown": "Supported claim. [[evidence_id]]"},
-            {"ev_1": {"evidence_id": "ev_1", "citeable": True}},
-        )
-
-        self.assertIn("[[evidence_id]]", error)
 
     def test_provider_key_decrypts_java_secret_crypto_format(self) -> None:
         key = AESGCM.generate_key(bit_length=128)

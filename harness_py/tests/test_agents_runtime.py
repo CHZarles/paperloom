@@ -27,7 +27,7 @@ class AgentsRuntimeTest(unittest.TestCase):
     def test_model_input_keeps_only_latest_rejected_final_submission(self) -> None:
         research_call = {"type": "function_call", "name": "read_paper_content", "call_id": "read_1"}
         research_output = {"type": "function_call_output", "call_id": "read_1", "output": "evidence"}
-        first_final = {"type": "function_call", "name": "submit_research_answer", "call_id": "final_1"}
+        first_final = {"type": "function_call", "name": "submit_catalog_answer", "call_id": "final_1"}
         first_error = {"type": "function_call_output", "call_id": "final_1", "output": "rejected"}
         latest_final = {"type": "function_call", "name": "submit_research_answer", "call_id": "final_2"}
         latest_error = {"type": "function_call_output", "call_id": "final_2", "output": "rejected"}
@@ -78,7 +78,8 @@ class AgentsRuntimeTest(unittest.TestCase):
         self.assertEqual("COMPLETED", run["status"])
         self.assertEqual("42", run["research_answer"]["fields"]["answer"])
         self.assertEqual(1, len(run["research_answer"]["cited_source_quote_refs"]))
-        self.assertEqual("python_openai_agents_sdk_harness_v1", run["harness_id"])
+        self.assertEqual("python_openai_agents_sdk_harness_v2", run["harness_id"])
+        self.assertEqual("RESEARCH", run["research_answer"]["answer_contract"])
         self.assertTrue(run["run_id"].startswith("run_"))
         self.assertEqual(1, state.turn_index)
         self.assertIn("answer.validation", _event_kinds(progress, run))
@@ -88,10 +89,11 @@ class AgentsRuntimeTest(unittest.TestCase):
         ]
         self.assertEqual(2, len(submissions))
         self.assertFalse(submissions[0]["result"]["accepted"])
-        self.assertIn("unknown cited source quote refs", submissions[0]["result"]["error"])
+        self.assertIn("UNKNOWN_SOURCE_REF", submissions[0]["result"]["issue_codes"])
         self.assertTrue(submissions[1]["result"]["accepted"])
         self.assertIn("run.started", {event["kind"] for event in events})
         self.assertIn("tool.completed", {event["kind"] for event in events})
+        self.assertIn("protocol.transition", {event["kind"] for event in events})
         self.assertTrue(result["capture_ok"])
         self.assertEqual(run["run_id"], result["result"]["run_id"])
 
@@ -112,8 +114,8 @@ class AgentsRuntimeTest(unittest.TestCase):
                     finish_reason = "length"
                 else:
                     arguments = json.dumps({
-                        "outcome": "answered",
-                        "markdown": "Recovered after malformed tool arguments.",
+                        "kind": "GREETING",
+                        "language": "EN",
                     })
                     finish_reason = "tool_calls"
                 body = json.dumps({
@@ -130,7 +132,7 @@ class AgentsRuntimeTest(unittest.TestCase):
                                 "id": f"call_{len(requests)}",
                                 "type": "function",
                                 "function": {
-                                    "name": "submit_research_answer",
+                                    "name": "submit_research_answer" if len(requests) == 1 else "submit_direct_answer",
                                     "arguments": arguments,
                                 },
                             }],
@@ -180,9 +182,10 @@ class AgentsRuntimeTest(unittest.TestCase):
         self.assertEqual(2, len(requests), run["diagnostics"])
         self.assertEqual("COMPLETED", run["status"], run["diagnostics"])
         self.assertEqual(
-            "Recovered after malformed tool arguments.",
+            "Hello. I can help you search, read, and compare papers.",
             run["research_answer"]["markdown"],
         )
+        self.assertEqual("DIRECT", run["research_answer"]["answer_contract"])
 
     def test_cancelled_turn_returns_a_terminal_run(self) -> None:
         dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()
@@ -237,6 +240,7 @@ class _ScriptedAgentsModel(Model):
         elif self.call_count == 5:
             name, arguments = "submit_research_answer", {
                 "outcome": "answered",
+                "language": "EN",
                 "markdown": "The structured value is 42. [[source_quote_fake]]",
                 "fields": {"answer": "42"},
             }
@@ -244,6 +248,7 @@ class _ScriptedAgentsModel(Model):
             source_quote_ref = outputs["call_4"]["items"][0]["source_quotes"][0]["source_quote_ref"]
             name, arguments = "submit_research_answer", {
                 "outcome": "answered",
+                "language": "EN",
                 "markdown": f"The structured value is 42. [[{source_quote_ref}]]",
                 "fields": {"answer": "42"},
             }

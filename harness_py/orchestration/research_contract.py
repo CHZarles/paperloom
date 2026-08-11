@@ -125,7 +125,7 @@ _SUBMISSION_TOOL_BY_CONTRACT = {
     AnswerContract.CATALOG: CATALOG_FINAL_TOOL_NAME,
     AnswerContract.RESEARCH: FINAL_TOOL_NAME,
 }
-_SUBMISSION_TOOL_NAMES = frozenset(_SUBMISSION_TOOL_BY_CONTRACT.values())
+SUBMISSION_TOOL_NAMES = frozenset(_SUBMISSION_TOOL_BY_CONTRACT.values())
 _CATALOG_TOOL_NAMES = frozenset({
     "search_paper_candidates",
     "find_papers_by_identity",
@@ -202,7 +202,7 @@ def _decide_action(
     facts: ProtocolFacts,
 ) -> ProtocolDecision:
     siblings = facts.sibling_tool_names or (event.tool_name,)
-    if len(siblings) != 1 and _SUBMISSION_TOOL_NAMES.intersection(siblings):
+    if len(siblings) != 1 and SUBMISSION_TOOL_NAMES.intersection(siblings):
         return _protocol_error(state, "SUBMISSION_TOOL_GROUP_INVALID")
     if event.tool_name not in allowed_tool_names(state):
         return _protocol_error(state, "ACTION_NOT_ALLOWED")
@@ -591,11 +591,12 @@ def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
         "You are a paper-research agent operating in one continuous ReAct loop. Trust the conversation history: "
         "decide whether to answer directly, ask one useful clarification, research, continue searching, combine "
         "research skills, or abstain. There is no fixed stage sequence and no research-round limit.\n\n"
-        "Keep ordinary conversation natural and concise. For a greeting, respond briefly. If a recommendation "
-        "request is missing only its topic, use outcome=needs_clarification and ask only what topic to focus on; "
+        "Keep ordinary conversation natural and concise. For a greeting, use submit_direct_answer. If a recommendation "
+        "request is missing only its topic, submit one CLARIFICATION asking what topic to focus on; "
         "do not demand optional purpose, venue, year, or paper-type constraints.\n\n"
         "Paper cards and identity results are authoritative for corpus metadata such as paper count, title, author, "
-        "year, venue, and identifiers. Answer corpus inventory and filtering questions directly from those results "
+        "year, venue, and identifiers. Answer corpus inventory and filtering questions with submit_catalog_answer "
+        "using the paper_result_ref returned by the current-turn discovery result "
         "without paper-content citations. Before submitting any corpus count, list, or metadata-filter answer, you must "
         "call search_paper_candidates in the current turn; use an empty query and a sufficiently large limit for a "
         "complete inventory. Never reconstruct paper titles from conversation history or general knowledge. A previous "
@@ -624,9 +625,12 @@ def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
         "After a rejected final submission, correct every issue named by the validator in the next submission. "
         "Do not reload a research skill already used. Reuse existing evidence, and call another corpus tool only "
         "when the correction needs evidence that is not already present.\n\n"
-        "When you are ready to finish the turn, call submit_research_answer as the only tool call. Put all text the "
-        "user should see in markdown. Use needs_clarification only for a genuinely blocking question. Use partial or "
-        "abstained when the corpus cannot fully support the request. Do not expose internal skills, tool names, "
+        "When you are ready to finish the turn, call exactly one submission tool as the only tool call. Use "
+        "submit_direct_answer only for a greeting, one blocking clarification, capabilities, or an out-of-scope request. "
+        "Use submit_catalog_answer only for counts and metadata-only lists from a current paper_result_ref. Use "
+        "submit_research_answer for every paper-content judgment; put ANSWERED or PARTIAL text in markdown, or use a "
+        "structured ABSTAINED reason when the corpus cannot support an answer. Select ZH_CN or EN from the conversation; "
+        "the runtime does not infer the response language. Do not expose internal skills, tool names, "
         "schemas, statuses, reasoning traces, evidence-id syntax, or validation rules in the user-facing answer.\n\n"
         "AVAILABLE RESEARCH SKILLS\n"
         f"{skills.catalog()}"
@@ -697,88 +701,3 @@ def _submission_tool_definition(name: str, description: str, parameters: JsonMap
             "parameters": parameters,
         },
     }
-
-
-def final_answer_tool_definition() -> JsonMap:
-    return {
-        "type": "function",
-        "function": {
-            "name": FINAL_TOOL_NAME,
-            "description": "Submit the final user-visible response and finish the current conversation turn.",
-            "parameters": {
-                "type": "object",
-                "required": ["outcome", "markdown"],
-                "properties": {
-                    "outcome": {
-                        "type": "string",
-                        "enum": ["answered", "needs_clarification", "partial", "abstained"],
-                    },
-                    "markdown": {
-                        "type": "string",
-                        "maxLength": 16000,
-                        "description": (
-                            "Natural user-facing answer. Cite paper-content evidence when the answer relies on it. "
-                            "Corpus metadata may be answered directly from paper cards without citations. Do not add "
-                            "defaults, comparisons, or causal explanations from general knowledge."
-                        ),
-                    },
-                    "fields": {
-                        "type": "object",
-                        "additionalProperties": {"type": "string"},
-                    },
-                },
-                "additionalProperties": False,
-            },
-        },
-    }
-
-
-def answer_validation_error(
-    final: JsonMap,
-    known_evidence: dict[str, JsonMap],
-    *,
-    require_content_citations: bool = False,
-) -> str:
-    outcome = str(final.get("outcome") or "")
-    markdown = final.get("markdown")
-    if outcome not in {"answered", "needs_clarification", "partial", "abstained"}:
-        return "invalid outcome"
-    if not isinstance(markdown, str) or not markdown.strip():
-        return "markdown is required"
-    if re.search(r"</?think(?:\s[^>]*)?>", markdown, flags=re.IGNORECASE):
-        return "remove internal reasoning from markdown"
-    if _NUMERIC_CITATION_RE.search(markdown):
-        return "use exact [[source_quote_...]] markers instead of numeric citations or a manually written Sources section"
-    invalid_markers = sorted({
-        marker.strip()
-        for marker in _DOUBLE_BRACKET_MARKER_RE.findall(markdown)
-        if not re.fullmatch(r"source_quote_[A-Za-z0-9_-]+", marker.strip())
-    })
-    if invalid_markers:
-        return "invalid evidence markers: " + ", ".join(f"[[{marker}]]" for marker in invalid_markers)
-    cited = set(CITATION_RE.findall(markdown))
-    citeable = {
-        source_quote_ref for source_quote_ref, item in known_evidence.items()
-        if item.get("citeable") is not False and item.get("source_quote_ref") == source_quote_ref
-    }
-    unknown = sorted(cited - citeable)
-    if unknown:
-        return "unknown cited source quote refs: " + ", ".join(unknown)
-    if require_content_citations and outcome in {"answered", "partial"}:
-        if not citeable:
-            return "read_paper_content is required before answering paper-content claims"
-        blocks, _ = answer_blocks({"markdown": markdown})
-        uncited = [
-            block
-            for block in blocks
-            if block.get("kind") not in NON_MATERIAL_UNCITED_BLOCK_KINDS
-            and not block.get("evidence_ids")
-        ]
-        if uncited:
-            return "paper-content answer blocks require citations: " + "; ".join(
-                f"{block.get('block_id')} {block.get('kind')}: {str(block.get('text') or '')[:200]}"
-                for block in uncited
-            )
-    if final.get("fields") is not None and not isinstance(final.get("fields"), dict):
-        return "fields must be an object"
-    return ""

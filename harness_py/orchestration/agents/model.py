@@ -27,10 +27,8 @@ from openai import APIConnectionError, APIStatusError, APITimeoutError, AsyncOpe
 from openai.types.responses import ResponseFunctionToolCall
 
 from ...transport.provider_config import ProviderConfig
-from ..research_contract import FINAL_TOOL_NAME
+from ...utils.errors import ResearchSystemError, RunLimitExceeded
 from .context import ResearchRunContext
-from ...utils.errors import RunLimitExceeded
-from ...utils.errors import ResearchSystemError
 
 
 _ACTIVE_CONTEXT: ContextVar[ResearchRunContext | None] = ContextVar(
@@ -114,20 +112,20 @@ class _ObservedOpenAIModel:
             if value
         )
         text = re.sub(r"<think(?:\s[^>]*)?>.*?</think>\s*", "", text, flags=re.IGNORECASE | re.DOTALL).strip()
-        final_call = ResponseFunctionToolCall(
-            arguments=json.dumps({"outcome": "answered", "markdown": text}, ensure_ascii=False),
+        nudge_call = ResponseFunctionToolCall(
+            arguments=json.dumps({"content": ""}),
             call_id=f"call_text_nudge_{uuid4().hex}",
-            name=FINAL_TOOL_NAME,
+            name=TEXT_NUDGE_TOOL_NAME,
             type="function_call",
         )
         _record_model_transform(
             context,
-            reason_code="PLAIN_TEXT_RESPONSE_ADAPTED_TO_FINAL_ANSWER",
+            reason_code="PLAIN_TEXT_RESPONSE_REQUIRES_SUBMISSION",
             source={"type": "assistant_text", "text": text},
-            target=_function_call_payload(final_call),
+            target=_function_call_payload(nudge_call),
             event_suffix="plain_text",
         )
-        response.output = [final_call]
+        response.output = [nudge_call]
         return response
 
     async def _record_request(self, request: httpx.Request) -> None:

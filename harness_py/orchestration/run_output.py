@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from ..utils.models import RUN_TRACE_SCHEMA_VERSION, JsonMap, as_list, child_map, stable_id, unique_strings, utc_now_iso
 from ..corpus.tools import ReadingCorpusTools
-from .research_contract import CITATION_RE, FINAL_TOOL_NAME
+from .research_contract import CITATION_RE, SUBMISSION_TOOL_NAMES
 
 
 def build_harness_run(
@@ -52,6 +52,7 @@ def build_harness_run(
         "markdown": markdown,
         "fields": child_map(final.get("fields")),
         "cited_source_quote_refs": cited_source_quote_refs,
+        "answer_contract": str(final["answer_contract"]),
     }
     evidence_items = list(corpus.observations_by_evidence_id.values())
     for source_quote_ref, item in cited_evidence.items():
@@ -95,7 +96,7 @@ def build_harness_run(
         "diagnostics": {
             "finish_reason": "model_submitted_answer",
             "tool_call_count": sum(
-                1 for item in trace if item["tool_name"] != FINAL_TOOL_NAME
+                1 for item in trace if item["tool_name"] not in SUBMISSION_TOOL_NAMES
             ),
             "skills_used": skills_used,
             **diagnostics,

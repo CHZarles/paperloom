@@ -156,9 +156,10 @@ def _function_tool(definition: JsonMap) -> FunctionTool:
             return json.dumps({
                 "continue": True,
                 "message": repair_message or (
-                    "Finish by calling submit_research_answer as the only tool call. "
-                    "Copy exact source_quote_ref values returned by read_paper_content; placeholders such as "
-                    "[[source_quote_ref]] are invalid. Remove claims not directly supported by cited spans."
+                    "Respond by calling exactly one of submit_direct_answer, submit_catalog_answer, or "
+                    "submit_research_answer as the only tool call. Select ZH_CN or EN from the conversation. "
+                    "For Research, copy exact source_quote_ref values returned by read_paper_content; "
+                    "placeholders such as [[source_quote_ref]] are invalid."
                 ),
             }, ensure_ascii=False)
         facts = _protocol_facts(context, tool_context.tool_call_id, name)

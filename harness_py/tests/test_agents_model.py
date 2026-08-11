@@ -22,7 +22,6 @@ from harness_py.orchestration.agents.model import (
     provider_agents_model,
 )
 from harness_py.orchestration.memory import ResearchMemory
-from harness_py.orchestration.research_contract import FINAL_TOOL_NAME
 from harness_py.orchestration.runtime import TurnExecutionInput
 from harness_py.transport.provider_config import ProviderConfig
 from harness_py.tests import test_harness_py as _harness_tests
@@ -165,7 +164,7 @@ class AgentsModelTest(unittest.TestCase):
         self.assertEqual({"model.request", "model.response"}, event_kinds)
         self.assertNotIn("test-key", events_text)
 
-    def test_text_only_response_becomes_a_validated_final_submission(self) -> None:
+    def test_text_only_response_requires_an_explicit_submission_tool(self) -> None:
         model = MiniMaxAgentsModel(ProviderConfig(
             scope="llm",
             provider="minimax",
@@ -214,11 +213,8 @@ class AgentsModelTest(unittest.TestCase):
 
         response = asyncio.run(invoke())
 
-        self.assertEqual(FINAL_TOOL_NAME, response.output[0].name)
-        self.assertEqual(
-            {"outcome": "answered", "markdown": "A direct model answer."},
-            json.loads(response.output[0].arguments),
-        )
+        self.assertEqual(TEXT_NUDGE_TOOL_NAME, response.output[0].name)
+        self.assertEqual({"content": ""}, json.loads(response.output[0].arguments))
 
     def test_text_only_response_does_not_publish_think_block(self) -> None:
         model = MiniMaxAgentsModel(ProviderConfig(
@@ -269,10 +265,8 @@ class AgentsModelTest(unittest.TestCase):
 
         response = asyncio.run(invoke())
 
-        self.assertEqual(
-            {"outcome": "answered", "markdown": "A direct model answer."},
-            json.loads(response.output[0].arguments),
-        )
+        self.assertEqual(TEXT_NUDGE_TOOL_NAME, response.output[0].name)
+        self.assertEqual({"content": ""}, json.loads(response.output[0].arguments))
 
     def test_malformed_tool_arguments_become_a_valid_repair_call(self) -> None:
         class Handler(BaseHTTPRequestHandler):

@@ -34,10 +34,10 @@ from agents.run_config import CallModelData, ModelInputData
 from ...utils.models import JsonMap
 from ...transport.provider_config import ProviderConfig
 from ..memory import RequestBackedSession, request_session_input
-from ..research_contract import FINAL_TOOL_NAME, research_agent_instructions
+from ..research_contract import SUBMISSION_TOOL_NAMES, research_agent_instructions
 from ..run_output import build_harness_run
 from ..runtime import HarnessRuntime, TurnExecutionInput, TurnExecutionResult
-from ..run_control import RunLimitExceeded, RunLimits
+from ..run_control import RunLimitExceeded
 from .context import ResearchRunContext
 from .model import bind_research_context, provider_agents_model
 from .tools import build_agent_tools, tools_to_final_output
@@ -96,7 +96,7 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
 
     Runtime 本身不保存会话状态。每次 ``run_turn`` 都会创建新的 Context、Agent 和 Session。
     """
-    harness_id = "python_openai_agents_sdk_harness_v1"
+    harness_id = "python_openai_agents_sdk_harness_v2"
 
     def __init__(
         self,
@@ -175,7 +175,7 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
             model=model,
             model_settings=settings,
             tools=tools,
-            # 普通工具完成后继续循环；只有通过校验的 submit_research_answer 才成为 final_output。
+            # 普通工具完成后继续循环；只有通过校验的提交工具才成为 final_output。
             tool_use_behavior=tools_to_final_output,
             # 保持 tool_choice=required，不让 SDK 在首轮之后自动放松成普通文本回答。
             reset_tool_choice=False,
@@ -252,7 +252,7 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
         # context.final_draft 是兼容兜底，避免 SDK 返回包装类型变化时丢掉已接受结果。
         final = result.final_output if isinstance(result.final_output, dict) else context.final_draft
         if not isinstance(final, dict):
-            raise RuntimeError("Agents SDK run ended without an accepted submit_research_answer")
+            raise RuntimeError("Agents SDK run ended without an accepted answer submission")
         return final
 
 
@@ -265,7 +265,7 @@ def _latest_final_submission_only(
         for item in items
         if isinstance(item, dict)
         and item.get("type") == "function_call"
-        and item.get("name") == FINAL_TOOL_NAME
+        and item.get("name") in SUBMISSION_TOOL_NAMES
         and item.get("call_id")
     ]
     obsolete = set(final_call_ids[:-1])

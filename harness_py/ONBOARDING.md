@@ -287,22 +287,22 @@ surface。
 
 ### 最终答案契约
 
-最终工具只接受：
+最终答案通过三个互斥提交工具选择 Contract：
 
-- `outcome`：`answered`、`needs_clarification`、`partial` 或 `abstained`；
-- `markdown`：用户最终看到的内容；
-- `fields`：可选产品结构化字段，不自动等于 Golden Fact Contract。
+- `submit_direct_answer`：问候、一次阻塞性澄清、能力说明或超出范围；
+- `submit_catalog_answer`：引用本轮 `paper_result_ref` 输出数量或元数据列表；
+- `submit_research_answer`：输出 `answered`、`partial` 或结构化 `abstained`。
 
-论文内容引用写成 `[[source_quote_...]]`。`answer_validation_error()` 会拒绝未知 `source_quote_ref`、错误
-引用格式、非法 outcome 和空 Markdown；最终提交和其他工具放在同一步也会被 Runtime 拒绝。
-`build_harness_run()` 再把内部 evidence marker 渲染成最终引用，并生成标准化结果。
+三个提交都由模型明确选择 `ZH_CN` 或 `EN`。论文内容引用写成 `[[source_quote_...]]`；Research
+Validator 会拒绝未知 Ref、非法 Marker 和没有绑定 Source Quote 的 Content Block。提交工具与其他
+工具出现在同一批调用时，Protocol Guard 会在产生 Corpus 副作用前整体拒绝。`build_harness_run()`
+再把内部 Marker 渲染成最终引用，并生成标准化结果。
 
 离线 `BehaviorScorer` 的 Content 维度默认检查用户可见 `markdown`。只有确定性 Fixture 明确声明
 `fields_schema=golden-facts/v1` 时，评分器才逐 Key 校验 `fields`。普通模型输出即使包含
 `source_quote_ref` 等字段，也不会因此被解释为已经承诺输出全部 Golden Facts。
 
-逐 Block 语义支撑留给离线 Scorer/Judge，在线最终提交只做格式、Outcome 和 Source Quote
-可引用性校验。
+逐 Block 的引用绑定由在线 Validator 检查；引用是否在语义上蕴含结论仍留给离线 Scorer/Judge。
 
 ### Transport 契约
 
@@ -346,11 +346,11 @@ Research Skill 是给模型的按需方法指导，不是新的 Runner，也不�
 
 ### 修改最终答案结构
 
-这三个函数必须一起考虑：
+这三组入口必须一起考虑：
 
-- `final_answer_tool_definition()`：模型看到的提交 Schema；
-- `answer_validation_error()`：确定性接受条件；
-- `build_harness_run()`：内部草稿如何变成产品结果。
+- `direct_answer_tool_definition()`、`catalog_answer_tool_definition()`、`research_answer_tool_definition()`：模型看到的提交 Schema；
+- `validate_submission()` 与三个 `render_*_submission()`：确定性接受条件和 Runtime 渲染；
+- `build_harness_run()`：规范化答案如何变成产品结果。
 
 答案契约位于 `orchestration/research_contract.py`，结果构造位于
 `orchestration/run_output.py`。
