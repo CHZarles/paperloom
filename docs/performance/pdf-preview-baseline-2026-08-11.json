@@ -1,0 +1,279 @@
+{
+  "measuredAt": "2026-08-11T02:31:38.017Z",
+  "baseURL": "https://paperloom.me",
+  "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+  "machine": {
+    "arch": "arm64",
+    "cpu": "Apple M5",
+    "logicalCores": 10,
+    "memoryGiB": 32,
+    "platform": "darwin"
+  },
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "network": "unthrottled",
+  "iterations": 5,
+  "paperTitle": "02-GPT-1.pdf",
+  "cold": {
+    "summary": {
+      "medianMs": 3058.8,
+      "p95Ms": 3220.6,
+      "minMs": 2770.2,
+      "maxMs": 3220.6
+    },
+    "samples": [
+      {
+        "cacheState": "cold",
+        "firstPageReadyMs": 3220.6,
+        "networkReadyMs": 2747.4,
+        "renderAfterNetworkMs": 473.2,
+        "previewRequestCount": 3,
+        "previewTransferBytes": 541639,
+        "resources": [
+          {
+            "durationMs": 389.5,
+            "encodedBytes": 292,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview",
+            "responseEndMs": 604.2,
+            "startMs": 214.7
+          },
+          {
+            "durationMs": 561.9,
+            "encodedBytes": 311,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "responseEndMs": 1174.7,
+            "startMs": 612.8
+          },
+          {
+            "durationMs": 1217.4,
+            "encodedBytes": 541036,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data/range",
+            "responseEndMs": 2747.4,
+            "startMs": 1530
+          }
+        ]
+      },
+      {
+        "cacheState": "cold",
+        "firstPageReadyMs": 3058.8,
+        "networkReadyMs": 2539.4,
+        "renderAfterNetworkMs": 519.4,
+        "previewRequestCount": 3,
+        "previewTransferBytes": 541639,
+        "resources": [
+          {
+            "durationMs": 668.6,
+            "encodedBytes": 292,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview",
+            "responseEndMs": 926.2,
+            "startMs": 257.6
+          },
+          {
+            "durationMs": 398.8,
+            "encodedBytes": 311,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "responseEndMs": 1333.4,
+            "startMs": 934.6
+          },
+          {
+            "durationMs": 906.1,
+            "encodedBytes": 541036,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data/range",
+            "responseEndMs": 2539.4,
+            "startMs": 1633.3
+          }
+        ]
+      },
+      {
+        "cacheState": "cold",
+        "firstPageReadyMs": 2770.2,
+        "networkReadyMs": 2267.6,
+        "renderAfterNetworkMs": 502.6,
+        "previewRequestCount": 3,
+        "previewTransferBytes": 541639,
+        "resources": [
+          {
+            "durationMs": 398.7,
+            "encodedBytes": 292,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview",
+            "responseEndMs": 571.2,
+            "startMs": 172.5
+          },
+          {
+            "durationMs": 384.4,
+            "encodedBytes": 311,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "responseEndMs": 964.8,
+            "startMs": 580.4
+          },
+          {
+            "durationMs": 924,
+            "encodedBytes": 541036,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data/range",
+            "responseEndMs": 2267.6,
+            "startMs": 1343.6
+          }
+        ]
+      },
+      {
+        "cacheState": "cold",
+        "firstPageReadyMs": 3214.7,
+        "networkReadyMs": 2737.9,
+        "renderAfterNetworkMs": 476.8,
+        "previewRequestCount": 3,
+        "previewTransferBytes": 541639,
+        "resources": [
+          {
+            "durationMs": 398.4,
+            "encodedBytes": 292,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview",
+            "responseEndMs": 621.1,
+            "startMs": 222.7
+          },
+          {
+            "durationMs": 559.4,
+            "encodedBytes": 311,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "responseEndMs": 1188.4,
+            "startMs": 629
+          },
+          {
+            "durationMs": 1282.2,
+            "encodedBytes": 541036,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data/range",
+            "responseEndMs": 2737.9,
+            "startMs": 1455.7
+          }
+        ]
+      },
+      {
+        "cacheState": "cold",
+        "firstPageReadyMs": 2961.5,
+        "networkReadyMs": 2452.4,
+        "renderAfterNetworkMs": 509.1,
+        "previewRequestCount": 3,
+        "previewTransferBytes": 541639,
+        "resources": [
+          {
+            "durationMs": 399.9,
+            "encodedBytes": 292,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview",
+            "responseEndMs": 1012.5,
+            "startMs": 612.6
+          },
+          {
+            "durationMs": 394.7,
+            "encodedBytes": 311,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "responseEndMs": 1416.4,
+            "startMs": 1021.7
+          },
+          {
+            "durationMs": 628,
+            "encodedBytes": 541036,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data/range",
+            "responseEndMs": 2452.4,
+            "startMs": 1824.4
+          }
+        ]
+      }
+    ]
+  },
+  "warm": {
+    "summary": {
+      "medianMs": 1379.5,
+      "p95Ms": 1482.1,
+      "minMs": 1269.6,
+      "maxMs": 1482.1
+    },
+    "samples": [
+      {
+        "cacheState": "warm",
+        "firstPageReadyMs": 1482.1,
+        "networkReadyMs": 852.8,
+        "renderAfterNetworkMs": 629.3,
+        "previewRequestCount": 1,
+        "previewTransferBytes": 292,
+        "resources": [
+          {
+            "durationMs": 577,
+            "encodedBytes": 292,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview",
+            "responseEndMs": 852.8,
+            "startMs": 275.8
+          }
+        ]
+      },
+      {
+        "cacheState": "warm",
+        "firstPageReadyMs": 1404.4,
+        "networkReadyMs": 688,
+        "renderAfterNetworkMs": 716.4,
+        "previewRequestCount": 1,
+        "previewTransferBytes": 292,
+        "resources": [
+          {
+            "durationMs": 398.4,
+            "encodedBytes": 292,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview",
+            "responseEndMs": 688,
+            "startMs": 289.6
+          }
+        ]
+      },
+      {
+        "cacheState": "warm",
+        "firstPageReadyMs": 1269.6,
+        "networkReadyMs": 669.3,
+        "renderAfterNetworkMs": 600.3,
+        "previewRequestCount": 1,
+        "previewTransferBytes": 292,
+        "resources": [
+          {
+            "durationMs": 386.2,
+            "encodedBytes": 292,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview",
+            "responseEndMs": 669.3,
+            "startMs": 283.1
+          }
+        ]
+      },
+      {
+        "cacheState": "warm",
+        "firstPageReadyMs": 1379.5,
+        "networkReadyMs": 780.7,
+        "renderAfterNetworkMs": 598.8,
+        "previewRequestCount": 1,
+        "previewTransferBytes": 292,
+        "resources": [
+          {
+            "durationMs": 387.8,
+            "encodedBytes": 292,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview",
+            "responseEndMs": 780.7,
+            "startMs": 392.9
+          }
+        ]
+      },
+      {
+        "cacheState": "warm",
+        "firstPageReadyMs": 1299.3,
+        "networkReadyMs": 689.2,
+        "renderAfterNetworkMs": 610.1,
+        "previewRequestCount": 1,
+        "previewTransferBytes": 292,
+        "resources": [
+          {
+            "durationMs": 385.7,
+            "encodedBytes": 292,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview",
+            "responseEndMs": 689.2,
+            "startMs": 303.5
+          }
+        ]
+      }
+    ]
+  }
+}
