@@ -215,10 +215,18 @@ Token，不新增 Session 表或 Redis 模型。再次登录时只有“Refresh 
 > 累计下降 32.8%。热打开仍是 0 请求且本轮没有变快。我只报告 5 次样本的中位数，不声称 p95，也把大于
 > 1 MiB 的 PDF 性能留作未验证边界。
 
+**前端阶段定位补充：**用户仍觉得 2 秒很慢，我没有把“网络结束到页面可见”的约 0.8 秒全部算成 PDF
+解析，而是在数据就绪、文档就绪、页面对象、Canvas 和文字层边界加入 Performance Mark。线上 5 组结果
+显示 Canvas 中位数只有约 28 ms、文字层约 18 ms，真正异常的是文档就绪后固定等待约 386 ms。源码中
+`.pdf-page-shell` 只有在 `documentLoading=false` 后才会挂载，但代码先等待该节点稳定，最多等 24 个动画
+帧后才关闭 loading，形成“等待一个尚不可能存在的节点”。调整为“结束 loading -> nextTick 挂载 -> 等待
+尺寸稳定”后，热打开中位数从 915.3 ms 降到 528.7 ms，减少 386.6 ms，与被删除的等待完全吻合；冷打开
+仍受公网、动态组件和 pdf.js 冷初始化抖动影响，本轮没有宣称冷启动总耗时改善。
+
 **证据文件：**`docs/performance/pdf-preview-round-trip-optimization-2026-08-11.md`、
 `docs/performance/pdf-preview-standard-range-optimization-2026-08-11.md`、各轮原始 JSON 和
 `frontend/scripts/benchmark-pdf-preview.mjs`。
 
 **必备追问：**中位数与 p95、冷缓存和热缓存、Resource Timing、串行网络往返、前端快速路径与后端鉴权、
 为什么请求数比字节数更重要、HTTP Range/206/Content-Range、反向代理为什么会吞 Range、如何避免性能
-测试自欺、为什么暂缓图片方案。
+测试自欺、为什么暂缓图片方案、Vue 条件渲染与 nextTick、为什么用热缓存隔离前端耗时。
