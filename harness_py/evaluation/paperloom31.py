@@ -44,7 +44,7 @@ EXPECTED_PAPER_COUNT = 31
 UPLOAD_CHUNK_BYTES = 5 * 1024 * 1024
 SNAPSHOT_SCHEMA_VERSION = "paperloom-product-snapshot/v2"
 QUERY_PROMPT_VERSION = "paperloom-query-generator-v2"
-CASE_LAYOUT_VERSION = "paperloom-agent-case-layout-v3"
+CASE_LAYOUT_VERSION = "paperloom-agent-case-layout-v4"
 EVIDENCE_TYPES = {"PASSAGE", "TABLE", "FIGURE"}
 MIN_PASSAGE_CHARS = 220
 MIN_ANSWER_SPAN_CHARS = 40
@@ -678,13 +678,6 @@ def build_agent_cases(
         "answer_spans": [],
         "citation_policy": "no_citation_without_evidence",
     })
-    principles_target = next(
-        (target for target in ordered if target.get("paper") == "paper_01_attention_is_all_you_need"),
-        None,
-    )
-    if principles_target is None:
-        raise PreparationError("generate", "PRINCIPLES_TARGET_MISSING", "paper_01_attention_is_all_you_need")
-    principles_title = _paper_title(principles_target, product_states)
     cases.extend([
         {
             "case_id": "direct_greeting_01",
@@ -732,11 +725,11 @@ def build_agent_cases(
             "question": "推荐和大语言模型原理相关的论文，并说明推荐理由。",
             "history": [],
             "expected_outcome": "answered",
-            "expected_answer": f"推荐《{principles_title}》：{principles_target['expected_answer']}",
-            "required_target_ids": [principles_target["target_id"]],
-            "expected_facts": principles_target["fact_keys"],
-            "answer_spans": principles_target["answer_spans"],
-            "citation_policy": "cite_each_required_target",
+            "expected_answer": "推荐与大语言模型原理直接相关的语料库论文，并用原文证据说明理由。",
+            "required_target_ids": [],
+            "expected_facts": [],
+            "answer_spans": [],
+            "citation_policy": "cite_recommendation_reasons",
         },
     ])
     if len(cases) != 16:
@@ -1373,9 +1366,9 @@ def _assess_agent_case(
         hard_failures.append(_failure("L3", "SCOPE_LEAK", str(leaked_ids)))
     if cited - set(read_by_quote):
         hard_failures.append(_failure("L3", "UNRESOLVABLE_CITATION", str(sorted(cited - set(read_by_quote)))))
-    if required and answer.get("outcome") in {"answered", "partial"} and not cited:
+    if expected_contract == "RESEARCH" and expected_outcome == "answered" and not cited:
         hard_failures.append(_failure("L3", "MISSING_CITATION", str(case.get("case_id"))))
-    if not required and cited:
+    if case.get("citation_policy") == "no_citation_without_evidence" and cited:
         hard_failures.append(_failure("L3", "CITATION_WITHOUT_EVIDENCE", str(sorted(cited))))
     return {
         "status": run.get("status"),
@@ -1564,14 +1557,21 @@ def _judge_agent_case(
         "grounding": {"type": "string", "enum": ["PASS", "FAIL", "UNCERTAIN"]},
         "reason": {"type": "string"},
     })
+    recommendation = case.get("case_type") == "research_recommendation"
+    instruction = (
+        "Judge an open-ended paper recommendation only from the user question, actual answer, and cited evidence. "
+        "PASS answer_quality when the recommended papers are directly relevant to the requested topic and each "
+        "recommendation gives a substantive reason. PASS grounding only when the material recommendation reasons "
+        "are supported by the cited evidence. Do not require one predetermined paper or fact."
+        if recommendation else
+        "Judge one benchmark answer only from the supplied expected answer, trusted answer spans, and actual cited "
+        "evidence. PASS answer_quality when the requested facts are conveyed without contradiction; wording need "
+        "not match. PASS grounding only when material claims are supported by cited evidence."
+    )
     messages = [
         {
             "role": "system",
-            "content": (
-                "Judge one benchmark answer only from the supplied expected answer, trusted answer spans, and "
-                "actual cited evidence. PASS answer_quality when the requested facts are conveyed without contradiction; "
-                "wording need not match. PASS grounding only when material claims are supported by cited evidence."
-            ),
+            "content": instruction,
         },
         {"role": "user", "content": json.dumps({
             "question": case.get("question"),

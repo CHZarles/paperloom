@@ -131,7 +131,7 @@ class Paperloom31PreparationTest(unittest.TestCase):
         cases = build_agent_cases(targets, product_states)
         snapshot = {
             "schema_version": "paperloom-product-snapshot/v2",
-            "generator": {"case_layout_version": "paperloom-agent-case-layout-v3"},
+            "generator": {"case_layout_version": "paperloom-agent-case-layout-v4"},
             "papers": papers,
             "targets": {target["target_id"]: target for target in targets},
             "agent_cases": cases,
@@ -149,6 +149,10 @@ class Paperloom31PreparationTest(unittest.TestCase):
         self.assertEqual("DIRECT", cases[12]["expected_contract"])
         self.assertEqual("CATALOG", cases[14]["expected_contract"])
         self.assertEqual("RESEARCH", cases[15]["expected_contract"])
+        self.assertEqual("research_recommendation", cases[15]["case_type"])
+        self.assertEqual([], cases[15]["required_target_ids"])
+        self.assertEqual([], cases[15]["answer_spans"])
+        self.assertEqual("cite_recommendation_reasons", cases[15]["citation_policy"])
 
     def test_agent_gate_treats_exact_target_coverage_as_diagnostic(self) -> None:
         case = {
@@ -201,6 +205,15 @@ class Paperloom31PreparationTest(unittest.TestCase):
         }
         missing = _assess_agent_case(case, run, targets, {"paper_1"})
         self.assertEqual("MISSING_CITATION", missing["hard_failures"][0]["code"])
+
+        case.update({
+            "case_type": "research_recommendation",
+            "required_target_ids": [],
+            "citation_policy": "cite_recommendation_reasons",
+        })
+        run["research_answer"]["cited_source_quote_refs"] = ["source_quote_1"]
+        recommendation = _assess_agent_case(case, run, targets, {"paper_1"})
+        self.assertEqual([], recommendation["hard_failures"])
 
     def test_protocol_trace_replays_and_aggregates_without_a_judge(self) -> None:
         event = {
