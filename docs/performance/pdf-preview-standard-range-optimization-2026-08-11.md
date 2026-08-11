@@ -197,7 +197,7 @@ pnpm --dir frontend exec node scripts/benchmark-pdf-preview.mjs
 
 前端修复提交：`36d7e43 perf(pdf): mount render shell before readiness wait`。
 
-## 10. 条件预加载实验
+## 10. 条件预加载实验（已回滚）
 
 阶段数据继续显示，第一次点击后才加载 PDF Viewer 和 pdf.js Worker：生产构建中的原始文件分别约
 `540 KB` 和 `1.2 MB`，线上压缩传输实际约为：
@@ -224,11 +224,13 @@ pdf.js Worker：390282 B
 | PDF 网络完成 | 1272.0 ms | 1076.5 ms | `-195.5 ms`，公网波动 |
 | 热打开首屏中位数 | 515.1 ms | 544.3 ms | `+29.2 ms`，未改善 |
 
-Viewer 启动和文档初始化合计减少约 `542.8 ms`，超过预先设定的 `300 ms` 保留线；浏览器记录也确认
-点击前已经加载 Viewer、CSS 和 Worker。总耗时减少的其余约 `196 ms` 与 PDF 请求波动一致，不能归因于
-预加载。热打开本来就已有模块和 Worker 缓存，因此没有收益，符合预测。
+Viewer 启动和文档初始化合计减少约 `542.8 ms`，浏览器也确认点击前已经加载 Viewer、CSS 和 Worker。
+总耗时减少的其余约 `196 ms` 与 PDF 请求波动一致，不能归因于预加载。热打开本来就已有模块和 Worker
+缓存，因此没有收益，符合预测。
 
-本轮保留条件预加载，但边界必须说明：
+技术指标虽然超过预先设置的 `300 ms` 门槛，产品复核后仍否决并回滚，原因是原门槛定义不完整：测试先
+等待 3 秒让下载完成，再从点击开始计时，只证明“准备完成后的点击延迟”降低，没有减少总下载、CPU 工作或
+用户从进入页面开始等待的总成本。它还存在以下问题：
 
 - 当前只覆盖文献库，不是登录后全局预加载；
 - 聊天引用场景尚未接入，不能声称全站首次 PDF 打开都提升；
@@ -236,9 +238,15 @@ Viewer 启动和文档初始化合计减少约 `542.8 ms`，超过预先设定�
 - 收益依赖预加载完成，测试中的空闲窗口是 3 秒；立即点击时收益会更小；
 - 只测试了当前 Chrome、公网和一份 PDF，不报告 p95。
 
+因此这个实验的正确结论是“能转移点击后的等待，但当前产品条件下价值不足”，而不是“系统效率提升
+36.7%”。线上已删除预加载逻辑，保留测试数据作为反例。回滚后用真实 Chrome 在文献库停留 3 秒再点击，
+点击前的 `preloadResources` 重新为空；没有用这次单样本验证声称性能变化。
+
 原始数据：
 
 - [条件预加载前](pdf-preview-conditional-preload-baseline-2026-08-11.json)
 - [条件预加载后](pdf-preview-conditional-preload-optimized-2026-08-11.json)
 
-实现提交：`a282aa3 perf(pdf): preload viewer assets when library is idle`。
+实验提交：`a282aa3 perf(pdf): preload viewer assets when library is idle`。
+
+回滚提交：`c047e7f revert(pdf): remove speculative preview preloading`。
