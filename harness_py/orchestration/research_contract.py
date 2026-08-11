@@ -306,9 +306,6 @@ def submission_requested(
 
 
 def render_direct_submission(payload: JsonMap) -> JsonMap:
-    validation = _validate_direct_submission(payload)
-    if not validation.accepted:
-        raise ValueError("cannot render invalid Direct Submission")
     kind = str(payload["kind"])
     language = str(payload["language"])
     if kind == "CLARIFICATION":
@@ -334,14 +331,15 @@ def render_direct_submission(payload: JsonMap) -> JsonMap:
 
 
 def render_catalog_submission(payload: JsonMap, facts: ProtocolFacts) -> JsonMap:
-    validation = _validate_catalog_submission(payload, facts)
-    if not validation.accepted:
-        raise ValueError("cannot render invalid Catalog Submission")
     result = facts.catalog_results[str(payload["result_ref"])]
     language = str(payload["language"])
     if payload["view"] == "COUNT":
         count = int(result["matched_count"])
-        markdown = f"共找到 {count} 篇论文。" if language == "ZH_CN" else f"Found {count} papers."
+        markdown = (
+            f"共找到 {count} 篇论文。"
+            if language == "ZH_CN"
+            else f"Found {count} {'paper' if count == 1 else 'papers'}."
+        )
         return _normalized_answer("answered", markdown, AnswerContract.CATALOG)
 
     papers = [item for item in result["papers"] if isinstance(item, dict)]
@@ -369,9 +367,6 @@ def render_catalog_submission(payload: JsonMap, facts: ProtocolFacts) -> JsonMap
 
 
 def render_research_submission(payload: JsonMap, facts: ProtocolFacts) -> JsonMap:
-    validation = _validate_research_submission(payload, facts)
-    if not validation.accepted:
-        raise ValueError("cannot render invalid Research Submission")
     outcome = str(payload["outcome"])
     language = str(payload["language"])
     markdown = (

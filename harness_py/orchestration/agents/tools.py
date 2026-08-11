@@ -20,14 +20,24 @@ from agents import FunctionTool, FunctionToolResult, ToolsToFinalOutputResult
 from agents.run_context import RunContextWrapper
 from agents.tool_context import ToolContext
 
-from ...utils.models import JsonMap, as_list, child_map
+from ...utils.models import JsonMap, as_list, child_map, stable_id
 from ...utils.errors import ResearchSystemError, RunLimitExceeded
 from ...corpus.gateway import CorpusGatewayError
 from ...corpus.tools import model_facing_payload
 from ..research_contract import (
+    ActionRequested,
+    AnswerContract,
+    CATALOG_FINAL_TOOL_NAME,
+    DIRECT_FINAL_TOOL_NAME,
     FINAL_TOOL_NAME,
-    answer_validation_error,
-    final_answer_tool_definition,
+    ProtocolFacts,
+    catalog_answer_tool_definition,
+    direct_answer_tool_definition,
+    render_catalog_submission,
+    render_direct_submission,
+    render_research_submission,
+    research_answer_tool_definition,
+    submission_requested,
 )
 from ..run_output import (
     progress_evidence_ids,
@@ -37,6 +47,13 @@ from ..run_output import (
 )
 from .context import ResearchRunContext
 from .model import TEXT_NUDGE_TOOL_NAME, TOOL_ARGUMENT_REPAIR_PREFIX
+
+
+_SUBMISSION_CONTRACTS = {
+    DIRECT_FINAL_TOOL_NAME: AnswerContract.DIRECT,
+    CATALOG_FINAL_TOOL_NAME: AnswerContract.CATALOG,
+    FINAL_TOOL_NAME: AnswerContract.RESEARCH,
+}
 
 
 def build_agent_tools(context: ResearchRunContext) -> list[FunctionTool]:
@@ -51,8 +68,10 @@ def build_agent_tools(context: ResearchRunContext) -> list[FunctionTool]:
         context.skills.tool_definition(),
         # Corpus 会根据本轮数据决定是否提供 citation graph 等可选工具。
         *context.corpus.definitions(),
-        # 最终答案也建模成工具，这样可以在 Runner 循环内部做确定性校验。
-        final_answer_tool_definition(),
+        # 三种最终提交使用互斥 Schema，由模型显式选择 Answer Contract。
+        direct_answer_tool_definition(),
+        catalog_answer_tool_definition(),
+        research_answer_tool_definition(),
         # 这是内部协议工具，不是用户功能。MiniMaxAgentsModel 用它修复损坏的工具参数。
         {
             "type": "function",
@@ -76,12 +95,12 @@ def tools_to_final_output(
 ) -> ToolsToFinalOutputResult:
     """决定一批工具结果是否已经构成整个 Agent Run 的最终输出。
 
-    SDK 默认会在工具执行后继续调用模型。本项目只有一种例外：最终提交工具返回 accepted，
+    SDK 默认会在工具执行后继续调用模型。本项目只有一种例外：任一提交工具返回 accepted，
     且带有结构化 draft。其他工具，即使执行成功，也不能提前结束研究。
     """
 
     for result in results:
-        if result.tool.name != FINAL_TOOL_NAME:
+        if result.tool.name not in _SUBMISSION_CONTRACTS:
             continue
         payload = _json_map(result.output)
         if payload.get("accepted") and isinstance(payload.get("draft"), dict):
@@ -142,9 +161,16 @@ def _function_tool(definition: JsonMap) -> FunctionTool:
                     "[[source_quote_ref]] are invalid. Remove claims not directly supported by cited spans."
                 ),
             }, ensure_ascii=False)
-        if name == FINAL_TOOL_NAME:
-            # 最终工具走单独的校验分支，不能当作普通 Corpus 工具分发。
-            return _invoke_final(context, tool_context, arguments)
+        facts = _protocol_facts(context, tool_context.tool_call_id, name)
+        action = context.apply_protocol(
+            ActionRequested(name),
+            facts,
+            tool_call_id=tool_context.tool_call_id,
+        )
+        if not action.model_result.get("accepted"):
+            return _finish_protocol_rejection(context, tool_context, name, arguments, action.model_result)
+        if name in _SUBMISSION_CONTRACTS:
+            return _invoke_submission(context, tool_context, name, arguments, facts)
         try:
             return _invoke_domain(context, tool_context, name, arguments)
         except CorpusGatewayError as error:
@@ -216,7 +242,14 @@ def _invoke_domain(
         internal = context.corpus.call(name, arguments).payload
 
     # internal 可能包含仅供系统记录的字段；只把明确允许的部分返回给模型。
-    visible = _bounded_model_payload(context, name, child_map(model_facing_payload(internal)))
+    model_payload = child_map(model_facing_payload(internal))
+    paper_result_ref = ""
+    if name in {"search_paper_candidates", "find_papers_by_identity"} and "error" not in model_payload:
+        paper_result_ref = stable_id("paper_result", tool_context.tool_call_id)
+        model_payload = {**model_payload, "paper_result_ref": paper_result_ref}
+    visible = _bounded_model_payload(context, name, model_payload)
+    if paper_result_ref:
+        _remember_catalog_result(context, name, internal, visible, paper_result_ref)
 
     # react_trace 保存“模型调用了什么、模型看到了什么”，不保存任意内部对象。
     context.trace.append(tool_trace_item(tool_context.tool_call_id, name, arguments, visible))
@@ -317,46 +350,33 @@ def _payload_size(payload: JsonMap) -> int:
     return len(json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
 
 
-def _invoke_final(
+def _invoke_submission(
     context: ResearchRunContext,
     tool_context: ToolContext[ResearchRunContext],
+    name: str,
     draft: JsonMap,
+    facts: ProtocolFacts,
 ) -> str:
-    """校验模型提交的最终答案；通过时将草稿标记为可结束 Run。"""
+    """校验并规范化一种最终提交。"""
 
-    # 最终提交必须独占一步，避免同批工具调用在答案确定后继续改变证据状态。
-    siblings = context.tool_call_groups.get(tool_context.tool_call_id, (FINAL_TOOL_NAME,))
-    validation_error = ""
-    if len(siblings) != 1:
-        validation_error = "submit_research_answer must be the only tool call in the final step"
-    else:
-        # 可引用内容来自上一轮已接受的记忆和本轮 read_paper_content 返回的真实 Source Quote。
-        known_evidence = {
-            **context.turn.research_memory.evidence_items_by_id,
-            **context.corpus.observations_by_evidence_id,
-        }
-        validation_error = answer_validation_error(
-            draft,
-            known_evidence,
-            require_content_citations=any(
-                item.get("tool_name") in {"search_paper_content", "read_paper_content"}
-                for item in context.trace
-            ),
-        )
-    accepted = not validation_error
-    visible = {"accepted": accepted}
-    if validation_error:
-        visible["error"] = validation_error
-    context.trace.append(
-        tool_trace_item(tool_context.tool_call_id, FINAL_TOOL_NAME, draft, visible)
-    )
-    if accepted:
+    contract = _SUBMISSION_CONTRACTS[name]
+    event = submission_requested(contract, draft, facts)
+    decision = context.apply_protocol(event, facts, tool_call_id=tool_context.tool_call_id)
+    payload = dict(decision.model_result)
+    normalized: JsonMap | None = None
+    if decision.model_result.get("accepted"):
+        normalized = {
+            AnswerContract.DIRECT: lambda: render_direct_submission(draft),
+            AnswerContract.CATALOG: lambda: render_catalog_submission(draft, facts),
+            AnswerContract.RESEARCH: lambda: render_research_submission(draft, facts),
+        }[contract]()
+        payload["draft"] = normalized
         # tools_to_final_output 会读取工具返回值；这里再保存一份是为了提供稳健兜底。
-        context.final_draft = draft
-    payload = {
-        "accepted": accepted,
-        "draft": draft if accepted else None,
-        "validation_error": validation_error or None,
+        context.final_draft = normalized
+    context.trace.append(tool_trace_item(tool_context.tool_call_id, name, draft, payload))
+    recorded = {
+        "accepted": bool(decision.model_result.get("accepted")),
+        "draft": normalized,
         "tool_call_id": tool_context.tool_call_id,
         "model_call_id": context.tool_call_models.get(tool_context.tool_call_id),
     }
@@ -365,10 +385,65 @@ def _invoke_final(
         recorder.append(
             kind="answer.validation",
             operation_id=tool_context.tool_call_id,
-            payload={**payload, "submitted_draft": draft},
+            payload={**recorded, "submitted_draft": draft, "validation_result": payload},
         )
     context.control.after_boundary("answer_validation", tool_context.tool_call_id)
     return json.dumps(payload, ensure_ascii=False)
+
+
+def _protocol_facts(context: ResearchRunContext, tool_call_id: str, tool_name: str) -> ProtocolFacts:
+    return ProtocolFacts(
+        known_source_quotes={
+            **context.turn.research_memory.evidence_items_by_id,
+            **context.corpus.observations_by_evidence_id,
+        },
+        catalog_results=context.catalog_results_by_ref,
+        sibling_tool_names=context.tool_call_groups.get(tool_call_id, (tool_name,)),
+    )
+
+
+def _finish_protocol_rejection(
+    context: ResearchRunContext,
+    tool_context: ToolContext[ResearchRunContext],
+    name: str,
+    arguments: JsonMap,
+    result: JsonMap,
+) -> str:
+    context.trace.append(tool_trace_item(tool_context.tool_call_id, name, arguments, result))
+    context.emit_progress({
+        "type": "tool_completed",
+        "tool": name,
+        "status": "recoverable_error",
+        "durationMs": 0,
+        "input": progress_input(name, arguments),
+        "output": progress_output(name, result),
+        "evidenceIds": [],
+    })
+    context.control.after_boundary("tool_completed", tool_context.tool_call_id)
+    return json.dumps(result, ensure_ascii=False)
+
+
+def _remember_catalog_result(
+    context: ResearchRunContext,
+    name: str,
+    internal: JsonMap,
+    visible: JsonMap,
+    result_ref: str,
+) -> None:
+    key = "candidates" if name == "search_paper_candidates" else "matches"
+    papers = [child_map(item) for item in as_list(visible.get(key)) if isinstance(item, dict)]
+    all_papers = as_list(internal.get(key))
+    matched_count = (
+        int(internal.get("matched_count"))
+        if isinstance(internal.get("matched_count"), int)
+        else len(all_papers)
+    )
+    source_complete = name == "find_papers_by_identity" or internal.get("coverage") == "complete"
+    context.catalog_results_by_ref[result_ref] = {
+        "matched_count": matched_count,
+        "coverage": "complete" if source_complete and len(papers) >= matched_count else "truncated",
+        "papers": papers,
+    }
 
 
 def _record_eval_tool(

@@ -11,7 +11,6 @@ from harness_py.orchestration.agents.context import ResearchRunContext
 from harness_py.orchestration.agents.tools import (
     FINAL_TOOL_NAME,
     _bounded_read_payload,
-    _invoke_final,
     _normalize_structured_arguments,
     build_agent_tools,
 )
@@ -137,14 +136,19 @@ class AgentsToolsTest(unittest.TestCase):
             tool_arguments="{}",
         )
 
-        payload = json.loads(_invoke_final(context, tool_context, {
-            "outcome": "answered",
-            "markdown": "Hello.",
-            "fields": {},
-        }))
+        tool = next(item for item in build_agent_tools(context) if item.name == FINAL_TOOL_NAME)
+        payload = json.loads(asyncio.run(tool.on_invoke_tool(
+            tool_context,
+            json.dumps({
+                "outcome": "answered",
+                "language": "EN",
+                "markdown": "Hello.",
+                "fields": {},
+            }),
+        )))
 
         self.assertFalse(payload["accepted"])
-        self.assertIn("only tool call", payload["validation_error"])
+        self.assertEqual(["SUBMISSION_TOOL_GROUP_INVALID"], payload["issue_codes"])
         self.assertFalse(context.trace[-1]["result"]["accepted"])
 
     def test_final_submission_keeps_cross_paper_coverage_as_offline_diagnostic(self) -> None:
@@ -196,39 +200,83 @@ class AgentsToolsTest(unittest.TestCase):
                 "span_text": "Other evidence.",
             },
         })
-        context.tool_call_groups["call_final"] = (FINAL_TOOL_NAME,)
-        tool_context = ToolContext(
-            context=context,
-            tool_name=FINAL_TOOL_NAME,
-            tool_call_id="call_final",
-            tool_arguments="{}",
-        )
-
-        payload = json.loads(_invoke_final(context, tool_context, {
-            "outcome": "answered",
-            "markdown": "Synthetic Paper is supported [[source_quote_synthetic]], while Other Paper differs.",
-        }))
-
-        self.assertTrue(payload["accepted"])
-        self.assertIsNone(payload["validation_error"])
-
-        for call_id, markdown, expected_error in (
-            ("call_uncited", "An uncited paper claim.", "require citations"),
-            ("call_think", "<think>hidden</think> Supported. [[source_quote_synthetic]]", "internal reasoning"),
+        tool = next(item for item in build_agent_tools(context) if item.name == FINAL_TOOL_NAME)
+        for call_id, markdown, expected_issue in (
+            ("call_uncited", "An uncited paper claim.", "UNCITED_CONTENT_BLOCK"),
+            ("call_think", "<think>hidden</think> Supported. [[source_quote_synthetic]]", "INTERNAL_REASONING_NOT_ALLOWED"),
         ):
             context.tool_call_groups[call_id] = (FINAL_TOOL_NAME,)
-            rejected = json.loads(_invoke_final(
-                context,
+            rejected = json.loads(asyncio.run(tool.on_invoke_tool(
                 ToolContext(
                     context=context,
                     tool_name=FINAL_TOOL_NAME,
                     tool_call_id=call_id,
                     tool_arguments="{}",
                 ),
-                {"outcome": "answered", "markdown": markdown},
-            ))
+                json.dumps({"outcome": "answered", "language": "EN", "markdown": markdown}),
+            )))
             self.assertFalse(rejected["accepted"])
-            self.assertIn(expected_error, rejected["validation_error"])
+            self.assertIn(expected_issue, rejected["issue_codes"])
+
+        context.tool_call_groups["call_final"] = (FINAL_TOOL_NAME,)
+        payload = json.loads(asyncio.run(tool.on_invoke_tool(
+            ToolContext(
+                context=context,
+                tool_name=FINAL_TOOL_NAME,
+                tool_call_id="call_final",
+                tool_arguments="{}",
+            ),
+            json.dumps({
+                "outcome": "answered",
+                "language": "EN",
+                "markdown": "Synthetic Paper is supported [[source_quote_synthetic]], while Other Paper differs.",
+            }),
+        )))
+
+        self.assertTrue(payload["accepted"])
+        self.assertEqual("RESEARCH", payload["draft"]["answer_contract"])
+
+    def test_catalog_submission_uses_the_current_tool_result_ledger(self) -> None:
+        dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()
+        context = ResearchRunContext(TurnExecutionInput(
+            dataset=dataset,
+            case_id="catalog_ledger",
+            run_id="run_catalog_ledger",
+            question="how many papers",
+            conversation_messages=[],
+            research_memory=ResearchMemory(),
+        ))
+        tools = {tool.name: tool for tool in build_agent_tools(context)}
+        context.tool_call_groups["call_search"] = ("search_paper_candidates",)
+        search_result = json.loads(asyncio.run(tools["search_paper_candidates"].on_invoke_tool(
+            ToolContext(
+                context=context,
+                tool_name="search_paper_candidates",
+                tool_call_id="call_search",
+                tool_arguments="{}",
+            ),
+            json.dumps({"query_text": "", "limit": 100}),
+        )))
+        result_ref = search_result["paper_result_ref"]
+
+        context.tool_call_groups["call_catalog"] = ("submit_catalog_answer",)
+        submission = json.loads(asyncio.run(tools["submit_catalog_answer"].on_invoke_tool(
+            ToolContext(
+                context=context,
+                tool_name="submit_catalog_answer",
+                tool_call_id="call_catalog",
+                tool_arguments="{}",
+            ),
+            json.dumps({
+                "result_ref": result_ref,
+                "view": "COUNT",
+                "language": "EN",
+            }),
+        )))
+
+        self.assertIn(result_ref, context.catalog_results_by_ref)
+        self.assertEqual("Found 1 paper.", submission["draft"]["markdown"])
+        self.assertEqual("CATALOG", submission["draft"]["answer_contract"])
 
     def test_bounded_read_reports_omitted_locations(self) -> None:
         dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()
