@@ -171,6 +171,45 @@ SearchText.preview(content, queryTokens, maxLength)
 对于本 Case，包含正确句子的窗口覆盖全部关键 Token，而前部公式窗口只覆盖 `samples`，因此会稳定选择
 正确导航摘要。
 
+### 6.1 直观解释
+
+当前正文中存在两个可能的 500 字符窗口：
+
+```text
+窗口 A：pass@k 公式 ... samples ...
+覆盖查询词：samples
+得分：1
+
+窗口 B：HumanEval ... Codex-12B ... 8 random samples per problem ... temperature 0.8
+覆盖查询词：HumanEval、Codex-12B、random、samples、temperature
+得分：5
+```
+
+旧算法选择“最早出现任意查询词”的窗口，因此选中 A。新算法选择“覆盖不同查询词最多”的窗口，
+因此选中 B。Agent 随后能在 Search Result 中直接看到正确上下文，再调用 `read_paper_content` 读取并引用
+该 Location，而不是从两个无关段落拼接数字。
+
+这不是修改检索分数。Qdrant 已经把正确 Location 排在第一名；修改的是第一名结果展示给 Agent 的
+导航摘要。
+
+### 6.2 验收条件
+
+```text
+SearchText 单元回归：
+  Preview 包含 "8 random samples per problem"
+  Preview 包含 "temperature 0.8"
+  Preview 不再停留在前部 pass@k 公式
+
+PaperLoom-31 comparison_04：
+  target_paper_14_codex.returned = true
+  target_paper_14_codex.read = true
+  target_paper_14_codex.cited = true
+  answer 包含 samples_per_problem = 8
+  answer 包含 temperature = 0.8
+  Judge.answer_quality = PASS
+  Judge.grounding = PASS
+```
+
 只增加一个回归测试：输入同时包含“较早的通用 samples”和“较后的完整 HumanEval 句子”，断言 Preview
 包含 `8 random samples per problem` 与 `temperature 0.8`。然后重跑 `comparison_04` 所在完整 Benchmark。
 
