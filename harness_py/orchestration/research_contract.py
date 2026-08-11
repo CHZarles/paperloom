@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
+from dataclasses import dataclass, field, replace
+from enum import Enum
+
 from ..utils.models import JsonMap
 from ..utils.answer_blocks import NON_MATERIAL_UNCITED_BLOCK_KINDS, answer_blocks
 from .research_skills import ResearchSkillRegistry
@@ -12,6 +16,198 @@ CITATION_RE = re.compile(r"\[\[(source_quote_[A-Za-z0-9_-]+)\]\]")
 _DOUBLE_BRACKET_MARKER_RE = re.compile(r"\[\[([^\]]+)]]")
 _NUMERIC_CITATION_RE = re.compile(r"(?<!\[)\[(\d+)\]")
 FINAL_TOOL_NAME = "submit_research_answer"
+DIRECT_FINAL_TOOL_NAME = "submit_direct_answer"
+CATALOG_FINAL_TOOL_NAME = "submit_catalog_answer"
+
+
+class AnswerContract(str, Enum):
+    DIRECT = "DIRECT"
+    CATALOG = "CATALOG"
+    RESEARCH = "RESEARCH"
+
+
+class Phase(str, Enum):
+    ACTIVE = "ACTIVE"
+    REPAIR = "REPAIR"
+    COMPLETE = "COMPLETE"
+
+
+class SubmissionIssueClass(str, Enum):
+    FORMAT_ISSUE = "FORMAT_ISSUE"
+    MISSING_CONTRACT_INPUT = "MISSING_CONTRACT_INPUT"
+
+
+@dataclass(frozen=True)
+class ProtocolState:
+    phase: Phase = Phase.ACTIVE
+    contract: AnswerContract | None = None
+    submission_attempt: int = 0
+    validation_issues: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class ProtocolFacts:
+    known_source_quotes: Mapping[str, JsonMap] = field(default_factory=dict)
+    catalog_results: Mapping[str, JsonMap] = field(default_factory=dict)
+    sibling_tool_names: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class ActionRequested:
+    tool_name: str
+
+
+@dataclass(frozen=True)
+class SubmissionRequested:
+    contract: AnswerContract
+    payload: JsonMap
+    accepted: bool
+    issue_class: SubmissionIssueClass | None = None
+    issue_codes: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.accepted == (self.issue_class is not None):
+            raise ValueError("accepted submissions must not have an issue class; rejected submissions must have one")
+
+
+ProtocolEvent = ActionRequested | SubmissionRequested
+
+
+@dataclass(frozen=True)
+class ProtocolDecision:
+    next_state: ProtocolState
+    accepted_answer: JsonMap | None
+    model_result: JsonMap
+
+
+_SUBMISSION_TOOL_BY_CONTRACT = {
+    AnswerContract.DIRECT: DIRECT_FINAL_TOOL_NAME,
+    AnswerContract.CATALOG: CATALOG_FINAL_TOOL_NAME,
+    AnswerContract.RESEARCH: FINAL_TOOL_NAME,
+}
+_SUBMISSION_TOOL_NAMES = frozenset(_SUBMISSION_TOOL_BY_CONTRACT.values())
+_CATALOG_TOOL_NAMES = frozenset({
+    "search_paper_candidates",
+    "find_papers_by_identity",
+    CATALOG_FINAL_TOOL_NAME,
+})
+_RESEARCH_TOOL_NAMES = frozenset({
+    "get_research_skill",
+    "search_paper_candidates",
+    "find_papers_by_identity",
+    "search_paper_content",
+    "get_paper_structure",
+    "read_paper_content",
+    "get_citation_edges",
+    FINAL_TOOL_NAME,
+})
+_INITIAL_TOOL_NAMES = _CATALOG_TOOL_NAMES | _RESEARCH_TOOL_NAMES | {DIRECT_FINAL_TOOL_NAME}
+
+
+def allowed_tool_names(state: ProtocolState) -> frozenset[str]:
+    if state.phase is Phase.COMPLETE:
+        return frozenset()
+    if state.phase is Phase.REPAIR:
+        return frozenset({_SUBMISSION_TOOL_BY_CONTRACT[state.contract]}) if state.contract else frozenset()
+    if state.contract is AnswerContract.CATALOG:
+        return _CATALOG_TOOL_NAMES
+    if state.contract is AnswerContract.RESEARCH:
+        return _RESEARCH_TOOL_NAMES
+    if state.contract is AnswerContract.DIRECT:
+        return frozenset({DIRECT_FINAL_TOOL_NAME})
+    return _INITIAL_TOOL_NAMES
+
+
+def decide(
+    state: ProtocolState,
+    event: ProtocolEvent,
+    facts: ProtocolFacts,
+) -> ProtocolDecision:
+    """Return the deterministic protocol decision for one requested action."""
+
+    if isinstance(event, ActionRequested):
+        return _decide_action(state, event, facts)
+    return _decide_submission(state, event)
+
+
+def _decide_action(
+    state: ProtocolState,
+    event: ActionRequested,
+    facts: ProtocolFacts,
+) -> ProtocolDecision:
+    siblings = facts.sibling_tool_names or (event.tool_name,)
+    if len(siblings) != 1 and _SUBMISSION_TOOL_NAMES.intersection(siblings):
+        return _protocol_error(state, "SUBMISSION_TOOL_GROUP_INVALID")
+    if event.tool_name not in allowed_tool_names(state):
+        return _protocol_error(state, "ACTION_NOT_ALLOWED")
+    return ProtocolDecision(
+        next_state=state,
+        accepted_answer=None,
+        model_result={"accepted": True},
+    )
+
+
+def _decide_submission(
+    state: ProtocolState,
+    event: SubmissionRequested,
+) -> ProtocolDecision:
+    if state.phase is Phase.COMPLETE:
+        return _protocol_error(state, "ACTION_NOT_ALLOWED")
+    if state.contract is not None and state.contract is not event.contract:
+        return _protocol_error(state, "CONTRACT_MISMATCH")
+    if _SUBMISSION_TOOL_BY_CONTRACT[event.contract] not in allowed_tool_names(state):
+        return _protocol_error(state, "ACTION_NOT_ALLOWED")
+
+    attempt = state.submission_attempt + 1
+    if event.accepted:
+        next_state = ProtocolState(
+            phase=Phase.COMPLETE,
+            contract=event.contract,
+            submission_attempt=attempt,
+        )
+        return ProtocolDecision(
+            next_state=next_state,
+            accepted_answer=event.payload,
+            model_result={"accepted": True, "contract": event.contract.value},
+        )
+
+    phase = (
+        Phase.ACTIVE
+        if event.issue_class is SubmissionIssueClass.MISSING_CONTRACT_INPUT
+        and event.contract is not AnswerContract.DIRECT
+        else Phase.REPAIR
+    )
+    next_state = ProtocolState(
+        phase=phase,
+        contract=event.contract,
+        submission_attempt=attempt,
+        validation_issues=event.issue_codes,
+    )
+    return ProtocolDecision(
+        next_state=next_state,
+        accepted_answer=None,
+        model_result={
+            "accepted": False,
+            "error_code": "FINAL_SUBMISSION_REJECTED",
+            "contract": event.contract.value,
+            "issue_class": event.issue_class.value,
+            "issue_codes": list(event.issue_codes),
+            "allowed_next_actions": sorted(allowed_tool_names(next_state)),
+        },
+    )
+
+
+def _protocol_error(state: ProtocolState, issue_code: str) -> ProtocolDecision:
+    return ProtocolDecision(
+        next_state=replace(state, validation_issues=(issue_code,)),
+        accepted_answer=None,
+        model_result={
+            "accepted": False,
+            "error_code": "PROTOCOL_ERROR",
+            "issue_codes": [issue_code],
+            "allowed_next_actions": sorted(allowed_tool_names(state)),
+        },
+    )
 
 
 def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
