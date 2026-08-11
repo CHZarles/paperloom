@@ -1,0 +1,231 @@
+{
+  "measuredAt": "2026-08-11T03:39:23.966Z",
+  "baseURL": "https://paperloom.me",
+  "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+  "machine": {
+    "arch": "arm64",
+    "cpu": "Apple M5",
+    "logicalCores": 10,
+    "memoryGiB": 32,
+    "platform": "darwin"
+  },
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "network": "unthrottled",
+  "iterations": 5,
+  "candidate": {
+    "paperId": "bf17ace7b031e5cd04df86ad4bb29982",
+    "paperTitle": "Improving Language Understanding by Generative Pre-Training",
+    "pageNumber": 1
+  },
+  "pdf": {
+    "summary": {
+      "medianMs": 2276.1,
+      "minMs": 2214.9,
+      "maxMs": 2381.9
+    },
+    "samples": [
+      {
+        "readyMs": 2276.1,
+        "resources": [
+          {
+            "durationMs": 421.6,
+            "encodedBytes": 310,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data"
+          },
+          {
+            "durationMs": 966.4,
+            "encodedBytes": 541036,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data/range"
+          }
+        ]
+      },
+      {
+        "readyMs": 2355.8,
+        "resources": [
+          {
+            "durationMs": 431.1,
+            "encodedBytes": 310,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data"
+          },
+          {
+            "durationMs": 1013,
+            "encodedBytes": 541036,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data/range"
+          }
+        ]
+      },
+      {
+        "readyMs": 2381.9,
+        "resources": [
+          {
+            "durationMs": 432,
+            "encodedBytes": 310,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data"
+          },
+          {
+            "durationMs": 927.8,
+            "encodedBytes": 541036,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data/range"
+          }
+        ]
+      },
+      {
+        "readyMs": 2214.9,
+        "resources": [
+          {
+            "durationMs": 430.5,
+            "encodedBytes": 310,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data"
+          },
+          {
+            "durationMs": 1013.6,
+            "encodedBytes": 541036,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data/range"
+          }
+        ]
+      },
+      {
+        "readyMs": 2258.7,
+        "resources": [
+          {
+            "durationMs": 446.4,
+            "encodedBytes": 310,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data"
+          },
+          {
+            "durationMs": 990.4,
+            "encodedBytes": 541036,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data/range"
+          }
+        ]
+      }
+    ]
+  },
+  "image": {
+    "summary": {
+      "medianMs": 1818.2,
+      "minMs": 1615.8,
+      "maxMs": 2162.5
+    },
+    "samples": [
+      {
+        "readyMs": 2123.8,
+        "descriptorReadyMs": 580.8,
+        "width": 1224,
+        "height": 1584,
+        "resources": [
+          {
+            "durationMs": 580.1,
+            "encodedBytes": 523,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/pages/1/screenshot"
+          },
+          {
+            "durationMs": 1535.5,
+            "encodedBytes": 355256,
+            "name": "/files/uploads/paper-assets/bf17ace7b031e5cd04df86ad4bb29982/pages/page-1.png"
+          },
+          {
+            "durationMs": 453.5,
+            "encodedBytes": 93,
+            "name": "/api/v1/chat/active-generation"
+          }
+        ]
+      },
+      {
+        "readyMs": 1615.8,
+        "descriptorReadyMs": 437.4,
+        "width": 1224,
+        "height": 1584,
+        "resources": [
+          {
+            "durationMs": 436.6,
+            "encodedBytes": 523,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/pages/1/screenshot"
+          },
+          {
+            "durationMs": 576.2,
+            "encodedBytes": 93,
+            "name": "/api/v1/chat/active-generation"
+          },
+          {
+            "durationMs": 1173,
+            "encodedBytes": 355256,
+            "name": "/files/uploads/paper-assets/bf17ace7b031e5cd04df86ad4bb29982/pages/page-1.png"
+          }
+        ]
+      },
+      {
+        "readyMs": 1711.5,
+        "descriptorReadyMs": 588.3,
+        "width": 1224,
+        "height": 1584,
+        "resources": [
+          {
+            "durationMs": 587.5,
+            "encodedBytes": 522,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/pages/1/screenshot"
+          },
+          {
+            "durationMs": 1118.5,
+            "encodedBytes": 355256,
+            "name": "/files/uploads/paper-assets/bf17ace7b031e5cd04df86ad4bb29982/pages/page-1.png"
+          },
+          {
+            "durationMs": 694.5,
+            "encodedBytes": 93,
+            "name": "/api/v1/chat/active-generation"
+          }
+        ]
+      },
+      {
+        "readyMs": 2162.5,
+        "descriptorReadyMs": 598.8,
+        "width": 1224,
+        "height": 1584,
+        "resources": [
+          {
+            "durationMs": 598,
+            "encodedBytes": 523,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/pages/1/screenshot"
+          },
+          {
+            "durationMs": 419.2,
+            "encodedBytes": 93,
+            "name": "/api/v1/chat/active-generation"
+          },
+          {
+            "durationMs": 1557,
+            "encodedBytes": 355256,
+            "name": "/files/uploads/paper-assets/bf17ace7b031e5cd04df86ad4bb29982/pages/page-1.png"
+          }
+        ]
+      },
+      {
+        "readyMs": 1818.2,
+        "descriptorReadyMs": 411.9,
+        "width": 1224,
+        "height": 1584,
+        "resources": [
+          {
+            "durationMs": 411.1,
+            "encodedBytes": 524,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/pages/1/screenshot"
+          },
+          {
+            "durationMs": 1400.2,
+            "encodedBytes": 355256,
+            "name": "/files/uploads/paper-assets/bf17ace7b031e5cd04df86ad4bb29982/pages/page-1.png"
+          },
+          {
+            "durationMs": 406.1,
+            "encodedBytes": 93,
+            "name": "/api/v1/chat/active-generation"
+          }
+        ]
+      }
+    ]
+  }
+}

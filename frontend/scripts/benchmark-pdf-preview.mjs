@@ -55,13 +55,25 @@ async function waitForFirstPage(page) {
 }
 
 async function measureOpen(page, previewButton, cacheState) {
+  const pdfRequests = [];
+  const onResponse = response => {
+    if (!response.url().includes('/preview/pdf-data')) return;
+    const headers = response.headers();
+    pdfRequests.push({
+      contentRange: headers['content-range'] || '',
+      name: new URL(response.url()).pathname,
+      range: response.request().headers().range || '',
+      status: response.status()
+    });
+  };
+  page.on('response', onResponse);
   await page.evaluate(() => {
     window.paperloomPdfBenchmarkStart = performance.now();
   });
   await previewButton.click();
   await waitForFirstPage(page);
 
-  return page.evaluate(cache => {
+  const metrics = await page.evaluate(cache => {
     const start = window.paperloomPdfBenchmarkStart;
     const end = performance.now();
     const resources = performance
@@ -86,6 +98,12 @@ async function measureOpen(page, previewButton, cacheState) {
       resources
     };
   }, cacheState);
+  page.off('response', onResponse);
+  return {
+    ...metrics,
+    previewRequestCount: Math.max(metrics.previewRequestCount, pdfRequests.length),
+    pdfRequests
+  };
 }
 
 const browser = await chromium.launch({ headless: true, executablePath });
@@ -107,6 +125,7 @@ try {
   const seedPage = await seedContext.newPage();
   await navigate(seedPage, baseURL);
   const guestLoginButton = seedPage.getByRole('button', { name: /游客登录|Continue as guest/ });
+  await guestLoginButton.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => undefined);
   if (await guestLoginButton.isVisible()) {
     await guestLoginButton.click();
     await seedPage.waitForURL(/#\/chat/);

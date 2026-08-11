@@ -48,19 +48,29 @@ interface PdfPreviewRangeRequest {
   options: NormalizedFetchOptions;
 }
 
+interface StandardPdfRangePayload {
+  initialData: Uint8Array;
+  totalSizeBytes: number;
+  url: string;
+}
+
 const activePdfByteLoads = new Map<string, Promise<Uint8Array>>();
 const activePdfPreviewSourceLoads = new Map<string, Promise<PdfPreviewSourcePayload>>();
 const activePdfRangeLoads = new Map<string, Promise<Uint8Array>>();
-const pdfPreviewMetadataCache = new Map<string, PdfPreviewDataPayload>();
+const pdfPreviewSourceCache = new Map<string, PdfPreviewSourcePayload>();
 const pdfRangeCache = new Map<string, Uint8Array>();
+let pdfPreviewSourceCacheBytes = 0;
 let pdfRangeCacheBytes = 0;
 const storagePrefix = import.meta.env?.VITE_STORAGE_PREFIX || '';
 const fallbackPdfRangeChunkSize = 1024 * 1024;
-const maxCachedPdfMetadataEntries = 16;
+const maxCachedPdfSourceEntries = 16;
+const maxCachedPdfSourceBytes = 16 * 1024 * 1024;
 const maxCachedPdfRangeBytes = 48 * 1024 * 1024;
 const pdfRangeResponseAccept = 'application/pdf, application/json';
 
-type PdfPreviewSourcePayload = { metadata: PdfPreviewDataPayload } | { bytes: Uint8Array };
+type PdfPreviewSourcePayload =
+  | { metadata: PdfPreviewDataPayload; standardRange?: StandardPdfRangePayload }
+  | { bytes: Uint8Array };
 
 export async function fetchPdfPreviewBytes(url: string, options: FetchPdfPreviewBytesOptions = {}) {
   const normalizedOptions = normalizeFetchOptions(options);
@@ -92,8 +102,9 @@ export function clearPdfPreviewByteLoadCacheForTest() {
   activePdfByteLoads.clear();
   activePdfPreviewSourceLoads.clear();
   activePdfRangeLoads.clear();
-  pdfPreviewMetadataCache.clear();
+  pdfPreviewSourceCache.clear();
   pdfRangeCache.clear();
+  pdfPreviewSourceCacheBytes = 0;
   pdfRangeCacheBytes = 0;
 }
 
@@ -105,6 +116,9 @@ export async function createPdfPreviewSource(
   const payload = await loadPdfPreviewSourcePayload(url, normalizedOptions);
 
   if ('metadata' in payload) {
+    if (payload.standardRange) {
+      return buildStandardPdfRangeSource(payload.standardRange, normalizedOptions);
+    }
     return buildPdfRangeSource(url, payload.metadata, normalizedOptions);
   }
 
@@ -114,7 +128,7 @@ export async function createPdfPreviewSource(
 function normalizeFetchOptions(options: FetchPdfPreviewBytesOptions): NormalizedFetchOptions {
   return {
     authorization: options.authorization ?? null,
-    useStoredAuthorization: options.authorization == null,
+    useStoredAuthorization: options.authorization === null || options.authorization === undefined,
     fetchImpl: options.fetchImpl ?? ((input, init) => fetch(input, init)),
     shouldAttachAuthHeaders: options.shouldAttachAuthHeaders ?? (() => true)
   };
@@ -129,11 +143,9 @@ async function loadPdfPreviewSourcePayload(
   options: NormalizedFetchOptions
 ): Promise<PdfPreviewSourcePayload> {
   const cacheKey = buildPdfCacheKey(url, options);
-  const cachedMetadata = getCachedPdfPreviewMetadata(cacheKey);
+  const cachedSource = getCachedPdfPreviewSource(cacheKey);
 
-  if (cachedMetadata) {
-    return { metadata: cachedMetadata };
-  }
+  if (cachedSource) return cachedSource;
 
   const existingLoad = activePdfPreviewSourceLoads.get(cacheKey);
   if (existingLoad) {
@@ -150,9 +162,7 @@ async function loadPdfPreviewSourcePayload(
   activePdfPreviewSourceLoads.set(cacheKey, load);
 
   const payload = await load;
-  if ('metadata' in payload) {
-    setCachedPdfPreviewMetadata(cacheKey, payload.metadata);
-  }
+  setCachedPdfPreviewSource(cacheKey, payload);
 
   return clonePdfPreviewSourcePayload(payload);
 }
@@ -161,12 +171,35 @@ async function requestPdfPreviewSourcePayload(
   url: string,
   options: NormalizedFetchOptions
 ): Promise<PdfPreviewSourcePayload> {
-  const response = await requestPdfPreviewResponse(url, options, 'application/json');
+  const response = await requestPdfPreviewResponse(url, options, {
+    Accept: pdfRangeResponseAccept,
+    Range: `bytes=0-${fallbackPdfRangeChunkSize - 1}`
+  });
   const contentType = response.headers.get('content-type') || '';
 
   if (!contentType.includes('application/json')) {
     const bytes = new Uint8Array(await response.arrayBuffer());
     validatePdfBytes(bytes, response.headers.get('content-type') || 'unknown content type');
+    const contentRange = parsePdfContentRange(response.headers.get('content-range'));
+    if (response.status === 206) {
+      if (!contentRange || contentRange.begin !== 0 || contentRange.end + 1 !== bytes.length) {
+        throw new Error('PDF initial Range response does not match its Content-Range');
+      }
+      if (contentRange.totalSizeBytes > bytes.length) {
+        return {
+          metadata: {
+            chunkSizeBytes: fallbackPdfRangeChunkSize,
+            rangeUrl: url,
+            sourceFileSizeBytes: contentRange.totalSizeBytes
+          },
+          standardRange: {
+            initialData: bytes,
+            totalSizeBytes: contentRange.totalSizeBytes,
+            url
+          }
+        };
+      }
+    }
     return { bytes };
   }
 
@@ -183,31 +216,55 @@ async function requestPdfPreviewSourcePayload(
 }
 
 function clonePdfPreviewSourcePayload(payload: PdfPreviewSourcePayload): PdfPreviewSourcePayload {
-  return 'metadata' in payload
-    ? { metadata: clonePdfPreviewDataPayload(payload.metadata) }
-    : { bytes: cloneBytes(payload.bytes) };
+  if ('bytes' in payload) return { bytes: cloneBytes(payload.bytes) };
+  return {
+    metadata: clonePdfPreviewDataPayload(payload.metadata),
+    standardRange: payload.standardRange
+      ? { ...payload.standardRange, initialData: cloneBytes(payload.standardRange.initialData) }
+      : undefined
+  };
 }
 
 function clonePdfPreviewDataPayload(payload: PdfPreviewDataPayload): PdfPreviewDataPayload {
   return { ...payload };
 }
 
-function getCachedPdfPreviewMetadata(cacheKey: string) {
-  const cached = pdfPreviewMetadataCache.get(cacheKey);
+function getCachedPdfPreviewSource(cacheKey: string) {
+  const cached = pdfPreviewSourceCache.get(cacheKey);
   if (!cached) return null;
-  pdfPreviewMetadataCache.delete(cacheKey);
-  pdfPreviewMetadataCache.set(cacheKey, cached);
-  return clonePdfPreviewDataPayload(cached);
+  pdfPreviewSourceCache.delete(cacheKey);
+  pdfPreviewSourceCache.set(cacheKey, cached);
+  return clonePdfPreviewSourcePayload(cached);
 }
 
-function setCachedPdfPreviewMetadata(cacheKey: string, payload: PdfPreviewDataPayload) {
-  pdfPreviewMetadataCache.delete(cacheKey);
-  pdfPreviewMetadataCache.set(cacheKey, clonePdfPreviewDataPayload(payload));
-  while (pdfPreviewMetadataCache.size > maxCachedPdfMetadataEntries) {
-    const oldestKey = pdfPreviewMetadataCache.keys().next().value;
-    if (!oldestKey) break;
-    pdfPreviewMetadataCache.delete(oldestKey);
+function setCachedPdfPreviewSource(cacheKey: string, payload: PdfPreviewSourcePayload) {
+  const cachedPayload = clonePdfPreviewSourcePayload(payload);
+  const cachedBytes = pdfPreviewSourcePayloadBytes(cachedPayload);
+  if (cachedBytes > maxCachedPdfSourceBytes) return;
+
+  const existing = pdfPreviewSourceCache.get(cacheKey);
+  if (existing) {
+    pdfPreviewSourceCacheBytes -= pdfPreviewSourcePayloadBytes(existing);
+    pdfPreviewSourceCache.delete(cacheKey);
   }
+
+  pdfPreviewSourceCache.set(cacheKey, cachedPayload);
+  pdfPreviewSourceCacheBytes += cachedBytes;
+  while (
+    pdfPreviewSourceCache.size > maxCachedPdfSourceEntries ||
+    pdfPreviewSourceCacheBytes > maxCachedPdfSourceBytes
+  ) {
+    const oldestKey = pdfPreviewSourceCache.keys().next().value;
+    if (!oldestKey) break;
+    const oldest = pdfPreviewSourceCache.get(oldestKey);
+    pdfPreviewSourceCache.delete(oldestKey);
+    pdfPreviewSourceCacheBytes -= oldest ? pdfPreviewSourcePayloadBytes(oldest) : 0;
+  }
+}
+
+function pdfPreviewSourcePayloadBytes(payload: PdfPreviewSourcePayload) {
+  if ('bytes' in payload) return payload.bytes.byteLength;
+  return payload.standardRange?.initialData.byteLength || 0;
 }
 
 function cloneBytes(bytes: Uint8Array) {
@@ -237,7 +294,9 @@ function parseStoredToken(rawToken: string | null) {
 }
 
 async function requestPdfPreviewBytes(url: string, options: NormalizedFetchOptions) {
-  const response = await requestPdfPreviewResponse(url, options, 'application/json, application/pdf');
+  const response = await requestPdfPreviewResponse(url, options, {
+    Accept: 'application/json, application/pdf'
+  });
   const contentType = response.headers.get('content-type') || '';
   const bytes = contentType.includes('application/json')
     ? await decodeOrDownloadPdfPreviewDataResponse((await response.json()) as PdfPreviewDataResponse, url, options)
@@ -248,9 +307,13 @@ async function requestPdfPreviewBytes(url: string, options: NormalizedFetchOptio
   return bytes;
 }
 
-async function requestPdfPreviewResponse(url: string, options: NormalizedFetchOptions, accept: string) {
+async function requestPdfPreviewResponse(
+  url: string,
+  options: NormalizedFetchOptions,
+  requestHeaders: Record<string, string>
+) {
   const response = await options.fetchImpl(url, {
-    headers: buildPdfPreviewHeaders(url, options, accept),
+    headers: buildPdfPreviewHeaders(url, options, requestHeaders),
     credentials: 'same-origin'
   });
 
@@ -261,10 +324,8 @@ async function requestPdfPreviewResponse(url: string, options: NormalizedFetchOp
   return response;
 }
 
-function buildPdfPreviewHeaders(url: string, options: NormalizedFetchOptions, accept: string) {
-  const headers: Record<string, string> = {
-    Accept: accept
-  };
+function buildPdfPreviewHeaders(url: string, options: NormalizedFetchOptions, requestHeaders: Record<string, string>) {
+  const headers = { ...requestHeaders };
 
   const authorization = resolveAuthorization(options);
   if (authorization && options.shouldAttachAuthHeaders(url)) {
@@ -318,6 +379,18 @@ function buildPdfRangeSource(
   return {
     range: new PaperLoomPdfRangeTransport(metadataUrl, metadata, options),
     rangeChunkSize: normalizeChunkSize(metadata.chunkSizeBytes),
+    disableAutoFetch: true,
+    disableStream: true
+  };
+}
+
+function buildStandardPdfRangeSource(
+  payload: StandardPdfRangePayload,
+  options: NormalizedFetchOptions
+): DocumentInitParameters {
+  return {
+    range: new PaperLoomStandardPdfRangeTransport(payload, options),
+    rangeChunkSize: fallbackPdfRangeChunkSize,
     disableAutoFetch: true,
     disableStream: true
   };
@@ -378,7 +451,7 @@ async function requestPdfPreviewRange(request: PdfPreviewRangeRequest) {
     };
   }
 
-  const load = requestPdfPreviewResponse(rangeUrl, options, pdfRangeResponseAccept)
+  const load = requestPdfPreviewResponse(rangeUrl, options, { Accept: pdfRangeResponseAccept })
     .then(decodePdfPreviewRangeBytes)
     .finally(() => {
       if (activePdfRangeLoads.get(cacheKey) === load) {
@@ -532,6 +605,20 @@ function buildPdfPreviewRangeRequestUrl(rangeUrl: string, begin: number, end: nu
   return `${rangeUrl}${separator}begin=${encodeURIComponent(String(begin))}&end=${encodeURIComponent(String(end))}`;
 }
 
+function parsePdfContentRange(rawValue: string | null) {
+  const match = rawValue?.trim().match(/^bytes (\d+)-(\d+)\/(\d+)$/i);
+  if (!match) return null;
+
+  const begin = Number(match[1]);
+  const end = Number(match[2]);
+  const totalSizeBytes = Number(match[3]);
+  if (![begin, end, totalSizeBytes].every(Number.isSafeInteger) || begin < 0 || end < begin || end >= totalSizeBytes) {
+    return null;
+  }
+
+  return { begin, end, totalSizeBytes };
+}
+
 function decodeBase64Bytes(contentBase64: string) {
   const binary = atob(contentBase64);
   const bytes = new Uint8Array(binary.length);
@@ -591,5 +678,44 @@ class PaperLoomPdfRangeTransport extends PDFDataRangeTransport {
     } finally {
       this.controllers.delete(controller);
     }
+  }
+}
+
+class PaperLoomStandardPdfRangeTransport extends PDFDataRangeTransport {
+  private aborted = false;
+
+  constructor(
+    private readonly payload: StandardPdfRangePayload,
+    private readonly options: NormalizedFetchOptions
+  ) {
+    super(payload.totalSizeBytes, cloneBytes(payload.initialData), true);
+  }
+
+  override requestDataRange(begin: number, end: number) {
+    if (this.aborted) return;
+    this.loadRange(begin, end).catch(() => undefined);
+  }
+
+  override abort() {
+    this.aborted = true;
+  }
+
+  private async loadRange(begin: number, end: number) {
+    const response = await requestPdfPreviewResponse(this.payload.url, this.options, {
+      Accept: pdfRangeResponseAccept,
+      Range: `bytes=${begin}-${end - 1}`
+    });
+    const contentRange = parsePdfContentRange(response.headers.get('content-range'));
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (
+      !contentRange ||
+      contentRange.begin !== begin ||
+      contentRange.end !== end - 1 ||
+      contentRange.totalSizeBytes !== this.payload.totalSizeBytes ||
+      bytes.length !== end - begin
+    ) {
+      throw new Error('PDF Range response does not match the requested range');
+    }
+    if (!this.aborted) this.onDataRange(begin, bytes);
   }
 }

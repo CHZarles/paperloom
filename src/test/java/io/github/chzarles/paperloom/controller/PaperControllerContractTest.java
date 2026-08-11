@@ -29,6 +29,8 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
@@ -49,6 +51,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class PaperControllerContractTest {
 
@@ -358,7 +364,7 @@ class PaperControllerContractTest {
         when(paperAccessService.findPublishedPaper("paper-preview"))
                 .thenReturn(Optional.of(paper));
 
-        var response = paperController.previewPdfDataByPath("paper-preview", null, null);
+        var response = paperController.previewPdfDataByPath("paper-preview", null, null, null);
 
         assertEquals(200, response.getStatusCode().value());
         Map<?, ?> body = (Map<?, ?>) response.getBody();
@@ -374,6 +380,77 @@ class PaperControllerContractTest {
         assertNull(response.getHeaders().getContentType());
         assertNull(response.getHeaders().getFirst("Content-Disposition"));
         verify(paperService, never()).openMergedPdfStream("paper-preview");
+    }
+
+    @Test
+    void pdfDataEndpointServesStandardHttpRangeInSingleRequest() throws Exception {
+        Paper paper = paper(
+                "paper-preview",
+                "Preview Paper",
+                "preview-paper.pdf",
+                Paper.VECTORIZATION_STATUS_COMPLETED,
+                Paper.STATUS_COMPLETED
+        );
+        paper.setTotalSize(8L);
+
+        when(paperAccessService.findPublishedPaper("paper-preview"))
+                .thenReturn(Optional.of(paper));
+        when(paperService.openMergedPdfRangeStream("paper-preview", 0L, 4L))
+                .thenReturn(new ByteArrayInputStream("%PDF".getBytes()));
+
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(paperController).build();
+
+        mockMvc.perform(get("/api/v1/papers/paper-preview/preview/pdf-data")
+                        .header(HttpHeaders.RANGE, "bytes=0-3")
+                        .accept(MediaType.APPLICATION_PDF))
+                .andExpect(status().isPartialContent())
+                .andExpect(header().string(HttpHeaders.ACCEPT_RANGES, "bytes"))
+                .andExpect(header().string(HttpHeaders.CONTENT_RANGE, "bytes 0-3/8"))
+                .andExpect(header().longValue(HttpHeaders.CONTENT_LENGTH, 4L))
+                .andExpect(content().contentType(MediaType.APPLICATION_PDF))
+                .andExpect(content().bytes("%PDF".getBytes()));
+    }
+
+    @Test
+    void pdfDataEndpointRejectsRangesBeyondTheFile() throws Exception {
+        Paper paper = paper(
+                "paper-preview",
+                "Preview Paper",
+                "preview-paper.pdf",
+                Paper.VECTORIZATION_STATUS_COMPLETED,
+                Paper.STATUS_COMPLETED
+        );
+        paper.setTotalSize(8L);
+        when(paperAccessService.findPublishedPaper("paper-preview"))
+                .thenReturn(Optional.of(paper));
+
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(paperController).build();
+
+        mockMvc.perform(get("/api/v1/papers/paper-preview/preview/pdf-data")
+                        .header(HttpHeaders.RANGE, "bytes=9-12")
+                        .accept(MediaType.APPLICATION_PDF))
+                .andExpect(status().isRequestedRangeNotSatisfiable())
+                .andExpect(header().string(HttpHeaders.CONTENT_RANGE, "bytes */8"));
+
+        verify(paperService, never()).openMergedPdfRangeStream(anyString(), any(Long.class), any(Long.class));
+    }
+
+    @Test
+    void pdfDataEndpointAuthorizesBeforeServingRangeBytes() throws Exception {
+        when(jwtUtils.extractUserIdFromToken("token")).thenReturn("1");
+        when(paperAccessService.findAccessiblePaper("1", "private-paper"))
+                .thenReturn(Optional.empty());
+
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(paperController).build();
+
+        mockMvc.perform(get("/api/v1/papers/private-paper/preview/pdf-data")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer token")
+                        .header(HttpHeaders.RANGE, "bytes=0-3")
+                        .accept(MediaType.APPLICATION_PDF, MediaType.APPLICATION_JSON))
+                .andExpect(status().isNotFound());
+
+        verify(paperAccessService).findAccessiblePaper("1", "private-paper");
+        verify(paperService, never()).openMergedPdfRangeStream(anyString(), any(Long.class), any(Long.class));
     }
 
     @Test
@@ -484,7 +561,7 @@ class PaperControllerContractTest {
         when(paperAccessService.findAccessiblePaper("1", "paper-preview"))
                 .thenReturn(Optional.of(paper));
 
-        var response = paperController.previewPdfDataByPath("paper-preview", "Bearer token", null);
+        var response = paperController.previewPdfDataByPath("paper-preview", "Bearer token", null, null);
         Map<?, ?> body = (Map<?, ?>) response.getBody();
         Map<?, ?> data = (Map<?, ?>) body.get("data");
 

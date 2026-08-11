@@ -85,6 +85,94 @@ const jsonBytes = await fetchPdfPreviewBytes('/proxy-default/papers/paper-2/prev
 
 assert.deepEqual([...jsonBytes], [...pdfBytes]);
 
+let initialRangeHeader = '';
+const singleRequestSource = await createPdfPreviewSource('/proxy-default/papers/paper-standard/preview/pdf-data', {
+  authorization: 'Bearer token-standard',
+  fetchImpl: async (_input, init) => {
+    initialRangeHeader = String((init?.headers as Record<string, string>)?.Range || '');
+    return new Response(pdfBytes, {
+      status: 206,
+      headers: {
+        'accept-ranges': 'bytes',
+        'content-range': 'bytes 0-5/6',
+        'content-type': 'application/pdf'
+      }
+    });
+  }
+});
+
+assert.equal(initialRangeHeader, 'bytes=0-1048575', 'the first request should ask for PDF bytes and size together');
+assert.deepEqual([...(singleRequestSource.data as Uint8Array)], [...pdfBytes]);
+
+await assert.rejects(
+  createPdfPreviewSource('/proxy-default/papers/paper-invalid-range/preview/pdf-data', {
+    authorization: 'Bearer token-invalid-range',
+    fetchImpl: async () =>
+      new Response(pdfBytes, {
+        status: 206,
+        headers: { 'content-type': 'application/pdf' }
+      })
+  }),
+  /Content-Range/,
+  'a partial response without a valid Content-Range must not be treated as a complete PDF'
+);
+
+const standardRangeHeaders: string[] = [];
+const partialPdfSource = await createPdfPreviewSource('/proxy-default/papers/paper-large/preview/pdf-data', {
+  authorization: 'Bearer token-large',
+  fetchImpl: async (_input, init) => {
+    const range = String((init?.headers as Record<string, string>)?.Range || '');
+    standardRangeHeaders.push(range);
+    const initialRequest = range === 'bytes=0-1048575';
+    return new Response(initialRequest ? pdfBytes : new Uint8Array([0x32, 0x33, 0x34, 0x35, 0x36, 0x37]), {
+      status: 206,
+      headers: {
+        'accept-ranges': 'bytes',
+        'content-range': initialRequest ? 'bytes 0-5/12' : 'bytes 6-11/12',
+        'content-type': 'application/pdf'
+      }
+    });
+  }
+});
+
+assert.ok(partialPdfSource.range, 'a partial first response should create a pdf.js range transport');
+assert.equal(partialPdfSource.range.length, 12);
+assert.deepEqual([...(partialPdfSource.range.initialData || [])], [...pdfBytes]);
+assert.equal('data' in partialPdfSource, false, 'a partial response must not be treated as the complete PDF');
+
+const standardRangeResult = new Promise<{ begin: number; chunk: Uint8Array | null }>(resolve => {
+  partialPdfSource.range!.onDataRange = (begin, chunk) => resolve({ begin, chunk });
+});
+partialPdfSource.range.requestDataRange(6, 12);
+const loadedStandardRange = await standardRangeResult;
+
+assert.equal(standardRangeHeaders[1], 'bytes=6-11');
+assert.equal(loadedStandardRange.begin, 6);
+assert.deepEqual([...(loadedStandardRange.chunk || [])], [0x32, 0x33, 0x34, 0x35, 0x36, 0x37]);
+
+let warmStandardFetchCount = 0;
+const warmStandardFetch: typeof fetch = async () => {
+  warmStandardFetchCount += 1;
+  return new Response(pdfBytes, {
+    status: 206,
+    headers: {
+      'accept-ranges': 'bytes',
+      'content-range': 'bytes 0-5/6',
+      'content-type': 'application/pdf'
+    }
+  });
+};
+await createPdfPreviewSource('/proxy-default/papers/paper-warm/preview/pdf-data', {
+  authorization: 'Bearer token-warm',
+  fetchImpl: warmStandardFetch
+});
+await createPdfPreviewSource('/proxy-default/papers/paper-warm/preview/pdf-data', {
+  authorization: 'Bearer token-warm',
+  fetchImpl: warmStandardFetch
+});
+
+assert.equal(warmStandardFetchCount, 1, 'reopening a complete cached PDF should not issue another request');
+
 const rangeRequests: string[] = [];
 const rangeRequestHeaders: Record<string, string>[] = [];
 const rangeFetchImpl: typeof fetch = async (input, init) => {
@@ -149,7 +237,8 @@ assert.equal(previewSource.rangeChunkSize, 262144);
 assert.ok(previewSource.range, 'pdf.js source should expose a range transport');
 assert.equal('url' in previewSource, false, 'pdf.js source should not point at a browser-loadable PDF URL');
 assert.equal('data' in previewSource, false, 'range metadata should not eagerly load the full PDF');
-assert.equal(rangeRequestHeaders[0].Accept, 'application/json');
+assert.equal(rangeRequestHeaders[0].Accept, 'application/pdf, application/json');
+assert.equal(rangeRequestHeaders[0].Range, 'bytes=0-1048575');
 assert.equal(rangeRequestHeaders[0].Authorization, 'Bearer token-3');
 
 const rangeResult = new Promise<{ begin: number; chunk: Uint8Array | null }>(resolve => {

@@ -28,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpRange;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -1230,14 +1231,15 @@ public class PaperController {
             @PathVariable String paperId,
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @RequestParam(required = false) String token) {
-        return previewPdfDataByPath(paperId, authorization, token);
+        return previewPdfDataByPath(paperId, authorization, token, null);
     }
 
     @GetMapping("/{paperId}/preview/pdf-data")
     public ResponseEntity<?> previewPdfDataByPath(
             @PathVariable String paperId,
             @RequestHeader(value = "Authorization", required = false) String authorization,
-            @RequestParam(required = false) String token) {
+            @RequestParam(required = false) String token,
+            @RequestHeader(value = HttpHeaders.RANGE, required = false) String rangeHeader) {
         try {
             RequestAuthContext authContext = resolveRequestAuthContext(authorization, token);
             Optional<Paper> targetFile = findPreviewablePaper(paperId, authContext);
@@ -1246,6 +1248,9 @@ public class PaperController {
             }
 
             Paper file = targetFile.get();
+            if (rangeHeader != null && !rangeHeader.isBlank()) {
+                return servePdfHttpRange(file, rangeHeader);
+            }
             String filename = sanitizePdfFilename(file.getOriginalFilename(), file.getPaperId());
 
             Map<String, Object> payload = buildPdfPreviewDataPayload(file, filename);
@@ -1470,11 +1475,53 @@ public class PaperController {
         return accept != null && accept.toLowerCase(Locale.ROOT).contains(MediaType.APPLICATION_PDF_VALUE);
     }
 
+    private ResponseEntity<?> servePdfHttpRange(Paper file, String rangeHeader) throws IOException {
+        long totalSizeBytes = resolvePdfSourceSizeBytes(file);
+        List<HttpRange> ranges;
+        try {
+            ranges = HttpRange.parseRanges(rangeHeader);
+        } catch (IllegalArgumentException exception) {
+            return invalidPdfPreviewRange("无效的 PDF Range 请求", totalSizeBytes);
+        }
+        if (ranges.size() != 1) {
+            return invalidPdfPreviewRange("仅支持单段 PDF Range 请求", totalSizeBytes);
+        }
+
+        long begin = ranges.get(0).getRangeStart(totalSizeBytes);
+        long end = ranges.get(0).getRangeEnd(totalSizeBytes);
+        long requestedLength = end - begin + 1;
+        if (begin < 0 || begin >= totalSizeBytes || requestedLength <= 0
+                || requestedLength > PDF_PREVIEW_MAX_RANGE_SIZE_BYTES) {
+            return invalidPdfPreviewRange("PDF Range 请求超出允许范围", totalSizeBytes);
+        }
+
+        byte[] rangeBytes;
+        try (InputStream pdfStream = paperService.openMergedPdfRangeStream(file.getPaperId(), begin, requestedLength)) {
+            rangeBytes = pdfStream.readNBytes((int) requestedLength);
+        }
+        if (rangeBytes.length != requestedLength) {
+            throw new IOException("PDF Range 读取长度不完整");
+        }
+
+        return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
+                .contentType(MediaType.APPLICATION_PDF)
+                .contentLength(rangeBytes.length)
+                .header(HttpHeaders.ACCEPT_RANGES, "bytes")
+                .header(HttpHeaders.CONTENT_RANGE, "bytes " + begin + "-" + end + "/" + totalSizeBytes)
+                .body(rangeBytes);
+    }
+
     private ResponseEntity<?> invalidPdfPreviewRange(String message) {
         return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE).body(Map.of(
                 "code", HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE.value(),
                 "message", message
         ));
+    }
+
+    private ResponseEntity<?> invalidPdfPreviewRange(String message, long totalSizeBytes) {
+        return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+                .header(HttpHeaders.CONTENT_RANGE, "bytes */" + totalSizeBytes)
+                .build();
     }
 
     private Optional<Paper> findPreviewablePaper(String paperId, RequestAuthContext authContext) {
