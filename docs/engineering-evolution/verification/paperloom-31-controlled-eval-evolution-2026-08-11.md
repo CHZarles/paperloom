@@ -1,7 +1,7 @@
 # PaperLoom-31 Controlled Eval 优化记录
 
 日期：2026-08-11  
-状态：Case Layout v4 已验证；发现一个真实的 Evidence Selection 失败，待修复 Search Preview。
+状态：Case Layout v4 已验证；Search Preview 根因已修复并通过单元回归，待重跑 PaperLoom-31。
 
 ## 1. 目标
 
@@ -216,6 +216,9 @@ PaperLoom-31 comparison_04：
 现有 `precision_fact_extraction` Skill 已要求校验数值、单位和来源上下文。暂不增加新的事实槽状态机或
 第二次语义校验调用；只有 Preview 修复后仍出现跨上下文拼接，才有证据强化 Skill 为“多个限定词和数值
 必须由同一个 Source Quote 共同支持”。
+
+实现结果：`SearchText.preview` 已改为选择 Query Token 覆盖最多的窗口；聚焦回归
+`SearchTextTest.previewChoosesWindowWithTheMostDistinctQueryTokens` 已通过。未增加依赖或 API 字段。
 
 ## 7. Gate 的准确解释
 

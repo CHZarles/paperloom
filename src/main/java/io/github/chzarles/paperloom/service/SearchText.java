@@ -113,12 +113,26 @@ final class SearchText {
 
         int effectiveMax = Math.max(20, maxLength);
         String normalized = normalize(compact);
-        int matchIndex = tokens.stream()
-                .mapToInt(normalized::indexOf)
-                .filter(index -> index >= 0)
-                .min()
-                .orElse(0);
-        int start = Math.max(0, matchIndex - effectiveMax / 3);
+        int bestStart = 0;
+        int bestCoverage = 0;
+        for (String token : tokens) {
+            for (int matchIndex = normalized.indexOf(token);
+                    matchIndex >= 0;
+                    matchIndex = normalized.indexOf(token, matchIndex + token.length())) {
+                int candidateStart = Math.max(0, matchIndex - effectiveMax / 3);
+                int candidateEnd = Math.min(normalized.length(), candidateStart + effectiveMax);
+                if (candidateEnd - candidateStart < effectiveMax) {
+                    candidateStart = Math.max(0, candidateEnd - effectiveMax);
+                }
+                String window = normalized.substring(candidateStart, candidateEnd);
+                int coverage = (int) tokens.stream().filter(window::contains).count();
+                if (coverage > bestCoverage || coverage == bestCoverage && candidateStart < bestStart) {
+                    bestStart = candidateStart;
+                    bestCoverage = coverage;
+                }
+            }
+        }
+        int start = Math.min(bestStart, Math.max(0, compact.length() - effectiveMax));
         int end = Math.min(compact.length(), start + effectiveMax);
         if (end - start < effectiveMax) {
             start = Math.max(0, end - effectiveMax);
