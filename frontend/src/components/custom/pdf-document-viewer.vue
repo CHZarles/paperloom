@@ -572,12 +572,11 @@ async function loadDocument(url: string) {
     summaryQueue = [];
     scheduleSummaryLoading(getPrioritySummaryPages(currentPage.value), { prioritize: true });
 
-    await nextTick();
-    await waitForStageReady(currentToken);
     if (currentToken === lifecycleToken) {
       documentLoading.value = false;
     }
     await nextTick();
+    await waitForStageReady(currentToken);
     await forceRender(currentToken);
     performance.mark('paperloom:pdf:first-page-ready');
   } catch {
