@@ -250,3 +250,23 @@ Viewer 启动和文档初始化合计减少约 `542.8 ms`，浏览器也确认�
 实验提交：`a282aa3 perf(pdf): preload viewer assets when library is idle`。
 
 回滚提交：`c047e7f revert(pdf): remove speculative preview preloading`。
+
+## 11. Chat 页面图片替代方案复测（未采用）
+
+前面的图片候选数据采集于标准 Range 和前端无效等待修复之前，当时 Chat 证据页的图片中位数比 PDF 快
+`20.1%`。共享 PDF Viewer 完成两轮优化后，使用同一线上论文、同一页、同一 Chrome 环境交替执行 5 组
+新对照：
+
+| Chat 证据显示方式 | 首屏中位数 | 主体大小 | 请求链 |
+| --- | ---: | ---: | --- |
+| 当前 PDF | 1632.3 ms | 541036 B | 单个标准 Range 请求 |
+| 页面 PNG | 2210.7 ms | 355256 B | 截图描述请求，再下载图片 |
+
+当前图片反而慢 `578.4 ms`。图片主体虽然小约 `34.3%`，但截图描述中位数约 `810.4 ms`，随后图片下载
+中位数约 `1329.2 ms`，两个请求严格串行；PDF 主请求中位数约 `1058.1 ms`。因此旧的“图片更快”结论已
+被后续优化和同条件复测推翻，Chat 页面继续使用 PDF，不增加图片分支。
+
+页面截图与 `top_left_1000` 证据坐标在技术上可以继续画框，但当前没有性能收益，没必要为此引入另一套
+显示路径。只有未来图片可以在一次请求内直接返回时，才值得重新建立基准；本轮不修改产品代码。
+
+原始数据：[pdf-evidence-image-candidate-current-2026-08-11.json](pdf-evidence-image-candidate-current-2026-08-11.json)
