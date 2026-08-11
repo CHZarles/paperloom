@@ -181,7 +181,7 @@ class GoldenDataTest(unittest.TestCase):
         instructions = research_agent_instructions(ResearchSkillRegistry())
 
         self.assertEqual(
-            "aa71f638ca3132aeac1965c898b6831e5700614a812f9f228ee0527e23444ff4",
+            "59625a4bd0e178a92f418a6c0a8fc651f4fed481d0d6be54f8636a69979b3549",
             hashlib.sha256(instructions.encode("utf-8")).hexdigest(),
             "expanded Golden Data must not change the established agent prompt",
         )
@@ -190,6 +190,16 @@ class GoldenDataTest(unittest.TestCase):
             InMemoryTools(expanded).definitions(),
             "expanded Golden Data must not change model-visible corpus tools",
         )
+
+    def test_recommendation_guidance_converges_citations_before_researching_again(self) -> None:
+        skills = ResearchSkillRegistry()
+        recommendation = skills.get("context_specific_brainstorming")
+        instructions = research_agent_instructions(skills)
+
+        self.assertIn("same Markdown block", recommendation["answer_guidance"])
+        self.assertIn("Do not repeat", recommendation["answer_guidance"])
+        self.assertIn("correct every issue named by the validator", instructions)
+        self.assertIn("Do not reload a research skill already used", instructions)
 
     def test_committed_dataset_has_three_history_snapshots(self) -> None:
         history_cases = [case for case in self.dataset.cases if len(case["messages"]) > 1]

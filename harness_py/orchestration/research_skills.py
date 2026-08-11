@@ -135,7 +135,11 @@ _SKILLS = (
         "Recommend or generate options for a concrete user context.",
         ("Use the user's stated constraints without demanding optional ones.", "Inspect a bounded candidate set.", "Read evidence for why each selected item fits."),
         _COMMON_STANDARD,
-        "Return a bounded shortlist with a brief reason for each choice.",
+        (
+            "Return a bounded shortlist with a brief reason for each choice. Put each recommendation or "
+            "reading-order item and its citations in the same Markdown block. Do not repeat the same "
+            "recommendations in a second summary or reading-order list."
+        ),
     ),
     _skill(
         "concept_tracing_definition",
