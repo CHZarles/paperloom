@@ -67,6 +67,7 @@ async function measureOpen(page, previewButton, cacheState) {
   };
   page.on('response', onResponse);
   await page.evaluate(() => {
+    performance.clearMarks();
     window.paperloomPdfBenchmarkStart = performance.now();
   });
   await previewButton.click();
@@ -86,6 +87,12 @@ async function measureOpen(page, previewButton, cacheState) {
         startMs: Math.round((entry.startTime - start) * 10) / 10
       }));
     const networkReadyMs = Math.max(0, ...resources.map(entry => entry.responseEndMs));
+    const phaseMarks = Object.fromEntries(
+      performance
+        .getEntriesByType('mark')
+        .filter(entry => entry.name.startsWith('paperloom:pdf:'))
+        .map(entry => [entry.name.replace('paperloom:pdf:', ''), Math.round((entry.startTime - start) * 10) / 10])
+    );
 
     return {
       cacheState: cache,
@@ -94,6 +101,7 @@ async function measureOpen(page, previewButton, cacheState) {
       renderAfterNetworkMs: Math.round((end - start - networkReadyMs) * 10) / 10,
       previewRequestCount: resources.length,
       previewTransferBytes: resources.reduce((sum, entry) => sum + entry.encodedBytes, 0),
+      phaseMarks,
       resources
     };
   }, cacheState);

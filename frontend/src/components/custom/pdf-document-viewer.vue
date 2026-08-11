@@ -522,6 +522,7 @@ defineExpose({
 });
 
 async function loadDocument(url: string) {
+  performance.mark('paperloom:pdf:load-start');
   lifecycleToken += 1;
   const currentToken = lifecycleToken;
 
@@ -540,6 +541,7 @@ async function loadDocument(url: string) {
 
   try {
     const pdfSource = await fetchPdfSource(url, currentToken);
+    performance.mark('paperloom:pdf:source-ready');
     if (currentToken !== lifecycleToken) {
       return;
     }
@@ -552,6 +554,7 @@ async function loadDocument(url: string) {
     });
 
     const documentProxy = await loadingTask.promise;
+    performance.mark('paperloom:pdf:document-ready');
     if (currentToken !== lifecycleToken) {
       await documentProxy.destroy();
       return;
@@ -576,6 +579,7 @@ async function loadDocument(url: string) {
     }
     await nextTick();
     await forceRender(currentToken);
+    performance.mark('paperloom:pdf:first-page-ready');
   } catch {
     if (currentToken !== lifecycleToken) return;
     renderError.value = 'PDF 加载失败，请重新预览或稍后再试。';
@@ -686,6 +690,7 @@ async function renderCurrentPage(expectedToken = lifecycleToken, renderVersion =
     resetActiveRenderTasks();
 
     const page = await context.documentProxy.getPage(currentPage.value);
+    performance.mark('paperloom:pdf:page-ready');
     if (!isActiveRender(expectedToken, renderVersion)) return;
 
     const stage = await getReadyRenderStage(expectedToken);
@@ -706,9 +711,11 @@ async function renderCurrentPage(expectedToken = lifecycleToken, renderVersion =
     }
 
     await renderPageCanvas(page, context.canvas, setup);
+    performance.mark('paperloom:pdf:canvas-ready');
     if (!isActiveRender(expectedToken, renderVersion)) return;
 
     await renderPageTextLayer(page, context.textLayer, setup);
+    performance.mark('paperloom:pdf:text-layer-ready');
     await nextTick();
     if (!isActiveRender(expectedToken, renderVersion)) return;
 
