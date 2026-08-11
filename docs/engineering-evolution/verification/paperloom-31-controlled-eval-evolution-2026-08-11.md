@@ -1,7 +1,7 @@
 # PaperLoom-31 Controlled Eval 优化记录
 
 日期：2026-08-11  
-状态：Case Layout v4 已验证；Search Preview 根因已修复并通过单元回归，待重跑 PaperLoom-31。
+状态：Search Preview 已修复；第三次实测推翻了 comparison_04 的单一 Oracle，并暴露推荐 Contract 不稳定。
 
 ## 1. 目标
 
@@ -110,7 +110,7 @@ Run：`20260811T120216Z-f18bc263`
 由于两次 Snapshot 的自动 Target 和两次 Agent 轨迹并不相同，不能只凭这两个样本把 Token 差异归因于
 v4 代码回归。
 
-## 5. 新发现：comparison_04 是真实产品失败
+## 5. 第二次 Run 的初步判断：comparison_04 Evidence Selection 失败
 
 问题的第二部分要求从 Codex 论文读取：
 
@@ -123,6 +123,9 @@ temperature = 0.8
 
 Agent 回答为 `100 samples` 和 `temperature 0.8`。其中 `100 samples` 来自 Section 4.3 的训练问题
 过滤流程，不属于 HumanEval；Agent 将两个不同上下文中的数值错误拼接。
+
+这是根据冻结 Target 和第二次 Run Judge 得出的初步判断。第三次 Run 找到了论文中另一处直接支持
+`100 samples per problem at temperature 0.8` 的 Figure 1 图注，证明当前问题存在两种合理解释；见第 8 节。
 
 ### 5.1 分层定位
 
@@ -210,6 +213,10 @@ PaperLoom-31 comparison_04：
   Judge.grounding = PASS
 ```
 
+第三次 Run 证明上述 PaperLoom-31 条件中的固定答案 `8` 不能直接作为验收标准：当前 Question 没有说明
+它询问的是附录 B 的示例展示，而不是论文总体 HumanEval 评测设置。Preview 的单元验收仍然有效；完整
+Case 必须先补齐上下文限定词，再用于端到端验收。
+
 只增加一个回归测试：输入同时包含“较早的通用 samples”和“较后的完整 HumanEval 句子”，断言 Preview
 包含 `8 random samples per problem` 与 `temperature 0.8`。然后重跑 `comparison_04` 所在完整 Benchmark。
 
@@ -235,3 +242,68 @@ usage                    成本和时延是否退化
 ```
 
 首轮仍以建立基线为目的，不在没有重复样本分布的情况下设置综合分或武断阈值。
+
+## 8. Preview 修复后的第三次 Run
+
+Snapshot：`c818d91e8a1a68f7e6216f7b8b152fb0ac9b2fe06a9fa6a090a32ca1fb9bee96`
+
+Run：`20260811T124853Z-c7adfbe2`
+
+代码：`5fcd40e`
+
+确定性结果：L1 Recall@1 为 1.0，L2 Recall@5 为 0.5484，L3 Hard Pass 为 15/16。
+
+### 8.1 comparison_04 推翻了原单一 Oracle
+
+Agent 回答 `100 samples per problem at temperature 0.8`，并引用 Figure 1 图注。第三次 Judge 将
+Answer Quality 和 Grounding 均判为 `PASS`，理由是：
+
+```text
+100 samples per problem at temperature 0.8
+  = 论文总体 HumanEval 生成/评测设置
+
+8 random samples per problem at temperature 0.8
+  = 附录 B 为 8 个随机问题展示的示例输出数量
+```
+
+当前 Question 只写“文中给出的代码生成设置”，没有“附录 B”“示例展示”或“总体评测协议”等限定词。
+因此 `8` 和 `100` 分别对应两个真实但不同的上下文。第二次 Run 的 `FAIL` 与第三次 Run 的 `PASS`
+不是 Preview 修复带来的答案对错翻转，而是 Benchmark Question 丢失了 Target 的上下文限定词。
+
+形式化地说：
+
+```text
+Target Span = 附录 B 的 illustrative setting
+Question    = 未限定范围的 general setting
+Oracle      = 8
+
+存在另一 Source Span：general setting = 100
+因此 Question -> Oracle 不是单值函数
+```
+
+这类 Case 不能用于判断 Agent 是否命中唯一事实。自动问题生成规则需要保留 Source Span 中决定语义范围的
+章节、图表、示例/总体设置等限定词，而不是只保留数值和实体。
+
+### 8.2 推荐 Case 暴露 Contract 不稳定
+
+`research_llm_principles_01` 在第二次 Run 中执行 Research 并给出 7 篇推荐；第三次 Run 却在第一次模型
+调用直接提交 `DIRECT / needs_clarification`，询问用户希望聚焦哪个子方向。结果：
+
+```text
+expected_contract = RESEARCH
+actual_contract   = DIRECT
+model_calls       = 1
+tool_calls        = 0
+```
+
+这是 Agent Contract 选择不稳定，不是技术错误。问题已经给出“大语言模型原理”这一主题，产品预期是直接
+执行 Deep Research；澄清可以改善范围，但不应替代用户明确请求的推荐任务。
+
+### 8.3 修正后的下一步
+
+```text
+1. 保留 SearchText.preview 修复及其单元回归。
+2. 修正自动问题生成规则：必须保留 Target 的语义范围限定词。
+3. 重建 Snapshot，确认 comparison Case 不再存在多解。
+4. 再评估推荐问题的 Contract 稳定性，不把两个问题混在一次修复中。
+```
