@@ -222,6 +222,12 @@ async function loadPreviewContent(requestKey = previewRequestKey.value) {
       return;
     }
 
+    if (getFileExt(displayTitle.value)?.toLowerCase() === 'pdf') {
+      previewType.value = 'pdf';
+      previewUrl.value = `/api/v1/papers/${encodeURIComponent(targetPaperId)}/preview/pdf-data`;
+      return;
+    }
+
     const { error: requestError, data } = await request<{
       paperTitle: string;
       originalFilename?: string;
