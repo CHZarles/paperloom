@@ -312,6 +312,7 @@ server {
   }
 
   location /api/ {
+    proxy_cache off;
     proxy_pass http://127.0.0.1:18082;
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
@@ -342,6 +343,10 @@ server {
   }
 }
 ```
+
+BaoTa 的全局 `proxy.conf` 可能默认启用 `proxy_cache`。认证 API 不应继承该缓存；启用代理缓存还会让
+Nginx 不把客户端的 `Range` 请求头传给上游，导致 PDF 标准 Range 请求退化为旧的 JSON Metadata 响应。
+因此 `/api/` 必须显式设置 `proxy_cache off`。
 
 Nginx worker 以 `www` 用户运行。授予它读取前端所需的最小权限；若项目的父目录不是 `755`，
 还要为每级父目录单独授予 `www` 仅可穿越的 `x` 权限：

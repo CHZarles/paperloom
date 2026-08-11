@@ -1,0 +1,212 @@
+{
+  "measuredAt": "2026-08-11T05:58:06.472Z",
+  "baseURL": "https://paperloom.me",
+  "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+  "machine": {
+    "arch": "arm64",
+    "cpu": "Apple M5",
+    "logicalCores": 10,
+    "memoryGiB": 32,
+    "platform": "darwin"
+  },
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "network": "unthrottled",
+  "iterations": 5,
+  "paperTitle": "02-GPT-1.pdf",
+  "cold": {
+    "summary": {
+      "medianMs": 2057,
+      "minMs": 1506.2,
+      "maxMs": 2193.3
+    },
+    "samples": [
+      {
+        "cacheState": "cold",
+        "firstPageReadyMs": 2193.3,
+        "networkReadyMs": 1396.3,
+        "renderAfterNetworkMs": 797,
+        "previewRequestCount": 1,
+        "previewTransferBytes": 541036,
+        "resources": [
+          {
+            "durationMs": 1175.2,
+            "encodedBytes": 541036,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "responseEndMs": 1396.3,
+            "startMs": 221.1
+          }
+        ],
+        "pdfRequests": [
+          {
+            "contentRange": "bytes 0-541035/541036",
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "range": "bytes=0-1048575",
+            "status": 206
+          }
+        ]
+      },
+      {
+        "cacheState": "cold",
+        "firstPageReadyMs": 2110.1,
+        "networkReadyMs": 1213.5,
+        "renderAfterNetworkMs": 896.6,
+        "previewRequestCount": 1,
+        "previewTransferBytes": 541036,
+        "resources": [
+          {
+            "durationMs": 1018.4,
+            "encodedBytes": 541036,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "responseEndMs": 1213.5,
+            "startMs": 195.1
+          }
+        ],
+        "pdfRequests": [
+          {
+            "contentRange": "bytes 0-541035/541036",
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "range": "bytes=0-1048575",
+            "status": 206
+          }
+        ]
+      },
+      {
+        "cacheState": "cold",
+        "firstPageReadyMs": 2057,
+        "networkReadyMs": 1237.4,
+        "renderAfterNetworkMs": 819.6,
+        "previewRequestCount": 1,
+        "previewTransferBytes": 541036,
+        "resources": [
+          {
+            "durationMs": 1038,
+            "encodedBytes": 541036,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "responseEndMs": 1237.4,
+            "startMs": 199.4
+          }
+        ],
+        "pdfRequests": [
+          {
+            "contentRange": "bytes 0-541035/541036",
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "range": "bytes=0-1048575",
+            "status": 206
+          }
+        ]
+      },
+      {
+        "cacheState": "cold",
+        "firstPageReadyMs": 1506.2,
+        "networkReadyMs": 809,
+        "renderAfterNetworkMs": 697.2,
+        "previewRequestCount": 1,
+        "previewTransferBytes": 541036,
+        "resources": [
+          {
+            "durationMs": 606,
+            "encodedBytes": 541036,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "responseEndMs": 809,
+            "startMs": 203
+          }
+        ],
+        "pdfRequests": [
+          {
+            "contentRange": "bytes 0-541035/541036",
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "range": "bytes=0-1048575",
+            "status": 206
+          }
+        ]
+      },
+      {
+        "cacheState": "cold",
+        "firstPageReadyMs": 1848.4,
+        "networkReadyMs": 1109.4,
+        "renderAfterNetworkMs": 739,
+        "previewRequestCount": 1,
+        "previewTransferBytes": 541036,
+        "resources": [
+          {
+            "durationMs": 896.9,
+            "encodedBytes": 541036,
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "responseEndMs": 1109.4,
+            "startMs": 212.5
+          }
+        ],
+        "pdfRequests": [
+          {
+            "contentRange": "bytes 0-541035/541036",
+            "name": "/api/v1/papers/bf17ace7b031e5cd04df86ad4bb29982/preview/pdf-data",
+            "range": "bytes=0-1048575",
+            "status": 206
+          }
+        ]
+      }
+    ]
+  },
+  "warm": {
+    "summary": {
+      "medianMs": 976.1,
+      "minMs": 848,
+      "maxMs": 1065.5
+    },
+    "samples": [
+      {
+        "cacheState": "warm",
+        "firstPageReadyMs": 1039.3,
+        "networkReadyMs": 0,
+        "renderAfterNetworkMs": 1039.3,
+        "previewRequestCount": 0,
+        "previewTransferBytes": 0,
+        "resources": [],
+        "pdfRequests": []
+      },
+      {
+        "cacheState": "warm",
+        "firstPageReadyMs": 972.7,
+        "networkReadyMs": 0,
+        "renderAfterNetworkMs": 972.7,
+        "previewRequestCount": 0,
+        "previewTransferBytes": 0,
+        "resources": [],
+        "pdfRequests": []
+      },
+      {
+        "cacheState": "warm",
+        "firstPageReadyMs": 1065.5,
+        "networkReadyMs": 0,
+        "renderAfterNetworkMs": 1065.5,
+        "previewRequestCount": 0,
+        "previewTransferBytes": 0,
+        "resources": [],
+        "pdfRequests": []
+      },
+      {
+        "cacheState": "warm",
+        "firstPageReadyMs": 848,
+        "networkReadyMs": 0,
+        "renderAfterNetworkMs": 848,
+        "previewRequestCount": 0,
+        "previewTransferBytes": 0,
+        "resources": [],
+        "pdfRequests": []
+      },
+      {
+        "cacheState": "warm",
+        "firstPageReadyMs": 976.1,
+        "networkReadyMs": 0,
+        "renderAfterNetworkMs": 976.1,
+        "previewRequestCount": 0,
+        "previewTransferBytes": 0,
+        "resources": [],
+        "pdfRequests": []
+      }
+    ]
+  }
+}

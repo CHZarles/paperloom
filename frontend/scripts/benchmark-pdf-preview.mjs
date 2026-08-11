@@ -21,7 +21,6 @@ function summarize(samples) {
   const durations = samples.map(sample => sample.firstPageReadyMs);
   return {
     medianMs: percentile(durations, 0.5),
-    p95Ms: percentile(durations, 0.95),
     minMs: Math.min(...durations),
     maxMs: Math.max(...durations)
   };

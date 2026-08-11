@@ -203,14 +203,22 @@ Token，不新增 Session 表或 Redis 模型。再次登录时只有“Refresh 
 > 我在线上发现 PDF 首次显示约需 3 秒。没有先凭感觉改 pdf.js，而是用 Playwright 驱动真实 Chrome，定义
 > “点击 Preview 到 Canvas 有尺寸且渲染遮罩消失”为 First Page Ready，对同一 PDF 做 5 组冷、热打开，
 > 并用 Resource Timing 拆分网络与渲染。数据显示冷打开中位数 3059 ms，其中约 2539 ms 在网络链路。
-> 沿请求链定位到前端已知 paperId 和 PDF 类型，却仍先请求 descriptor，而后端只返回可直接计算的
-> pdf-data 地址，形成无信息增量的串行往返。我增加 PDF 快速路径，非 PDF 保持原流程，后端 pdf-data
-> 继续鉴权。部署后同条件复测，冷打开中位数降到 2561 ms，提升 16.3%；热打开从 1380 ms 降到 886 ms，
-> 提升 35.8%。我没有声称 p95 改善，因为只有 5 个样本，而且一次 Range 请求抖到 1440 ms，使冷启动
-> 最大值反而升高。下一步应先拆分服务端文件读取、Cloudflare 传输和浏览器接收耗时。
+> 第一轮定位并删除了无信息增量的 descriptor 请求，冷打开降到 2561 ms。第二轮我先实测“改成页面图”
+> 候选：图片中位数快 20.1%，但仍有两次串行请求，而且会引入另一套缩放与标注坐标链路，所以没有为了
+> 跑分牺牲正确性。继续沿 PDF 链路发现前端先取 JSON Metadata，再按其中的大小和 URL 请求 PDF，仍是一次
+> 可删除的公网往返。我改用 HTTP 标准 Range，让第一次 `206` 响应通过 `Content-Range` 同时返回总大小和
+> PDF 首块，小 PDF 一次完成，大 PDF 继续分块，旧 JSON 协议保留回退。
+>
+> 部署后第一次复测仍是两次请求。我用直连 Spring、Nginx、本地域名三段探针发现 Spring 返回 206，但
+> Nginx 返回 200 JSON；根因是 BaoTa 的全局 `proxy_cache` 会吞掉上游 Range。对认证 API 显式关闭代理
+> 缓存后，线上冷打开变成一个 206 请求，中位数从 2561 ms 降到 2057 ms，再提升 19.7%；从最初 3059 ms
+> 累计下降 32.8%。热打开仍是 0 请求且本轮没有变快。我只报告 5 次样本的中位数，不声称 p95，也把大于
+> 1 MiB 的 PDF 性能留作未验证边界。
 
-**证据文件：**`docs/performance/pdf-preview-round-trip-optimization-2026-08-11.md`、优化前后原始 JSON、
+**证据文件：**`docs/performance/pdf-preview-round-trip-optimization-2026-08-11.md`、
+`docs/performance/pdf-preview-standard-range-optimization-2026-08-11.md`、各轮原始 JSON 和
 `frontend/scripts/benchmark-pdf-preview.mjs`。
 
 **必备追问：**中位数与 p95、冷缓存和热缓存、Resource Timing、串行网络往返、前端快速路径与后端鉴权、
-为什么请求数比字节数更重要、Range 请求、如何避免性能测试自欺。
+为什么请求数比字节数更重要、HTTP Range/206/Content-Range、反向代理为什么会吞 Range、如何避免性能
+测试自欺、为什么暂缓图片方案。
