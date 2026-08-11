@@ -5,12 +5,13 @@ import re
 from .models import JsonMap, as_list
 
 
-NON_MATERIAL_UNCITED_BLOCK_KINDS = frozenset({"heading", "table_header"})
+NON_MATERIAL_UNCITED_BLOCK_KINDS = frozenset({"heading", "table_header", "thematic_break"})
 _NUMERIC_CITATION = re.compile(r"(?<!\[)\[(\d+)\]")
 _EVIDENCE_CITATION = re.compile(r"\[\[((?:source_quote|ev)_[A-Za-z0-9_-]+)\]\]")
 _LEGACY_EVIDENCE_CITATION = re.compile(r"(?<!\[)\[((?:source_quote|ev)_[A-Za-z0-9_-]+)\](?!\])")
 _LIST_ITEM = re.compile(r"^\s*(?:[-+*]|\d+[.)])\s+")
 _TABLE_SEPARATOR = re.compile(r"^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*$")
+_THEMATIC_BREAK = re.compile(r"^\s{0,3}(?:(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,})$")
 
 
 def answer_blocks(answer: JsonMap) -> tuple[list[JsonMap], list[str]]:
@@ -76,6 +77,10 @@ def _markdown_blocks(markdown: str) -> list[JsonMap]:
         stripped = line.strip()
         if not stripped:
             flush()
+            continue
+        if _THEMATIC_BREAK.match(line):
+            flush()
+            blocks.append({"kind": "thematic_break", "text": stripped})
             continue
         if _TABLE_SEPARATOR.match(stripped):
             flush()

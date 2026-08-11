@@ -9,9 +9,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from agents import Model, ModelResponse, ModelSettings, ModelTracing, Usage
+from agents.run_config import CallModelData, ModelInputData
 from openai.types.responses import ResponseFunctionToolCall
 
-from harness_py.orchestration.agents.runtime import AgentsSdkHarnessRuntime
+from harness_py.orchestration.agents.runtime import (
+    AgentsSdkHarnessRuntime,
+    _latest_final_submission_only,
+)
 from harness_py.orchestration.conversation import ConversationState
 from harness_py.orchestration.live_chat import LiveResearchChatHarness
 from harness_py.utils.errors import HarnessCancelled
@@ -20,6 +24,35 @@ from harness_py.tests import test_harness_py as _harness_tests
 
 
 class AgentsRuntimeTest(unittest.TestCase):
+    def test_model_input_keeps_only_latest_rejected_final_submission(self) -> None:
+        research_call = {"type": "function_call", "name": "read_paper_content", "call_id": "read_1"}
+        research_output = {"type": "function_call_output", "call_id": "read_1", "output": "evidence"}
+        first_final = {"type": "function_call", "name": "submit_research_answer", "call_id": "final_1"}
+        first_error = {"type": "function_call_output", "call_id": "final_1", "output": "rejected"}
+        latest_final = {"type": "function_call", "name": "submit_research_answer", "call_id": "final_2"}
+        latest_error = {"type": "function_call_output", "call_id": "final_2", "output": "rejected"}
+
+        filtered = _latest_final_submission_only(CallModelData(
+            model_data=ModelInputData(
+                input=[
+                    research_call,
+                    research_output,
+                    first_final,
+                    first_error,
+                    latest_final,
+                    latest_error,
+                ],
+                instructions="research",
+            ),
+            agent=None,  # type: ignore[arg-type]
+            context=None,
+        ))
+
+        self.assertEqual(
+            [research_call, research_output, latest_final, latest_error],
+            filtered.input,
+        )
+
     def test_sdk_runtime_executes_stateful_tools_and_validated_final_submission(self) -> None:
         dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()
         progress: list[dict] = []

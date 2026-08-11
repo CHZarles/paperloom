@@ -29,11 +29,12 @@ from agents import (
     Runner,
     ToolExecutionConfig,
 )
+from agents.run_config import CallModelData, ModelInputData
 
 from ...utils.models import JsonMap
 from ...transport.provider_config import ProviderConfig
 from ..memory import RequestBackedSession, request_session_input
-from ..research_contract import research_agent_instructions
+from ..research_contract import FINAL_TOOL_NAME, research_agent_instructions
 from ..run_output import build_harness_run
 from ..runtime import HarnessRuntime, TurnExecutionInput, TurnExecutionResult
 from ..run_control import RunLimitExceeded, RunLimits
@@ -216,6 +217,9 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
             tracing_disabled=True,
             # 明确规定 Session 历史和当前 input_items 如何合并。
             session_input_callback=request_session_input,
+            # 失败的完整答案可能很长。保留最新提交及其校验结果供模型修正，删除更早的
+            # 已替代提交，避免每次修正都让 Prompt 线性增长。
+            call_model_input_filter=_latest_final_submission_only,
             # 授权状态会被工具逐步修改。即使模型一次提出多个工具，也必须按顺序执行。
             tool_execution=ToolExecutionConfig(max_function_tool_concurrency=1),
         )
@@ -250,6 +254,34 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
         if not isinstance(final, dict):
             raise RuntimeError("Agents SDK run ended without an accepted submit_research_answer")
         return final
+
+
+def _latest_final_submission_only(
+    data: CallModelData[ResearchRunContext],
+) -> ModelInputData:
+    items = data.model_data.input
+    final_call_ids = [
+        str(item.get("call_id") or "")
+        for item in items
+        if isinstance(item, dict)
+        and item.get("type") == "function_call"
+        and item.get("name") == FINAL_TOOL_NAME
+        and item.get("call_id")
+    ]
+    obsolete = set(final_call_ids[:-1])
+    if not obsolete:
+        return data.model_data
+    return ModelInputData(
+        input=[
+            item for item in items
+            if not (
+                isinstance(item, dict)
+                and item.get("call_id") in obsolete
+                and item.get("type") in {"function_call", "function_call_output"}
+            )
+        ],
+        instructions=data.model_data.instructions,
+    )
 
 
 def _evidence_card(item: JsonMap) -> JsonMap:

@@ -168,13 +168,14 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         )
 
         self.assertIn("block_1", error)
+        self.assertIn("paragraph: Unsupported summary.", error)
 
     def test_answer_after_reading_allows_uncited_structure(self) -> None:
         error = answer_validation_error(
             {
                 "outcome": "answered",
                 "markdown": (
-                    "# Comparison\n\n"
+                    "# Comparison\n\n---\n\n"
                     "| Paper | Result |\n"
                     "| --- | --- |\n"
                     "| A | Supported detail [[source_quote_1]] |"

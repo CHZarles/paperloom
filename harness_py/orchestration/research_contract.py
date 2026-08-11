@@ -46,7 +46,8 @@ def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
         "citations, or a Sources section yourself; the harness renders those from evidence ids. Put each evidence "
         "marker in the same Markdown paragraph, list item, or table row as the factual claim it supports; a citation "
         "after a list does not support the preceding items. For an exact-fact request, prefer one complete cited "
-        "sentence containing the subject and all requested values, without extra rationale. "
+        "sentence containing the subject and all requested values, without extra rationale. Use Markdown headings "
+        "for structural labels; do not put a standalone bold-only label in its own paragraph. "
         "Never substitute adjacent papers when the corpus lacks the requested topic; state the gap plainly.\n\n"
         "When you are ready to finish the turn, call submit_research_answer as the only tool call. Put all text the "
         "user should see in markdown. Use needs_clarification only for a genuinely blocking question. Use partial or "
@@ -127,13 +128,16 @@ def answer_validation_error(
             return "read_paper_content is required before answering paper-content claims"
         blocks, _ = answer_blocks({"markdown": markdown})
         uncited = [
-            str(block.get("block_id") or "")
+            block
             for block in blocks
             if block.get("kind") not in NON_MATERIAL_UNCITED_BLOCK_KINDS
             and not block.get("evidence_ids")
         ]
         if uncited:
-            return "paper-content answer blocks require citations: " + ", ".join(uncited)
+            return "paper-content answer blocks require citations: " + "; ".join(
+                f"{block.get('block_id')} {block.get('kind')}: {str(block.get('text') or '')[:200]}"
+                for block in uncited
+            )
     if final.get("fields") is not None and not isinstance(final.get("fields"), dict):
         return "fields must be an object"
     return ""
