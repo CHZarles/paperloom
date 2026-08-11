@@ -759,6 +759,11 @@ Protocol、Contract、Retrieval 和 Performance 可以从冻结 Case、Trace 和
 5. 复用当前 `_assess_agent_case` 的 Target Returned/Read/Cited 检查；
 6. 复用当前 `_judge_agent_case` 的 `answer_quality` 和 `grounding` Judge，不增加新的 Judge Model 或 Prompt 链路。
 
+实现版本将 Snapshot 升为 `paperloom-product-snapshot/v2`、Case Layout 升为
+`paperloom-agent-case-layout-v3`、Run Report 升为 `paperloom-benchmark-run/v2`。L3 固定为 16 个 Case：
+原有 12 个 Research Case，加问候、缺少主题的澄清、Corpus 总数和 LLM 原理推荐四个协议 Case。
+Direct/Catalog Case 不调用 Judge；它们只计算确定性 Contract 与 Protocol 指标。
+
 确定性指标定义为：
 
 ```text

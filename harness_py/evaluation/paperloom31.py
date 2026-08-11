@@ -20,6 +20,18 @@ from ..corpus.gateway import JavaCorpusGateway
 from ..corpus.tools import ReadingCorpusTools
 from ..orchestration.conversation import ConversationState
 from ..orchestration.live_chat import LiveResearchChatHarness
+from ..orchestration.research_contract import (
+    ActionRequested,
+    AnswerContract,
+    Phase,
+    ProtocolFacts,
+    ProtocolState,
+    SubmissionIssueClass,
+    SubmissionRequested,
+    ValidationIssue,
+    decide,
+    validate_submission,
+)
 from ..orchestration.runtime import build_harness_runtime
 from ..transport.provider_config import ProviderConfig
 from ..utils.models import GoldenDataset, as_list, child_map, utc_now_iso
@@ -30,13 +42,13 @@ CONFIG_SCHEMA_VERSION = "paperloom-benchmark-config/v1"
 DATASET_ID = "paperloom-31-v1"
 EXPECTED_PAPER_COUNT = 31
 UPLOAD_CHUNK_BYTES = 5 * 1024 * 1024
-SNAPSHOT_SCHEMA_VERSION = "paperloom-product-snapshot/v1"
+SNAPSHOT_SCHEMA_VERSION = "paperloom-product-snapshot/v2"
 QUERY_PROMPT_VERSION = "paperloom-query-generator-v2"
-CASE_LAYOUT_VERSION = "paperloom-agent-case-layout-v2"
+CASE_LAYOUT_VERSION = "paperloom-agent-case-layout-v3"
 EVIDENCE_TYPES = {"PASSAGE", "TABLE", "FIGURE"}
 MIN_PASSAGE_CHARS = 220
 MIN_ANSWER_SPAN_CHARS = 40
-RUN_SCHEMA_VERSION = "paperloom-benchmark-run/v1"
+RUN_SCHEMA_VERSION = "paperloom-benchmark-run/v2"
 
 
 class PreparationError(RuntimeError):
@@ -592,6 +604,7 @@ def build_agent_cases(
         {
             "case_id": f"single_{index:02d}",
             "case_type": "single_paper",
+            "expected_contract": "RESEARCH",
             "question": f"请依据《{_paper_title(target, product_states)}》回答：{target['query']}",
             "history": [],
             "expected_outcome": "answered",
@@ -613,6 +626,7 @@ def build_agent_cases(
         cases.append({
             "case_id": f"comparison_{index + 1:02d}",
             "case_type": "cross_paper_comparison",
+            "expected_contract": "RESEARCH",
             "question": (
                 f"请分别依据《{left_title}》和《{right_title}》回答：\n"
                 f"1. {left['query']}\n"
@@ -638,6 +652,7 @@ def build_agent_cases(
     cases.append({
         "case_id": "follow_up_01",
         "case_type": "follow_up",
+        "expected_contract": "RESEARCH",
         "question": "请为刚才的结论提供对应论文中的原文证据，并保留引用。",
         "history": [
             {"role": "user", "content": follow_target["query"]},
@@ -653,6 +668,7 @@ def build_agent_cases(
     cases.append({
         "case_id": "missing_evidence_01",
         "case_type": "missing_evidence_control",
+        "expected_contract": "RESEARCH",
         "question": "语料库中名为 PaperLoom Missing Evidence Control 2026 的论文提出了什么核心方法？",
         "history": [],
         "expected_outcome": "insufficient_evidence",
@@ -662,7 +678,68 @@ def build_agent_cases(
         "answer_spans": [],
         "citation_policy": "no_citation_without_evidence",
     })
-    if len(cases) != 12:
+    principles_target = next(
+        (target for target in ordered if target.get("paper") == "paper_01_attention_is_all_you_need"),
+        None,
+    )
+    if principles_target is None:
+        raise PreparationError("generate", "PRINCIPLES_TARGET_MISSING", "paper_01_attention_is_all_you_need")
+    principles_title = _paper_title(principles_target, product_states)
+    cases.extend([
+        {
+            "case_id": "direct_greeting_01",
+            "case_type": "direct_protocol",
+            "expected_contract": "DIRECT",
+            "question": "你好",
+            "history": [],
+            "expected_outcome": "answered",
+            "expected_answer": "简短问候并说明可以帮助检索、阅读和比较论文。",
+            "required_target_ids": [],
+            "expected_facts": [],
+            "answer_spans": [],
+            "citation_policy": "no_citation_without_evidence",
+        },
+        {
+            "case_id": "direct_clarification_01",
+            "case_type": "direct_protocol",
+            "expected_contract": "DIRECT",
+            "question": "推荐一些论文",
+            "history": [],
+            "expected_outcome": "needs_clarification",
+            "expected_answer": "询问希望推荐什么主题的论文。",
+            "required_target_ids": [],
+            "expected_facts": [],
+            "answer_spans": [],
+            "citation_policy": "no_citation_without_evidence",
+        },
+        {
+            "case_id": "catalog_inventory_01",
+            "case_type": "catalog_protocol",
+            "expected_contract": "CATALOG",
+            "question": "这个论文库有多少篇论文？",
+            "history": [],
+            "expected_outcome": "answered",
+            "expected_answer": str(len(product_states)),
+            "required_target_ids": [],
+            "expected_facts": [f"paper_count:{len(product_states)}"],
+            "answer_spans": [],
+            "citation_policy": "no_citation_without_evidence",
+        },
+        {
+            "case_id": "research_llm_principles_01",
+            "case_type": "research_recommendation",
+            "expected_contract": "RESEARCH",
+            "question": "推荐和大语言模型原理相关的论文，并说明推荐理由。",
+            "history": [],
+            "expected_outcome": "answered",
+            "expected_answer": f"推荐《{principles_title}》：{principles_target['expected_answer']}",
+            "required_target_ids": [principles_target["target_id"]],
+            "expected_facts": principles_target["fact_keys"],
+            "answer_spans": principles_target["answer_spans"],
+            "citation_policy": "cite_each_required_target",
+        },
+    ])
+    if len(cases) != 16:
         raise PreparationError("generate", "AGENT_CASE_COUNT_INVALID", str(len(cases)))
     return cases
 
@@ -740,6 +817,10 @@ def _validate_generated_answer(
 
 
 def validate_snapshot(snapshot: dict[str, object]) -> None:
+    if snapshot.get("schema_version") != SNAPSHOT_SCHEMA_VERSION:
+        raise PreparationError("validate", "SNAPSHOT_SCHEMA_MISMATCH", str(snapshot.get("schema_version")))
+    if _mapping(snapshot.get("generator")).get("case_layout_version") != CASE_LAYOUT_VERSION:
+        raise PreparationError("validate", "SNAPSHOT_CASE_LAYOUT_MISMATCH", str(snapshot.get("generator")))
     targets = _mapping(snapshot.get("targets"))
     papers = _mapping(snapshot.get("papers"))
     cases = _records(snapshot.get("agent_cases"))
@@ -761,7 +842,7 @@ def validate_snapshot(snapshot: dict[str, object]) -> None:
         if not spans or any(_normalize_text(span) not in content for span in spans):
             raise PreparationError("validate", "SNAPSHOT_ANSWER_SPAN_INVALID", target_id)
 
-    if len(cases) != 12:
+    if len(cases) != 16:
         raise PreparationError("validate", "SNAPSHOT_AGENT_CASE_COUNT_INVALID", str(len(cases)))
     forbidden = {
         str(target.get(key) or "")
@@ -771,6 +852,8 @@ def validate_snapshot(snapshot: dict[str, object]) -> None:
     forbidden.discard("")
     for case in cases:
         case_id = str(case.get("case_id") or "")
+        if case.get("expected_contract") not in {"DIRECT", "CATALOG", "RESEARCH"}:
+            raise PreparationError("validate", "SNAPSHOT_EXPECTED_CONTRACT_INVALID", case_id)
         required_ids = _strings(case.get("required_target_ids"))
         if any(target_id not in target_rows for target_id in required_ids):
             raise PreparationError("validate", "SNAPSHOT_REQUIRED_TARGET_MISSING", case_id)
@@ -876,7 +959,7 @@ def run_benchmark(
     l1 = _run_l1(snapshot, gateway, user_id)
     l2 = _run_l2(snapshot, gateway, user_id)
 
-    harness = LiveResearchChatHarness(build_harness_runtime(provider))
+    harness = LiveResearchChatHarness(build_harness_runtime(provider), eval_dump_dir=out / "trace")
     judge = MiniMaxJudgeModel(provider)
     dataset_reader = gateway.reader(
         request_id=f"{run_id}-dataset",
@@ -927,7 +1010,13 @@ def run_benchmark(
         "l1": l1,
         "l2": l2,
         "l3": l3,
-        "usage": {"agent": agent_usage, "judge_requests": len(_records(l3.get("cases")))},
+        "usage": {
+            "agent": agent_usage,
+            "judge_requests": sum(
+                _mapping(case.get("judge")).get("status") != "not_applicable"
+                for case in _records(l3.get("cases"))
+            ),
+        },
         "technical_errors": [
             failure
             for stage in (l0, g0, l1, l2, l3)
@@ -1185,22 +1274,42 @@ def _run_l3(
             corpus_reader=reader,
         )
         _write_json(out / "agent" / f"{case_id}.json", run)
-        assessment = _assess_agent_case(case, run, targets, set(scope))
+        protocol = _assess_protocol_trace(
+            out / "trace" / str(run.get("run_id") or "") / "events.jsonl"
+        )
+        assessment = _assess_agent_case(case, run, targets, set(scope), protocol)
         usage = _mapping(_mapping(run.get("control")).get("usage")) or {
             key: _mapping(run.get("diagnostics")).get(key)
             for key in ("model_calls", "prompt_tokens", "completion_tokens", "total_tokens", "elapsed_ms")
         }
-        try:
-            judgment = _judge_agent_case(judge, case, run)
-        except Exception as error:
-            errors.append(_failure("L3_JUDGE", type(error).__name__, f"{case_id}: {error}", technical=True))
-            judgment = {"status": "technical_error", "error": str(error)}
+        if case.get("expected_contract") == "RESEARCH":
+            try:
+                judgment = _judge_agent_case(judge, case, run)
+            except Exception as error:
+                errors.append(_failure("L3_JUDGE", type(error).__name__, f"{case_id}: {error}", technical=True))
+                judgment = {"status": "technical_error", "error": str(error)}
+        else:
+            judgment = {"status": "not_applicable"}
         _write_json(out / "judge" / f"{case_id}.json", judgment)
-        rows.append({"case_id": case_id, **assessment, "usage": usage, "judge": judgment})
+        rows.append({
+            "case_id": case_id,
+            "harness_id": run.get("harness_id"),
+            **assessment,
+            "usage": usage,
+            "judge": judgment,
+        })
+    by_harness_id = {
+        harness_id: _controlled_protocol_metrics([
+            row for row in rows if str(row.get("harness_id") or "unknown") == harness_id
+        ])
+        for harness_id in sorted({str(row.get("harness_id") or "unknown") for row in rows})
+    }
     return {
         "executed": True,
         "case_count": len(rows),
         "hard_passed": sum(not _records(row.get("hard_failures")) for row in rows),
+        "controlled_protocol_metrics": _controlled_protocol_metrics(rows),
+        "by_harness_id": by_harness_id,
         "cases": rows,
         "technical_errors": errors,
     }
@@ -1211,6 +1320,7 @@ def _assess_agent_case(
     run: dict[str, object],
     targets: dict[str, dict[str, object]],
     scope: set[str],
+    protocol: dict[str, object] | None = None,
 ) -> dict[str, object]:
     trace = _records(run.get("react_trace"))
     ledger = _records(_mapping(run.get("evidence_ledger")).get("items"))
@@ -1226,6 +1336,11 @@ def _assess_agent_case(
         if item.get("source_quote_ref") or item.get("evidence_id")
     }
     cited = {str(value) for value in as_list(answer.get("cited_source_quote_refs")) if value}
+    expected_contract = str(case.get("expected_contract") or "")
+    actual_contract = str(answer.get("answer_contract") or "")
+    contract_match = actual_contract == expected_contract
+    provenance_applicable = actual_contract == AnswerContract.RESEARCH.value
+    provenance_passed = _research_provenance_passed(run, read_by_quote) if provenance_applicable else None
     required = [targets[target_id] for target_id in _strings(case.get("required_target_ids"))]
     target_checks = [
         {
@@ -1248,6 +1363,12 @@ def _assess_agent_case(
     hard_failures: list[dict[str, object]] = []
     if run.get("status") in {"FAILED_TECHNICAL", "LIMITED", "CANCELLED"}:
         hard_failures.append(_failure("L3", "AGENT_TECHNICAL_FAILURE", str(run.get("status"))))
+    if expected_contract and not contract_match:
+        hard_failures.append(_failure("L3", "CONTRACT_MISMATCH", f"expected={expected_contract}, actual={actual_contract}"))
+    if protocol is not None and not protocol.get("passed"):
+        hard_failures.append(_failure("L3", "PROTOCOL_REPLAY_FAILED", str(protocol.get("failed_event_ids") or [])))
+    if provenance_applicable and not provenance_passed:
+        hard_failures.append(_failure("L3", "PROVENANCE_FAILED", str(case.get("case_id"))))
     if leaked_ids:
         hard_failures.append(_failure("L3", "SCOPE_LEAK", str(leaked_ids)))
     if cited - set(read_by_quote):
@@ -1261,10 +1382,173 @@ def _assess_agent_case(
         "actual_outcome": answer.get("outcome"),
         "expected_outcome": expected_outcome,
         "outcome_match": answer.get("outcome") == expected_outcome,
+        "expected_contract": expected_contract,
+        "actual_contract": actual_contract,
+        "contract_match": contract_match,
+        "protocol_replay": protocol,
+        "provenance_applicable": provenance_applicable,
+        "provenance_passed": provenance_passed,
         "target_checks": target_checks,
         "citation_integrity": bool(_mapping(run.get("citation_validation")).get("passed")) and not (cited - set(read_by_quote)),
         "scope_isolated": not leaked_ids,
         "hard_failures": hard_failures,
+    }
+
+
+def _research_provenance_passed(
+    run: dict[str, object],
+    known_source_quotes: dict[str, dict[str, object]],
+) -> bool:
+    submission = next((
+        item
+        for item in reversed(_records(run.get("react_trace")))
+        if item.get("tool_name") == "submit_research_answer"
+        and _mapping(item.get("result")).get("accepted") is True
+    ), None)
+    if submission is None:
+        return False
+    draft = _mapping(submission.get("arguments"))
+    return validate_submission(
+        AnswerContract.RESEARCH,
+        draft,
+        ProtocolFacts(known_source_quotes=known_source_quotes),
+    ).accepted
+
+
+def _assess_protocol_trace(events_path: Path) -> dict[str, object]:
+    if not events_path.is_file():
+        return {
+            "transition_count": 0,
+            "passed_count": 0,
+            "pass_rate": 0.0,
+            "passed": False,
+            "failed_event_ids": ["TRACE_MISSING"],
+        }
+    try:
+        events = [
+            _mapping(json.loads(line))
+            for line in events_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+    except (OSError, json.JSONDecodeError):
+        return {
+            "transition_count": 0,
+            "passed_count": 0,
+            "pass_rate": 0.0,
+            "passed": False,
+            "failed_event_ids": ["TRACE_INVALID"],
+        }
+    transitions = [event for event in events if event.get("kind") == "protocol.transition"]
+    failed: list[str] = []
+    for event in transitions:
+        try:
+            payload = _mapping(event.get("payload"))
+            decision = decide(
+                _protocol_state(_mapping(payload.get("before"))),
+                _protocol_event(_mapping(payload.get("event"))),
+                _protocol_facts(_mapping(payload.get("facts"))),
+            )
+            recorded = _mapping(payload.get("decision"))
+            replayed = {
+                "accepted": bool(decision.model_result.get("accepted")),
+                "issue_codes": _strings(decision.model_result.get("issue_codes")),
+            }
+            if (
+                replayed != {
+                    "accepted": bool(recorded.get("accepted")),
+                    "issue_codes": _strings(recorded.get("issue_codes")),
+                }
+                or _protocol_state_payload(decision.next_state) != _mapping(payload.get("after"))
+            ):
+                failed.append(str(event.get("event_id") or event.get("sequence") or "unknown"))
+        except (KeyError, TypeError, ValueError):
+            failed.append(str(event.get("event_id") or event.get("sequence") or "unknown"))
+    count = len(transitions)
+    passed_count = count - len(failed)
+    return {
+        "transition_count": count,
+        "passed_count": passed_count,
+        "pass_rate": passed_count / count if count else 0.0,
+        "passed": count > 0 and not failed,
+        "failed_event_ids": failed,
+    }
+
+
+def _protocol_state(value: dict[str, object]) -> ProtocolState:
+    contract = str(value.get("contract") or "")
+    return ProtocolState(
+        phase=Phase(str(value["phase"])),
+        contract=AnswerContract(contract) if contract else None,
+        submission_attempt=int(value.get("submission_attempt") or 0),
+        validation_issues=tuple(_strings(value.get("validation_issues"))),
+    )
+
+
+def _protocol_state_payload(state: ProtocolState) -> dict[str, object]:
+    return {
+        "phase": state.phase.value,
+        "contract": state.contract.value if state.contract else None,
+        "submission_attempt": state.submission_attempt,
+        "validation_issues": list(state.validation_issues),
+    }
+
+
+def _protocol_event(value: dict[str, object]) -> ActionRequested | SubmissionRequested:
+    if value.get("kind") == "ACTION_REQUESTED":
+        return ActionRequested(str(value["tool_name"]))
+    issue_class = str(value.get("issue_class") or "")
+    resolved_class = SubmissionIssueClass(issue_class) if issue_class else None
+    issues = tuple(
+        ValidationIssue(
+            code=str(item["code"]),
+            issue_class=resolved_class or SubmissionIssueClass.FORMAT_ISSUE,
+            block_ids=tuple(_strings(item.get("block_ids"))),
+            unknown_source_quote_refs=tuple(_strings(item.get("unknown_source_quote_refs"))),
+        )
+        for item in _records(value.get("issues"))
+    )
+    return SubmissionRequested(
+        contract=AnswerContract(str(value["contract"])),
+        payload={},
+        accepted=bool(value.get("accepted")),
+        issue_class=resolved_class,
+        issue_codes=tuple(_strings(value.get("issue_codes"))),
+        issues=issues,
+    )
+
+
+def _protocol_facts(value: dict[str, object]) -> ProtocolFacts:
+    return ProtocolFacts(
+        known_source_quotes={ref: {} for ref in _strings(value.get("known_source_quote_refs"))},
+        catalog_results={ref: {} for ref in _strings(value.get("catalog_result_refs"))},
+        sibling_tool_names=tuple(_strings(value.get("sibling_tool_names"))),
+    )
+
+
+def _controlled_protocol_metrics(rows: list[dict[str, object]]) -> dict[str, object]:
+    contract_rows = [row for row in rows if row.get("expected_contract")]
+    transition_count = sum(
+        int(_mapping(row.get("protocol_replay")).get("transition_count") or 0)
+        for row in rows
+    )
+    replayed_count = sum(
+        int(_mapping(row.get("protocol_replay")).get("passed_count") or 0)
+        for row in rows
+    )
+    research_rows = [row for row in rows if row.get("provenance_applicable")]
+    return {
+        "contract_case_count": len(contract_rows),
+        "contract_accuracy": (
+            sum(bool(row.get("contract_match")) for row in contract_rows) / len(contract_rows)
+            if contract_rows else 0.0
+        ),
+        "protocol_transition_count": transition_count,
+        "protocol_replay_pass_rate": replayed_count / transition_count if transition_count else 0.0,
+        "completed_research_run_count": len(research_rows),
+        "provenance_pass_rate": (
+            sum(row.get("provenance_passed") is True for row in research_rows) / len(research_rows)
+            if research_rows else 0.0
+        ),
     }
 
 

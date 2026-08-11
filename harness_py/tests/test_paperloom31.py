@@ -1,7 +1,8 @@
+import hashlib
+import json
+import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import unittest
-import hashlib
 
 from harness_py.evaluation.paperloom31 import (
     build_agent_cases,
@@ -10,6 +11,8 @@ from harness_py.evaluation.paperloom31 import (
     scan_papers,
     validate_snapshot,
     _assess_agent_case,
+    _assess_protocol_trace,
+    _controlled_protocol_metrics,
     _looks_like_bibliography,
     _retrieval_metrics,
     _source_quotes_cover,
@@ -102,12 +105,13 @@ class Paperloom31PreparationTest(unittest.TestCase):
         papers = {}
         for index in range(31):
             location_type = "PASSAGE" if index < 22 else "TABLE" if index < 28 else "FIGURE"
+            paper_key = "paper_01_attention_is_all_you_need" if index == 0 else f"paper_{index:02d}"
             product_id = f"product_{index:02d}"
             title = f"Paper {index:02d}"
             content = f"trusted evidence {index:02d}"
             target = {
                 "target_id": f"target_{index:02d}",
-                "paper": f"paper_{index:02d}",
+                "paper": paper_key,
                 "product_paper_id": product_id,
                 "location_ref": f"location_{index:02d}",
                 "location_type": location_type,
@@ -119,13 +123,15 @@ class Paperloom31PreparationTest(unittest.TestCase):
             }
             targets.append(target)
             product_states[product_id] = {"benchmark_title": title}
-            papers[f"paper_{index:02d}"] = {
+            papers[paper_key] = {
                 "product_paper_id": product_id,
                 "metadata_query": title,
             }
 
         cases = build_agent_cases(targets, product_states)
         snapshot = {
+            "schema_version": "paperloom-product-snapshot/v2",
+            "generator": {"case_layout_version": "paperloom-agent-case-layout-v3"},
             "papers": papers,
             "targets": {target["target_id"]: target for target in targets},
             "agent_cases": cases,
@@ -139,10 +145,15 @@ class Paperloom31PreparationTest(unittest.TestCase):
             cases[6]["question"],
         )
         self.assertEqual("请为刚才的结论提供对应论文中的原文证据，并保留引用。", cases[10]["question"])
+        self.assertEqual(16, len(cases))
+        self.assertEqual("DIRECT", cases[12]["expected_contract"])
+        self.assertEqual("CATALOG", cases[14]["expected_contract"])
+        self.assertEqual("RESEARCH", cases[15]["expected_contract"])
 
     def test_agent_gate_treats_exact_target_coverage_as_diagnostic(self) -> None:
         case = {
             "case_id": "single_01",
+            "expected_contract": "RESEARCH",
             "expected_outcome": "answered",
             "required_target_ids": ["target_1"],
         }
@@ -152,6 +163,14 @@ class Paperloom31PreparationTest(unittest.TestCase):
             "react_trace": [{
                 "tool_name": "search_paper_content",
                 "result": {"locations": [{"location_ref": "alternate_section"}]},
+            }, {
+                "tool_name": "submit_research_answer",
+                "arguments": {
+                    "outcome": "answered",
+                    "language": "EN",
+                    "markdown": "Supported answer. [[source_quote_1]]",
+                },
+                "result": {"accepted": True},
             }],
             "evidence_ledger": {"items": [{
                 "paper_id": "paper_1",
@@ -160,6 +179,7 @@ class Paperloom31PreparationTest(unittest.TestCase):
             }]},
             "research_answer": {
                 "outcome": "answered",
+                "answer_contract": "RESEARCH",
                 "cited_source_quote_refs": ["source_quote_1"],
             },
             "citation_validation": {"passed": True},
@@ -168,14 +188,67 @@ class Paperloom31PreparationTest(unittest.TestCase):
         assessment = _assess_agent_case(case, run, targets, {"paper_1"})
 
         self.assertEqual([], assessment["hard_failures"])
+        self.assertTrue(assessment["provenance_passed"])
         self.assertEqual(
             {"target_id": "target_1", "returned": False, "read": False, "cited": False},
             assessment["target_checks"][0],
         )
 
-        run["research_answer"] = {"outcome": "answered", "cited_source_quote_refs": []}
+        run["research_answer"] = {
+            "outcome": "answered",
+            "answer_contract": "RESEARCH",
+            "cited_source_quote_refs": [],
+        }
         missing = _assess_agent_case(case, run, targets, {"paper_1"})
         self.assertEqual("MISSING_CITATION", missing["hard_failures"][0]["code"])
+
+    def test_protocol_trace_replays_and_aggregates_without_a_judge(self) -> None:
+        event = {
+            "event_id": "event_1",
+            "kind": "protocol.transition",
+            "payload": {
+                "before": {
+                    "phase": "ACTIVE",
+                    "contract": None,
+                    "submission_attempt": 0,
+                    "validation_issues": [],
+                },
+                "event": {
+                    "kind": "SUBMISSION_REQUESTED",
+                    "contract": "DIRECT",
+                    "accepted": True,
+                    "issue_class": None,
+                    "issue_codes": [],
+                    "issues": [],
+                },
+                "facts": {
+                    "known_source_quote_refs": [],
+                    "catalog_result_refs": [],
+                    "sibling_tool_names": ["submit_direct_answer"],
+                },
+                "decision": {"accepted": True, "issue_codes": []},
+                "after": {
+                    "phase": "COMPLETE",
+                    "contract": "DIRECT",
+                    "submission_attempt": 1,
+                    "validation_issues": [],
+                },
+            },
+        }
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "events.jsonl"
+            path.write_text(json.dumps(event) + "\n", encoding="utf-8")
+            replay = _assess_protocol_trace(path)
+
+        metrics = _controlled_protocol_metrics([{
+            "expected_contract": "CATALOG",
+            "contract_match": True,
+            "protocol_replay": replay,
+            "provenance_applicable": False,
+        }])
+        self.assertTrue(replay["passed"])
+        self.assertEqual(1.0, metrics["contract_accuracy"])
+        self.assertEqual(1.0, metrics["protocol_replay_pass_rate"])
 
 
 if __name__ == "__main__":
