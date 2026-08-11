@@ -2,6 +2,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import process from 'node:process';
+import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from '@playwright/test';
 
 const baseURL = process.env.PAPERLOOM_BENCHMARK_BASE_URL || 'https://paperloom.me';
@@ -24,6 +25,19 @@ function summarize(samples) {
     minMs: Math.min(...durations),
     maxMs: Math.max(...durations)
   };
+}
+
+async function navigate(page, url) {
+  let lastError;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await page.goto(url, { waitUntil: 'domcontentloaded' });
+    } catch (error) {
+      lastError = error;
+      await delay(500);
+    }
+  }
+  throw lastError;
 }
 
 async function waitForFirstPage(page) {
@@ -91,7 +105,7 @@ try {
     viewport: { width: 1440, height: 1000 }
   });
   const seedPage = await seedContext.newPage();
-  await seedPage.goto(baseURL, { waitUntil: 'domcontentloaded' });
+  await navigate(seedPage, baseURL);
   if (!savedStorageState) {
     await seedPage.getByRole('button', { name: /游客登录|Continue as guest/ }).click();
     await seedPage.waitForURL(/#\/chat/);
@@ -110,7 +124,7 @@ try {
   for (let index = 0; index < iterations; index += 1) {
     const context = await browser.newContext({ storageState, viewport: { width: 1440, height: 1000 } });
     const page = await context.newPage();
-    await page.goto(`${baseURL}/#/knowledge-base`, { waitUntil: 'domcontentloaded' });
+    await navigate(page, `${baseURL}/#/knowledge-base`);
     await page.getByRole('heading', { name: 'Library' }).waitFor();
 
     const previewButton = page.getByRole('button', { name: 'Preview', exact: true }).first();
