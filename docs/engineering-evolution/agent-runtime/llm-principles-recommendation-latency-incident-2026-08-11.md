@@ -311,6 +311,45 @@ Agent 在第 2 次模型响应中明确表示，为了提供“grounded shortlis
 - `context_specific_brainstorming` 要求每个推荐/阅读顺序项与其引用位于同一 Markdown Block，不再生成重复的第二份推荐列表；
 - Agent 全局合同要求校验失败后一次修正全部报错项，不重复加载已用 Skill，只在现有证据确实不足时再调用 Corpus Tool；
 - 新增 1 个聚焦合同测试，并更新预期 Prompt Hash；2 个聚焦测试通过，未运行全量测试。
+- Commit `ffe05dc` 已推送并部署到线上；Harness 于 `2026-08-11 13:03:21 CST` 重新进入 Active，Health 返回 `ok`。等待新会话的同问题受控验收。
+
+### 线上验收失败：推荐请求落入元数据路径
+
+部署后的新会话再次提交“推荐和llm原理相关的”：
+
+- Run ID：`run_e7766f90d9b84b459858a8cbbcc10eb5`；
+- 总耗时 `47292 ms`，模型耗时 `46925 ms`，模型调用 3 次；
+- 业务工具只有 3 次 `search_paper_candidates`；
+- `skills_used=[]`，没有 `get_paper_structure`、`search_paper_content` 或 `read_paper_content`；
+- `selected_source_quote_refs=[]`，最终回答确实没有任何 Reference。
+
+这不是前端引用渲染问题，而是 Agent 根本没有进入 Deep Research。它将“推荐”当作 Corpus Inventory/元数据筛选，只根据论文卡片组织了推荐。现有 Validator 仅在 Trace 已经使用 `search_paper_content` 或 `read_paper_content` 时强制内容引用；本 Run 从未读取正文，因此被当作合法元数据答案通过。
+
+这确认了一个比“首份答案引用收敛”更靠前的业务合同缺口：
+
+```text
+推荐论文 / 建议阅读顺序 / 判断论文是否适合某主题或目标
+= 论文内容判断
+!= Corpus Inventory 或元数据筛选
+-> 必须读取论文内容
+-> 每个推荐必须引用对应证据
+```
+
+下一个候选修复不限制论文数量：在全局 Agent 合同中明确上述业务不变式，同时将 `context_specific_brainstorming.when_to_use` 从“具体用户场景”扩展为“主题、目标或具体场景的论文/选项推荐”。不修改前端或放宽 Validator。
+
+### 架构重新评估
+
+继续追加上述 Prompt/Skill 规则已暂停。本次故障证明，当前“模型自由决定是否研究，Harness 只在模型主动读取正文后强制引用”的假设不能保证产品定位。
+
+新的形式化设计见 [可控 Research Harness 协议](../../architecture/controlled-research-harness-protocol-2026-08-11.md)。核心不是增加固定研究流程，而是将：
+
+```text
+Answer Contract（这轮允许产生什么答案）
+与
+Research Skill（已确定研究后怎么研究）
+```
+
+从单一 Prompt 中分开。协议使用 `DIRECT | CATALOG | RESEARCH` 三种少量显式 Contract；Contract 由三个互斥的最终提交 Tool 选择，避免新增一次专门的模型路由往返。`DIRECT` 和 `CATALOG` 由 Runtime 从受限结构渲染，`RESEARCH` 的自由 Markdown 必须让每个 Content Block 绑定可追溯的 Source Quote。这个在线 Guard 只证明来源真实和绑定完整，不声称判断引文是否在语义上支持结论；Contract 选择、Citation Entailment 和任务完整性进入现有 PaperLoom-31 的离线 Eval。Research Contract 内部仍保留单 Agent 的自由 ReAct，不固定论文数量和研究轮数。详细设计已经转化为已接受的 [Controlled Research Harness Specification](../../architecture/controlled-research-harness-spec-2026-08-11.md)，尚未修改运行时代码。
 
 ## 实时调查记录
 
@@ -334,3 +373,8 @@ Agent 在第 2 次模型响应中明确表示，为了提供“grounded shortlis
 | 2026-08-11 12:51 CST | 按模型轮次重读完整 Trace | 修正“Agent 未批量读取”判断：Agent 已一次请求 13 个 Abstract，之后的 3 次读取由 16000 字符的模型可见 Tool Payload 分页触发。更大的延迟是 3 次完整答案生成和 1 次重复 Skill 加载；优先收敛首次答案的引用合同 |
 | 2026-08-11 12:54 CST | 形式化首份答案收敛规则 | 候选修复只收窄推荐 Skill 的输出形状和校验失败后的行为：每个推荐 Block 自带引用，不在第二列表重复；一次修正所有报错 Block，非证据不足不重新调用研究工具。不放宽 Validator，不增加 Patch 协议 |
 | 2026-08-11 13:01 CST | 用一个聚焦合同测试实现第一优先级修复 | Recommendation Skill 和 Agent 校验后行为已收窄；新测试先失败后通过，Prompt Hash 合同同步更新，2 个聚焦测试通过 |
+| 2026-08-11 13:03 CST | 推送并部署 Commit `ffe05dc` | 线上 Harness 重启后 Health 返回 `ok`；下一步用新会话重复同一问题，检查完整 Trace 中答案提交次数、重复 Skill 调用和总延迟 |
+| 2026-08-11 13:06 CST | 用新会话验收同一问题 | 回答无 Reference；Trace 确认 Agent 只做 3 次候选搜索，未加载 Skill、未读取任何正文。定位为推荐语义被误归入元数据路径的业务合同缺口，不是前端渲染问题 |
+| 2026-08-11 13:20 CST | 停止继续追加 Prompt 特例，重新形式化 Harness | 将 Answer Contract 与 Research Skill 分离，形成 `DIRECT | CATALOG | RESEARCH` 三模式协议草案；Research 内仍自由 ReAct，发布由确定性状态和 Evidence 前置条件控制，尚未改代码 |
+| 2026-08-11 CST | 深化状态机与 Eval 设计 | Contract 改由三个互斥提交 Tool 在发布时选择，避免额外 Router/模型轮次；ProtocolState 与现有 Corpus 授权状态保持单一所有权；在线只校验 Provenance，语义支持复用 PaperLoom-31 的离线 Grounding/Answer Judge |
+| 2026-08-11 CST | 逐节评审并接受实现 Spec | 明确三种 Contract、Corpus/Protocol/Execution State 所有权、Catalog/Research 可恢复路径、产品输出兼容、Trace 回放、PaperLoom-31 Eval 和聚焦验收边界；删除重复 `repair_scope` 状态 |
