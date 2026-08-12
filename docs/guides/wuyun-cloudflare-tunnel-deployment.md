@@ -3,7 +3,7 @@
 本文记录 PaperLoom 第一次公网部署的实际步骤，并把它整理成可在另一台服务器复现的流程。
 
 - 完成时间：2026-08-10
-- 部署版本：`e97ea42`
+- Redis 切换完成：2026-08-12
 - 项目目录：`<paperloom-home>`
 - 公网域名：`paperloom.me`
 - 当前架构不开放 PaperLoom 的任何公网端口；只有 Cloudflare 对外提供 HTTPS。
@@ -22,15 +22,15 @@
        -> 前端静态文件
        -> 后端 API（127.0.0.1:18082）
        -> MinIO 文件（127.0.0.1:9200）
-            -> Research Harness（127.0.0.1:8091）
-            -> MySQL / Redis / Kafka / Qdrant（全都仅本机监听）
+       -> Redis Streams -> 4 个 Research Harness Worker
+       -> MySQL / Redis / Kafka / Qdrant（全都仅本机监听）
 ```
 
 | 组件 | 服务器监听地址 | 用途 |
 | --- | --- | --- |
 | Nginx | `127.0.0.1:18880` | Tunnel 的唯一入口；提供前端、API、WebSocket、文件 |
 | Spring Boot | `127.0.0.1:18082` | PaperLoom 产品 API |
-| Research Harness | `127.0.0.1:8091` | 内部研究执行服务 |
+| Research Harness | 不监听端口 | 4 个 Worker 从 Redis Streams 消费研究任务 |
 | MySQL | `127.0.0.1:13307` | 论文和产品元数据 |
 | Redis | `127.0.0.1:16379` | 临时状态 |
 | MinIO | `127.0.0.1:9200` | PDF、解析产物和图片 |
@@ -114,8 +114,10 @@ PAPER_PARSING_MINERU_API_TOKEN=<mineru-token>
 
 MINIMAX_API_KEY=<minimax-key>
 MINIMAX_MODEL=MiniMax-M3
-RESEARCH_HARNESS_TRANSPORT=http
-RESEARCH_HARNESS_BASE_URL=http://127.0.0.1:8091
+RESEARCH_HARNESS_TRANSPORT=redis
+RESEARCH_HARNESS_REDIS_URL=redis://:<url-encoded-redis-password>@127.0.0.1:16379/0
+RESEARCH_HARNESS_WORKER_MAX_CONCURRENT_RUNS=1
+RESEARCH_HARNESS_MAX_ACTIVE_GENERATIONS=4
 RESEARCH_HARNESS_INTERNAL_TOKEN=<internal-token>
 JAVA_CORPUS_BASE_URL=http://127.0.0.1:18082
 
@@ -140,8 +142,8 @@ SECURITY_ALLOWED_ORIGINS=http://localhost:18880,http://127.0.0.1:18880
    路径，接通后再改为 `https://<域名>/files`。
 3. 第一次启动前就设置新的管理员强密码。管理员创建成功后，立即把
    `ADMIN_BOOTSTRAP_ENABLED` 改为 `false`。不要把默认或临时密码暴露到公网。
-4. `RESEARCH_HARNESS_TRANSPORT=http` 是这次实际运行的模式；不要仅因为通用部署文档提到
-   Redis worker 就擅自切换模式。
+4. 生产环境使用 Redis Streams；Redis URL 中的密码必须做 URL 编码。4 个单并发 Worker 对应
+   MiniMax Max Token Plan 的建议并发范围，Java 同时最多接受 4 个活跃生成。
 
 ## 3. 启动数据服务
 
@@ -228,20 +230,19 @@ corepack pnpm --dir frontend build
 ## 6. 让后端和 Harness 随开机自动运行
 
 下面两个 systemd 文件中的 `<paperloom-home>` 必须替换成实际项目目录。创建
-`/etc/systemd/system/paperloom-harness.service`：
+`/etc/systemd/system/paperloom-harness-worker@.service`：
 
 ```ini
 [Unit]
-Description=PaperLoom research harness
-After=network-online.target docker.service
-Wants=network-online.target docker.service
+Description=PaperLoom Redis research harness worker %i
+After=network-online.target docker.service paperloom-backend.service
+Requires=paperloom-backend.service
 
 [Service]
 Type=simple
 WorkingDirectory=<paperloom-home>
 EnvironmentFile=<paperloom-home>/.env
-ExecStartPre=/usr/bin/docker compose --env-file .env -f docs/docker-compose.yaml up -d
-ExecStart=<paperloom-home>/.venv-harness/bin/python -u -m harness_py serve --host 127.0.0.1 --port 8091
+ExecStart=<paperloom-home>/.venv-harness/bin/python -u -m harness_py worker --redis-url ${RESEARCH_HARNESS_REDIS_URL} --worker-id harness-%H-%i --group paperloom-research-harness --max-concurrent-runs 1
 Restart=on-failure
 RestartSec=10
 TimeoutStopSec=30
@@ -255,9 +256,8 @@ WantedBy=multi-user.target
 ```ini
 [Unit]
 Description=PaperLoom backend
-After=network-online.target docker.service paperloom-harness.service
+After=network-online.target docker.service
 Wants=network-online.target docker.service
-Requires=paperloom-harness.service
 
 [Service]
 Type=simple
@@ -277,8 +277,8 @@ WantedBy=multi-user.target
 
 ```bash
 systemctl daemon-reload
-systemctl enable --now paperloom-harness.service paperloom-backend.service
-systemctl status paperloom-harness.service paperloom-backend.service
+systemctl enable --now paperloom-backend.service paperloom-harness-worker@{1..4}.service
+systemctl status paperloom-backend.service paperloom-harness-worker@{1..4}.service
 ```
 
 管理员创建并确认可以登录后：
@@ -430,15 +430,15 @@ systemctl restart paperloom-backend.service
 ```bash
 curl -o /dev/null -w '%{http_code}\n' https://<domain>/
 curl -o /dev/null -w '%{http_code}\n' https://<domain>/api/v1/users/me
-systemctl is-active paperloom-harness.service
+systemctl is-active paperloom-harness-worker@{1..4}.service
 systemctl is-active paperloom-backend.service
 systemctl is-active cloudflared.service
 cd "$PAPERLOOM_HOME"
 docker compose --env-file .env -f docs/docker-compose.yaml ps
 ```
 
-本次正式上线的结果是：前端 `200`、未认证 API `403`、管理员登录 `200`，Harness、Backend、
-Cloudflared 三个 systemd 服务均为 `active`。
+本次正式上线的结果是：前端 `200`、未认证 API `403`、真实研究问答完成，Backend、4 个 Worker
+和 Cloudflared 均为 `active`；任务完成后 Redis jobs stream 长度和 pending 数均回到 `0`。
 
 上线后的检查、发布、备份与排障见[运维指南](operations.md)。
 
@@ -452,15 +452,16 @@ git pull --ff-only
 mvn -DskipTests package
 corepack pnpm --dir frontend install --frozen-lockfile
 corepack pnpm --dir frontend build
-systemctl restart paperloom-harness.service paperloom-backend.service
+systemctl restart paperloom-harness-worker@{1..4}.service paperloom-backend.service
 ```
 
 看状态和日志：
 
 ```bash
-systemctl status paperloom-backend paperloom-harness cloudflared
+systemctl status paperloom-backend paperloom-harness-worker@{1..4} cloudflared
 journalctl -u paperloom-backend -f
-journalctl -u paperloom-harness -f
+journalctl -u paperloom-harness-worker@1 -u paperloom-harness-worker@2 \
+  -u paperloom-harness-worker@3 -u paperloom-harness-worker@4 -f
 journalctl -u cloudflared -f
 ```
 
