@@ -44,7 +44,7 @@ EXPECTED_PAPER_COUNT = 31
 UPLOAD_CHUNK_BYTES = 5 * 1024 * 1024
 SNAPSHOT_SCHEMA_VERSION = "paperloom-product-snapshot/v2"
 QUERY_PROMPT_VERSION = "paperloom-query-generator-v3"
-CASE_LAYOUT_VERSION = "paperloom-agent-case-layout-v4"
+CASE_LAYOUT_VERSION = "paperloom-agent-case-layout-v5"
 EVIDENCE_TYPES = {"PASSAGE", "TABLE", "FIGURE"}
 MIN_PASSAGE_CHARS = 220
 MIN_ANSWER_SPAN_CHARS = 40
@@ -659,13 +659,14 @@ def build_agent_cases(
         })
 
     follow_target = remaining[8]
+    follow_title = _paper_title(follow_target, product_states)
     cases.append({
         "case_id": "follow_up_01",
         "case_type": "follow_up",
         "expected_contract": "RESEARCH",
         "question": "请为刚才的结论提供对应论文中的原文证据，并保留引用。",
         "history": [
-            {"role": "user", "content": follow_target["query"]},
+            {"role": "user", "content": f"请依据《{follow_title}》回答：{follow_target['query']}"},
             {"role": "assistant", "content": follow_target["expected_answer"]},
         ],
         "expected_outcome": "answered",
@@ -674,6 +675,22 @@ def build_agent_cases(
         "expected_facts": follow_target["fact_keys"],
         "answer_spans": follow_target["answer_spans"],
         "citation_policy": "cite_each_required_target",
+    })
+    cases.append({
+        "case_id": "follow_up_ambiguous_01",
+        "case_type": "follow_up_ambiguity_control",
+        "expected_contract": "DIRECT",
+        "question": "请为刚才的结论提供对应论文中的原文证据，并保留引用。",
+        "history": [
+            {"role": "user", "content": "该论文发表于哪个会议？"},
+            {"role": "assistant", "content": "Published as a conference paper at ICLR 2022"},
+        ],
+        "expected_outcome": "needs_clarification",
+        "expected_answer": "询问用户所指的是哪篇论文。",
+        "required_target_ids": [],
+        "expected_facts": [],
+        "answer_spans": [],
+        "citation_policy": "no_citation_without_evidence",
     })
     cases.append({
         "case_id": "missing_evidence_01",
@@ -742,7 +759,7 @@ def build_agent_cases(
             "citation_policy": "cite_recommendation_reasons",
         },
     ])
-    if len(cases) != 16:
+    if len(cases) != 17:
         raise PreparationError("generate", "AGENT_CASE_COUNT_INVALID", str(len(cases)))
     return cases
 
@@ -800,7 +817,8 @@ def _validate_generated_answer(
         raise ValueError("question, expected_answer, answer_spans and fact_keys are required")
     if not re.search(r"[\u3400-\u9fff]", question):
         raise ValueError("question must be written in Chinese")
-    if len(_normalize_text(" ".join(spans))) < MIN_ANSWER_SPAN_CHARS:
+    # Short numeric answers are valid when the source span contains the full surrounding claim.
+    if len(_normalize_text(" ".join(spans))) < MIN_ANSWER_SPAN_CHARS and len(_normalize_text(content)) < MIN_PASSAGE_CHARS:
         raise ValueError("answer spans are too short for a grounded benchmark question")
     normalized_content = _normalize_text(content)
     if any(_normalize_text(span) not in normalized_content for span in spans):
@@ -845,7 +863,7 @@ def validate_snapshot(snapshot: dict[str, object]) -> None:
         if not spans or any(_normalize_text(span) not in content for span in spans):
             raise PreparationError("validate", "SNAPSHOT_ANSWER_SPAN_INVALID", target_id)
 
-    if len(cases) != 16:
+    if len(cases) != 17:
         raise PreparationError("validate", "SNAPSHOT_AGENT_CASE_COUNT_INVALID", str(len(cases)))
     forbidden = {
         str(target.get(key) or "")
@@ -1380,6 +1398,14 @@ def _assess_agent_case(
         hard_failures.append(_failure("L3", "MISSING_CITATION", str(case.get("case_id"))))
     if case.get("citation_policy") == "no_citation_without_evidence" and cited:
         hard_failures.append(_failure("L3", "CITATION_WITHOUT_EVIDENCE", str(sorted(cited))))
+    if case.get("case_type") == "follow_up_ambiguity_control":
+        clarification = (
+            answer.get("outcome") == "needs_clarification"
+            and actual_contract == AnswerContract.DIRECT.value
+            and not cited
+        )
+        if not clarification:
+            hard_failures.append(_failure("L3", "AMBIGUOUS_REFERENCE_NOT_CLARIFIED", str(case.get("case_id"))))
     return {
         "status": run.get("status"),
         "actual_outcome": answer.get("outcome"),

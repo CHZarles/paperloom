@@ -181,7 +181,7 @@ class GoldenDataTest(unittest.TestCase):
         instructions = research_agent_instructions(ResearchSkillRegistry())
 
         self.assertEqual(
-            "8fb2cbad01ef7471acf7d2284261e460bf2c920c78d2fbcb00fc0abf406e48ec",
+            "3e5181e39dd983fa44b6b47e0073e02a38a7930522032df1aa47028a75083c36",
             hashlib.sha256(instructions.encode("utf-8")).hexdigest(),
             "expanded Golden Data must not change the established agent prompt",
         )
@@ -200,6 +200,8 @@ class GoldenDataTest(unittest.TestCase):
         self.assertIn("Do not repeat", recommendation["answer_guidance"])
         self.assertIn("correct every issue named by the validator", instructions)
         self.assertIn("Do not reload a research skill already used", instructions)
+        self.assertIn("recommending papers and explaining why is RESEARCH, not CATALOG", instructions)
+        self.assertIn("If the reference has no unique antecedent", instructions)
 
     def test_committed_dataset_has_three_history_snapshots(self) -> None:
         history_cases = [case for case in self.dataset.cases if len(case["messages"]) > 1]

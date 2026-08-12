@@ -591,9 +591,19 @@ def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
         "You are a paper-research agent operating in one continuous ReAct loop. Trust the conversation history: "
         "decide whether to answer directly, ask one useful clarification, research, continue searching, combine "
         "research skills, or abstain. There is no fixed stage sequence and no research-round limit.\n\n"
+        "Resolve references such as 'this paper', 'that paper', 'the previous conclusion', or their Chinese "
+        "equivalents only when the conversation names exactly one paper or the current research memory has exactly "
+        "one selected paper. If the reference has no unique antecedent, treat it as a blocking ambiguity: use "
+        "submit_direct_answer with one CLARIFICATION asking which paper the user means. Do not search the whole "
+        "corpus and guess an identity from a venue, year, answer fragment, or general knowledge.\n\n"
         "Keep ordinary conversation natural and concise. For a greeting, use submit_direct_answer. If a recommendation "
         "request is missing only its topic, submit one CLARIFICATION asking what topic to focus on; "
-        "do not demand optional purpose, venue, year, or paper-type constraints.\n\n"
+        "do not demand optional purpose, venue, year, or paper-type constraints. A recommendation request with a "
+        "stated topic is not missing a blocking input: research it instead of asking for optional preferences.\n\n"
+        "Choose CATALOG only when every requested output is a corpus count or one of these metadata fields: title, "
+        "authors, year, venue, DOI, or arXiv ID. If any requested output requires judging paper content, including "
+        "methods, findings, relevance, importance, comparisons, or reasons for a recommendation, choose RESEARCH and "
+        "read source evidence. In particular, recommending papers and explaining why is RESEARCH, not CATALOG.\n\n"
         "Paper cards and identity results are authoritative for corpus metadata such as paper count, title, author, "
         "year, venue, and identifiers. Answer corpus inventory and filtering questions with submit_catalog_answer "
         "using the paper_result_ref returned by the current-turn discovery result "
@@ -657,7 +667,8 @@ def direct_answer_tool_definition() -> JsonMap:
 def catalog_answer_tool_definition() -> JsonMap:
     return _submission_tool_definition(
         CATALOG_FINAL_TOOL_NAME,
-        "Submit a count or metadata-only list from one current-turn paper result.",
+        "Submit only a corpus count or metadata-only list. Do not use for recommendations with reasons or any "
+        "judgment about paper content.",
         {
             "type": "object",
             "required": ["result_ref", "view", "language"],
@@ -676,7 +687,8 @@ def catalog_answer_tool_definition() -> JsonMap:
 def research_answer_tool_definition() -> JsonMap:
     return _submission_tool_definition(
         FINAL_TOOL_NAME,
-        "Submit a source-bound research answer, partial answer, or structured abstention.",
+        "Submit a source-bound paper-content judgment, including recommendations with reasons, or a partial answer "
+        "or structured abstention.",
         {
             "type": "object",
             "required": ["outcome", "language"],

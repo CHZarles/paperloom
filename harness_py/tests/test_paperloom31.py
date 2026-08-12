@@ -132,7 +132,7 @@ class Paperloom31PreparationTest(unittest.TestCase):
         cases = build_agent_cases(targets, product_states)
         snapshot = {
             "schema_version": "paperloom-product-snapshot/v2",
-            "generator": {"case_layout_version": "paperloom-agent-case-layout-v4"},
+            "generator": {"case_layout_version": "paperloom-agent-case-layout-v5"},
             "papers": papers,
             "targets": {target["target_id"]: target for target in targets},
             "agent_cases": cases,
@@ -145,15 +145,24 @@ class Paperloom31PreparationTest(unittest.TestCase):
             "1. Question 04?\n2. Question 05?\n请分项回答并分别引用。",
             cases[6]["question"],
         )
-        self.assertEqual("请为刚才的结论提供对应论文中的原文证据，并保留引用。", cases[10]["question"])
-        self.assertEqual(16, len(cases))
-        self.assertEqual("DIRECT", cases[12]["expected_contract"])
-        self.assertEqual("CATALOG", cases[14]["expected_contract"])
-        self.assertEqual("RESEARCH", cases[15]["expected_contract"])
-        self.assertEqual("research_recommendation", cases[15]["case_type"])
-        self.assertEqual([], cases[15]["required_target_ids"])
-        self.assertEqual([], cases[15]["answer_spans"])
-        self.assertEqual("cite_recommendation_reasons", cases[15]["citation_policy"])
+        by_id = {case["case_id"]: case for case in cases}
+        follow_up = by_id["follow_up_01"]
+        self.assertEqual("请为刚才的结论提供对应论文中的原文证据，并保留引用。", follow_up["question"])
+        self.assertEqual("请依据《Paper 12》回答：Question 12?", follow_up["history"][0]["content"])
+        self.assertEqual("RESEARCH", follow_up["expected_contract"])
+        ambiguous = by_id["follow_up_ambiguous_01"]
+        self.assertEqual("该论文发表于哪个会议？", ambiguous["history"][0]["content"])
+        self.assertEqual("DIRECT", ambiguous["expected_contract"])
+        self.assertEqual("needs_clarification", ambiguous["expected_outcome"])
+        self.assertEqual(17, len(cases))
+        self.assertEqual("DIRECT", by_id["direct_greeting_01"]["expected_contract"])
+        self.assertEqual("CATALOG", by_id["catalog_inventory_01"]["expected_contract"])
+        recommendation = by_id["research_llm_principles_01"]
+        self.assertEqual("RESEARCH", recommendation["expected_contract"])
+        self.assertEqual("research_recommendation", recommendation["case_type"])
+        self.assertEqual([], recommendation["required_target_ids"])
+        self.assertEqual([], recommendation["answer_spans"])
+        self.assertEqual("cite_recommendation_reasons", recommendation["citation_policy"])
 
     def test_agent_gate_treats_exact_target_coverage_as_diagnostic(self) -> None:
         case = {

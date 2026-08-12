@@ -374,7 +374,7 @@ Case Layout 或 Snapshot Schema 变化
 
 ## 10. Query Generator v3 Snapshot
 
-Snapshot：`407768f029f38ad4fa362d006d31da38b68aece42c1a3428b504d9ae8808112a`
+Snapshot：`a61e8c1c240b2e8873b88d20da497b9ec0b98d9631c77a3e05c0634eeb92ecd3`
 
 Generator 身份：
 
@@ -382,7 +382,7 @@ Generator 身份：
 provider            = minimax
 model               = MiniMax-M3
 prompt_version      = paperloom-query-generator-v3
-case_layout_version = paperloom-agent-case-layout-v4
+case_layout_version = paperloom-agent-case-layout-v5
 ```
 
 原歧义 Codex Target 重新生成的问题为：
@@ -390,22 +390,22 @@ case_layout_version = paperloom-agent-case-layout-v4
 > 附录B中展示的HumanEval随机问题及对应Codex-12B样本，其生成所使用的温度参数是多少？
 
 该问题明确保留“附录 B 中展示”的范围，只询问温度 `0.8`，不再把附录示例的 `8 samples` 与总体评测的
-`100 samples` 放入同一个未限定问题。Snapshot 结构校验通过：31 个 Target、16 个 Agent Case，Target
-类型仍为 22 Passage、6 Table、3 Figure。
+`100 samples` 放入同一个未限定问题。Snapshot 结构校验通过：31 个 Target、17 个 Agent Case，Target
+类型仍为 22 Passage、6 Table、3 Figure。该 Snapshot 还放宽了生成器对短数值答案的校验：只要完整 Source Span
+足够长，短答案本身仍可作为有效目标。
 
 ### 10.1 首次全链路 Run
 
-Run：`20260811T134147Z-ebfe203a`
+Run：`20260812T013826Z-27921cfe`
 
 ```text
 baseline.established = true
 internal_beta_gate   = false
 L1 Recall@1          = 1.0000
-L2 Recall@5          = 0.7097
-L2 Recall@10         = 0.8387
-L3 Hard Pass         = 14 / 16
-Agent Model Calls    = 86
-Agent Total Tokens   = 763,849
+L2 Recall@5          = 0.7419
+L2 Recall@10         = 0.8065
+L3 Hard Pass         = 12 / 17
+Contract Accuracy    = 12 / 17
 ```
 
 `comparison_04` 已满足修正目标：两个 Target 均 `returned/read/cited=true`，回答附录 B 的温度为 `0.8`，
@@ -432,7 +432,39 @@ CATALOG Repair，后续正文工具被正确拒绝，最终只返回论文标题
 根因，后续单独处理。
 
 该 Snapshot 可以作为包含已知失败的冻结回归 Baseline，因为五个 Stage 已完整执行；它不是一个通过
-Internal Beta Gate 的发布基线。下一步不再重建试卷，而是在同一 Snapshot 上修复和比较 Agent 行为。
+Internal Beta Gate 的发布基线。
+
+### 10.2 歧义代词修复后的聚焦验证
+
+同一 Snapshot 的 `follow_up_ambiguous_01` 聚焦 Trace 已变为：
+
+```text
+search_paper_candidates -> submit_direct_answer
+outcome = needs_clarification
+answer_contract = DIRECT
+```
+
+模型不再把 “ICLR 2022” 猜成某篇论文，也不再读取正文。完整 Benchmark 尚未因这一条 Prompt 修复重跑；
+上面的全量 Run 保留为修复前基线。
+
+### 10.3 Prompt 修复后的全量 Run
+
+Run：`20260812T020304Z-cd6e7648`
+
+```text
+baseline.established = true
+internal_beta_gate   = true
+L1 Recall@1          = 1.0000
+L2 Recall@5          = 0.7419
+L2 Recall@10         = 0.8065
+L3 Hard Pass         = 17 / 17
+Contract Accuracy    = 17 / 17
+Protocol Replay      = 1.0000
+Provenance Pass      = 1.0000
+```
+
+推荐 Case 和两个 Follow-up Case 均按预期 Contract 完成。此前的 Contract 漂移已不再复现；不需要独立
+Contract Router。
 
 ## 11. Contract 失败的 Trace 诊断
 
@@ -451,12 +483,21 @@ user:      请为刚才的结论提供对应论文中的原文证据，并保留
 `DIRECT / needs_clarification`。这是合理行为。
 
 因此该失败不是 Conversation History 丢失，也不是 Contract Router 错误，而是 Benchmark 构造时只写入
-Target Query 和 Expected Answer，却遗漏了建立代词指代所需的论文身份。正式修正应让历史首问使用与
-Single Paper Case 相同的标题限定，例如：
+Target Query 和 Expected Answer，却遗漏了建立代词指代所需的论文身份。只补标题会丢失对歧义处理能力
+的覆盖，因此 Case Layout v5 将它拆成正反两个 Case：
 
 ```text
-请依据《FINETUNED LANGUAGE MODELS ARE ZERO-SHOT LEARNERS》回答：该论文发表于哪个会议？
+follow_up_01
+  history = 明确论文标题的问题 + 上轮答案
+  expected = RESEARCH / answered / 引用原文
+
+follow_up_ambiguous_01
+  history = “该论文发表于哪个会议？” + 上轮答案（没有论文身份）
+  expected = DIRECT / needs_clarification
 ```
+
+这不是让 Agent 读取 Benchmark 隐藏的 `required_target_id`。形式化规则是：唯一先行词必须继续研究；没有
+唯一先行词必须追问，不能猜测。
 
 ### 11.2 research_llm_principles_01 是真实 Contract 选择失败
 
@@ -486,6 +527,16 @@ Protocol Guard 行为符合设计：第一次 Submission 将 Contract 固定为 
 哪个 Submission Tool。因此状态机可以保证“选定 Contract 后按协议完成”，却不能保证“选择的 Contract
 符合用户意图”。
 
+第一步不引入独立 Router。共享 System Prompt 和两个 Submission Tool Description 先使用同一条通用边界：
+
+```text
+CATALOG  <=> 所有输出都只是 count/title/authors/year/venue/doi/arxiv_id
+RESEARCH <=> 任一输出需要正文判断，包括方法、发现、相关性、重要性、比较或推荐理由
+```
+
+因此“推荐并说明理由”明确属于 RESEARCH；主题已经给出时也不能为了可选偏好进入 DIRECT Clarification。
+只有在相同 Snapshot 的重复 Run 中仍发生 Contract 漂移，才有证据增加独立 Request Contract Router。
+
 ### 11.3 已排除与保留的假设
 
 ```text
@@ -501,7 +552,12 @@ Protocol Guard 行为符合设计：第一次 Submission 将 Contract 固定为 
 确认：推荐 Case 的 Contract 由最终 Submission Tool 隐式决定
   证据：ACTIVE 初始 contract=None；首次 Submission 后锁定 CATALOG
 
-待设计：在 Agent 执行前显式确定 Request Contract，或继续依赖 Prompt 软约束
+确认：无唯一先行词时，Agent 会搜索全库并猜测论文
+  证据：`follow_up_ambiguous_01` 的 Trace 先调用完整 `search_paper_candidates`，随后把 ICLR 2022 猜成 LoRA，
+  没有请求澄清
+
+修复：在共享 System Prompt 中把“无唯一先行词”定义为阻塞歧义，必须进入 DIRECT Clarification；禁止通过
+全库搜索、会议信息、年份、答案片段或常识猜测身份。仍不引入独立 Router。
 ```
 
 这两个失败不能用同一个补丁处理：Follow-up 应修 Benchmark Context；推荐 Case 需要决定 Runtime Contract

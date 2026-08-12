@@ -10,6 +10,7 @@ from harness_py.orchestration.research_contract import (
     ProtocolState,
     SubmissionIssueClass,
     SubmissionRequested,
+    catalog_answer_tool_definition,
     decide,
     direct_answer_tool_definition,
     render_catalog_submission,
@@ -193,6 +194,13 @@ class ResearchProtocolTest(unittest.TestCase):
         )
         self.assertEqual(SubmissionIssueClass.MISSING_CONTRACT_INPUT, unknown.issue_class)
         self.assertEqual(("UNKNOWN_CATALOG_RESULT_REF",), tuple(issue.code for issue in unknown.issues))
+
+    def test_submission_tools_distinguish_metadata_lists_from_recommendation_reasons(self) -> None:
+        catalog_description = catalog_answer_tool_definition()["function"]["description"]
+        research_description = research_answer_tool_definition()["function"]["description"]
+
+        self.assertIn("Do not use for recommendations with reasons", catalog_description)
+        self.assertIn("recommendations with reasons", research_description)
 
     def test_research_validation_binds_every_content_block_to_known_quotes(self) -> None:
         facts = ProtocolFacts(known_source_quotes={
