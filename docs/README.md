@@ -10,6 +10,7 @@ engineering-evolution records explain why it changed.
 - [Architecture Overview](architecture/overview.md): understand service boundaries and the main data flow.
 - [Reading Model and Agent Tools](architecture/reading-model-and-agent-tools.md): understand the persisted paper model, live MySQL projection, BM25 retrieval, and tool authorization ladder.
 - [Evidence and Citations](architecture/evidence-and-citations.md): follow evidence from parser output to a reopened reference.
+- [Agent Harness, Eval, and Benchmark Milestone](architecture/agent-harness-eval-benchmark-milestone-2026-08-12.md): current formal architecture, evaluation layers, frozen benchmark, and implementation references.
 - [Passage Retrieval Proposal](architecture/passage-retrieval-proposal-2026-08-01.md): proposed text-evidence unit, provenance, neighbor reading, indexing, evaluation, and rollout contract.
 - [Development Guide](guides/development.md): common commands, tests, and repository conventions.
 - [Deployment Guide](guides/deployment.md): production-oriented configuration and process layout.
