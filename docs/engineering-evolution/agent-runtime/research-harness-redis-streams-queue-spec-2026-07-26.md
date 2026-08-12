@@ -369,12 +369,12 @@ python -m harness_py worker \
 V1 推荐 `max-concurrent-runs=1`，用进程数横向扩展。后续如果模型 provider 和 CPU 负载允许，再提高到
 2 到 4。先不要在一个 Python 进程里塞太多并发。
 
-生产初始值使用 3 个 worker 进程，通过 systemd 模板实例管理。当前 MiniMax-M3 凭证是 Token Plan 订阅 Key；官方说明高峰期
-Plus、Max、Ultra 约支持 3-4、4-5、6-7 个 Agent，但查询接口不返回具体套餐名称。先取最低档
-Plus 的下界 3，不把 Java 的 16 路并发直接映射成 16 个 provider 并发。每个 research run 会连续
+生产初始值使用 4 个 worker 进程，通过 systemd 模板实例管理。当前 MiniMax-M3 凭证是至少 Max
+档的 Token Plan 订阅 Key；官方说明高峰期 Plus、Max、Ultra 约支持 3-4、4-5、6-7 个 Agent。
+先取已确认 Max 档的下界 4，不把 Java 的 16 路并发直接映射成 16 个 provider 并发。每个 research run 会连续
 发起多次模型请求；最近一轮 17 Case 基准的中位数为 5 次模型调用、43,051 tokens，最大为 13 次、
-306,277 tokens。按中位耗时折算，单个活跃 run 约消耗 8.1 RPM、57,949 TPM，3 个并发约为
-24.3 RPM、173,846 TPM。只有连续观察不到 429/529、TPM 和 Token Plan 窗口仍有余量时，才逐次
+306,277 tokens。按中位耗时折算，单个活跃 run 约消耗 8.1 RPM、57,949 TPM，4 个并发约为
+32.4 RPM、231,796 TPM。只有连续观察不到 429/529、TPM 和 Token Plan 窗口仍有余量时，才逐次
 增加 worker。
 
 ---
