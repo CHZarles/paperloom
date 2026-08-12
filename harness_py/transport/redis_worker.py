@@ -125,6 +125,8 @@ class RedisResearchWorker:
             self._ack_job(message_id)
             return
         if status.get("status") == "RUNNING":
+            if self.client.exists(self.config.lock_prefix + generation_id):
+                return
             sink.emit("job_failed", _technical_terminal_payload("StalePendingJob", started_at_ms))
             self._terminal(sink, generation_id, "STALE_FAILED", "error", {
                 "error_type": "StalePendingJob",

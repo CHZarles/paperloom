@@ -313,3 +313,31 @@ def test_worker_marks_stale_running_pending_job_failed_without_rerun():
     assert payload_json["error_type"] == "StalePendingJob"
     assert client.acks == [("paperloom:research:harness:jobs", "paperloom-research-harness", "1780000000002-0")]
     assert client.stream_deletes == [("paperloom:research:harness:jobs", "1780000000002-0")]
+
+
+def test_worker_does_not_fail_reclaimed_job_while_original_worker_lock_is_alive():
+    generation_id = "generation-still-running"
+    fields = {
+        "generation_id": generation_id,
+        "attempt": "1",
+        "payload_json": json.dumps({"request_id": generation_id}),
+    }
+    client = FakeRedis(
+        {},
+        pending=[("1780000000003-0", fields)],
+        values={
+            f"paperloom:research:harness:status:{generation_id}": json.dumps({"status": "RUNNING"}),
+            f"paperloom:research:harness:lock:{generation_id}": "held-by-original-worker",
+        },
+    )
+    worker = RedisResearchWorker(
+        client,
+        RedisWorkerConfig(redis_url="redis://unused", worker_id="worker-2", stale_pending_seconds=1),
+        service=ExplodingService(),
+    )
+
+    assert worker.run_once() is True
+
+    assert client.events == []
+    assert client.acks == []
+    assert client.stream_deletes == []
