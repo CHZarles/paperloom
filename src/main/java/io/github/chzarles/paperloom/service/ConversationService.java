@@ -757,10 +757,13 @@ public class ConversationService {
                                                                Long retryOfConversationRecordId,
                                                                String reason,
                                                                int maxRetriesPerMessage) {
-        if (userId == null || retryOfConversationRecordId == null) {
+        if (userId == null) {
             return Optional.empty();
         }
-        Optional<Conversation> parent = conversationRepository.findByIdAndUserId(retryOfConversationRecordId, userId);
+        Optional<Conversation> parent = retryOfConversationRecordId != null
+                ? conversationRepository.findByIdAndUserId(retryOfConversationRecordId, userId)
+                : Optional.ofNullable(trimToNull(retryOfGenerationId))
+                        .flatMap(generationId -> conversationRepository.findFirstByGenerationIdAndUserId(generationId, userId));
         if (parent.isEmpty()) {
             return Optional.empty();
         }

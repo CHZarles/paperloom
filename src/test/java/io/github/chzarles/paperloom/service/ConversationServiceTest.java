@@ -261,6 +261,32 @@ class ConversationServiceTest {
     }
 
     @Test
+    void prepareUserRetryResolvesParentByGenerationWhenRedisRecordIdIsUnavailable() {
+        ReflectionTestUtils.setField(conversationService, "objectMapper", new ObjectMapper());
+        Conversation parent = new Conversation();
+        parent.setId(12L);
+        parent.setGenerationId("generation-old");
+        parent.setConversationId("conversation-1");
+        parent.setQuestion("Question");
+        parent.setAnswer("Old answer");
+        parent.setAnswerSlotId(12L);
+        parent.setAnswerRevision(1);
+        parent.setEffectiveScopeJson("{\"paperIds\":[\"paper-1\"]}");
+        when(conversationRepository.findFirstByGenerationIdAndUserId("generation-old", 1L))
+                .thenReturn(Optional.of(parent));
+        when(conversationRepository.findRevisionsByUserIdAndAnswerSlotId(1L, 12L)).thenReturn(List.of(parent));
+
+        ConversationRetryContext context = conversationService
+                .prepareUserRetry(1L, "generation-old", null, "user_unsatisfied", 3)
+                .orElseThrow();
+
+        assertEquals("generation-old", context.retryOfGenerationId());
+        assertEquals(12L, context.retryOfConversationRecordId());
+        assertEquals(12L, context.answerSlotId());
+        assertEquals(2, context.targetRevision());
+    }
+
+    @Test
     void recordConversationPersistsReadingArtifactsAndStatePatch() throws Exception {
         ReflectionTestUtils.setField(conversationService, "objectMapper", new ObjectMapper());
         User user = new User();

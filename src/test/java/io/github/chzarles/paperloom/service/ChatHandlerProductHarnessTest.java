@@ -256,6 +256,85 @@ class ChatHandlerProductHarnessTest {
     }
 
     @Test
+    void retryGenerationFallsBackToMySqlWhenRedisSnapshotExpired() {
+        ChatFixture fixture = chatFixture("conversation-1", "generation-retry", sourceSetScope("paper-1"));
+        ConversationRetryContext retryContext = new ConversationRetryContext(
+                "USER_UNSATISFIED",
+                "generation-expired",
+                12L,
+                12L,
+                2,
+                "user_unsatisfied",
+                "old answer",
+                List.of(),
+                "conversation-1",
+                "Question",
+                Map.of("paperIds", List.of("paper-1"))
+        );
+        when(fixture.generationStateService.getActiveGenerationForUserAndClient("1", "client-1"))
+                .thenReturn(Optional.empty());
+        when(fixture.generationStateService.getGenerationForUser("generation-expired", "1"))
+                .thenReturn(Optional.empty());
+        when(fixture.conversationService.prepareUserRetry(
+                1L,
+                "generation-expired",
+                null,
+                "user_unsatisfied",
+                3
+        )).thenReturn(Optional.of(retryContext));
+        when(fixture.generationStateService.createRetryGeneration(
+                "1",
+                "client-1",
+                "conversation-1",
+                "Question",
+                retryContext
+        )).thenReturn(new ChatGenerationStateService.GenerationSnapshot(
+                "generation-retry",
+                "1",
+                "conversation-1",
+                "Question",
+                ChatGenerationStateService.GenerationStatus.STREAMING,
+                "",
+                "2026-06-29T12:00:02",
+                "2026-06-29T12:00:02",
+                null,
+                Map.of(),
+                Map.of(),
+                Map.of(),
+                Map.of(),
+                null
+        ));
+        when(fixture.readingConversationService.submitRetryTurn(
+                eq(1L),
+                eq("conversation-1"),
+                eq("generation-retry"),
+                eq("Question"),
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+        )).thenReturn(CompletableFuture.completedFuture(completedTurn("new answer", List.of())));
+
+        fixture.handler.retryGeneration("1", "generation-expired", "client-1", "user_unsatisfied");
+
+        verify(fixture.conversationService).prepareUserRetry(
+                1L,
+                "generation-expired",
+                null,
+                "user_unsatisfied",
+                3
+        );
+        verify(fixture.conversationService, never()).prepareUserRetry(
+                1L,
+                "generation-expired",
+                12L,
+                "user_unsatisfied",
+                3
+        );
+    }
+
+    @Test
     void rawPaperIdReferenceFocusDoesNotOverrideProductSessionScope() {
         ChatFixture fixture = chatFixture();
         ProductReferenceFocus forgedFocus = new ProductReferenceFocus(

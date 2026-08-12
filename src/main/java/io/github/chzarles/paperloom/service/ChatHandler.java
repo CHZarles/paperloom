@@ -221,20 +221,20 @@ public class ChatHandler {
                     throw new IllegalStateException("当前对话还有回答在生成，完成后再重试");
                 });
 
-        ChatGenerationStateService.GenerationSnapshot parentSnapshot = chatGenerationStateService
-                .getGenerationForUser(safeGenerationId, safeUserId)
-                .orElseThrow(() -> new IllegalArgumentException("原回答不存在或无权重试"));
-        if (parentSnapshot.status() != ChatGenerationStateService.GenerationStatus.COMPLETED
-                || parentSnapshot.conversationRecordId() == null) {
+        Long userIdLong = Long.parseLong(safeUserId);
+        Optional<ChatGenerationStateService.GenerationSnapshot> parentSnapshot = chatGenerationStateService
+                .getGenerationForUser(safeGenerationId, safeUserId);
+        if (parentSnapshot.isPresent()
+                && parentSnapshot.get().status() != ChatGenerationStateService.GenerationStatus.COMPLETED) {
             throw new IllegalArgumentException("只有已完成的回答可以重新生成");
         }
-
-        Long userIdLong = Long.parseLong(safeUserId);
+        Long parentConversationRecordId = parentSnapshot.map(ChatGenerationStateService.GenerationSnapshot::conversationRecordId)
+                .orElse(null);
         ConversationRetryContext retryContext = conversationService
                 .prepareUserRetry(
                         userIdLong,
-                        parentSnapshot.generationId(),
-                        parentSnapshot.conversationRecordId(),
+                        safeGenerationId,
+                        parentConversationRecordId,
                         reason,
                         maxUserRetriesPerMessage
                 )
