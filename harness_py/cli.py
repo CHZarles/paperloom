@@ -194,6 +194,7 @@ def main(argv: list[str] | None = None) -> int:
     worker_parser.add_argument("--event-ttl-seconds", type=int, default=int(os.getenv("RESEARCH_HARNESS_EVENT_TTL_SECONDS", "1800")))
     worker_parser.add_argument("--event-trim-maxlen", type=int, default=int(os.getenv("RESEARCH_HARNESS_EVENT_TRIM_MAXLEN", "500")))
     worker_parser.add_argument("--heartbeat-seconds", type=int, default=int(os.getenv("RESEARCH_HARNESS_WORKER_HEARTBEAT_SECONDS", "10")))
+    worker_parser.add_argument("--lease-ttl-seconds", type=int, default=int(os.getenv("RESEARCH_HARNESS_LEASE_TTL_SECONDS", "60")))
     worker_parser.add_argument("--stale-pending-seconds", type=int, default=int(os.getenv("RESEARCH_HARNESS_STALE_PENDING_SECONDS", "120")))
     judge_parser = subcommands.add_parser(
         "judge-calibrate",
@@ -607,6 +608,7 @@ def main(argv: list[str] | None = None) -> int:
             event_ttl_seconds=args.event_ttl_seconds,
             event_trim_maxlen=args.event_trim_maxlen,
             heartbeat_seconds=args.heartbeat_seconds,
+            lease_ttl_seconds=args.lease_ttl_seconds,
             stale_pending_seconds=args.stale_pending_seconds,
             max_concurrent_runs=args.max_concurrent_runs,
         ))

@@ -10,11 +10,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.ReadOffset;
-import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.connection.stream.StreamOffset;
 import org.springframework.data.redis.connection.stream.StreamReadOptions;
 import org.springframework.data.redis.core.StreamOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -35,6 +35,16 @@ public class RedisResearchHarnessTransport implements ResearchHarnessTransport {
     private static final Logger logger = LoggerFactory.getLogger(RedisResearchHarnessTransport.class);
     private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE =
             new TypeReference<>() {};
+    private static final DefaultRedisScript<String> ENQUEUE_SCRIPT = new DefaultRedisScript<>(
+            "if redis.call('EXISTS', KEYS[2]) == 1 then "
+                    + "return redis.error_reply('research generation already exists') end; "
+                    + "local id=redis.call('XADD', KEYS[1], '*', "
+                    + "'schema_version', ARGV[1], 'generation_id', ARGV[2], "
+                    + "'created_at_ms', ARGV[3], 'attempt', ARGV[4], 'payload_json', ARGV[5]); "
+                    + "local status=cjson.decode(ARGV[6]); status['job_stream_id']=id; "
+                    + "redis.call('SET', KEYS[2], cjson.encode(status), 'EX', ARGV[7]); return id",
+            String.class
+    );
 
     private final ObjectMapper objectMapper;
     private final StringRedisTemplate redisTemplate;
@@ -156,19 +166,12 @@ public class RedisResearchHarnessTransport implements ResearchHarnessTransport {
         String generationId = request.generationId();
         Map<String, Object> payload = payloadFactory.requestBody(request);
         long now = System.currentTimeMillis();
-        Map<String, String> fields = new LinkedHashMap<>();
-        fields.put("schema_version", "research-harness-job/v1");
-        fields.put("generation_id", generationId);
-        fields.put("created_at_ms", String.valueOf(now));
-        fields.put("attempt", "1");
-        fields.put("payload_json", objectMapper.writeValueAsString(payload));
-        RecordId recordId = streamOps().add(jobStreamKey, fields);
         Map<String, Object> status = new LinkedHashMap<>();
         status.put("schema_version", "research-harness-status/v1");
         status.put("generation_id", generationId);
         status.put("status", "QUEUED");
         status.put("worker_id", "");
-        status.put("job_stream_id", recordId == null ? "" : recordId.getValue());
+        status.put("job_stream_id", "");
         status.put("attempt", 1);
         status.put("created_at_ms", now);
         status.put("started_at_ms", "");
@@ -176,7 +179,20 @@ public class RedisResearchHarnessTransport implements ResearchHarnessTransport {
         status.put("terminal_at_ms", "");
         status.put("error_type", "");
         status.put("message", "");
-        writeStatus(generationId, status);
+        String recordId = redisTemplate.execute(
+                ENQUEUE_SCRIPT,
+                List.of(jobStreamKey, statusKey(generationId)),
+                "research-harness-job/v1",
+                generationId,
+                String.valueOf(now),
+                "1",
+                objectMapper.writeValueAsString(payload),
+                objectMapper.writeValueAsString(status),
+                String.valueOf(statusTtl.toSeconds())
+        );
+        if (recordId == null || recordId.isBlank()) {
+            throw new IllegalStateException("Failed to enqueue research generation: " + generationId);
+        }
     }
 
     private void readEvents(ProductTurnRequest request,
@@ -251,14 +267,6 @@ public class RedisResearchHarnessTransport implements ResearchHarnessTransport {
             listener.accept(event);
         } catch (RuntimeException error) {
             logger.warn("Research progress listener failed; continuing generation", error);
-        }
-    }
-
-    private void writeStatus(String generationId, Map<String, Object> status) {
-        try {
-            redisTemplate.opsForValue().set(statusKey(generationId), objectMapper.writeValueAsString(status), statusTtl);
-        } catch (Exception error) {
-            logger.warn("Failed to write research harness Redis status for generationId={}", generationId, error);
         }
     }
 

@@ -67,6 +67,9 @@ fallback.
 | `RESEARCH_HARNESS_EVENT_READ_TIMEOUT_SECONDS` | Java wait time for a terminal Redis event before failing the generation |
 | `RESEARCH_HARNESS_EVENT_TTL_SECONDS` | Worker TTL for event/status streams and keys |
 | `RESEARCH_HARNESS_STALE_PENDING_SECONDS` | Worker reclaim threshold for stale Redis Stream pending jobs |
+| `RESEARCH_HARNESS_LEASE_TTL_SECONDS` | Renewable Worker ownership lease; default `60`, at least three heartbeat intervals |
+| `RESEARCH_HARNESS_WORKER_HEARTBEAT_SECONDS` | Lease renewal interval; default `10` |
+| `RESEARCH_HARNESS_JOB_TIMEOUT_SECONDS` | Maximum Worker execution bound; default `900` |
 | `RESEARCH_HARNESS_WORKER_MAX_CONCURRENT_RUNS` | Keep at `1` for V1; scale by running more worker processes |
 | `JAVA_CORPUS_BASE_URL` | Java Corpus API base URL used by Python; local default is `http://127.0.0.1:8081` |
 | `JAVA_CORPUS_MAX_RESPONSE_BYTES` | Maximum accepted Java Corpus API response body; default is 8 MiB |

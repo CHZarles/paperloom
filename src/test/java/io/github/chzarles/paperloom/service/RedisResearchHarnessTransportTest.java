@@ -2,6 +2,7 @@ package io.github.chzarles.paperloom.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.connection.stream.StreamOffset;
@@ -9,6 +10,7 @@ import org.springframework.data.redis.connection.stream.StreamReadOptions;
 import org.springframework.data.redis.core.StreamOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -24,6 +26,7 @@ import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -46,7 +49,10 @@ class RedisResearchHarnessTransportTest {
         when(redisTemplate.opsForStream()).thenReturn(streamOperations);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(streamOperations.size("paperloom:research:harness:jobs")).thenReturn(0L);
-        when(streamOperations.add(eq("paperloom:research:harness:jobs"), any(Map.class))).thenReturn(RecordId.of("1-0"));
+        when(redisTemplate.execute(
+                any(DefaultRedisScript.class), any(List.class),
+                anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString()
+        )).thenReturn("1-0");
 
         String eventKey = "paperloom:research:harness:events:generation-1";
         Map<String, String> event = Map.of(
@@ -100,9 +106,19 @@ class RedisResearchHarnessTransportTest {
         assertEquals("ok", result.finalAnswerMarkdown());
         assertEquals("calling_tool", progressEvents.get(0).get("type"));
         assertEquals("search_papers", progressEvents.get(0).get("tool"));
-        verify(streamOperations).add(eq("paperloom:research:harness:jobs"), any(Map.class));
+        @SuppressWarnings("rawtypes")
+        ArgumentCaptor<DefaultRedisScript> scriptCaptor = ArgumentCaptor.forClass(DefaultRedisScript.class);
+        verify(redisTemplate).execute(
+                scriptCaptor.capture(), eq(List.of(
+                        "paperloom:research:harness:jobs",
+                        "paperloom:research:harness:status:generation-1"
+                )),
+                anyString(), eq("generation-1"), anyString(), eq("1"), anyString(), anyString(), eq("1800")
+        );
+        String script = scriptCaptor.getValue().getScriptAsString();
+        assertTrue(script.contains("XADD"));
+        assertTrue(script.contains("SET"));
         verify(quotaService).settleReservation(reservation, 9);
-        verify(valueOperations).set(eq("paperloom:research:harness:status:generation-1"), anyString(), any(Duration.class));
     }
 
     @Test
@@ -153,7 +169,10 @@ class RedisResearchHarnessTransportTest {
         when(redisTemplate.opsForStream()).thenReturn(streamOperations);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(streamOperations.size("paperloom:research:harness:jobs")).thenReturn(0L);
-        when(streamOperations.add(eq("paperloom:research:harness:jobs"), any(Map.class))).thenReturn(RecordId.of("1-0"));
+        when(redisTemplate.execute(
+                any(DefaultRedisScript.class), any(List.class),
+                anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString()
+        )).thenReturn("1-0");
         String eventKey = "paperloom:research:harness:events:generation-1";
         Map<String, String> error = Map.of(
                 "type", "error",
@@ -211,7 +230,10 @@ class RedisResearchHarnessTransportTest {
         CompletableFuture<ProductTurnResult> rejected = transport.submit(request(), event -> {});
 
         assertThrows(CompletionException.class, rejected::join);
-        verify(streamOperations, never()).add(eq("paperloom:research:harness:jobs"), any(Map.class));
+        verify(redisTemplate, never()).execute(
+                any(DefaultRedisScript.class), any(List.class),
+                anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyString()
+        );
     }
 
     private ProductTurnRequest request() {
