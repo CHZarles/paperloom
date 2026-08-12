@@ -221,6 +221,7 @@ class ConversationServiceTest {
         assertEquals(12L, saved.getForkedFromConversationRecordId());
         assertEquals("generation-old", saved.getRetryOfGenerationId());
         assertTrue(saved.getCurrentRevision());
+        verify(conversationRepository).hideCurrentAnswersAfterSlot(1L, "conversation-1", 12L);
     }
 
     @Test

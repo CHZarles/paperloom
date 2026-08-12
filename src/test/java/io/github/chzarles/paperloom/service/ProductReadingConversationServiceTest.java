@@ -23,10 +23,14 @@ class ProductReadingConversationServiceTest {
         ConversationService conversationService = mock(ConversationService.class);
         ProductTurnResult result = completedTurn();
         when(transport.submit(any(ProductTurnRequest.class), any())).thenReturn(CompletableFuture.completedFuture(result));
-        when(conversationService.getMessagesByConversationId(7L, "conversation-1")).thenReturn(List.of(
+        when(conversationService.getMessagesBeforeAnswerSlot(7L, "conversation-1", 12L)).thenReturn(List.of(
                 Map.of("role", "user", "content", "old question"),
                 Map.of("role", "assistant", "content", "old answer")
         ));
+        when(conversationService.findLatestReadingStatePatchBeforeAnswerSlot(7L, "conversation-1", 12L))
+                .thenReturn(java.util.Optional.empty());
+        when(conversationService.findLatestReferenceFocusBeforeAnswerSlot(7L, "conversation-1", 12L))
+                .thenReturn(java.util.Optional.empty());
         ProductReadingConversationService service = new ProductReadingConversationService(transport, conversationService);
         Map<String, Object> retry = Map.of(
                 "kind", "USER_UNSATISFIED",
@@ -59,6 +63,8 @@ class ProductReadingConversationServiceTest {
         assertEquals(retry, request.retryContext());
         assertEquals("old question", request.history().get(0).get("content"));
         assertSame(progressListener, listenerCaptor.getValue());
+        verify(conversationService).findLatestReadingStatePatchBeforeAnswerSlot(7L, "conversation-1", 12L);
+        verify(conversationService).findLatestReferenceFocusBeforeAnswerSlot(7L, "conversation-1", 12L);
     }
 
     private static ProductTurnResult completedTurn() {

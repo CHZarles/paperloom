@@ -77,7 +77,8 @@ export function applyGenerationStartToMessages<T extends ChatMessageListItem>({
   const assistantIndex = findStartedAssistantIndex(messages, payload);
   const userIndex = findNearestUserIndex(messages, assistantIndex);
 
-  const nextMessages = messages.map((message, index) => {
+  const visibleMessages = payload.replaceMessage && assistantIndex >= 0 ? messages.slice(0, assistantIndex + 1) : messages;
+  const nextMessages = visibleMessages.map((message, index) => {
     if (index !== assistantIndex && index !== userIndex) {
       return message;
     }

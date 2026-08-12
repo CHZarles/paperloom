@@ -37,6 +37,16 @@ const retried = applyGenerationStartToMessages({
       generationId: 'generation-parent',
       answerSlotId: 12,
       answerRevision: 1
+    },
+    { role: 'user', content: 'Follow-up based on the old answer', conversationId: 'conversation-1' },
+    {
+      role: 'assistant',
+      content: 'Follow-up answer',
+      status: 'finished',
+      conversationId: 'conversation-1',
+      generationId: 'generation-descendant',
+      answerSlotId: 13,
+      answerRevision: 1
     }
   ],
   payload: {

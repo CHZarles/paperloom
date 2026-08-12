@@ -155,20 +155,21 @@ public class ProductReadingConversationService {
         List<String> clickedSourceQuoteRefs = clickedSourceQuoteRefs(effectiveScope);
         List<String> clickedPaperHandles = clickedPaperHandles(effectiveScope);
         List<String> clickedLocationRefs = clickedLocationRefs(effectiveScope);
+        Long answerSlotId = answerSlotId(retryContext);
         ProductTurnRequest request = new ProductTurnRequest(
                 userId,
                 conversationId,
                 generationId,
                 userMessage,
                 lockedScope,
-                conversationHistory(userId, conversationId),
+                retryConversationHistory(userId, conversationId, retryContext),
                 readingMemory(
                         clickedSourceQuoteRefs,
                         clickedPaperHandles,
                         clickedLocationRefs,
                         readingAction(effectiveScope),
-                        latestReadingStatePatch(userId, conversationId),
-                        latestResearchMemory(userId, conversationId)
+                        latestReadingStatePatchBeforeAnswerSlot(userId, conversationId, answerSlotId),
+                        latestResearchMemoryBeforeAnswerSlot(userId, conversationId, answerSlotId)
                 ),
                 retryContext == null ? Map.of() : retryContext,
                 modelContext,
@@ -227,7 +228,26 @@ public class ProductReadingConversationService {
         if (conversationService == null || userId == null || conversationId == null || conversationId.isBlank()) {
             return List.of();
         }
-        List<Map<String, Object>> messages = conversationService.getMessagesByConversationId(userId, conversationId);
+        return conversationHistory(conversationService.getMessagesByConversationId(userId, conversationId));
+    }
+
+    private List<Map<String, String>> retryConversationHistory(Long userId,
+                                                               String conversationId,
+                                                               Map<String, Object> retryContext) {
+        Object rawAnswerSlotId = retryContext == null ? null : retryContext.get("answer_slot_id");
+        if (!(rawAnswerSlotId instanceof Number answerSlotId)) {
+            return conversationHistory(userId, conversationId);
+        }
+        return conversationHistory(conversationService.getMessagesBeforeAnswerSlot(
+                userId, conversationId, answerSlotId.longValue()));
+    }
+
+    private Long answerSlotId(Map<String, Object> retryContext) {
+        Object rawAnswerSlotId = retryContext == null ? null : retryContext.get("answer_slot_id");
+        return rawAnswerSlotId instanceof Number value ? value.longValue() : null;
+    }
+
+    private List<Map<String, String>> conversationHistory(List<Map<String, Object>> messages) {
         int from = Math.max(0, messages.size() - 20);
         List<Map<String, String>> result = new ArrayList<>();
         for (Map<String, Object> message : messages.subList(from, messages.size())) {
@@ -244,7 +264,10 @@ public class ProductReadingConversationService {
         if (conversationService == null || userId == null || conversationId == null || conversationId.isBlank()) {
             return Map.of();
         }
-        Optional<Map<String, Object>> latest = conversationService.findLatestReferenceFocus(userId, conversationId);
+        return researchMemory(conversationService.findLatestReferenceFocus(userId, conversationId));
+    }
+
+    private Map<String, Object> researchMemory(Optional<Map<String, Object>> latest) {
         if (latest.isEmpty()) {
             return Map.of();
         }
@@ -286,12 +309,33 @@ public class ProductReadingConversationService {
         return memory;
     }
 
+    private Map<String, Object> latestResearchMemoryBeforeAnswerSlot(Long userId,
+                                                                      String conversationId,
+                                                                      Long answerSlotId) {
+        if (conversationService == null || answerSlotId == null) {
+            return Map.of();
+        }
+        return researchMemory(conversationService.findLatestReferenceFocusBeforeAnswerSlot(
+                userId, conversationId, answerSlotId));
+    }
+
     private Map<String, Object> latestReadingStatePatch(Long userId, String conversationId) {
         if (conversationService == null || userId == null || conversationId == null || conversationId.isBlank()) {
             return Map.of();
         }
         Optional<Map<String, Object>> patch = conversationService.findLatestReadingStatePatch(userId, conversationId);
         return patch.<Map<String, Object>>map(LinkedHashMap::new).orElseGet(Map::of);
+    }
+
+    private Map<String, Object> latestReadingStatePatchBeforeAnswerSlot(Long userId,
+                                                                        String conversationId,
+                                                                        Long answerSlotId) {
+        if (conversationService == null || answerSlotId == null) {
+            return Map.of();
+        }
+        return conversationService.findLatestReadingStatePatchBeforeAnswerSlot(userId, conversationId, answerSlotId)
+                .<Map<String, Object>>map(LinkedHashMap::new)
+                .orElseGet(Map::of);
     }
 
     private List<String> clickedSourceQuoteRefs(Map<String, Object> effectiveScope) {

@@ -188,6 +188,8 @@ public class ConversationService {
         conversation.setGenerationId(trimToNull(generationId));
         if (retryContext != null) {
             conversationRepository.clearCurrentRevision(user.getId(), retryContext.answerSlotId());
+            conversationRepository.hideCurrentAnswersAfterSlot(
+                    user.getId(), retryContext.conversationId(), retryContext.answerSlotId());
             conversation.setAnswerSlotId(retryContext.answerSlotId());
             conversation.setAnswerRevision(retryContext.targetRevision());
             conversation.setCurrentRevision(true);
@@ -470,6 +472,15 @@ public class ConversationService {
     public List<Map<String, Object>> getMessagesByConversationId(Long userId, String conversationId) {
         List<Conversation> conversations = conversationRepository.findCurrentByUserIdAndConversationIdOrderBySlotAsc(userId, conversationId);
         return toMessageHistory(conversations, false);
+    }
+
+    public List<Map<String, Object>> getMessagesBeforeAnswerSlot(Long userId,
+                                                                 String conversationId,
+                                                                 Long answerSlotId) {
+        return toMessageHistory(
+                conversationRepository.findCurrentBeforeAnswerSlot(userId, conversationId, answerSlotId),
+                false
+        );
     }
 
     public List<Map<String, Object>> getMessagesByConversationId(Long userId,
@@ -918,6 +929,23 @@ public class ConversationService {
         return Optional.empty();
     }
 
+    public Optional<Map<String, Object>> findLatestReferenceFocusBeforeAnswerSlot(Long userId,
+                                                                                  String conversationId,
+                                                                                  Long answerSlotId) {
+        if (userId == null || conversationId == null || conversationId.isBlank() || answerSlotId == null) {
+            return Optional.empty();
+        }
+        List<Conversation> conversations = conversationRepository
+                .findCurrentBeforeAnswerSlot(userId, conversationId, answerSlotId);
+        for (int i = conversations.size() - 1; i >= 0; i -= 1) {
+            Map<String, Map<String, Object>> mappings = parseReferenceMappings(conversations.get(i).getReferenceMappingsJson());
+            if (mappings != null && !mappings.isEmpty()) {
+                return Optional.of(new LinkedHashMap<>(mappings));
+            }
+        }
+        return Optional.empty();
+    }
+
     public Optional<Map<String, Object>> findLatestReadingStatePatch(Long userId, String conversationId) {
         if (userId == null || conversationId == null || conversationId.isBlank()) {
             return Optional.empty();
@@ -938,6 +966,24 @@ public class ConversationService {
                     conversations.get(i).getReadingStatePatchJson(),
                     "reading state patch"
             );
+            if (patch != null && !patch.isEmpty()) {
+                return Optional.of(new LinkedHashMap<>(patch));
+            }
+        }
+        return Optional.empty();
+    }
+
+    public Optional<Map<String, Object>> findLatestReadingStatePatchBeforeAnswerSlot(Long userId,
+                                                                                     String conversationId,
+                                                                                     Long answerSlotId) {
+        if (userId == null || conversationId == null || conversationId.isBlank() || answerSlotId == null) {
+            return Optional.empty();
+        }
+        List<Conversation> conversations = conversationRepository
+                .findCurrentBeforeAnswerSlot(userId, conversationId, answerSlotId);
+        for (int i = conversations.size() - 1; i >= 0; i -= 1) {
+            Map<String, Object> patch = parseJsonObject(
+                    conversations.get(i).getReadingStatePatchJson(), "reading state patch");
             if (patch != null && !patch.isEmpty()) {
                 return Optional.of(new LinkedHashMap<>(patch));
             }

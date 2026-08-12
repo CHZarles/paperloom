@@ -66,6 +66,21 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
     );
 
     @EntityGraph(attributePaths = "user")
+    @Query("""
+            SELECT c FROM Conversation c
+            WHERE c.user.id = :userId
+              AND c.conversationId = :conversationId
+              AND c.currentRevision = true
+              AND COALESCE(c.answerSlotId, c.id) < :answerSlotId
+            ORDER BY COALESCE(c.answerSlotId, c.id) ASC, c.answerRevision ASC, c.id ASC
+            """)
+    List<Conversation> findCurrentBeforeAnswerSlot(
+            @Param("userId") Long userId,
+            @Param("conversationId") String conversationId,
+            @Param("answerSlotId") Long answerSlotId
+    );
+
+    @EntityGraph(attributePaths = "user")
     Optional<Conversation> findByIdAndUserId(Long id, Long userId);
 
     @EntityGraph(attributePaths = "user")
@@ -117,6 +132,21 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
             """)
     int clearCurrentRevision(
             @Param("userId") Long userId,
+            @Param("answerSlotId") Long answerSlotId
+    );
+
+    @Modifying
+    @Query("""
+            UPDATE Conversation c
+            SET c.currentRevision = false
+            WHERE c.user.id = :userId
+              AND c.conversationId = :conversationId
+              AND COALESCE(c.answerSlotId, c.id) > :answerSlotId
+              AND c.currentRevision = true
+            """)
+    int hideCurrentAnswersAfterSlot(
+            @Param("userId") Long userId,
+            @Param("conversationId") String conversationId,
             @Param("answerSlotId") Long answerSlotId
     );
 

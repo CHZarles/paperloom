@@ -210,11 +210,23 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     }
     conversationId.value = snapshot.conversationId || conversationId.value;
 
-    const assistantIndex = findAssistantIndexForRetry(snapshot);
     const nextStatus = mapGenerationStatus(snapshot.status);
+    const assistantIndex = findAssistantIndexForRetry(snapshot);
 
     if (assistantIndex >= 0) {
-      const assistant = list.value[assistantIndex];
+      const assistant = snapshot.replaceMessage
+        ? applyGenerationStart({
+            generationId: snapshot.generationId,
+            conversationId: snapshot.conversationId,
+            retryOfGenerationId: snapshot.retryOfGenerationId || undefined,
+            retryOfConversationRecordId: snapshot.retryOfConversationRecordId || undefined,
+            answerSlotId: snapshot.answerSlotId || undefined,
+            answerRevision: snapshot.answerRevision || undefined,
+            replaceMessage: true,
+            timestamp: snapshot.updatedAt
+          })
+        : list.value[assistantIndex];
+      if (!assistant) return;
       assistant.content = snapshot.content || assistant.content || '';
       assistant.status = nextStatus;
       assistant.generationId = snapshot.generationId;
@@ -323,18 +335,10 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     if (error || !data) {
       return false;
     }
-    const assistantIndex = findAssistantIndexForRetry(data);
-    if (assistantIndex >= 0) {
-      const assistant = list.value[assistantIndex];
+    const assistant = applyGenerationStart(data);
+    if (assistant) {
       assistant.content = '';
       assistant.status = 'loading';
-      assistant.generationId = data.generationId;
-      assistant.conversationId = data.conversationId || assistant.conversationId;
-      assistant.retryOfGenerationId = data.retryOfGenerationId;
-      assistant.retryOfConversationRecordId = data.retryOfConversationRecordId;
-      assistant.answerSlotId = data.answerSlotId;
-      assistant.answerRevision = data.answerRevision;
-      assistant.replaceMessage = true;
       assistant.referenceMappings = undefined;
       assistant.diagnostics = undefined;
       assistant.readingArtifacts = undefined;
@@ -343,6 +347,13 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       assistant.researchEvents = [];
     }
     return true;
+  }
+
+  async function restorePersistedBranchAfterRetryFailure(message: Api.Chat.Message) {
+    if (!message.replaceMessage || !conversationId.value) return false;
+    const targetConversationId = conversationId.value;
+    discardConversationCache(targetConversationId);
+    return loadMessages(targetConversationId);
   }
 
   function applyLoadedMessages(messages: Api.Chat.Message[], targetConversationId?: string) {
@@ -895,6 +906,7 @@ function resetConnectionState() {
     switchSession,
     loadMessages,
     retryGeneration,
+    restorePersistedBranchAfterRetryFailure,
     archiveSession,
     unarchiveSession,
     deleteSession

@@ -399,6 +399,9 @@ function handleCompletionPayload(assistant: Api.Chat.Message, payload: Record<st
   assistant.route = normalizeChatRoute(payload.diagnostics?.route) || assistant.route;
   stopGenerationStatusMonitor();
   chatStore.loadSessionIndex({ silent: true }).catch(() => {});
+  if (payload.status === 'failed') {
+    chatStore.restorePersistedBranchAfterRetryFailure(assistant).catch(() => {});
+  }
 }
 
 function handleStopPayload(assistant: Api.Chat.Message) {
@@ -420,6 +423,7 @@ function handleErrorPayload(assistant: Api.Chat.Message, payload: Record<string,
   stopGenerationStatusMonitor();
 
   window.$message?.error(message);
+  chatStore.restorePersistedBranchAfterRetryFailure(assistant).catch(() => {});
 }
 
 function handleChunkPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
@@ -470,6 +474,7 @@ function startGenerationStatusMonitor() {
       stopGenerationStatusMonitor();
     } else if (refreshedAssistant?.status === 'error') {
       stopGenerationStatusMonitor();
+      chatStore.restorePersistedBranchAfterRetryFailure(refreshedAssistant).catch(() => {});
     }
   }, 2000);
 }
