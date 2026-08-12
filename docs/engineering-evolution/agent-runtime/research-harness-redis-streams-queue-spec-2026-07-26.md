@@ -502,7 +502,9 @@ Entry fields：
 
 - 同一 generation 的 `sequence` 从 1 递增。
 - `result`、`error`、`cancelled` 是 terminal event，三者只能出现一个。
-- terminal event 写入后，worker 必须 `XACK` job。
+- terminal event 写入后，worker 必须在同一个 Redis transaction 中执行 `XACK` + `XDEL`。
+- `jobs` stream 是一次性运行时队列，不是审计或永久重放存储；当前部署约束为所有 worker 使用同一个 consumer group。
+- `XDEL` 删除已进入终态的 job，避免已完成任务长期占用 `XLEN` 队列深度；审计和结果由 Java 的 conversation/status/event 短期数据负责。
 - event stream 设置 TTL，并使用 `XTRIM` 控制长度。
 
 ### 6.3 Status Key
@@ -672,7 +674,7 @@ payload 可增加可选字段，旧前端忽略即可：
    - 调 ResearchHarnessService.run_job(...)
    - progress_listener 写 event stream
    - 成功后写 result terminal event
-   - XACK job
+   - transaction 内 XACK + XDEL job
 5. Java transport:
    - 读取 progress events 并转给 ChatHandler
    - 读到 result 后转换 ProductTurnResult
@@ -690,7 +692,7 @@ payload 可增加可选字段，旧前端忽略即可：
 2. ChatHandler 标记 generation CANCELLED。
 3. RedisResearchHarnessTransport 写 cancel key。
 4. worker 在下一次 cancel check 抛 HarnessCancelled。
-5. worker 写 cancelled terminal event，XACK job。
+5. worker 写 cancelled terminal event，在 transaction 内 XACK + XDEL job。
 6. Java transport 收到 cancelled 或本地 future 已取消，停止后续收尾。
 ```
 
@@ -710,7 +712,7 @@ reaper XAUTOCLAIM stale pending job -> 重新投递给另一个 worker
 ```text
 reaper 标记 status=STALE_FAILED
 -> 写 error terminal event
--> XACK job
+-> transaction 内 XACK + XDEL job
 -> Java 给用户明确失败
 ```
 

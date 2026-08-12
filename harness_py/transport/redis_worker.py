@@ -115,14 +115,14 @@ class RedisResearchWorker:
     def _handle_message(self, message_id: str, fields: dict[str, str]) -> None:
         generation_id = str(fields.get("generation_id") or "").strip()
         if not generation_id:
-            self.client.xack(self.config.jobs_key, self.config.group, message_id)
+            self._ack_job(message_id)
             return
 
         sink = RedisResearchEventSink(self.client, self.config, generation_id)
         started_at_ms = _now_ms()
         status = self._read_status(generation_id)
         if _status_is_terminal(status):
-            self.client.xack(self.config.jobs_key, self.config.group, message_id)
+            self._ack_job(message_id)
             return
         if status.get("status") == "RUNNING":
             sink.emit("job_failed", _technical_terminal_payload("StalePendingJob", started_at_ms))
@@ -130,7 +130,7 @@ class RedisResearchWorker:
                 "error_type": "StalePendingJob",
                 "message": "research worker disappeared after starting this job",
             })
-            self.client.xack(self.config.jobs_key, self.config.group, message_id)
+            self._ack_job(message_id)
             return
 
         cancel_check = RedisCancellationCheck(self.client, self.config, generation_id)
@@ -159,7 +159,7 @@ class RedisResearchWorker:
                 terminal = _cancelled_terminal_payload(started_at_ms)
                 sink.emit("job_cancelled", terminal)
                 self._terminal(sink, generation_id, "CANCELLED", "cancelled", terminal)
-                self.client.xack(self.config.jobs_key, self.config.group, message_id)
+                self._ack_job(message_id)
                 return
 
             self._write_status(generation_id, "RUNNING", worker_id=self.config.worker_id, message_id=message_id)
@@ -193,12 +193,12 @@ class RedisResearchWorker:
                 sink.emit("job_completed", terminal)
             self._terminal(sink, generation_id, "SUCCEEDED" if status not in {"CANCELLED", "FAILED_TECHNICAL"} else status,
                            "result", response)
-            self.client.xack(self.config.jobs_key, self.config.group, message_id)
+            self._ack_job(message_id)
         except HarnessCancelled as error:
             terminal = _cancelled_terminal_payload(started_at_ms)
             sink.emit("job_cancelled", terminal)
             self._terminal(sink, generation_id, "CANCELLED", "cancelled", terminal)
-            self.client.xack(self.config.jobs_key, self.config.group, message_id)
+            self._ack_job(message_id)
         except Exception as error:
             terminal = _technical_terminal_payload(type(error).__name__, started_at_ms)
             sink.emit("job_failed", terminal)
@@ -206,7 +206,7 @@ class RedisResearchWorker:
                 "error_type": type(error).__name__,
                 "message": str(error),
             })
-            self.client.xack(self.config.jobs_key, self.config.group, message_id)
+            self._ack_job(message_id)
         finally:
             stop_heartbeat.set()
             heartbeat.join(timeout=1)
@@ -215,6 +215,12 @@ class RedisResearchWorker:
     def _terminal(self, sink: RedisResearchEventSink, generation_id: str, status: str, event_type: str, payload: JsonMap) -> None:
         sink.emit(event_type, payload)
         self._write_status(generation_id, status, terminal=True, error_type=payload.get("error_type"), message=payload.get("message"))
+
+    def _ack_job(self, message_id: str) -> None:
+        with self.client.pipeline(transaction=True) as pipeline:
+            pipeline.xack(self.config.jobs_key, self.config.group, message_id)
+            pipeline.xdel(self.config.jobs_key, message_id)
+            pipeline.execute()
 
     def _reclaim_stale_pending(self) -> bool:
         if not hasattr(self.client, "xautoclaim"):

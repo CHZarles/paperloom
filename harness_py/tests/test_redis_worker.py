@@ -20,6 +20,7 @@ class FakeRedis:
         self.events: list[tuple[str, dict[str, str]]] = []
         self.values: dict[str, str] = dict(values or {})
         self.acks: list[tuple[str, str, str]] = []
+        self.stream_deletes: list[tuple[str, str]] = []
         self.deleted: list[str] = []
         self.expired: list[tuple[str, int]] = []
 
@@ -59,6 +60,22 @@ class FakeRedis:
     def xack(self, key, group, message_id):
         self.acks.append((key, group, message_id))
         return 1
+
+    def xdel(self, key, message_id):
+        self.stream_deletes.append((key, message_id))
+        return 1
+
+    def pipeline(self, transaction=True):
+        return self
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return False
+
+    def execute(self):
+        return []
 
     def delete(self, key):
         self.deleted.append(key)
@@ -129,6 +146,7 @@ def test_worker_consumes_job_and_writes_ordered_terminal_events():
     ]
     assert [int(fields["sequence"]) for _key, fields in client.events] == [1, 2, 3, 4, 5, 6, 7]
     assert client.acks == [("paperloom:research:harness:jobs", "paperloom-research-harness", "1780000000000-0")]
+    assert client.stream_deletes == [("paperloom:research:harness:jobs", "1780000000000-0")]
     assert "paperloom:research:harness:lock:generation-1" in client.deleted
     result_payload = json.loads(client.events[-1][1]["payload_json"])
     assert result_payload["usage"]["total_tokens"] == 7
@@ -157,6 +175,7 @@ def test_worker_writes_cancelled_terminal_event_for_runtime_cancel():
 
     assert client.events[-1][1]["type"] == "cancelled"
     assert client.acks == [("paperloom:research:harness:jobs", "paperloom-research-harness", "1780000000000-0")]
+    assert client.stream_deletes == [("paperloom:research:harness:jobs", "1780000000000-0")]
 
 
 def test_worker_writes_cancelled_terminal_event_for_pre_start_cancel_key():
@@ -187,6 +206,7 @@ def test_worker_writes_cancelled_terminal_event_for_pre_start_cancel_key():
 
     assert client.events[-1][1]["type"] == "cancelled"
     assert client.acks == [("paperloom:research:harness:jobs", "paperloom-research-harness", "1780000000000-0")]
+    assert client.stream_deletes == [("paperloom:research:harness:jobs", "1780000000000-0")]
 
 
 def test_worker_skips_job_when_generation_lock_is_held():
@@ -254,6 +274,7 @@ def test_worker_reclaims_stale_pending_job_that_never_started():
     event_types = [fields["type"] for _key, fields in client.events]
     assert event_types[-1] == "result"
     assert client.acks == [("paperloom:research:harness:jobs", "paperloom-research-harness", "1780000000001-0")]
+    assert client.stream_deletes == [("paperloom:research:harness:jobs", "1780000000001-0")]
 
 
 def test_worker_marks_stale_running_pending_job_failed_without_rerun():
@@ -291,3 +312,4 @@ def test_worker_marks_stale_running_pending_job_failed_without_rerun():
     payload_json = json.loads(client.events[-1][1]["payload_json"])
     assert payload_json["error_type"] == "StalePendingJob"
     assert client.acks == [("paperloom:research:harness:jobs", "paperloom-research-harness", "1780000000002-0")]
+    assert client.stream_deletes == [("paperloom:research:harness:jobs", "1780000000002-0")]
