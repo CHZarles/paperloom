@@ -77,6 +77,29 @@ class RedisWorkerRealTest(unittest.TestCase):
         self.assertEqual("SUCCEEDED", json.loads(self.client.get(self.config.status_prefix + generation))["status"])
         self.assertIsNone(self.client.get(self.config.lock_prefix + generation))
 
+    def test_running_worker_renews_lease_past_stale_threshold(self) -> None:
+        generation = "generation-long"
+        message_id = self.client.xadd(self.jobs, self._fields(generation))
+        self.client.set(self.config.status_prefix + generation, json.dumps({"status": "QUEUED"}))
+        service = BlockingService(4.0)
+        worker_a = RedisResearchWorker(self.client, self.config, service=service)
+        worker_b_config = RedisWorkerConfig(**{**self.config.__dict__, "worker_id": "worker-C"})
+
+        thread = threading.Thread(target=worker_a.run_once)
+        thread.start()
+        self.assertTrue(service.started.wait(1))
+        time.sleep(3.1)
+        RedisResearchWorker(self.client, worker_b_config, service=ForbiddenService()).run_once()
+        pending = self.client.xpending_range(self.jobs, self.group, message_id, message_id, 1)
+        self.assertEqual("worker-B", pending[0]["consumer"])
+        thread.join(2)
+
+        self.assertFalse(thread.is_alive())
+        events = self.client.xrange(self.config.events_prefix + generation)
+        self.assertEqual(1, service.calls)
+        self.assertEqual(1, sum(fields["type"] == "result" for _id, fields in events))
+        self.assertEqual(0, sum(fields["type"] == "error" for _id, fields in events))
+
     def test_two_recoverers_only_apply_one_stale_failure(self) -> None:
         generation = "generation-stale"
         message_id = self.client.xadd(self.jobs, self._fields(generation))
@@ -185,6 +208,26 @@ class CountingService:
     def run_job(self, payload, progress_listener, should_cancel):
         with self.lock:
             self.calls += 1
+        return {
+            "request_id": payload["request_id"],
+            "status": "COMPLETED",
+            "answer": {"markdown": "ok"},
+            "citations": [],
+            "usage": {"total_tokens": 1},
+        }
+
+
+class BlockingService(CountingService):
+    def __init__(self, seconds: float) -> None:
+        super().__init__()
+        self.seconds = seconds
+        self.started = threading.Event()
+
+    def run_job(self, payload, progress_listener, should_cancel):
+        with self.lock:
+            self.calls += 1
+        self.started.set()
+        time.sleep(self.seconds)
         return {
             "request_id": payload["request_id"],
             "status": "COMPLETED",
