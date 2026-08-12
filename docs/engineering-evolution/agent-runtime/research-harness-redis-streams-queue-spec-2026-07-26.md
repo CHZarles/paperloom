@@ -6,6 +6,9 @@
 > 适用范围：把 Java -> `harness_py` 的在线研究回合从单 HTTP 直连改为 Redis Streams worker pool。  
 > 参考格式：`/home/charles/MODULAR-RAG-MCP-SERVER/DEV_SPEC*.md`
 
+> Lease ownership and stale-job recovery are superseded by the
+> [Redis Worker Safe Lease Recovery Spec](redis-worker-safe-lease-recovery-spec-2026-08-12.md).
+
 ---
 
 ## 目录

@@ -90,3 +90,5 @@ RUNNING 且 Lock 不存在
 
 > 只要某个 Generation 的执行 Lock 仍有效，其他 Worker 就不得把它标记为失败或重复执行。
 
+完整的租约所有权和原子接管设计见
+[Redis Worker Safe Lease Recovery Spec](redis-worker-safe-lease-recovery-spec-2026-08-12.md)。
