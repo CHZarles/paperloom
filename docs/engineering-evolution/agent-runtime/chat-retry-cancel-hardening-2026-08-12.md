@@ -37,19 +37,20 @@
 
 ## 3. 实现计划
 
-### Phase 1：修复 Cancel 所有权校验
+### Phase 1：修复 Cancel 所有权校验（已完成）
 
 1. 在 `ChatGenerationStateService` 提供“按 Generation ID 和 User ID 获取并校验运行态”的现有能力。
 2. `ChatHandler.stopResponse` 在任何副作用发生前执行归属和状态校验。
 3. 无权访问、Generation 不存在或已经终态时，不写 Redis Cancel Key。
 4. 增加回归检查：用户 A 不能取消用户 B 的任务；合法用户可取消自己的 STREAMING 任务。
 
-### Phase 2：让历史回答可以 Retry
+### Phase 2：让历史回答可以 Retry（部分完成）
 
-1. 为 `ConversationService` 增加按 `generationId + userId` 构造 Retry Context 的持久化路径。
-2. `ChatHandler.retryGeneration` 优先读取 Redis Snapshot；快照不存在时回退 MySQL。
-3. 两条路径共用相同的 Revision 上限、Conversation 所有权和 Active Generation 检查。
-4. 增加回归检查：删除或模拟过期 Redis Snapshot 后，已持久化回答仍可开始新的 Generation。
+1. 已修复历史消息缺少 `status=finished`，页面刷新后可继续显示 Retry 入口。
+2. 待为 `ConversationService` 增加按 `generationId + userId` 构造 Retry Context 的持久化路径。
+3. 待让 `ChatHandler.retryGeneration` 在 Redis Snapshot 不存在时回退 MySQL。
+4. 两条路径共用相同的 Revision 上限、Conversation 所有权和 Active Generation 检查。
+5. 增加回归检查：删除或模拟过期 Redis Snapshot 后，已持久化回答仍可开始新的 Generation。
 
 ### Phase 3：真实链路验收
 
@@ -70,7 +71,7 @@
 | 2026-08-12 | 运行 `mvn -q -Dtest=ChatHandlerStopResponseTest test` | 3 个 Cancel 定向测试全部通过，完成 Red -> Green |
 | 2026-08-12 | 发现历史消息缺少前端要求的 `status` 字段 | 刷新或重新进入 Session 后，所有历史 assistant 消息都无法满足 Retry 的显示条件 |
 | 2026-08-12 | `ConversationService.buildMessage` 为持久化 assistant 消息补 `status=finished`，并运行两个定向测试类 | `ConversationServiceTest`、`ChatHandlerStopResponseTest` 全部通过 |
-| 待更新 | Phase 2 实现与验证 | 待完成 |
+| 2026-08-12 | Phase 2 前端入口修复 | 已完成；Redis 过期后的后端 MySQL 回退仍待实现 |
 | 待更新 | 线上真实链路验收 | 待完成 |
 
 ## 5. 面试表达草稿
