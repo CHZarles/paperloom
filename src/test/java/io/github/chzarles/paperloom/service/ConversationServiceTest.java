@@ -402,6 +402,7 @@ class ConversationServiceTest {
         assertEquals(List.of("p1", "p2"), effectiveScope.get("paperIds"));
         assertEquals(2, effectiveScope.get("paperCount"));
         assertEquals(false, assistantMessage.containsKey("effectiveScope"));
+        assertEquals("finished", assistantMessage.get("status"));
     }
 
     @Test

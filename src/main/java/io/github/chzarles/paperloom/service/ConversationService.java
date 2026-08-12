@@ -712,6 +712,9 @@ public class ConversationService {
         Map<String, Object> message = new HashMap<>();
         message.put("role", role);
         message.put("content", content);
+        if ("assistant".equals(role)) {
+            message.put("status", "finished");
+        }
         if (timestamp != null) {
             message.put("timestamp", timestamp);
         }

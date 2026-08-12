@@ -57,15 +57,37 @@ class ChatHandlerStopResponseTest {
         verify(sessionRegistry, never()).sendJsonToClient(anyString(), anyString(), any());
     }
 
+    @Test
+    void explicitGenerationIdCannotCancelAnotherUsersGeneration() {
+        ChatGenerationStateService generationStateService = mock(ChatGenerationStateService.class);
+        when(generationStateService.getGenerationForUser("generation-b", "1"))
+                .thenReturn(Optional.empty());
+        ChatSessionRegistry sessionRegistry = mock(ChatSessionRegistry.class);
+        ProductReadingConversationService readingService = mock(ProductReadingConversationService.class);
+        ChatHandler handler = handler(generationStateService, sessionRegistry, readingService);
+
+        handler.stopResponse("1", "generation-b", null);
+
+        verify(generationStateService, never()).markCancelled(anyString());
+        verify(readingService, never()).cancelTurn(anyString());
+        verify(sessionRegistry, never()).sendJsonToClient(anyString(), any(), any());
+    }
+
     private static ChatHandler handler(ChatGenerationStateService generationStateService,
                                        ChatSessionRegistry sessionRegistry) {
+        return handler(generationStateService, sessionRegistry, mock(ProductReadingConversationService.class));
+    }
+
+    private static ChatHandler handler(ChatGenerationStateService generationStateService,
+                                       ChatSessionRegistry sessionRegistry,
+                                       ProductReadingConversationService readingService) {
         return new ChatHandler(
                 mock(UsageQuotaService.class),
                 mock(ConversationService.class),
                 mock(ConversationScopeService.class),
                 generationStateService,
                 sessionRegistry,
-                mock(ProductReadingConversationService.class),
+                readingService,
                 mock(ProductPaperHandleService.class),
                 new ObjectMapper(),
                 3,

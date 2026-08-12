@@ -1391,25 +1391,19 @@ public class ChatHandler {
 
     public void stopResponse(String userId, String generationId, WebSocketSession requesterSession) {
         String requesterClientId = resolveClientId(requesterSession);
-        String resolvedGenerationId = generationId;
-        if (resolvedGenerationId == null || resolvedGenerationId.isBlank()) {
-            if (requesterClientId != null && !requesterClientId.isBlank()) {
-                resolvedGenerationId = chatGenerationStateService
-                        .getActiveGenerationForUserAndClient(userId, requesterClientId)
-                        .map(ChatGenerationStateService.GenerationSnapshot::generationId)
-                        .orElse(null);
-            } else {
-                resolvedGenerationId = chatGenerationStateService.getActiveGenerationForUser(userId)
-                        .map(ChatGenerationStateService.GenerationSnapshot::generationId)
-                        .orElse(null);
-            }
-        }
-
-        if (resolvedGenerationId == null || resolvedGenerationId.isBlank()) {
-            logger.warn("收到停止请求但未找到活动生成任务，用户ID: {}", userId);
+        String requestedGenerationId = trimToNull(generationId);
+        Optional<ChatGenerationStateService.GenerationSnapshot> ownedGeneration = requestedGenerationId == null
+                ? requesterClientId == null || requesterClientId.isBlank()
+                        ? chatGenerationStateService.getActiveGenerationForUser(userId)
+                        : chatGenerationStateService.getActiveGenerationForUserAndClient(userId, requesterClientId)
+                : chatGenerationStateService.getGenerationForUser(requestedGenerationId, userId);
+        if (ownedGeneration.isEmpty()
+                || ownedGeneration.get().status() != ChatGenerationStateService.GenerationStatus.STREAMING) {
+            logger.warn("拒绝停止不存在、不属于当前用户或已结束的生成任务，用户ID: {}, generationId: {}",
+                    userId, requestedGenerationId);
             return;
         }
-        final String targetGenerationId = resolvedGenerationId;
+        final String targetGenerationId = ownedGeneration.get().generationId();
         String targetClientId = generationClientIds.getOrDefault(targetGenerationId, requesterClientId);
 
         logger.info("收到停止请求，用户ID: {}，generationId: {}", userId, targetGenerationId);
