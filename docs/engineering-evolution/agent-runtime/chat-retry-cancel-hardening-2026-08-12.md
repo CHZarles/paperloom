@@ -79,6 +79,7 @@
 | 2026-08-12 | 调整 `ChatHandler.retryGeneration`：Redis Snapshot 存在时继续校验状态并使用记录 ID；Snapshot 缺失时将 `generationId` 和 `null` 记录 ID交给 `prepareUserRetry` | 新增 Redis 过期场景测试通过；Retry 已能进入 MySQL 上下文恢复路径 |
 | 2026-08-12 | 运行 `ConversationServiceTest`、`ChatHandlerProductHarnessTest`、`ChatHandlerStopResponseTest` 定向回归 | 命令退出码为 0；正常 Redis Retry、Redis 过期 MySQL 回退、版本构造和 Cancel 回归均通过 |
 | 2026-08-12 | 检查 Redis 与 MySQL 两条路径的参数和权限边界，并在过期测试中断言不会伪造记录 ID | Redis 路径仍传递真实 `conversationRecordId`；过期路径只传 `generationId + userId`，Revision 上限继续由同一个 `prepareUserRetry` 执行 |
+| 2026-08-12 | 推送 `cf9abfe`，服务器 fast-forward、构建并重启 `paperloom-backend.service` | 线上运行版本为 `cf9abfe`；Backend 和 4 个 Redis Worker 为 `active`，公网首页 `200`，未登录 API `403` |
 
 ### 当前下一步（2026-08-12）
 
