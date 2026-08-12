@@ -62,3 +62,12 @@ Practice reports:
 - [Best-of-2 Orchestration Experiment](https://chzarles.github.io/paperloom/practice/evaluation/best-of-two-agent-orchestration)
 - [Provider Migration Experiment](https://chzarles.github.io/paperloom/practice/evaluation/provider-migration-experiment)
 - [Hard Pass, Human Review, and the Stopping Rule](https://chzarles.github.io/paperloom/practice/evaluation/hard-pass-human-review-stopping-rule)
+
+## August 2026: Make Long Research Jobs Recoverable Without False Failure
+
+Redis Streams recovery originally treated a Pending message older than 120 seconds as proof that its
+Worker had disappeared. A healthy 256-second research Run was therefore failed by another Worker
+while the original Worker continued to a valid answer. Recovery now uses the existing renewable
+Generation Lock as the Worker-liveness authority.
+
+Evidence: [Redis Live Job False Reclaim Incident](agent-runtime/redis-live-job-false-reclaim-incident-2026-08-12.md)

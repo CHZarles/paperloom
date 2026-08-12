@@ -21,6 +21,7 @@ An evolution record is worth keeping when it documents at least one of the follo
 - [First Product ReAct Harness Design](agent-runtime/product-react-harness-design-2026-06.md)
 - [Research Harness Single-Session Context Management Proposal](agent-runtime/research-harness-context-compression-proposal-2026-07-16.md)
 - [Research Harness Redis Streams Queue Spec](agent-runtime/research-harness-redis-streams-queue-spec-2026-07-26.md)
+- [Redis Live Job False Reclaim Incident](agent-runtime/redis-live-job-false-reclaim-incident-2026-08-12.md)
 - [Session Isolation Security](architecture/session-isolation-security.md)
 - [Frontend Performance Improvement](frontend/frontend-performance-improvement.md)
 
