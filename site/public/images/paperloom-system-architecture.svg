@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1100" viewBox="0 0 1800 1100" role="img" aria-labelledby="title description">
-  <title id="title">PaperLoom live system architecture</title>
-  <desc id="description">The current product path from Folio through ChatHandler, Java product state, ResearchHarnessTransport, Redis or HTTP transport, the Python Agents SDK harness, hybrid Qdrant candidate retrieval, canonical MySQL reads, source quote reopening, evidence validation, and Reading Model ingestion.</desc>
+  <title id="title">PaperLoom current research runtime</title>
+  <desc id="description">The live PaperLoom turn from Folio through Java-owned scope, conversation and generation controls; selectable Redis Streams or HTTP dispatch; the Python Agents SDK runtime and deterministic answer protocol; and the Java Corpus API backed by MySQL and Qdrant.</desc>
   <defs>
     <marker id="arrow-end" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="7" markerHeight="7" orient="auto">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#66766f"/>
@@ -12,163 +12,210 @@
       .canvas { fill: #f7f8f5; }
       .boundary-experience { fill: #f1f3f1; stroke: #b7c1be; stroke-width: 1.5; }
       .boundary-java { fill: #eef2f8; stroke: #aebed8; stroke-width: 1.5; }
+      .boundary-dispatch { fill: #fbf8ef; stroke: #d8c7a7; stroke-width: 1.5; }
       .boundary-python { fill: #edf5f1; stroke: #afc8bc; stroke-width: 1.5; }
-      .ingestion { fill: #fbf8ef; stroke: #d8c7a7; stroke-width: 1.5; }
-      .control-panel { fill: #ffffff; stroke: #aebed8; stroke-width: 1.5; }
-      .node { fill: #ffffff; stroke: #8c9995; stroke-width: 2; }
       .node-dark { fill: #18212b; stroke: #18212b; stroke-width: 2; }
-      .node-blue { fill: #e8eef9; stroke: #2356d8; stroke-width: 2.5; }
-      .node-green { fill: #e7f1ec; stroke: #327a63; stroke-width: 2.5; }
-      .node-red { fill: #f8ece9; stroke: #d94b40; stroke-width: 2.5; }
-      .node-gold { fill: #fff7e7; stroke: #b6781f; stroke-width: 2.5; }
-      .edge { fill: none; stroke: #66766f; stroke-width: 2.3; marker-end: url(#arrow-end); }
-      .edge-both { fill: none; stroke: #66766f; stroke-width: 2.3; marker-start: url(#arrow-start); marker-end: url(#arrow-end); }
+      .node-blue { fill: #e8eef9; stroke: #2356d8; stroke-width: 2.3; }
+      .node-green { fill: #e7f1ec; stroke: #327a63; stroke-width: 2.3; }
+      .node-gold { fill: #fff7e7; stroke: #b6781f; stroke-width: 2.3; }
+      .node-red { fill: #f8ece9; stroke: #d94b40; stroke-width: 2.3; }
+      .node-white { fill: #ffffff; stroke: #8c9995; stroke-width: 1.8; }
+      .edge { fill: none; stroke: #66766f; stroke-width: 2.2; marker-end: url(#arrow-end); }
+      .edge-both { fill: none; stroke: #66766f; stroke-width: 2.2; marker-start: url(#arrow-start); marker-end: url(#arrow-end); }
+      .edge-prod { fill: none; stroke: #327a63; stroke-width: 2.5; marker-start: url(#arrow-start); marker-end: url(#arrow-end); }
+      .edge-fallback { fill: none; stroke: #8c9995; stroke-width: 2.2; stroke-dasharray: 7 6; marker-start: url(#arrow-start); marker-end: url(#arrow-end); }
       .edge-data { fill: none; stroke: #b6781f; stroke-width: 2.3; marker-end: url(#arrow-end); }
-      .title { fill: #18212b; font: 700 28px Arial, "Droid Sans Fallback", sans-serif; }
-      .subtitle { fill: #4c5962; font: 15px Arial, "Droid Sans Fallback", sans-serif; }
+      .title { fill: #18212b; font: 700 28px Arial, sans-serif; }
+      .subtitle { fill: #4c5962; font: 15px Arial, sans-serif; }
       .kicker { fill: #327a63; font: 700 14px "IBM Plex Mono", Consolas, monospace; }
-      .group { fill: #4c5962; font: 700 14px "IBM Plex Mono", Consolas, "Droid Sans Fallback", sans-serif; }
-      .node-title { fill: #18212b; font: 700 17px Arial, "Droid Sans Fallback", sans-serif; }
-      .node-title-light { fill: #ffffff; font: 700 17px Arial, "Droid Sans Fallback", sans-serif; }
-      .node-copy { fill: #4c5962; font: 13px Arial, "Droid Sans Fallback", sans-serif; }
-      .node-copy-light { fill: #dce6e1; font: 13px Arial, "Droid Sans Fallback", sans-serif; }
-      .mono { fill: #18212b; font: 700 13px "IBM Plex Mono", Consolas, "Droid Sans Fallback", sans-serif; }
-      .edge-label { fill: #4c5962; font: 700 12px "IBM Plex Mono", Consolas, "Droid Sans Fallback", sans-serif; }
-      .responsibility { fill: #18212b; font: 700 15px Arial, "Droid Sans Fallback", sans-serif; }
-      .responsibility-copy { fill: #4c5962; font: 13px Arial, "Droid Sans Fallback", sans-serif; }
-      .bullet { fill: #2356d8; }
+      .group { fill: #4c5962; font: 700 14px "IBM Plex Mono", Consolas, monospace; }
+      .node-title { fill: #18212b; font: 700 17px Arial, sans-serif; }
+      .node-title-small { fill: #18212b; font: 700 15px Arial, sans-serif; }
+      .node-title-light { fill: #ffffff; font: 700 17px Arial, sans-serif; }
+      .node-copy { fill: #4c5962; font: 13px Arial, sans-serif; }
+      .node-copy-light { fill: #dce6e1; font: 13px Arial, sans-serif; }
+      .mono { fill: #18212b; font: 700 12px "IBM Plex Mono", Consolas, monospace; }
+      .edge-label { fill: #4c5962; font: 700 11px "IBM Plex Mono", Consolas, monospace; }
+      .footnote { fill: #4c5962; font: 14px Arial, sans-serif; }
+      .bullet-blue { fill: #2356d8; }
       .bullet-green { fill: #327a63; }
+      .bullet-gold { fill: #b6781f; }
     </style>
   </defs>
 
   <rect class="canvas" width="1800" height="1100"/>
-  <text class="kicker" x="40" y="40">PAPERLOOM / VERIFIED LIVE PATH</text>
-  <text class="title" x="40" y="76">Evidence-bounded agentic RAG over an authorized Reading Model</text>
-  <text class="subtitle" x="40" y="102">Current assistant answers use Java scope/reference controls, Redis/HTTP harness transport, a Python Agents SDK loop, hybrid Qdrant candidates, and canonical MySQL reads.</text>
+  <text class="kicker" x="40" y="38">PAPERLOOM / CURRENT RESEARCH RUNTIME</text>
+  <text class="title" x="40" y="74">One authorized turn, from product control to a reopenable Source Quote</text>
+  <text class="subtitle" x="40" y="101">Java owns product state and corpus authority. Python owns one bounded Agent run. Redis Streams is the production dispatcher; HTTP NDJSON remains the local and rollback path.</text>
 
-  <rect class="boundary-experience" x="30" y="125" width="170" height="615" rx="6"/>
-  <rect class="boundary-java" x="220" y="125" width="780" height="615" rx="6"/>
-  <rect class="boundary-python" x="1020" y="125" width="750" height="615" rx="6"/>
+  <rect class="boundary-experience" x="30" y="125" width="170" height="255" rx="6"/>
+  <rect class="boundary-java" x="220" y="125" width="750" height="255" rx="6"/>
+  <rect class="boundary-dispatch" x="990" y="125" width="300" height="255" rx="6"/>
+  <rect class="boundary-python" x="1310" y="125" width="460" height="255" rx="6"/>
   <text class="group" x="115" y="154" text-anchor="middle">EXPERIENCE</text>
-  <text class="group" x="610" y="154" text-anchor="middle">JAVA / SPRING SERVICES</text>
-  <text class="group" x="1395" y="154" text-anchor="middle">HARNESS_PY / AGENTS SDK</text>
+  <text class="group" x="595" y="154" text-anchor="middle">JAVA / PRODUCT CONTROL</text>
+  <text class="group" x="1140" y="154" text-anchor="middle">DISPATCH</text>
+  <text class="group" x="1540" y="154" text-anchor="middle">HARNESS ENTRY</text>
 
-  <rect class="node-dark" x="50" y="190" width="130" height="94" rx="5"/>
-  <text class="node-title-light" x="115" y="225" text-anchor="middle">Folio</text>
-  <text class="node-copy-light" x="115" y="250" text-anchor="middle">research UI</text>
-  <text class="node-copy-light" x="115" y="269" text-anchor="middle">source quote focus</text>
+  <rect class="node-dark" x="50" y="190" width="130" height="92" rx="5"/>
+  <text class="node-title-light" x="115" y="223" text-anchor="middle">Folio</text>
+  <text class="node-copy-light" x="115" y="248" text-anchor="middle">WebSocket / API</text>
+  <text class="node-copy-light" x="115" y="268" text-anchor="middle">retry + source focus</text>
 
-  <rect class="node-blue" x="250" y="190" width="180" height="94" rx="5"/>
-  <text class="node-title" x="340" y="225" text-anchor="middle">ChatHandler</text>
-  <text class="node-copy" x="340" y="250" text-anchor="middle">scope + generation state</text>
+  <rect class="node-blue" x="245" y="180" width="180" height="112" rx="5"/>
+  <text class="node-title" x="335" y="211" text-anchor="middle">ChatHandler</text>
+  <text class="node-copy" x="335" y="236" text-anchor="middle">lock SourceScope</text>
+  <text class="node-copy" x="335" y="257" text-anchor="middle">generation / cancel / retry</text>
+  <text class="node-copy" x="335" y="278" text-anchor="middle">persist accepted output</text>
 
-  <rect class="node-blue" x="465" y="190" width="265" height="94" rx="5"/>
-  <text class="node-title" x="597.5" y="218" text-anchor="middle">ProductReading</text>
-  <text class="node-title" x="597.5" y="240" text-anchor="middle">ConversationService</text>
-  <text class="node-copy" x="597.5" y="266" text-anchor="middle">history + research memory</text>
+  <rect class="node-blue" x="460" y="180" width="280" height="112" rx="5"/>
+  <text class="node-title" x="600" y="207" text-anchor="middle">ProductReading</text>
+  <text class="node-title" x="600" y="229" text-anchor="middle">ConversationService</text>
+  <text class="node-copy" x="600" y="254" text-anchor="middle">history + research / reading memory</text>
+  <text class="node-copy" x="600" y="275" text-anchor="middle">historical retry snapshot</text>
 
-  <rect class="node-blue" x="770" y="190" width="200" height="94" rx="5"/>
-  <text class="node-title" x="870" y="218" text-anchor="middle">ResearchHarness</text>
-  <text class="node-title" x="870" y="240" text-anchor="middle">Transport</text>
-  <text class="node-copy" x="870" y="266" text-anchor="middle">PayloadFactory + Mapper</text>
+  <rect class="node-blue" x="775" y="180" width="170" height="112" rx="5"/>
+  <text class="node-title-small" x="860" y="210" text-anchor="middle">ResearchHarness</text>
+  <text class="node-title-small" x="860" y="231" text-anchor="middle">Transport</text>
+  <text class="node-copy" x="860" y="255" text-anchor="middle">request mapping</text>
+  <text class="node-copy" x="860" y="276" text-anchor="middle">quota reservation</text>
 
-  <rect class="node-green" x="1050" y="190" width="220" height="94" rx="5"/>
-  <text class="mono" x="1160" y="225" text-anchor="middle">REDIS / POST</text>
-  <text class="node-title" x="1160" y="249" text-anchor="middle">research job stream</text>
-  <text class="node-copy" x="1160" y="269" text-anchor="middle">authorized request boundary</text>
+  <rect class="node-green" x="1015" y="165" width="245" height="88" rx="5"/>
+  <text class="mono" x="1137.5" y="190" text-anchor="middle">PRODUCTION</text>
+  <text class="node-title-small" x="1137.5" y="215" text-anchor="middle">Redis Streams + keys</text>
+  <text class="node-copy" x="1137.5" y="238" text-anchor="middle">jobs / events / status / cancel</text>
 
-  <rect class="node-green" x="1410" y="190" width="260" height="94" rx="5"/>
-  <text class="node-title" x="1540" y="218" text-anchor="middle">ResearchHarness</text>
-  <text class="node-title" x="1540" y="240" text-anchor="middle">Service</text>
-  <text class="node-copy" x="1540" y="266" text-anchor="middle">scope check + run assembly</text>
+  <rect class="node-white" x="1015" y="270" width="245" height="80" rx="5"/>
+  <text class="mono" x="1137.5" y="294" text-anchor="middle">LOCAL / ROLLBACK</text>
+  <text class="node-title-small" x="1137.5" y="319" text-anchor="middle">HTTP NDJSON stream</text>
+  <text class="node-copy" x="1137.5" y="340" text-anchor="middle">POST /v1/research/stream</text>
 
-  <path class="edge" d="M 180 237 L 250 237"/>
-  <path class="edge" d="M 430 237 L 465 237"/>
-  <path class="edge" d="M 730 237 L 770 237"/>
-  <path class="edge-both" d="M 970 237 L 1050 237"/>
-  <path class="edge" d="M 1270 237 L 1410 237"/>
-  <text class="edge-label" x="1010" y="320" text-anchor="middle">AUTHORIZED TURN + PROGRESS / RESULT EVENTS</text>
+  <rect class="node-green" x="1335" y="165" width="195" height="88" rx="5"/>
+  <text class="node-title-small" x="1432.5" y="194" text-anchor="middle">RedisResearchWorker</text>
+  <text class="node-copy" x="1432.5" y="218" text-anchor="middle">consumer group + lease</text>
+  <text class="node-copy" x="1432.5" y="239" text-anchor="middle">heartbeat + stale recovery</text>
 
-  <rect class="control-panel" x="250" y="415" width="720" height="270" rx="5"/>
-  <text class="group" x="280" y="448">JAVA-OWNED STATE / 模型不可自行改变</text>
+  <rect class="node-white" x="1335" y="270" width="195" height="80" rx="5"/>
+  <text class="node-title-small" x="1432.5" y="300" text-anchor="middle">Starlette / Uvicorn</text>
+  <text class="node-copy" x="1432.5" y="326" text-anchor="middle">HTTP service adapter</text>
 
-  <circle class="bullet" cx="285" cy="486" r="5"/>
-  <text class="responsibility" x="302" y="491">Permission and locked paper scope</text>
-  <text class="responsibility-copy" x="302" y="512">Java supplies the exact paper IDs for every turn.</text>
+  <rect class="node-green" x="1570" y="205" width="170" height="105" rx="5"/>
+  <text class="node-title-small" x="1655" y="235" text-anchor="middle">ResearchHarness</text>
+  <text class="node-title-small" x="1655" y="256" text-anchor="middle">Service</text>
+  <text class="node-copy" x="1655" y="280" text-anchor="middle">validate user + scope</text>
+  <text class="node-copy" x="1655" y="299" text-anchor="middle">assemble one run</text>
 
-  <circle class="bullet" cx="285" cy="536" r="5"/>
-  <text class="responsibility" x="302" y="541">Quota, cancellation, API and generation progress</text>
-  <text class="responsibility-copy" x="302" y="562">ChatGenerationStateService publishes durable snapshots/events.</text>
+  <path class="edge-both" d="M 180 236 L 245 236"/>
+  <path class="edge-both" d="M 425 236 L 460 236"/>
+  <path class="edge-both" d="M 740 236 L 775 236"/>
+  <path class="edge-prod" d="M 945 225 L 980 225 L 980 209 L 1015 209"/>
+  <path class="edge-fallback" d="M 945 248 L 980 248 L 980 310 L 1015 310"/>
+  <path class="edge-prod" d="M 1260 209 L 1335 209"/>
+  <path class="edge-fallback" d="M 1260 310 L 1335 310"/>
+  <path class="edge" d="M 1530 209 L 1550 209 L 1550 240 L 1570 240"/>
+  <path class="edge" d="M 1530 310 L 1550 310 L 1550 278 L 1570 278"/>
+  <text class="edge-label" x="900" y="365" text-anchor="middle">AUTHORIZED REQUEST  -&gt;    PROGRESS + TERMINAL RESULT  &lt;-</text>
 
-  <circle class="bullet" cx="285" cy="586" r="5"/>
-  <text class="responsibility" x="302" y="591">Durable conversation and research memory</text>
-  <text class="responsibility-copy" x="302" y="612">The SDK Session is request-local, not a second source of truth.</text>
+  <rect class="boundary-java" x="30" y="410" width="970" height="620" rx="6"/>
+  <rect class="boundary-python" x="1020" y="410" width="750" height="620" rx="6"/>
+  <text class="group" x="515" y="440" text-anchor="middle">JAVA CORPUS PLANE / AUTHORITY + DURABILITY</text>
+  <text class="group" x="1395" y="440" text-anchor="middle">PYTHON / REQUEST-LOCAL AGENT RUNTIME</text>
 
-  <circle class="bullet" cx="285" cy="636" r="5"/>
-  <text class="responsibility" x="302" y="641">Reference persistence and source quote reopening</text>
-  <text class="responsibility-copy" x="302" y="662">Conversation JSON plus source quote rows resolve accepted citations.</text>
+  <rect class="node-blue" x="690" y="475" width="270" height="105" rx="5"/>
+  <text class="node-title" x="825" y="506" text-anchor="middle">InternalCorpusController</text>
+  <text class="node-copy" x="825" y="532" text-anchor="middle">re-check user + fixed paper scope</text>
+  <text class="node-copy" x="825" y="553" text-anchor="middle">papers / locations / structure / read</text>
 
-  <rect class="node-gold" x="1050" y="440" width="300" height="125" rx="5"/>
-  <text class="node-title" x="1200" y="466" text-anchor="middle">JavaCorpus</text>
-  <text class="node-title" x="1200" y="488" text-anchor="middle">GatewayReader</text>
-  <text class="node-copy" x="1200" y="512" text-anchor="middle">InternalCorpusController tools</text>
-  <text class="node-copy" x="1200" y="533" text-anchor="middle">hybrid Qdrant + MySQL reads</text>
-  <text class="node-copy" x="1200" y="554" text-anchor="middle">no local persistent index</text>
+  <rect class="node-green" x="1050" y="475" width="270" height="105" rx="5"/>
+  <text class="node-title" x="1185" y="506" text-anchor="middle">LiveResearchChatHarness</text>
+  <text class="node-copy" x="1185" y="532" text-anchor="middle">RunControl + optional Eval Capture</text>
+  <text class="node-copy" x="1185" y="553" text-anchor="middle">stable limited / cancelled / failed states</text>
 
-  <rect class="node-green" x="1410" y="440" width="260" height="125" rx="5"/>
-  <text class="node-title" x="1540" y="477" text-anchor="middle">Agents SDK Runner</text>
-  <text class="node-copy" x="1540" y="503" text-anchor="middle">one Context + Agent + Session</text>
-  <text class="node-copy" x="1540" y="524" text-anchor="middle">serial tool-state transitions</text>
-  <text class="node-copy" x="1540" y="545" text-anchor="middle">submit_research_answer gate</text>
+  <rect class="node-green" x="1370" y="475" width="360" height="105" rx="5"/>
+  <text class="node-title" x="1550" y="498" text-anchor="middle">AgentsSdkHarnessRuntime</text>
+  <text class="node-title" x="1550" y="520" text-anchor="middle">+ Agents SDK Runner</text>
+  <text class="node-copy" x="1550" y="544" text-anchor="middle">one Context + Agent + request-local Session</text>
+  <text class="node-copy" x="1550" y="565" text-anchor="middle">serial Function Tools; no free-text finish</text>
 
-  <rect class="node-green" x="1050" y="610" width="300" height="100" rx="5"/>
-  <text class="node-title" x="1200" y="640" text-anchor="middle">ReadingCorpusTools</text>
-  <text class="node-copy" x="1200" y="663" text-anchor="middle">search · identity · find locations</text>
-  <text class="node-copy" x="1200" y="684" text-anchor="middle">disclosure · read gate · evidence state</text>
+  <path class="edge" d="M 1655 310 L 1655 395 L 1185 395 L 1185 475"/>
+  <path class="edge" d="M 1320 527.5 L 1370 527.5"/>
 
-  <rect class="node-red" x="1410" y="610" width="260" height="100" rx="5"/>
-  <text class="node-title" x="1540" y="647" text-anchor="middle">provider_agents_model</text>
-  <text class="node-copy" x="1540" y="673" text-anchor="middle">OpenAI-compatible API</text>
-  <text class="node-copy" x="1540" y="694" text-anchor="middle">tool calls, not final free text</text>
+  <rect class="node-green" x="1050" y="635" width="270" height="155" rx="5"/>
+  <text class="node-title" x="1185" y="660" text-anchor="middle">Deterministic</text>
+  <text class="node-title" x="1185" y="682" text-anchor="middle">Protocol Guard</text>
+  <text class="node-copy" x="1185" y="708" text-anchor="middle">DIRECT | CATALOG | RESEARCH</text>
+  <text class="node-copy" x="1185" y="731" text-anchor="middle">ACTIVE -&gt; REPAIR -&gt; COMPLETE</text>
+  <text class="node-copy" x="1185" y="754" text-anchor="middle">validates every requested action</text>
+  <text class="node-copy" x="1185" y="777" text-anchor="middle">submit_* must be the sole final call</text>
 
-  <path class="edge" d="M 1540 284 L 1540 440"/>
-  <path class="edge-both" d="M 1350 660 L 1380 660 L 1380 502.5 L 1410 502.5"/>
-  <path class="edge-both" d="M 1540 565 L 1540 610"/>
-  <path class="edge-both" d="M 1200 565 L 1200 610"/>
-  <text class="edge-label" x="1385" y="590" text-anchor="end">TOOL CALLS / RESULTS</text>
+  <rect class="node-gold" x="1370" y="635" width="360" height="155" rx="5"/>
+  <text class="node-title" x="1550" y="660" text-anchor="middle">ReadingCorpusTools</text>
+  <text class="node-title" x="1550" y="682" text-anchor="middle">+ JavaCorpusGatewayReader</text>
+  <text class="node-copy" x="1550" y="708" text-anchor="middle">paper -&gt; location -&gt; exact-read disclosure</text>
+  <text class="node-copy" x="1550" y="731" text-anchor="middle">search / identity / content / structure / read</text>
+  <text class="node-copy" x="1550" y="754" text-anchor="middle">owns run-local known Source Quotes</text>
+  <text class="node-copy" x="1550" y="777" text-anchor="middle">no MySQL, Qdrant, or local paper index</text>
 
-  <rect class="ingestion" x="30" y="790" width="1740" height="260" rx="6"/>
-  <text class="group" x="60" y="822">READING MODEL INGESTION / 与 Research Turn 分离的构建链路</text>
+  <path class="edge-both" d="M 1550 580 L 1550 610 L 1185 610 L 1185 635"/>
+  <path class="edge-both" d="M 1320 712.5 L 1370 712.5"/>
+  <path class="edge-both" d="M 1550 790 L 1550 810 L 1010 810 L 1010 527.5 L 960 527.5"/>
+  <text class="edge-label" x="1260" y="804" text-anchor="middle">INTERNAL JAVA CORPUS API</text>
 
-  <rect class="node-dark" x="60" y="870" width="180" height="90" rx="5"/>
-  <text class="node-title-light" x="150" y="905" text-anchor="middle">Research PDF</text>
-  <text class="node-copy-light" x="150" y="932" text-anchor="middle">product paper</text>
+  <rect class="node-blue" x="60" y="635" width="270" height="140" rx="5"/>
+  <text class="node-title" x="195" y="667" text-anchor="middle">Metadata + Structure</text>
+  <text class="node-copy" x="195" y="694" text-anchor="middle">authorized paper discovery / identity</text>
+  <text class="node-copy" x="195" y="717" text-anchor="middle">PAGE / SECTION navigation</text>
+  <text class="node-copy" x="195" y="740" text-anchor="middle">canonical structure reads</text>
 
-  <rect class="node-red" x="300" y="870" width="200" height="90" rx="5"/>
-  <text class="node-title" x="400" y="905" text-anchor="middle">MinerU</text>
-  <text class="node-copy" x="400" y="932" text-anchor="middle">parser + raw artifacts</text>
+  <rect class="node-gold" x="365" y="635" width="280" height="140" rx="5"/>
+  <text class="node-title" x="505" y="667" text-anchor="middle">Configured Retrieval</text>
+  <text class="node-copy" x="505" y="694" text-anchor="middle">sparse-only-v1 or sparse-dense-v1</text>
+  <text class="node-copy" x="505" y="717" text-anchor="middle">BM25 + optional embo-01 / weighted RRF</text>
+  <text class="node-copy" x="505" y="740" text-anchor="middle">sparse fallback + bounded previews</text>
 
-  <rect class="node-blue" x="560" y="855" width="300" height="120" rx="5"/>
-  <text class="node-title" x="710" y="893" text-anchor="middle">PaperReadingModelBuilder</text>
-  <text class="node-copy" x="710" y="920" text-anchor="middle">pages · sections · typed elements</text>
-  <text class="node-copy" x="710" y="941" text-anchor="middle">locations · relations · provenance</text>
-  <text class="node-copy" x="710" y="962" text-anchor="middle">diagnostics · visual links</text>
+  <rect class="node-gold" x="680" y="635" width="280" height="140" rx="5"/>
+  <text class="node-title" x="820" y="667" text-anchor="middle">Validated Exact Read</text>
+  <text class="node-copy" x="820" y="694" text-anchor="middle">scope / model / location / hash / span</text>
+  <text class="node-copy" x="820" y="717" text-anchor="middle">Qdrant payload or MySQL structure text</text>
+  <text class="node-copy" x="820" y="740" text-anchor="middle">create or reuse source_quote_ref</text>
 
-  <rect class="node-gold" x="1050" y="850" width="300" height="110" rx="5"/>
-  <text class="node-title" x="1200" y="885" text-anchor="middle">MySQL + Qdrant</text>
-  <text class="node-copy" x="1200" y="911" text-anchor="middle">Reading Model + source quotes</text>
-  <text class="node-copy" x="1200" y="932" text-anchor="middle">lexical_bm25_v1 + dense_embo01_v1</text>
+  <path class="edge" d="M 775 580 L 775 605 L 195 605 L 195 635"/>
+  <path class="edge" d="M 825 580 L 825 615 L 505 615 L 505 635"/>
+  <path class="edge" d="M 875 580 L 875 635"/>
 
-  <rect class="node-gold" x="1410" y="870" width="260" height="90" rx="5"/>
-  <text class="node-title" x="1540" y="905" text-anchor="middle">MinIO</text>
-  <text class="node-copy" x="1540" y="932" text-anchor="middle">PDF · artifacts · screenshots · crops</text>
+  <rect class="node-white" x="60" y="835" width="400" height="140" rx="5"/>
+  <text class="node-title" x="260" y="868" text-anchor="middle">MySQL / authoritative state</text>
+  <text class="node-copy" x="260" y="896" text-anchor="middle">paper ACL + canonical Current Reading Model</text>
+  <text class="node-copy" x="260" y="919" text-anchor="middle">PAGE / SECTION text + validation records</text>
+  <text class="node-copy" x="260" y="942" text-anchor="middle">conversations + retry lineage + durable Source Quotes</text>
 
-  <path class="edge" d="M 240 915 L 300 915"/>
-  <path class="edge" d="M 500 915 L 560 915"/>
-  <path class="edge-data" d="M 860 915 L 960 915 L 960 905 L 1050 905"/>
-  <path class="edge-data" d="M 860 915 L 930 915 L 930 1010 L 1375 1010 L 1375 915 L 1410 915"/>
-  <path class="edge-data" d="M 1200 850 L 1200 780 L 1010 780 L 1010 502 L 1050 502"/>
-  <text class="edge-label" x="1100" y="770" text-anchor="middle">JAVA CORPUS API: BM25 + DENSE/RRF SEARCH + MYSQL READ</text>
+  <rect class="node-gold" x="520" y="835" width="400" height="140" rx="5"/>
+  <text class="node-title" x="720" y="868" text-anchor="middle">Qdrant / rebuildable candidate projection</text>
+  <text class="node-copy" x="720" y="896" text-anchor="middle">lexical_bm25_v1 + optional dense_embo01_v1</text>
+  <text class="node-copy" x="720" y="919" text-anchor="middle">candidate previews + cached PASSAGE / TABLE / FIGURE payloads</text>
+  <text class="node-copy" x="720" y="942" text-anchor="middle">a search result alone is never citeable</text>
 
-  <text class="subtitle" x="40" y="1080">Qdrant returns navigation candidates from the active sparse-only or sparse-dense contract; only a validated Current Reading Model read can create assistant evidence.</text>
+  <path class="edge-data" d="M 195 775 L 195 835"/>
+  <path class="edge-data" d="M 505 775 L 505 810 L 720 810 L 720 835"/>
+  <path class="edge-data" d="M 770 775 L 770 805 L 400 805 L 400 835"/>
+  <path class="edge-data" d="M 870 775 L 870 835"/>
+
+  <rect class="node-white" x="1050" y="835" width="270" height="150" rx="5"/>
+  <text class="group" x="1185" y="866" text-anchor="middle">REQUEST-LOCAL OWNERS</text>
+  <circle class="bullet-green" cx="1078" cy="895" r="4"/>
+  <text class="node-copy" x="1092" y="900">ProtocolState: publish contract</text>
+  <circle class="bullet-gold" cx="1078" cy="922" r="4"/>
+  <text class="node-copy" x="1092" y="927">CorpusState: disclosed refs</text>
+  <circle class="bullet-blue" cx="1078" cy="949" r="4"/>
+  <text class="node-copy" x="1092" y="954">RunControl: limits + cancel</text>
+  <text class="mono" x="1185" y="976" text-anchor="middle">RELEASED AFTER THE TURN</text>
+
+  <rect class="node-red" x="1370" y="835" width="360" height="120" rx="5"/>
+  <text class="node-title" x="1550" y="861" text-anchor="middle">MiniMax-M3</text>
+  <text class="node-title" x="1550" y="883" text-anchor="middle">provider_agents_model</text>
+  <text class="node-copy" x="1550" y="909" text-anchor="middle">OpenAI-compatible API</text>
+  <text class="node-copy" x="1550" y="932" text-anchor="middle">tool calls return to the SDK Runner</text>
+  <path class="edge-both" d="M 1730 527.5 L 1750 527.5 L 1750 895 L 1730 895"/>
+
+  <text class="footnote" x="40" y="1070">Invariant: Java fixes the paper scope; search only discloses candidates; only a Java-validated exact read returns a citeable source_quote_ref; only an accepted answer contract becomes durable product output.</text>
 </svg>

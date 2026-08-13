@@ -17,7 +17,7 @@ Agent 只在当前会话明确授权的论文中使用工具检索和阅读，�
 - Java 在研究开始前确定权限、论文范围、配额、会话和持久化边界；
 - Python 在 Java 锁定的 Reading Model Scope 内运行一个工具型 Agent 循环；
 - Candidate Preview 只负责导航，只有读取准确位置后才会产生可引用 Evidence；
-- 最终提交必须通过 Evidence Ledger 和 Coverage Gate 校验；
+- 最终提交必须通过 Source Quote、逐内容 Block 引用和格式校验；
 - 历史引用持续连接到支持该声明的论文位置。
 
 这个仓库也记录项目的工程演化。ADR 和筛选后的实验复盘会保留真实决策、失败路径、成本与
@@ -25,28 +25,29 @@ Agent 只在当前会话明确授权的论文中使用工具检索和阅读，�
 
 ## 当前真实链路
 
-[![PaperLoom 系统架构图](site/public/images/paperloom-system-architecture.png)](site/public/images/paperloom-system-architecture.svg)
+[![PaperLoom 当前研究运行时架构图](site/public/images/paperloom-system-architecture.png)](site/public/images/paperloom-system-architecture.svg)
 
 当前研究回合只有一条产品路径：
 
 ```text
 ChatHandler
 -> ProductReadingConversationService
--> PythonResearchHarnessClient
--> POST /v1/research/stream
+-> ResearchHarnessTransport
+-> Redis Streams Worker Pool（生产）或 HTTP NDJSON（本地/回滚）
 -> ResearchHarnessService
 -> OpenAI Agents SDK Runner
 -> Java Corpus API
--> Qdrant Candidate + MySQL 精确读取
+-> Qdrant Candidate Payload + MySQL-owned 校验 / 结构读取
 ```
 
 Java 传入 `user_id` 和已经锁定的论文 ID；Python 通过 Java Corpus API 向 Agent 暴露论文发现、
 身份解析、位置检索、准确读取、研究方法指导和最终提交工具，不再把整批 Reading Element 加载到
 每个 Harness Replica。
 
-Java 将 Current Reading Model 的 canonical Location 索引到 Sparse-only Qdrant Collection，执行
-BM25 风格的词法检索，再从 MySQL Hydrate 并校验候选。Qdrant 只是 Candidate Index；
-`read_locations` 仍是唯一产生可引用 Evidence 的正文入口。
+Java 将 Current Reading Model 的 canonical Location 索引到 Qdrant。`sparse-only-v1` 执行 BM25
+词法检索；`sparse-dense-v1` 增加 MiniMax Query Embedding 与加权 RRF，并在 Dense 侧失败时保留
+Sparse 结果。Qdrant 仍是 Candidate Projection；`read_paper_content` 是唯一返回可引用
+`source_quote_ref` 的 Agent 可见正文入口。
 
 ## Reading Model
 
@@ -73,11 +74,11 @@ Java 授权论文范围
 -> Candidate 或 Identity Tool 公开论文
 -> Location Search 公开位置
 -> 读取准确位置
--> 创建 Evidence ID
+-> 创建 Source Quote
 -> 最终答案针对已知 Evidence 校验
 ```
 
-`read_locations` 是唯一会创建可引用内容证据的工具；`submit_research_answer` 必须独占最后一步。
+`read_paper_content` 是唯一会返回可引用 Source Quote 的正文工具；`submit_research_answer` 必须独占最后一步。
 
 ## 架构边界
 
@@ -86,9 +87,9 @@ Java 授权论文范围
 | Folio | Vue 3 研究工作台、论文选择、进度、会话与证据重开 |
 | Java 产品边界 | 认证、授权、Source Scope 锁定、配额、取消、长期会话与 Reference Mapping |
 | Python 研究边界 | Agents SDK 循环、工具执行、Disclosure State、Evidence Ledger、引用校验与最终提交 |
-| Java Corpus 数据面 | 论文授权、Qdrant 词法检索、Current Model 校验和精确读取 |
+| Java Corpus 数据面 | 论文授权、按合同配置的 Qdrant 检索、Current Model 校验和精确读取 |
 | MySQL | 产品论文、Canonical Reading Model、会话和长期 Reference 数据 |
-| Qdrant | 以稳定 `location_ref` 为键的可重建 Sparse BM25 Candidate Index |
+| Qdrant | 以稳定 `location_ref` 为键的可重建 Sparse 或 Sparse+Dense Candidate Projection |
 | MinIO | 原始 PDF、Parser Artifact、页面截图与局部裁剪图 |
 | Model Provider | Agents SDK Runtime 使用部署环境配置的 MiniMax-M3 |
 

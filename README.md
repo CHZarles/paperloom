@@ -29,28 +29,29 @@ decisions, failed approaches, costs, and measurements that changed the system.
 
 ## Current Runtime
 
-[![Rendered PaperLoom system architecture](site/public/images/paperloom-system-architecture.png)](site/public/images/paperloom-system-architecture.svg)
+[![Rendered PaperLoom current research runtime](site/public/images/paperloom-system-architecture.png)](site/public/images/paperloom-system-architecture.svg)
 
 The live research path is:
 
 ```text
 ChatHandler
 -> ProductReadingConversationService
--> PythonResearchHarnessClient
--> POST /v1/research/stream
+-> ResearchHarnessTransport
+-> Redis Streams worker pool (production) or HTTP NDJSON (local/rollback)
 -> ResearchHarnessService
 -> OpenAI Agents SDK Runner
 -> Java Corpus API
--> Qdrant candidates + MySQL exact read
+-> Qdrant Candidate Payload + MySQL-owned validation / structure reads
 ```
 
 Java supplies `user_id` and locked paper IDs. Python calls the Java Corpus API and exposes metadata
 discovery, identity resolution, location search, exact reading, optional research guidance, and
 validated final submission as tools. It no longer loads every Reading Element into each Harness replica.
 
-Java indexes canonical Current Reading Model locations into a sparse-only Qdrant collection and
-runs BM25-style lexical retrieval. It then validates and hydrates candidates from MySQL. Qdrant
-remains a candidate index; `read_locations` is still the only evidence-producing content path.
+Java indexes canonical Current Reading Model locations into Qdrant. `sparse-only-v1` runs lexical
+BM25 retrieval; `sparse-dense-v1` adds MiniMax query embeddings and weighted RRF, with sparse results
+as the failure fallback. Qdrant remains a candidate projection. `read_paper_content` is the only
+Agent-visible content tool that returns citeable `source_quote_ref` values.
 
 ## Reading Model
 
@@ -79,11 +80,11 @@ Java-authorized paper scope
 -> disclosed paper candidate or resolved identity
 -> disclosed reading location
 -> exact location read
--> Evidence ID created
+-> Source Quote created
 -> final answer validated against known evidence
 ```
 
-`read_locations` is the only content tool that creates citeable evidence.
+`read_paper_content` is the only content tool that returns citeable Source Quotes.
 `submit_research_answer` must be the only tool call in the final step.
 
 ## Architecture
@@ -93,9 +94,9 @@ Java-authorized paper scope
 | Folio | Vue 3 research workbench, paper selection, progress, conversations, and evidence reopening |
 | Java product boundary | Authentication, authorization, locked source scope, quota, cancellation, durable conversations, and reference mappings |
 | Python research boundary | Agents SDK loop, tool execution, disclosure state, evidence ledger, citation checks, and final submission |
-| Java Corpus plane | Paper authorization, lexical Qdrant retrieval, Current Model validation, and exact reads |
+| Java Corpus plane | Paper authorization, configured Qdrant retrieval, Current Model validation, and exact reads |
 | MySQL | Product papers, canonical Reading Models, conversations, and durable reference data |
-| Qdrant | Rebuildable sparse BM25 candidate index keyed by stable `location_ref` |
+| Qdrant | Rebuildable sparse or sparse+dense candidate projection keyed by stable `location_ref` |
 | MinIO | Original PDFs, parser artifacts, page screenshots, and crop assets |
 | Model provider | MiniMax-M3 used by the Agents SDK runtime through deployment-managed credentials |
 
