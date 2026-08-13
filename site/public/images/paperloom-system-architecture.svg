@@ -35,10 +35,14 @@
       .node-copy { fill: #4c5962; font: 13px Arial, sans-serif; }
       .node-copy-light { fill: #dce6e1; font: 13px Arial, sans-serif; }
       .mono { fill: #18212b; font: 700 12px "IBM Plex Mono", Consolas, monospace; }
-      .edge-label { fill: #4c5962; font: 700 11px "IBM Plex Mono", Consolas, monospace; }
+      .edge-label { fill: #4c5962; font: 700 11px "IBM Plex Mono", Consolas, monospace; paint-order: stroke; stroke: #f7f8f5; stroke-width: 4px; stroke-linejoin: round; }
       .loop-boundary { fill: none; stroke: #b6781f; stroke-width: 2; stroke-dasharray: 8 6; }
       .loop-title { fill: #8a5a18; font: 700 11px "IBM Plex Mono", Consolas, monospace; }
-      .loop-label { fill: #8a5a18; font: 700 10px "IBM Plex Mono", Consolas, monospace; }
+      .loop-label { fill: #8a5a18; font: 700 10px "IBM Plex Mono", Consolas, monospace; paint-order: stroke; stroke: #edf5f1; stroke-width: 4px; stroke-linejoin: round; }
+      .step-badge { fill: #b6781f; }
+      .step-number { fill: #ffffff; font: 700 11px "IBM Plex Mono", Consolas, monospace; }
+      .step-copy { fill: #8a5a18; font: 700 10px "IBM Plex Mono", Consolas, monospace; }
+      .legend { fill: #4c5962; font: 12px Arial, sans-serif; }
       .footnote { fill: #4c5962; font: 14px Arial, sans-serif; }
       .bullet-blue { fill: #2356d8; }
       .bullet-green { fill: #327a63; }
@@ -105,13 +109,13 @@
   <path class="edge-prod" d="M 945 236 L 1015 236"/>
   <path class="edge-prod" d="M 1260 247.5 L 1335 247.5"/>
   <path class="edge" d="M 1530 247.5 L 1570 247.5"/>
-  <text class="edge-label" x="900" y="365" text-anchor="middle">AUTHORIZED REQUEST  -&gt;    PROGRESS + TERMINAL RESULT  &lt;-</text>
+  <text class="edge-label" x="1138" y="330" text-anchor="middle">JOB -&gt;   |   &lt;- EVENTS / TERMINAL RESULT</text>
 
   <rect class="boundary-java" x="30" y="410" width="970" height="620" rx="6"/>
   <rect class="boundary-python" x="1020" y="410" width="750" height="620" rx="6"/>
   <text class="group" x="515" y="440" text-anchor="middle">JAVA CORPUS PLANE / AUTHORITY + DURABILITY</text>
   <text class="group" x="1395" y="440" text-anchor="middle">PYTHON / REQUEST-LOCAL AGENT RUNTIME</text>
-  <rect class="loop-boundary" x="1038" y="452" width="707" height="532" rx="8"/>
+  <rect class="loop-boundary" x="1038" y="452" width="707" height="538" rx="8"/>
   <text class="loop-title" x="1391.5" y="468" text-anchor="middle">AGENT LOOP: MODEL -&gt; FUNCTION TOOL -&gt; GUARD -&gt; CORPUS TOOL -&gt; RESULT -&gt; MODEL</text>
 
   <rect class="node-blue" x="690" y="475" width="270" height="105" rx="5"/>
@@ -149,12 +153,19 @@
   <text class="node-copy" x="1550" y="754" text-anchor="middle">owns run-local known Source Quotes</text>
   <text class="node-copy" x="1550" y="777" text-anchor="middle">no MySQL, Qdrant, or local paper index</text>
 
-  <path class="edge-both" d="M 1550 580 L 1550 610 L 1185 610 L 1185 635"/>
-  <path class="edge-both" d="M 1320 712.5 L 1370 712.5"/>
+  <path class="edge" d="M 1550 580 L 1550 606 L 1185 606 L 1185 635"/>
+  <path class="edge" d="M 1320 698 L 1370 698"/>
+  <path class="edge" d="M 1370 727 L 1320 727"/>
   <path class="edge-both" d="M 1550 790 L 1550 810 L 1010 810 L 1010 527.5 L 960 527.5"/>
-  <text class="loop-label" x="1368" y="603" text-anchor="middle">3 REQUESTED ACTION / 5 STRUCTURED RESULT + REPEAT</text>
-  <text class="loop-label" x="1345" y="699" text-anchor="middle">4 VALIDATE</text>
-  <text class="loop-label" x="1345" y="735" text-anchor="middle">EXECUTE</text>
+  <circle class="step-badge" cx="1328" cy="599" r="10"/>
+  <text class="step-number" x="1328" y="603" text-anchor="middle">3</text>
+  <text class="step-copy" x="1344" y="603">requested action</text>
+  <circle class="step-badge" cx="1345" cy="687" r="10"/>
+  <text class="step-number" x="1345" y="691" text-anchor="middle">4</text>
+  <text class="step-copy" x="1361" y="691">validated call</text>
+  <circle class="step-badge" cx="1345" cy="738" r="10"/>
+  <text class="step-number" x="1345" y="742" text-anchor="middle">5</text>
+  <text class="step-copy" x="1361" y="742">tool result</text>
   <text class="edge-label" x="1260" y="804" text-anchor="middle">INTERNAL JAVA CORPUS API</text>
 
   <rect class="node-blue" x="60" y="635" width="270" height="140" rx="5"/>
@@ -212,7 +223,12 @@
   <text class="node-copy" x="1550" y="909" text-anchor="middle">OpenAI-compatible API</text>
   <text class="node-copy" x="1550" y="932" text-anchor="middle">tool calls return to the SDK Runner</text>
   <path class="edge-both" d="M 1730 527.5 L 1750 527.5 L 1750 895 L 1730 895"/>
-  <text class="loop-label" x="1763" y="711" text-anchor="middle" transform="rotate(90 1763 711)">1 MODEL REQUEST / 2 FUNCTION TOOL CALLS</text>
+  <circle class="step-badge" cx="1728" cy="606" r="10"/>
+  <text class="step-number" x="1728" y="610" text-anchor="middle">1</text>
+  <text class="step-copy" x="1709" y="609" text-anchor="end">model request</text>
+  <circle class="step-badge" cx="1728" cy="814" r="10"/>
+  <text class="step-number" x="1728" y="818" text-anchor="middle">2</text>
+  <text class="step-copy" x="1709" y="817" text-anchor="end">function tool calls</text>
 
   <text class="footnote" x="40" y="1070">Invariant: Java fixes the paper scope; search only discloses candidates; only a Java-validated exact read returns a citeable source_quote_ref; only an accepted answer contract becomes durable product output.</text>
 </svg>
