@@ -1,6 +1,6 @@
 ## 一个论文rag系统
 
-Runtime shape locked in `research/harness-runtime-shape.md`.
+Runtime shape locked in `research/design/harness-runtime-shape.md`.
 
 不要着急tdd。先想好这个harness形态。不要设计任何fallback，失去精度的东西，平庸的东西即是失败。用户应该能在前端看到整个答案生成的
 决策过程，它也能通过前端显示的相关证据，看到每个过程的产物，自己去校验，增加用户对答案的信息。

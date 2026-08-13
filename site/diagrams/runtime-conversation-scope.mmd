@@ -1,0 +1,42 @@
+sequenceDiagram
+    autonumber
+    actor User
+    participant Folio
+    participant API as ConversationSessionController
+    participant Conversation as ConversationService
+    participant Scope as ConversationScopeService
+    participant MySQL
+    participant Redis
+    participant Chat as ChatHandler
+
+    User->>Folio: create conversation
+    Folio->>API: POST /users/conversations
+    API->>Conversation: createConversationSession(userId)
+    Conversation->>MySQL: save ACTIVE session + default AUTO_LIBRARY scope
+    Conversation->>Redis: set current conversation with 7-day TTL
+    Conversation-->>Folio: conversationId + scope summary
+    User->>Folio: select papers / collections / title match
+    Folio->>API: PUT /{conversationId}/scope
+    API->>Scope: updateUnlockedScope
+    Scope->>MySQL: lock owned session row
+    Scope->>Scope: authorize and require searchable papers
+    Scope->>MySQL: save source recipe + immutable paper-ID snapshot
+    Scope-->>Folio: READY unlocked scope
+    User->>Folio: send first question
+    Folio->>Chat: WebSocket chat command
+    Chat->>Scope: lockForFirstMessage
+    Scope->>MySQL: validate snapshot and set scopeLocked=true
+    Scope-->>Chat: authorized paper IDs for Harness
+    Note over Scope,Chat: Later scope updates return 409<br/>each turn remains inside the first-message snapshot
+    alt switch session
+        Folio->>API: PUT /{conversationId}/switch
+        API->>Conversation: verify ownership
+        Conversation->>Redis: replace current conversation with 7-day TTL
+    else archive / unarchive
+        Folio->>API: PUT archive or unarchive
+        API->>MySQL: verify ownership + update session status
+    else delete
+        Folio->>API: DELETE /{conversationId}
+        API->>MySQL: delete owned messages + session
+        API->>Redis: clear current pointer when it matched
+    end

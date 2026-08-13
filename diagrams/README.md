@@ -1,5 +1,9 @@
 # PaperLoom Review Diagrams
 
+> 这是早期代码复习图的归档。当前 Runtime 架构图和业务时序图见
+> [`docs/architecture/runtime-diagrams.md`](../docs/architecture/runtime-diagrams.md)，图源位于
+> [`site/diagrams/`](../site/diagrams/)。
+
 These diagrams mirror the review-diagram style from
 `/Users/charles/Documents/modular-rag-mcp/diagrams`.
 

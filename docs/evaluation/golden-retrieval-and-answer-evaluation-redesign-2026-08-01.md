@@ -5,7 +5,7 @@
 状态：技术分析与实施方案。本文不修改产品数据库、检索设计或线上回答功能。
 
 > 后续决策更新：新的文本检索单位见
-> [Passage 检索层设计 Proposal](../architecture/passage-retrieval-proposal-2026-08-01.md)。该 Proposal 本次只改
+> [Passage 检索层设计 Proposal](../engineering-evolution/architecture/passage-retrieval-proposal-2026-08-01.md)。该 Proposal 本次只改
 > 产品 Passage 链路，不修改 Golden Data 或评测代码。本文的评测重构分析作为独立后续工作保留；当前
 > PAGE/SECTION Location Eval 仅用于链路 Smoke 和历史诊断。
 

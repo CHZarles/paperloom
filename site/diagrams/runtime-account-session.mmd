@@ -1,0 +1,39 @@
+sequenceDiagram
+    autonumber
+    actor User
+    participant Folio
+    participant Auth as UserController / AuthController
+    participant Users as UserService
+    participant JWT as JwtUtils
+    participant Redis as Redis Token Cache
+    participant Security as JWT Filter / Spring Security
+
+    User->>Folio: sign in
+    Folio->>Auth: POST /users/login
+    Auth->>Users: authenticate username + BCrypt password
+    Users-->>Auth: authenticated username
+    Auth->>JWT: generate access + refresh JWT
+    JWT->>Redis: cache token IDs with TTL
+    Auth-->>Folio: access token + refresh token
+    Folio->>Security: protected API + Bearer access token
+    Security->>Redis: validate token ID and blacklist state
+    Security-->>Folio: API response
+    alt access token nears expiry
+        Security->>JWT: proactive access-token refresh
+        JWT->>Redis: cache new access token ID
+        Security-->>Folio: New-Token response header
+    else refresh-token fallback
+        Folio->>Auth: POST /auth/refreshToken
+        Auth->>Redis: validate refreshTokenId
+        Auth->>JWT: verify signature and issue new token pair
+        JWT->>Redis: cache new token IDs
+        Auth-->>Folio: new access + refresh tokens
+    end
+    alt logout current device
+        Folio->>Auth: POST /users/logout
+        Auth->>Redis: blacklist access token until expiry<br/>remove active token entry
+    else logout all devices
+        Folio->>Auth: POST /users/logout-all
+        Auth->>Redis: remove all cached access-token IDs for user
+    end
+    Folio->>Folio: clear local auth, chat, and route state

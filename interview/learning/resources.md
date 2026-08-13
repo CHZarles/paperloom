@@ -2,11 +2,11 @@
 
 ## Knowledge
 
-- [PaperLoom architecture overview](docs/architecture/overview.md)
+- [PaperLoom architecture overview](../../docs/architecture/overview.md)
   Repository source of truth for the live request path, responsibility boundaries, storage roles, and authorization ladder.
-- [Reading Model and Agent tools](docs/architecture/reading-model-and-agent-tools.md)
+- [Reading Model and Agent tools](../../docs/architecture/reading-model-and-agent-tools.md)
   Use for the canonical paper model, request-local tool state, retrieval behavior, and final-answer gate.
-- [Evidence and citation model](docs/architecture/evidence-and-citations.md)
+- [Evidence and citation model](../../docs/architecture/evidence-and-citations.md)
   Use for the distinction between candidates, exact reads, Evidence IDs, validated answers, and durable references.
 - [Java Language Specification, Java SE 17](https://docs.oracle.com/javase/specs/jls/se17/html/index.html)
   Primary source for language semantics. Use when interview folklore and actual Java behavior disagree.

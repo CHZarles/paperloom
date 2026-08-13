@@ -1,0 +1,45 @@
+sequenceDiagram
+    autonumber
+    actor User as USER / ADMIN
+    participant Folio
+    participant Security as Spring Security
+    participant API as PaperCollectionController
+    participant Service as PaperCollectionService
+    participant Access as PaperAccessService
+    participant MySQL
+    participant Scope as ConversationScopeService
+
+    User->>Folio: create collection
+    Folio->>Security: POST /paper-collections
+    Security->>Security: require USER or ADMIN
+    Security->>API: authenticated userId
+    API->>Service: createCollection
+    Service->>MySQL: save owner, name, description
+    Service-->>Folio: collection summary
+    User->>Folio: add papers
+    Folio->>API: POST /{collectionId}/papers
+    API->>Service: addPapers
+    Service->>MySQL: load visible collection
+    Service->>Service: require editable collection
+    Service->>Access: validate every requested paper is accessible
+    Access-->>Service: authorized paper IDs
+    loop new membership only
+        Service->>MySQL: insert collection-paper membership
+    end
+    Service->>MySQL: touch collection updatedAt
+    Service-->>Folio: collection detail + searchable count
+    opt use collection as chat source
+        Folio->>Scope: update conversation scope with collectionId
+        Scope->>Service: resolve current collection paper IDs
+        Scope->>MySQL: persist paper-ID snapshot
+    end
+    alt remove paper
+        Folio->>API: DELETE /{id}/papers/{paperId}
+        API->>MySQL: delete owned membership + touch collection
+    else rename / describe
+        Folio->>API: PUT /{id}
+        API->>MySQL: verify edit permission + update fields
+    else delete collection
+        Folio->>API: DELETE /{id}
+        API->>MySQL: delete memberships then collection
+    end

@@ -33,7 +33,9 @@ Agent 只在当前会话明确授权的论文中使用工具检索和阅读，�
 ChatHandler
 -> ProductReadingConversationService
 -> ResearchHarnessTransport
--> Redis Streams Worker Pool（生产）或 HTTP NDJSON（本地/回滚）
+-> RedisResearchHarnessTransport
+-> Redis Streams
+-> RedisResearchWorker
 -> ResearchHarnessService
 -> OpenAI Agents SDK Runner
 -> Java Corpus API
@@ -43,6 +45,15 @@ ChatHandler
 Java 传入 `user_id` 和已经锁定的论文 ID；Python 通过 Java Corpus API 向 Agent 暴露论文发现、
 身份解析、位置检索、准确读取、研究方法指导和最终提交工具，不再把整批 Reading Element 加载到
 每个 Harness Replica。
+Current Runtime 图中的虚线框明确表示重复的 Agent Loop：模型请求、Function Tool 调用、协议校验、
+Corpus Tool 结果，再进入下一次模型请求。
+
+### 主要业务 Runtime 架构
+
+[![PaperLoom 主要业务 Runtime 架构](site/public/images/runtime-business-architecture.png)](site/public/images/runtime-business-architecture.svg)
+
+详细业务时序图统一收录在 [Runtime 图目录](docs/architecture/runtime-diagrams.md)，按账户与权限、
+论文生命周期、Research Chat 与 Agent Loop、Retry/Cancel、恢复、PDF 证据和后台管理分类。
 
 Java 将 Current Reading Model 的 canonical Location 索引到 Qdrant。`sparse-only-v1` 执行 BM25
 词法检索；`sparse-dense-v1` 增加 MiniMax Query Embedding 与加权 RRF，并在 Dense 侧失败时保留
@@ -125,9 +136,9 @@ scripts/paperloom-start-harness.sh start
 mvn spring-boot:run
 ```
 
-新上传论文会自动构建 Qdrant 词法索引。如果导入了尚未建立索引的 Current Reading Model，启动后用
-管理员 Token 执行一次破坏式 `POST /api/v1/admin/retrieval/rebuild-all`。词法重建不会调用
-Embedding Provider。
+新上传论文会按当前 Contract 自动构建 Qdrant 索引。如果导入了尚未建立索引的 Current Reading Model，启动后用
+管理员 Token 执行一次破坏式 `POST /api/v1/admin/retrieval/rebuild-all`。`sparse-dense-v1` 重建会调用
+Embedding Provider，`sparse-only-v1` 不会调用。
 
 另开一个终端：
 
@@ -152,10 +163,10 @@ PaperLoom 仍在持续开发。目前的明确边界是研究论文 PDF 导入�
 
 - [文档索引](docs/README.md)
 - [架构概览](docs/architecture/overview.md)
-- [Reading Model 与 Agent 工具](docs/architecture/reading-model-and-agent-tools.md)
-- [证据与引用模型](docs/architecture/evidence-and-citations.md)
+- [Runtime 图目录](docs/architecture/runtime-diagrams.md)
 - [评估系统](docs/evaluation/README.md)
 - [工程演化记录](docs/engineering-evolution/README.md)
+- [中文面试材料](interview/README.md)
 - [项目实践网站](https://chzarles.github.io/paperloom/)
 
 PaperLoom 使用 [Apache License 2.0](LICENSE)。第三方组件继续遵循各自许可证，详见

@@ -37,7 +37,9 @@ The live research path is:
 ChatHandler
 -> ProductReadingConversationService
 -> ResearchHarnessTransport
--> Redis Streams worker pool (production) or HTTP NDJSON (local/rollback)
+-> RedisResearchHarnessTransport
+-> Redis Streams
+-> RedisResearchWorker
 -> ResearchHarnessService
 -> OpenAI Agents SDK Runner
 -> Java Corpus API
@@ -47,6 +49,16 @@ ChatHandler
 Java supplies `user_id` and locked paper IDs. Python calls the Java Corpus API and exposes metadata
 discovery, identity resolution, location search, exact reading, optional research guidance, and
 validated final submission as tools. It no longer loads every Reading Element into each Harness replica.
+The dashed boundary in the Current Runtime diagram makes the repeated Agent Loop explicit: model
+request, Function Tool call, protocol validation, corpus-tool result, and the next model request.
+
+### Major business runtime architecture
+
+[![PaperLoom major business runtime architecture](site/public/images/runtime-business-architecture.png)](site/public/images/runtime-business-architecture.svg)
+
+Detailed business sequence diagrams are grouped in the
+[Runtime Diagram Catalog](docs/architecture/runtime-diagrams.md): accounts, authorization, paper
+lifecycle, research chat, the Agent loop, retry/cancel, recovery, PDF evidence, and administration.
 
 Java indexes canonical Current Reading Model locations into Qdrant. `sparse-only-v1` runs lexical
 BM25 retrieval; `sparse-dense-v1` adds MiniMax query embeddings and weighted RRF, with sparse results
@@ -133,9 +145,9 @@ scripts/paperloom-start-harness.sh start
 mvn spring-boot:run
 ```
 
-New uploads build their lexical Qdrant index automatically. If canonical Current Reading Models were
+New uploads build the configured Qdrant index automatically. If canonical Current Reading Models were
 imported without an index, run the destructive `POST /api/v1/admin/retrieval/rebuild-all` operation
-once after startup. The lexical rebuild does not call an embedding provider.
+once after startup. `sparse-dense-v1` calls the embedding provider; `sparse-only-v1` does not.
 
 In another terminal:
 
@@ -179,11 +191,10 @@ capacity at large scale, or perfect metadata extraction for every PDF.
 
 - [Documentation index](docs/README.md)
 - [Architecture overview](docs/architecture/overview.md)
-- [Reading Model and agent tools](docs/architecture/reading-model-and-agent-tools.md)
-- [Evidence and citation model](docs/architecture/evidence-and-citations.md)
+- [Runtime diagram catalog](docs/architecture/runtime-diagrams.md)
 - [Evaluation system](docs/evaluation/README.md)
 - [Engineering evolution](docs/engineering-evolution/README.md)
-- [Architecture decisions](docs/adr/)
+- [Interview materials](interview/README.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
 

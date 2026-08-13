@@ -25,12 +25,22 @@ An evolution record is worth keeping when it documents at least one of the follo
 - [Redis Live Job False Reclaim Incident](agent-runtime/redis-live-job-false-reclaim-incident-2026-08-12.md)
 - [Session Isolation Security](architecture/session-isolation-security.md)
 - [Frontend Performance Improvement](frontend/frontend-performance-improvement.md)
+- [Agent Harness, Eval, and Benchmark Milestone](agent-harness-eval-benchmark-milestone-2026-08-12.md)
 
 ## Verification Archive
 
 The [`verification/`](verification/) directory contains dated audits and calibration reports that
 support specific decisions. They may reference the local conditions of the original run and should
 not be treated as current setup guides.
+
+## Records By Type
+
+- [`architecture/`](architecture/): architecture proposals, migrations, and security reviews.
+- [`agent-runtime/`](agent-runtime/): Harness, Redis dispatch, retry/cancel, limits, and runtime incidents.
+- [`reading-model/`](reading-model/): minimal-model decisions and persistence closure.
+- [`frontend/`](frontend/): product UI design and frontend evolution.
+- [`verification/`](verification/): dated audits, QA, calibration, and controlled reproductions.
+- [`../performance/`](../performance/): performance-specific baselines and before/after measurements.
 
 ## Public Narrative
 

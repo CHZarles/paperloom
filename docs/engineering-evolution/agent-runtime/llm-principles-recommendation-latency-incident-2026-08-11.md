@@ -341,7 +341,7 @@ Agent 在第 2 次模型响应中明确表示，为了提供“grounded shortlis
 
 继续追加上述 Prompt/Skill 规则已暂停。本次故障证明，当前“模型自由决定是否研究，Harness 只在模型主动读取正文后强制引用”的假设不能保证产品定位。
 
-新的形式化设计见 [可控 Research Harness 协议](../../architecture/controlled-research-harness-protocol-2026-08-11.md)。核心不是增加固定研究流程，而是将：
+新的形式化设计见 [可控 Research Harness 协议](controlled-research-harness-protocol-2026-08-11.md)。核心不是增加固定研究流程，而是将：
 
 ```text
 Answer Contract（这轮允许产生什么答案）
@@ -349,7 +349,7 @@ Answer Contract（这轮允许产生什么答案）
 Research Skill（已确定研究后怎么研究）
 ```
 
-从单一 Prompt 中分开。协议使用 `DIRECT | CATALOG | RESEARCH` 三种少量显式 Contract；Contract 由三个互斥的最终提交 Tool 选择，避免新增一次专门的模型路由往返。`DIRECT` 和 `CATALOG` 由 Runtime 从受限结构渲染，`RESEARCH` 的自由 Markdown 必须让每个 Content Block 绑定可追溯的 Source Quote。这个在线 Guard 只证明来源真实和绑定完整，不声称判断引文是否在语义上支持结论；Contract 选择、Citation Entailment 和任务完整性进入现有 PaperLoom-31 的离线 Eval。Research Contract 内部仍保留单 Agent 的自由 ReAct，不固定论文数量和研究轮数。详细设计已经转化为已接受的 [Controlled Research Harness Specification](../../architecture/controlled-research-harness-spec-2026-08-11.md)，尚未修改运行时代码。
+从单一 Prompt 中分开。协议使用 `DIRECT | CATALOG | RESEARCH` 三种少量显式 Contract；Contract 由三个互斥的最终提交 Tool 选择，避免新增一次专门的模型路由往返。`DIRECT` 和 `CATALOG` 由 Runtime 从受限结构渲染，`RESEARCH` 的自由 Markdown 必须让每个 Content Block 绑定可追溯的 Source Quote。这个在线 Guard 只证明来源真实和绑定完整，不声称判断引文是否在语义上支持结论；Contract 选择、Citation Entailment 和任务完整性进入现有 PaperLoom-31 的离线 Eval。Research Contract 内部仍保留单 Agent 的自由 ReAct，不固定论文数量和研究轮数。详细设计已经转化为已接受的 [Controlled Research Harness Specification](controlled-research-harness-spec-2026-08-11.md)，尚未修改运行时代码。
 
 ## 实时调查记录
 

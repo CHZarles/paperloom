@@ -67,7 +67,7 @@ No second router or judge participates in the live answer path. LLM-as-judge is 
 
 ## Research Skills
 
-The 22 paradigms in `research/remake.md` are advisory skills, not routes. Each skill contains when
+The 22 paradigms in `research/ideation/remake.md` are advisory skills, not routes. Each skill contains when
 to use it, retrieval guidance, an evidence standard, and answer-shape guidance. The model may load
 none, one, or several through `get_research_skill`.
 

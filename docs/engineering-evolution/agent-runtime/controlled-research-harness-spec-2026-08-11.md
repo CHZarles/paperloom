@@ -4,7 +4,7 @@
 >
 > Design source: [`controlled-research-harness-protocol-2026-08-11.md`](./controlled-research-harness-protocol-2026-08-11.md)
 >
-> Related execution contract: [`governed-research-run-spec.md`](./governed-research-run-spec.md)
+> Related execution contract: [`governed-research-run-spec.md`](../../architecture/governed-research-run-spec.md)
 
 本文使用 **MUST** 表示实现和验收必须满足的要求，使用 **MUST NOT** 表示明确禁止的行为。设计来源文档解释为什么这样设计；本规范定义实现必须表现出的行为。
 

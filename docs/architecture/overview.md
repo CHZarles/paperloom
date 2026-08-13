@@ -8,22 +8,27 @@ authorized to use.
 
 [![Rendered PaperLoom system architecture](../../site/public/images/paperloom-system-architecture.png)](../../site/public/images/paperloom-system-architecture.svg)
 
+Workflow-specific sequence diagrams are grouped in the
+[Runtime Diagram Catalog](runtime-diagrams.md).
+
 The diagram describes the live assistant-answer path and the Reading Model ingestion path. It is
 not an inventory of every service or experimental subsystem in the repository.
 
-The Spring-selected research path is:
+The production-selected research path is:
 
 ```text
 ChatHandler
 -> ProductReadingConversationService
--> PythonResearchHarnessClient
--> POST /v1/research/stream
+-> ResearchHarnessTransport
+-> RedisResearchHarnessTransport
+-> Redis Streams
+-> Python RedisResearchWorker
 -> ResearchHarnessService
 -> OpenAI Agents SDK Runner
 ```
 
-`ProductReadingConversationService` is constructed with `PythonResearchHarnessClient` in the live
-Spring application. Maintained architecture documentation follows that selected runtime.
+`ProductReadingConversationService` depends on the `ResearchHarnessTransport` interface. Production
+selects `RedisResearchHarnessTransport` with `RESEARCH_HARNESS_TRANSPORT=redis`.
 
 ## Responsibility Split
 
@@ -147,8 +152,8 @@ do not replace the product-owned Reading Model.
 | Qdrant | Rebuildable hybrid (sparse BM25 + dense MiniMax embedding) candidate index over Current Reading Model locations; never a source of citeable content |
 | MinIO | Original PDFs, parser artifacts, page screenshots, and visual evidence crops |
 
-Kafka remains upload-processing infrastructure and Redis serves separate transient product concerns.
-Neither is an evidence source.
+Kafka remains upload-processing infrastructure. Redis carries transient Generation state and, in the
+production transport, Research jobs and events. Neither is an evidence source.
 
 ## Evaluation Boundary
 

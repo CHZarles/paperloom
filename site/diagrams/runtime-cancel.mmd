@@ -1,0 +1,27 @@
+sequenceDiagram
+    autonumber
+    actor User
+    participant Folio
+    participant Chat as ChatHandler
+    participant State as Generation State
+    participant Transport as ResearchHarnessTransport
+    participant Redis
+    participant Worker as Python Worker
+
+    User->>Folio: Cancel
+    Folio->>Chat: stop(generationId, current user)
+    Chat->>State: getGenerationForUser
+    alt unknown, cross-user, or terminal
+        State-->>Chat: empty / terminal snapshot
+        Chat-->>Folio: no cancellation side effect
+    else owned STREAMING generation
+        State-->>Chat: valid snapshot
+        Chat->>Chat: set local stop flag
+        Chat->>Transport: cancel(generationId)
+        Transport->>Redis: set cancel key with TTL
+        Chat->>State: mark CANCELLED
+        Chat-->>Folio: cancelled completion
+        Worker->>Redis: check cancel key at model/tool boundary
+        Redis-->>Worker: cancelled = true
+        Worker->>Redis: CANCELLED terminal + XACK + XDEL
+    end

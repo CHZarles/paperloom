@@ -1,84 +1,167 @@
 # PaperLoom Handoff
 
-更新日期：2026-08-09
+更新日期：2026-08-13
 
 ## 当前状态
 
-- 当前分支：`main`
-- 最近提交：`1f9cb0017a725db13efbe18cbcb9ef1670a60cd4`
-  - `feat(research): govern run limits, harden MinerU parsing, and enforce source-span stability`
-- 当前工作区有大量未提交修改。它们包含 Dense/Hybrid 检索、Embedding 配额、Benchmark 和相关测试；不要在未确认前回退或清理。
-- 本轮新增前端邀请码可见性修复：邀请码单元格不再截断；创建单条自动邀请码后，成功提示直接显示生成的代码；设置弹窗内移除会把 NDataTable body 算成 0 高度的 `flex-height/h-full` 组合。
-- 本地内测默认初始额度已调整为 LLM/Embedding 各 `10,000,000`；现有用户余额也已补到至少该数值。
-- 当前目标是本地内测，不做线上 Migration。
-- 已完成一次真实普通用户 Smoke：邀请码注册后上传一篇新的私有 PDF，MinerU 解析、视觉资产生成和混合索引均完成（70 个 Location）；限定该论文的中文问答返回 3 条逐段引用。刷新后的历史对话仍保留答案和引用映射，`reference-detail` 能重开带 `sourceQuoteRef` 的 PDF Evidence。
-- 该 Smoke 用户的 LLM/Embedding 用量都从 0 增长；将其 LLM 余额临时设为 0 后，聊天在启动后返回 `429`，且没有研究进度或 Embedding 消耗。测试结束后已恢复该测试用户余额。
-
-## 已完成的产品链路
-
-### 论文发现与正文证据
-
-- `year_from/year_to=0` 视为未提供；论文发现为空时会用纯标题重试。
-- Read Payload 对模型隐藏 Source Span、BBox、Parser 等内部字段。
-- Read 超限时返回 `omitted_location_refs`，不再静默丢失。
-- 使用正文工具后，`answered/partial` 必须有逐块引用；最终答案拒绝 `<think>`。
-- Evidence Read 使用本 Run 缓存的 Qdrant 正文和 Source Span，并校验 Current Model、内容 Hash、Source Span；PAGE/SECTION 仍从 MySQL 读取。
-
-### Hybrid Qdrant
-
-- 已启用 `sparse-dense-v1`。
-- 本地配置：
+- 分支：`main`
+- 本地、GitHub、线上代码版本：`ffa2cca feat(auth): clarify guest login progress`
+- 本地工作区有本交接文档和 Retry/Cancel 工程记录待提交。
+- 线上目录：`/root/charles/paperloom`
+- 公网入口：`https://paperloom.me`
+- 线上 Backend、4 个 Redis Worker、Cloudflare Tunnel 均为 `active`。
+- 服务器原有未跟踪文件不得删除：
 
   ```text
-  QDRANT_CONTRACT=sparse-dense-v1
-  QDRANT_COLLECTION=paperloom_reading_locations_hybrid_v1
+  .env.before-redis-20260812-130142
+  frontend/dist.previous-34f40ec/
+  frontend/dist.previous-df7b273/
   ```
 
-- Dense 模型：MiniMax `embo-01`，1536 维；文档使用 `type=db`，查询使用 `type=query`。
-- Hybrid 采用 Sparse BM25 + Dense + 加权 RRF，Sparse 权重为 `3.0`。
-- 全量重建已完成：34 个 Current Model 为 `READY`，Qdrant 状态为 `green`，共 2,911 points。
-- 查询 Embedding 已接入 `UsageQuotaService`；无 Embedding 额度时不会绕过额度继续 Dense 检索。
+## 线上架构
 
-## Benchmark 结果
+```text
+Browser
+  -> Cloudflare
+  -> cloudflared HTTP/2 over TCP
+  -> Nginx 127.0.0.1:18880
+  -> Spring Boot 127.0.0.1:18082
+  -> Redis Streams
+  -> 4 Python Research Harness Workers, each max_concurrent_runs=1
+  -> MiniMax
+```
 
-- 数据集：`paperloom-31-v1`，31 篇未经业务预处理的 PDF。
-- Snapshot：[`0f3a3ba6962f5a48f5830064e5a7ae50a1b5044c19c614b1008a9575cb87eb95.json`](research/benchmark/local/snapshots/0f3a3ba6962f5a48f5830064e5a7ae50a1b5044c19c614b1008a9575cb87eb95.json)
-- Run：[`20260809T100552Z-b258e681/run.json`](research/benchmark/local/runs/20260809T100552Z-b258e681/run.json)
+- 代码默认使用 HTTP；生产环境通过 `.env` 覆盖为 `RESEARCH_HARNESS_TRANSPORT=redis`。
+- 4 个 Worker 共提供 4 个模型执行并发；不要把 Java 监控线程数当成模型执行并发。
+- HTTP Harness 已禁用但保留为回滚入口。
+- Redis Job 完成后执行 `XACK + XDEL`，正常空闲时应看到 `XLEN=0`、`XPENDING=0`。
 
-| 层级 | 结果 | 含义 |
-| --- | --- | --- |
-| L1 Paper Discovery | Recall@1/3/5 = `1.0` | 论文发现通过 |
-| L2 Evidence Retrieval | Recall@1/3/5/10 = `0.3871/0.5806/0.7097/0.7419`，MRR `0.5000` | 23/31 个冻结目标 Location 进入 Top 10 |
-| L3 Exact Read | `12/12` hard pass | 正文读取、Source Quote 和 Evidence 闭环通过 |
-| Internal Beta Gate | 通过 | 当前本地内测门槛通过 |
+## 本轮完成
 
-L2 miss 是检索层问题：Benchmark 直接使用固定 Query 调用 `search_paper_content`，不运行 Agent。当前 8/31 个目标未进入 Qdrant Top 10；不能把它们归咎于 Agent。
+### 主要业务 Runtime 图
 
-- PASSAGE Recall@10：`18/22`
-- TABLE Recall@10：`4/6`
-- FIGURE Recall@10：`1/3`
+- 用 CodeGraph 逐条核对 Controller、Service、Redis/Kafka/Worker、MySQL、MinIO 与 Qdrant 的真实调用后，
+  在 `README.md` 和 `README.zh-CN.md` 补齐 16 张可点击的 Runtime 图。
+- 覆盖注册/邀请码、登录/Token 刷新/登出、游客登录、Token 追加与结算、会话与范围锁定、论文集合、
+  PDF 分片上传/解析/索引、论文重试/发布/重建/删除、Research Chat、Agent Loop、Cancel、Retry、
+  断线状态恢复、PDF Range 预览、历史引用重开、Admin 用户/对话/用量审计。
+- 图源位于 `site/diagrams/runtime-*.mmd`，PNG/SVG 位于 `site/public/images/runtime-*`；执行
+  `cd site && npm run diagrams:render` 可复现。通用 Evidence Flow 只在显式 `--all` 时重绘，避免
+  Runtime 文档变更顺手改写无关二进制文件。
 
-如果目标已在 Top-K，但 Agent 没搜索、没读或没引用，才归因于 Agent 层。
+### Redis Worker 与恢复
 
-最终 Run 有一个离线 Judge 技术噪声：`single_03` 没有调用 `submit_agent_judgment`。它已结构化记录，不影响产品 Gate；前一次同 Hybrid 配置的 Run 中 Judge 全部通过。
+- `4706fc9`：完成任务从 Redis Stream 删除。
+- `99fb62f`、`85f065b`：避免健康长任务被其他 Worker 误回收；使用可续租 Generation Lock 判断存活。
+- `7e33368`：线上切换 Redis Streams；4 Worker，每 Worker 并发 1。
 
-## 运行环境
+### Retry 与 Cancel
 
-- Backend：`http://127.0.0.1:8081`
-- Harness：`http://127.0.0.1:8091/health`
-- Benchmark 普通用户：`id=2`，用户名 `paperloom-benchmark`，密码未知；产品 Smoke 可直接注册新的普通用户。
-- 管理员账号不能验证普通用户权限和 Embedding 配额行为，因此真实验收优先使用普通账号。
+- `ff0816b`：Cancel 在产生副作用前按 `generationId + userId` 校验归属，只允许取消 `STREAMING`；
+  历史 assistant 消息返回 `status=finished`，刷新后仍显示 Retry。
+- `cf9abfe`：Redis Generation Snapshot 过期后，Retry 按 `generationId + userId` 从 MySQL 恢复上下文。
+- `fe6516a`：历史 Retry 在前端替换原 Answer Slot，而不是错误追加到末尾。
+- Retry 不覆盖历史：新增 Conversation Revision，复用 `answerSlotId`，旧版本设
+  `currentRevision=false`，新版本设 `true`。
+- 详细设计、测试证据和面试表达见：
+  [`docs/engineering-evolution/agent-runtime/chat-retry-cancel-hardening-2026-08-12.md`](docs/engineering-evolution/agent-runtime/chat-retry-cancel-hardening-2026-08-12.md)。
+
+### 游客与权限
+
+- 后端 `admin/*` 已强制 Admin RBAC；前端菜单隐藏不再被当作权限控制。
+- Guest 角色由后端产生并返回，游客不能上传论文。
+- 同一浏览器携带有效的 `paperloom_guest_session` Cookie 时复用游客身份，避免每次创建新用户；
+  限流仍是防刷的独立边界。
+- `ffa2cca`：游客登录按钮使用独立加载状态、旋转图标和轻量进度动画；登录期间禁用其他入口，避免重复提交。
+
+### PDF 与前端性能
+
+- Chat 页没有改成图片预览：图片可省 PDF 解析，但会损失文字层、缩放精度或框选坐标一致性，当前收益不足。
+- 已完成 PDF 标准 Range 请求与代理层修复，详见：
+  [`docs/performance/pdf-preview-standard-range-optimization-2026-08-11.md`](docs/performance/pdf-preview-standard-range-optimization-2026-08-11.md)。
+- 已记录定位结论：主要延迟不只来自 PDF 解析，网络、首屏 JS 和内容请求同样显著；不能用“换图片必快”替代测量。
+
+## 网络事件
+
+2026-08-12 观察到多次公网超时，但 Backend 没有 OOM、5xx 或自动重启。Cloudflare Tunnel 日志显示
+QUIC/UDP 连接反复断开，并多次出现 `timeout: no recent network activity`。
+
+已修改服务器：
+
+```text
+/etc/systemd/system/cloudflared.service
+ExecStart=/usr/bin/cloudflared --no-autoupdate tunnel --protocol http2 run --token-file /etc/cloudflared/token
+```
+
+备份：
+
+```text
+/etc/systemd/system/cloudflared.service.before-http2-20260812
+```
+
+切换后 4 条 Tunnel 连接均为 `protocol=http2`。Cloudflare 自检结果是 UDP region2 失败、TCP region1/2
+均通过，并建议使用 HTTP/2。当前未再发现新的 HTTP/2 Tunnel 超时，需继续观察。
+
+公网测速仅代表当时样本：
+
+```text
+首页连续请求：全部 200，典型 0.7-2.7s
+主包压缩后约 475KB：约 125-237KB/s，2.0-3.8s
+服务器本地 Nginx：首页约 0.5ms
+Cloudflare 接入点：LAX
+```
+
+结论：服务器应用响应快，公网链路仍偏慢；切 HTTP/2 主要改善稳定性，不保证提速。
+
+## 验证记录
+
+- `mvn -q -Dtest=ConversationServiceTest,ChatHandlerProductHarnessTest,ChatHandlerStopResponseTest test`：通过。
+- 前端 `vue-tsc --noEmit --skipLibCheck`：通过。
+- 前端生产构建与 Bundle 预算：通过；Login `438.1/500KB`，Chat shell `511.4/520KB`，Knowledge Base `521.8/700KB`。
+- 线上 `frontend=200`、未登录 `/api/v1/users/me=403`。
+- 浏览器控制当时不可用，因此游客动画只完成类型检查、构建和线上 HTTP 验证，未完成截图验收。
+
+## 部署方式
+
+普通发布遵循 [`docs/guides/operations.md`](docs/guides/operations.md)：
+
+```bash
+ssh wuyun
+cd /root/charles/paperloom
+git status --short
+git pull --ff-only
+```
+
+仅前端改动：
+
+```bash
+corepack pnpm --dir frontend install --frozen-lockfile
+corepack pnpm --dir frontend build
+```
+
+Nginx 直接读取 `frontend/dist`，不需要重启 Backend、Worker 或 Nginx。
+
+Java 改动：
+
+```bash
+mvn -DskipTests package
+systemctl restart paperloom-backend.service
+```
+
+单 Backend 重启约有 10 秒不可用窗口。不要为了纯 Java 改动重启 4 个 Worker；不要执行
+`docker compose down -v` 或 `git reset --hard`。
 
 ## 下一步
 
-本地内测产品 Gate 已完成，当前只需冻结并提交 release snapshot。实际部署到邀请制内测环境时：通过服务器 Secret 提供 MinerU、MiniMax、JWT、Qdrant 和内部 Harness 凭据；使用 Redis Streams worker；再复跑同一普通用户 Smoke。
+1. 观察 HTTP/2 Tunnel 24 小时日志，确认不再出现成批连接超时；有证据再决定是否进一步换线路或 CDN。
+2. 用浏览器人工验收游客登录动画：只点一次、按钮状态清晰、失败可恢复、不会创建重复 Guest。
+3. 如需严格验收 Retry MySQL 回退，在线上选择一个已超过 Redis TTL 的历史回答 Retry，确认生成新 Revision、原位置替换、旧 Revision 仍可查。
+4. 不做无证据优化：Chat PDF 暂不换图片，不扩 Worker 数，不引入新的部署系统。
 
-L2 剩余 miss 暂作为后续检索质量优化，不阻塞当前内测；不增加复杂 Token 预检或单轮上限。
+## 面试主线
 
-## 已执行验证
-
-- 14 个针对性 Java 测试通过。
-- 47 个 Python 测试通过。
-- 前端 `pnpm typecheck` 与生产构建通过；Chat shell 为 `511.1 KB / 520 KB`。
-- 普通用户端到端 Smoke 通过；MinerU 配置缺失时上传会明确进入 `FAILED` 并给出原因，注入有效 Secret 后可由重试接口恢复至 `COMPLETED`。
-- 未执行 Migration；当前没有线上环境，属预期行为。
+> 线上 Redis Worker 化后，我沿前端、Java、Redis Streams、Python Worker 和 MySQL 追踪 Retry、Cancel
+> 与运行状态。发现 Redis 临时快照 TTL 和 MySQL 历史生命周期不一致，于是采用 Redis 优先、MySQL
+> 兜底恢复 RetryContext；同时给 Cancel 增加对象级授权，并用 Answer Slot + Revision 保留历史而不覆盖。
+> 部署后又通过日志区分应用崩溃和 Tunnel 网络抖动，将不稳定的 QUIC/UDP 切换为 HTTP/2/TCP。
+> 所有性能与稳定性结论都保留复现步骤和实测证据，不编造提升数据。

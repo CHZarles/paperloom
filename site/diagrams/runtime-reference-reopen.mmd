@@ -1,0 +1,32 @@
+sequenceDiagram
+    autonumber
+    actor User
+    participant Folio as Chat / Evidence UI
+    participant API as PaperController
+    participant Conversation as ConversationService
+    participant Resolver as SourceQuoteResolver
+    participant Access as PaperAccessService
+    participant MySQL
+    participant Preview as PDF Preview Loader
+
+    User->>Folio: click persisted citation [n]
+    Folio->>API: GET /papers/reference-detail<br/>conversationRecordId + referenceNumber
+    API->>Conversation: findReferenceDetail(userId, recordId, n)
+    Conversation->>MySQL: load conversation by recordId + owner
+    Conversation->>MySQL: parse persisted reference mapping
+    alt mapping contains sourceQuoteRef
+        Conversation->>Resolver: resolveRegisteredCurrentQuote
+        Resolver->>MySQL: require quote registered to conversation
+        Resolver->>MySQL: require Source Quote in current READY model
+        Resolver-->>Conversation: authoritative paper, location, pages, source span
+    else legacy mapping
+        Conversation->>Conversation: normalize persisted detail
+    end
+    API->>Access: recheck current paper access
+    alt unauthorized, stale, or missing
+        API-->>Folio: 403 or 404 without opening evidence
+    else valid detail
+        API-->>Folio: authoritative reference detail
+        Folio->>Preview: open PDF at page + evidence region
+        Note over Folio,Preview: Byte-range PDF loading continues in the PDF Evidence Runtime
+    end

@@ -1,0 +1,51 @@
+sequenceDiagram
+    autonumber
+    actor User
+    participant Folio as Folio / WebSocket
+    participant Chat as ChatHandler
+    participant State as Redis Generation State
+    participant Transport as RedisResearchHarnessTransport
+    participant Streams as Redis Streams
+    participant Worker as Python Worker
+    participant Agent as Agents SDK Runtime
+    participant Corpus as Java Corpus API
+    participant Qdrant
+    participant MySQL
+    participant Model as MiniMax
+
+    User->>Folio: send question
+    Folio->>Chat: WebSocket chat command
+    Chat->>MySQL: authorize conversation + lock paper scope
+    Chat->>State: create STREAMING generation
+    Chat-->>Folio: generation_start
+    Chat->>Transport: submit ProductTurnRequest
+    Transport->>Transport: queue check + reserve quota
+    Transport->>Streams: XADD job
+    Streams->>Worker: consumer group claims job
+    Worker->>Worker: acquire and renew generation lock
+    Worker->>Agent: run research turn
+    loop model and tool loop
+        Agent->>Model: model request
+        Model-->>Agent: tool call
+        Agent->>Corpus: discover / search / exact read
+        Corpus->>Qdrant: hybrid candidate search
+        Qdrant-->>Corpus: candidate locations + bounded payloads
+        Corpus->>MySQL: reauthorize + validate Current Model
+        alt PASSAGE / TABLE / FIGURE
+            Corpus->>Corpus: validate cached Qdrant payload hash + span
+        else PAGE / SECTION
+            Corpus->>MySQL: read canonical structure text
+        end
+        Corpus-->>Agent: preview or Source Quote
+        Agent->>Streams: progress event
+        Streams-->>Transport: event
+        Transport-->>Chat: progressListener
+        Chat-->>Folio: WebSocket progress
+    end
+    Agent-->>Worker: validated ProductTurnResult
+    Worker->>Streams: terminal event + XACK + XDEL
+    Streams-->>Transport: result
+    Transport-->>Chat: future completed
+    Chat->>MySQL: save answer + references
+    Chat->>State: mark COMPLETED
+    Chat-->>Folio: answer + completion

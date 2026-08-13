@@ -1,0 +1,40 @@
+sequenceDiagram
+    autonumber
+    participant Runner as Agents SDK Runner
+    participant Model as MiniMax-M3
+    participant Guard as Protocol Guard
+    participant Tools as ReadingCorpusTools
+    participant Corpus as Java Corpus API
+    participant State as Run-local State
+
+    Note over Runner,State: One request-local Agent, Context, Session, and bounded RunControl
+    loop Until an accepted submission or terminal limit
+        Runner->>Model: model request<br/>tool_choice=required
+        Model-->>Runner: one or more Function Tool calls
+        Runner->>Guard: validate requested action
+        alt research or catalog tool allowed
+            Guard-->>Runner: accepted action
+            Runner->>Tools: execute serially<br/>max_function_tool_concurrency=1
+            Tools->>Corpus: search / structure / exact read
+            Corpus-->>Tools: candidates / locations / Source Quotes
+            Tools->>State: record disclosed paper, location, Source Quote
+            Tools-->>Runner: structured tool result
+            Runner->>Model: append tool result and continue
+        else submission requested
+            Guard->>State: check contract, format, known Source Quotes, block citations
+            alt missing research input
+                Guard-->>Runner: ACTIVE + allowed research tools
+                Runner->>Model: rejection details<br/>continue research
+            else repairable submission error
+                Guard-->>Runner: REPAIR + same submit tool only
+                Runner->>Model: validation issues<br/>repair submission
+            else accepted submission
+                Guard-->>Runner: COMPLETE + accepted draft
+                Runner-->>Runner: tools_to_final_output ends Run
+            end
+        else action forbidden
+            Guard-->>Runner: protocol error + allowed actions
+            Runner->>Model: structured correction
+        end
+    end
+    Runner-->>Runner: ProductTurnResult

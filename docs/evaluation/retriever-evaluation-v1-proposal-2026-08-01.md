@@ -6,7 +6,7 @@
 
 > 本文保留当前 PAGE/SECTION Location 检索评测的实现记录。它只适合作为 Corpus API/Qdrant/MySQL
 > 链路 Smoke 和现状诊断，不再作为检索质量建设方向。新的产品检索单位见
-> [Passage 检索层设计 Proposal](../architecture/passage-retrieval-proposal-2026-08-01.md)；该 Proposal 本次不
+> [Passage 检索层设计 Proposal](../engineering-evolution/architecture/passage-retrieval-proposal-2026-08-01.md)；该 Proposal 本次不
 > 修改 Golden Data 或定义新的质量评测，Passage 评测另开后续工作。
 
 ## 目标

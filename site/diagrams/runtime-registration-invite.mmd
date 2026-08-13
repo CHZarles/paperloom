@@ -1,0 +1,38 @@
+sequenceDiagram
+    autonumber
+    actor Admin
+    actor User
+    participant Folio
+    participant Security as Spring Security
+    participant AdminAPI as AdminController
+    participant UserAPI as UserController
+    participant Invite as InviteCodeService
+    participant Users as UserService
+    participant MySQL
+
+    Admin->>Folio: create invite code
+    Folio->>Security: POST /admin/invite-codes
+    Security->>Security: require ADMIN
+    Security->>AdminAPI: authenticated request
+    AdminAPI->>Invite: createInviteCodes
+    Invite->>Invite: validate count, expiry, uniqueness
+    Invite->>MySQL: save enabled code + maxUses
+    Invite-->>Folio: invite code
+    User->>Folio: register username, password, invite code
+    Folio->>UserAPI: POST /users/register
+    UserAPI->>Users: registerUser
+    Users->>Users: apply registration mode + password policy
+    alt registration closed
+        Users-->>Folio: 403 REGISTRATION_CLOSED
+    else invite required
+        Users->>Invite: consume code
+        Invite->>MySQL: SELECT code FOR UPDATE
+        Invite->>Invite: validate enabled, expiry, remaining uses
+        Invite->>MySQL: increment usedCount
+        Users->>MySQL: save BCrypt user with role USER
+        Users-->>Folio: registration complete
+    else open registration
+        Users->>MySQL: save BCrypt user with role USER
+        Users-->>Folio: registration complete
+    end
+    Note over Invite,MySQL: Invite consumption and user creation share the registration transaction<br/>a later failure rolls both back

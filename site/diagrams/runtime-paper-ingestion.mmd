@@ -1,0 +1,53 @@
+sequenceDiagram
+    autonumber
+    actor User as USER / ADMIN
+    participant Folio
+    participant API as PaperUploadController
+    participant Upload as UploadService
+    participant Redis as Redis bitmap
+    participant MinIO
+    participant MySQL
+    participant Kafka
+    participant Consumer as PaperProcessingConsumer
+    participant MinerU as ParseService / MinerU
+    participant Reading as Reading Model / Visual Assets
+    participant Index as RetrievalIndexingService
+    participant Qdrant
+
+    loop missing chunks
+        Folio->>API: POST /papers/upload/chunk
+        API->>Upload: uploadChunk
+        Upload->>Redis: check bitmap fast path
+        alt Redis miss but ChunkInfo exists
+            Upload->>Redis: backfill bitmap + idempotent success
+        else new chunk
+        Upload->>MinIO: store chunk
+        Upload->>MySQL: save ChunkInfo
+            Upload->>Redis: mark bitmap after durable metadata
+        end
+    end
+    Folio->>API: POST /papers/upload/merge
+    API->>Upload: mergeChunks
+    Upload->>MySQL: verify all expected ChunkInfo rows
+    Upload->>MinIO: verify every chunk object exists
+    Upload->>MinIO: compose merged/{paperId}
+    Upload->>MinIO: remove temporary chunk objects
+    Upload->>MySQL: upload COMPLETED
+    Upload->>Redis: delete temporary bitmap
+    API->>Kafka: PaperProcessingTask
+    Kafka->>Consumer: processTask
+    Consumer->>MinIO: read merged PDF
+    Consumer->>MinerU: parseAndSave
+    MinerU->>MinIO: save parser artifact
+    MinerU->>Reading: build pages, sections, elements, locations, passages
+    Reading->>MySQL: activate canonical Current Reading Model
+    Reading->>MinIO: save page screenshots and evidence crops
+    Reading->>MySQL: save visual-asset metadata
+    Consumer->>Index: indexWithMetrics
+    Index->>Qdrant: sparse + dense vectors
+    Index->>MySQL: indexing metrics
+    Consumer->>MySQL: processing COMPLETED
+    alt parse or indexing failure
+        Consumer->>MySQL: mark FAILED
+        Consumer--xKafka: retry / dead letter
+    end

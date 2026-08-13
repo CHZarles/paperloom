@@ -1,52 +1,85 @@
 # PaperLoom Documentation
 
-This directory contains the maintained public documentation for PaperLoom. It is intentionally
-smaller than the project's historical working notes: current guides explain how the system works;
-engineering-evolution records explain why it changed.
+This is the maintained technical-documentation index. Start with the smallest document that answers
+your question; dated proposals, incidents, and measurements are evidence archives rather than setup
+guides.
 
 ## Start Here
 
-- [Quick Start](getting-started/quick-start.md): run the dependencies, harness, backend, and frontend.
-- [Architecture Overview](architecture/overview.md): understand service boundaries and the main data flow.
-- [Reading Model and Agent Tools](architecture/reading-model-and-agent-tools.md): understand the persisted paper model, live MySQL projection, BM25 retrieval, and tool authorization ladder.
-- [Evidence and Citations](architecture/evidence-and-citations.md): follow evidence from parser output to a reopened reference.
-- [Agent Harness, Eval, and Benchmark Milestone](architecture/agent-harness-eval-benchmark-milestone-2026-08-12.md): current formal architecture, evaluation layers, frozen benchmark, and implementation references.
-- [Passage Retrieval Proposal](architecture/passage-retrieval-proposal-2026-08-01.md): proposed text-evidence unit, provenance, neighbor reading, indexing, evaluation, and rollout contract.
-- [Development Guide](guides/development.md): common commands, tests, and repository conventions.
-- [Deployment Guide](guides/deployment.md): production-oriented configuration and process layout.
-- [Wuyun + Cloudflare Tunnel 部署实录](guides/wuyun-cloudflare-tunnel-deployment.md)：实际私有源站与
-  公网域名接入步骤。
-- [运维指南](guides/operations.md)：上线后的检查、发布、备份、排障与密钥轮换。
-- [Configuration Reference](reference/configuration.md): environment-variable groups and ownership.
+| Goal | Read |
+| --- | --- |
+| Run the system locally | [Quick Start](getting-started/quick-start.md) |
+| Understand the current system | [Architecture Overview](architecture/overview.md) |
+| Follow a specific business request | [Runtime Diagram Catalog](architecture/runtime-diagrams.md) |
+| Develop or test the repository | [Development Guide](guides/development.md) |
+| Configure or deploy it | [Configuration](reference/configuration.md) and [Deployment Guide](guides/deployment.md) |
+| Understand why the design changed | [Engineering Evolution](engineering-evolution/README.md) |
+| Prepare to explain the project | [Interview Materials](../interview/README.md) |
 
-## Product and Research
+## Current System
 
-- [Evaluation System](evaluation/README.md)
-- [Retrieval Benchmark Workflow](evaluation/retrieval-method-benchmark.md)
-- [Product Requirements](reference/product-requirements.md)
-- [Domain Language](reference/domain-language.md)
+These documents describe behavior that maintainers should keep synchronized with code.
 
-The large reference documents are detailed contracts. They are not the fastest onboarding path;
-begin with the architecture and development guides.
+- [Architecture Overview](architecture/overview.md): service boundaries, storage roles, and the live request path.
+- [Runtime Diagram Catalog](architecture/runtime-diagrams.md): sequence diagrams grouped by business workflow.
+- [Reading Model and Agent Tools](architecture/reading-model-and-agent-tools.md): durable paper model, retrieval, and tool authorization.
+- [Evidence and Citations](architecture/evidence-and-citations.md): parser output through exact reads to reopened references.
+- [Governed Research Run](architecture/governed-research-run-spec.md): implemented limits, failure classes, and promotion gate.
+- [Naming Contract](architecture/naming.md): Folio and PaperLoom names used across product and code.
+- [Domain Language](reference/domain-language.md): canonical product and architecture vocabulary.
+- [Product Requirements](reference/product-requirements.md): maintained product contract.
 
-## Decisions and Evolution
+## Operate The System
 
-- [Architecture Decision Records](adr/)
-- [Engineering Evolution Index](engineering-evolution/README.md)
-- [Engineering Evolution Timeline](engineering-evolution/timeline.md)
-- [First Product ReAct Harness Design](engineering-evolution/agent-runtime/product-react-harness-design-2026-06.md)
-- [Public Practice Journal](https://chzarles.github.io/paperloom/practice/)
+- [Quick Start](getting-started/quick-start.md)
+- [Development Guide](guides/development.md)
+- [Deployment Guide](guides/deployment.md)
+- [Operations Guide](guides/operations.md)
+- [Wuyun + Cloudflare Tunnel Deployment Record](guides/wuyun-cloudflare-tunnel-deployment.md)
+- [Configuration Reference](reference/configuration.md)
 
-Raw implementation plans, generated repository wikis, temporary debugging notes, and superseded
-onboarding documents are deliberately excluded from the public documentation tree.
+Deployment assets stay beside these guides: [`docker-compose.yaml`](docker-compose.yaml),
+[`nginx.conf`](nginx.conf), and [`launch/`](launch/). Database DDL and migrations live in
+[`databases/`](databases/); machine-readable service contracts live in [`contracts/`](contracts/).
 
-## Documentation Policy
+## Decisions, Specs, And History
 
-A maintained document must satisfy at least one of these purposes:
+| Type | Location | Meaning |
+| --- | --- | --- |
+| Accepted architecture decisions | [`adr/`](adr/) | Stable decision, rationale, and consequences |
+| Current architecture and contracts | [`architecture/`](architecture/) | Maintained runtime or product behavior |
+| Proposals and migration records | [`engineering-evolution/`](engineering-evolution/) | Why the system changed or may change |
+| Incidents and verification | [`engineering-evolution/`](engineering-evolution/) | Evidence, diagnosis, correction, and outcome |
+| Performance experiments | [`performance/`](performance/) | Reproduction steps and measured before/after data |
+| Evaluation design | [`evaluation/`](evaluation/) | Scoring, benchmark, and Golden Data contracts |
+| Historical implementation plans | [`superpowers/`](superpowers/) | Point-in-time work plans, not current truth |
 
-1. Explain current behavior or an operational procedure.
-2. Define a current product, architecture, or evaluation contract.
-3. Preserve a consequential engineering decision with evidence and outcome.
+Start with the [Engineering Evolution Index](engineering-evolution/README.md) or its
+[Timeline](engineering-evolution/timeline.md). Do not use a dated proposal as current behavior unless
+its status says it was implemented and the current architecture agrees.
 
-Documents that no longer satisfy one of those purposes should be corrected, condensed into an
-evolution record, or deleted.
+## Specialized Collections
+
+- [`harness_py/`](../harness_py/README.md): Python Harness operation and Agents SDK onboarding.
+- [`research/golden-data/`](../research/golden-data/README.md): Golden cases, schemas, adjudication, and frozen runs.
+- [`research/`](../research/README.md): research designs, benchmark data, exploratory notes, and Golden Data.
+- [`interview/`](../interview/README.md): learning guides, project evidence map, and defensible project stories.
+- [`site/`](../site/index.md): public project-site source and selected engineering narratives.
+- [`diagrams/`](../diagrams/README.md): legacy review-diagram sources; current runtime sources live in `site/diagrams/`.
+
+## Repository-Level Documents
+
+- [`README.md`](../README.md) and [`README.zh-CN.md`](../README.zh-CN.md): concise public project entry points.
+- [`CONTRIBUTING.md`](../CONTRIBUTING.md): contribution workflow and required checks.
+- [`SECURITY.md`](../SECURITY.md): vulnerability reporting and operational security.
+- [`HANDOFF.md`](../HANDOFF.md): temporary maintainer handoff; update or replace it as work changes.
+- [`AGENTS.md`](../AGENTS.md) and [`CLAUDE.md`](../CLAUDE.md): instructions for coding agents, not product documentation.
+- [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md): third-party license notices.
+
+## Documentation Rules
+
+1. Put current behavior in `architecture/`, `guides/`, or `reference/` and keep it synchronized with code.
+2. Put consequential changes, incidents, and measurements in `engineering-evolution/` or `performance/`.
+3. Put normative decisions in `adr/`; include status in dated specs and proposals.
+4. Keep generated data and raw experiment output with its owning research or performance collection.
+5. Link from this index instead of expanding the root README into a document dump.

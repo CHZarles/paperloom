@@ -1,0 +1,52 @@
+sequenceDiagram
+    autonumber
+    actor Admin
+    actor User
+    participant Folio
+    participant UserAPI as UserController
+    participant Security as Spring Security
+    participant AdminAPI as AdminController
+    participant Transport as RedisResearchHarnessTransport
+    participant Quota as UsageBalanceQuotaService
+    participant Redis as Redis Balance
+    participant Worker as Python Worker
+    participant MySQL as MySQL Token Ledger
+
+    rect rgb(240, 243, 240)
+        Admin->>Folio: add LLM / embedding tokens
+        Folio->>Security: POST /admin/users/{id}/tokens/add
+        Security->>Security: require ADMIN
+        Security->>AdminAPI: authenticated request
+        AdminAPI->>AdminAPI: validate target, amount, reason, overflow
+        AdminAPI->>MySQL: append INCREASE ledger record
+        AdminAPI->>Redis: increment current balance
+        AdminAPI-->>Folio: balance + usage snapshot
+    end
+    rect rgb(237, 241, 239)
+        User->>Folio: start research chat
+        Folio->>Transport: submit generation
+        Transport->>Quota: reserve estimated LLM tokens
+        Quota->>Redis: atomic check-and-decrement
+        alt insufficient balance
+            Redis-->>Folio: reject before enqueue
+        else reservation succeeds
+            Transport->>Worker: enqueue and execute generation
+            alt result event
+                Worker-->>Transport: actual total_tokens
+                Transport->>Quota: settle reservation
+                Quota->>Redis: refund unused or charge excess
+                Quota->>MySQL: append CONSUME ledger record
+                Transport-->>Folio: answer completed
+            else error, cancel, timeout, or enqueue failure
+                Transport->>Quota: abort reservation once
+                Quota->>Redis: release reserved tokens
+                Transport-->>Folio: terminal failure / cancellation
+            end
+        end
+    end
+    User->>Folio: open usage / token records
+    Folio->>UserAPI: GET /users/usage and /users/token-records
+    UserAPI->>Quota: read usage snapshot
+    Quota->>Redis: read current balances
+    UserAPI->>MySQL: read paged audit ledger
+    UserAPI-->>Folio: balances + token records

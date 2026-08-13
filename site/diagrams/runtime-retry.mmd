@@ -1,0 +1,30 @@
+sequenceDiagram
+    autonumber
+    actor User
+    participant Folio
+    participant Chat as ChatHandler
+    participant State as Redis Generation State
+    participant Conversation as ConversationService
+    participant MySQL
+    participant Transport as ResearchHarnessTransport
+
+    User->>Folio: Retry completed answer
+    Folio->>Chat: retryGeneration(oldGenerationId, clientId)
+    Chat->>State: check active generation for client
+    Chat->>State: getGenerationForUser(oldGenerationId, userId)
+    alt Redis snapshot exists
+        State-->>Chat: snapshot + conversationRecordId
+        Chat->>Conversation: prepareUserRetry with recordId
+        Conversation->>MySQL: load parent by recordId + userId
+    else Redis snapshot expired
+        State-->>Chat: empty
+        Chat->>Conversation: prepareUserRetry with generationId
+        Conversation->>MySQL: load parent by generationId + userId
+    end
+    Conversation->>MySQL: validate completion, ownership, revision limit
+    Conversation-->>Chat: ConversationRetryContext
+    Chat->>State: create new generation
+    Chat->>Transport: submit new job with retry context
+    Transport-->>Chat: new answer completed
+    Chat->>MySQL: old current=false<br/>new current=true
+    Chat-->>Folio: replace the same answerSlotId

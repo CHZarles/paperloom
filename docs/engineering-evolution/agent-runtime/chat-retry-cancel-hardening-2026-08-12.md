@@ -44,13 +44,13 @@
 3. 无权访问、Generation 不存在或已经终态时，不写 Redis Cancel Key。
 4. 增加回归检查：用户 A 不能取消用户 B 的任务；合法用户可取消自己的 STREAMING 任务。
 
-### Phase 2：让历史回答可以 Retry（部分完成）
+### Phase 2：让历史回答可以 Retry（已完成）
 
 1. 已修复历史消息缺少 `status=finished`，页面刷新后可继续显示 Retry 入口。
-2. 待为 `ConversationService` 增加按 `generationId + userId` 构造 Retry Context 的持久化路径。
-3. 待让 `ChatHandler.retryGeneration` 在 Redis Snapshot 不存在时回退 MySQL。
+2. `ConversationService` 已增加按 `generationId + userId` 构造 Retry Context 的持久化路径。
+3. `ChatHandler.retryGeneration` 已在 Redis Snapshot 不存在时回退 MySQL。
 4. 两条路径共用相同的 Revision 上限、Conversation 所有权和 Active Generation 检查。
-5. 增加回归检查：删除或模拟过期 Redis Snapshot 后，已持久化回答仍可开始新的 Generation。
+5. 已增加回归检查：删除或模拟过期 Redis Snapshot 后，已持久化回答仍可开始新的 Generation。
 
 ### Phase 3：真实链路验收
 
@@ -71,19 +71,18 @@
 | 2026-08-12 | 运行 `mvn -q -Dtest=ChatHandlerStopResponseTest test` | 3 个 Cancel 定向测试全部通过，完成 Red -> Green |
 | 2026-08-12 | 发现历史消息缺少前端要求的 `status` 字段 | 刷新或重新进入 Session 后，所有历史 assistant 消息都无法满足 Retry 的显示条件 |
 | 2026-08-12 | `ConversationService.buildMessage` 为持久化 assistant 消息补 `status=finished`，并运行两个定向测试类 | `ConversationServiceTest`、`ChatHandlerStopResponseTest` 全部通过 |
-| 2026-08-12 | Phase 2 前端入口修复 | 已完成；Redis 过期后的后端 MySQL 回退仍待实现 |
-| 待更新 | 线上真实链路验收 | 待完成 |
-
-| 2026-08-12 | 新增 `prepareUserRetry` 的 MySQL generation 回退红灯测试并运行 | 测试按预期失败：当前方法只接受 `conversationRecordId`，传入 `null` 时返回空；说明回退入口尚未实现，测试能捕获目标缺陷 |
-| 2026-08-12 | 在 `ConversationService.prepareUserRetry` 中增加最小回退：有记录 ID 按记录查询，无记录 ID 按 `generationId + userId` 查询 | 两个上下文构造测试通过；MySQL 回退能力已具备，但 `ChatHandler` 仍需在 Redis 快照缺失时调用这条路径 |
-| 2026-08-12 | 调整 `ChatHandler.retryGeneration`：Redis Snapshot 存在时继续校验状态并使用记录 ID；Snapshot 缺失时将 `generationId` 和 `null` 记录 ID交给 `prepareUserRetry` | 新增 Redis 过期场景测试通过；Retry 已能进入 MySQL 上下文恢复路径 |
+| 2026-08-12 | Phase 2 前端入口修复 | 已完成；历史 assistant 消息会返回 `status=finished` |
+| 2026-08-12 | 新增 `prepareUserRetry` 的 MySQL generation 回退红灯测试并运行 | 测试按预期失败：当时的方法只接受 `conversationRecordId`，传入 `null` 时返回空；证明回退入口尚未实现 |
+| 2026-08-12 | 在 `ConversationService.prepareUserRetry` 中增加最小回退：有记录 ID 按记录查询，无记录 ID 按 `generationId + userId` 查询 | 两个上下文构造测试通过；MySQL 回退能力已具备 |
+| 2026-08-12 | 调整 `ChatHandler.retryGeneration`：Redis Snapshot 存在时继续校验状态并使用记录 ID；Snapshot 缺失时将 `generationId` 和 `null` 记录 ID 交给 `prepareUserRetry` | 新增 Redis 过期场景测试通过；Retry 已能进入 MySQL 上下文恢复路径 |
 | 2026-08-12 | 运行 `ConversationServiceTest`、`ChatHandlerProductHarnessTest`、`ChatHandlerStopResponseTest` 定向回归 | 命令退出码为 0；正常 Redis Retry、Redis 过期 MySQL 回退、版本构造和 Cancel 回归均通过 |
 | 2026-08-12 | 检查 Redis 与 MySQL 两条路径的参数和权限边界，并在过期测试中断言不会伪造记录 ID | Redis 路径仍传递真实 `conversationRecordId`；过期路径只传 `generationId + userId`，Revision 上限继续由同一个 `prepareUserRetry` 执行 |
 | 2026-08-12 | 推送 `cf9abfe`，服务器 fast-forward、构建并重启 `paperloom-backend.service` | 线上运行版本为 `cf9abfe`；Backend 和 4 个 Redis Worker 为 `active`，公网首页 `200`，未登录 API `403` |
+| 待更新 | 线上真实链路验收 | 待完成 |
 
-### 当前下一步（2026-08-12）
+### 实现过程（2026-08-12）
 
-本轮不先改 Redis TTL，也不直接改生产代码。先建立一个能准确复现问题的红灯测试：
+本轮没有先改 Redis TTL，而是先建立一个能准确复现问题的红灯测试：
 
 ```text
 Redis 中找不到 parent generation snapshot
@@ -92,19 +91,19 @@ MySQL 中存在同用户、同 generationId 的已完成 Conversation
 预期：成功构造 ConversationRetryContext，而不是返回“原回答不存在”
 ```
 
-这样可以先证明问题确实是“Redis 运行态过期后没有持久化回退”，而不是把别的 Retry 问题误当成根因。
-测试通过后再实现最小回退：按 `generationId + userId` 查询 MySQL，复用现有
-`prepareUserRetry` 的版本上限、Answer Slot 和上下文构造逻辑。
+该测试证明问题确实是“Redis 运行态过期后没有持久化回退”，而不是其他 Retry 问题。随后实现
+最小回退：按 `generationId + userId` 查询 MySQL，复用现有 `prepareUserRetry` 的版本上限、
+Answer Slot 和上下文构造逻辑。
 
 ### 代码定位结果
 
-- `ChatHandler.retryGeneration` 当前在 `getGenerationForUser(...)` 为空时直接抛出“原回答不存在”；
-  这就是需要接入回退的入口。
+- `ChatHandler.retryGeneration` 在 `getGenerationForUser(...)` 为空时，将空记录 ID 交给
+  `prepareUserRetry(...)`，由后者按 `generationId + userId` 查询 MySQL。
 - `ConversationRepository` 已经存在 `findFirstByGenerationIdAndUserId(...)`，因此不需要新增查询接口。
 - `ConversationService.prepareUserRetry(...)` 已经负责用户归属、Revision 上限、Answer Slot 和上下文
   字段构造；优先复用，不复制一套 Retry 规则。
-- 当前结论：缺的不是 MySQL 查询能力，而是“Redis 找不到时，如何把 MySQL 查到的记录交给现有
-  `prepareUserRetry`”这一小段连接逻辑。
+- 当时缺的不是 MySQL 查询能力，而是“Redis 找不到时，如何把 MySQL 查到的记录交给现有
+  `prepareUserRetry`”这一小段连接逻辑；该连接现已实现。
 
 ## 5. 面试表达草稿
 
@@ -174,5 +173,5 @@ Retry 后：  record=205, slot=101, revision=2, current=true, generation=gen-b,
 > State 和 MySQL Conversation 追踪完整链路。发现运行态依赖有 TTL 的 Redis，而历史事实在 MySQL，
 > 两者生命周期不一致；同时 Retry 使用版本化记录而不是覆盖原答案。最终方案是 Redis 优先、MySQL
 > 兜底，使用 `answerSlotId + answerRevision + currentRevision` 管理展示和历史，并保留父记录与旧
-> Generation 关系，保证可追溯。当前已完成历史消息 `status` 修复和 Cancel 所有权校验，MySQL Retry
-> 回退仍按记录的 Phase 2 计划实现和验证。
+> Generation 关系，保证可追溯。历史消息 `status` 修复、Cancel 所有权校验和 MySQL Retry 回退
+> 均已完成定向回归；线上真实历史 Retry 仍需单独验收。

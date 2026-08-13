@@ -1,0 +1,60 @@
+sequenceDiagram
+    autonumber
+    actor Owner
+    actor Admin
+    participant Folio
+    participant Security as Spring Security
+    participant PaperAPI as PaperController
+    participant AdminAPI as Admin Paper APIs
+    participant Paper as PaperService
+    participant Kafka
+    participant Consumer as PaperProcessingConsumer
+    participant Index as ReadingModelQdrantIndexService
+    participant MySQL
+    participant Qdrant
+    participant MinIO
+
+    alt retry failed initial processing
+        Owner->>Folio: Retry processing
+        Folio->>PaperAPI: POST /papers/{paperId}/processing/retry
+        PaperAPI->>Paper: require owned FAILED and not searchable
+        Paper->>MySQL: mark PROCESSING
+        Paper->>Kafka: RETRY_INITIAL task keyed by paperId
+        Kafka->>Consumer: consume retry task
+        alt current Reading Model is READY
+            Consumer->>Consumer: reuse model and retry failed index only
+        else model missing or not READY
+            Consumer->>MinIO: read merged PDF
+            Consumer->>MySQL: parse and save a new Reading Model
+        end
+        Consumer->>Index: index current model
+        Index->>Qdrant: replace paper points + verify count
+        Index->>MySQL: mark index READY or FAILED
+    else publish or unpublish
+        Admin->>Security: POST or DELETE /admin/papers/{paperId}/publication
+        Security->>Security: require ADMIN
+        Security->>AdminAPI: authenticated administratorId
+        AdminAPI->>MySQL: require paper in admin library and searchable
+        AdminAPI->>MySQL: insert or delete PaperPublication
+        Note over AdminAPI,MySQL: Publication makes the paper globally accessible
+    else rebuild retrieval index
+        Admin->>Security: POST /admin/retrieval/papers/{paperId}/rebuild
+        Security->>AdminAPI: require ADMIN
+        AdminAPI->>Index: claim current READY model
+        Index->>Qdrant: delete old points, encode, upsert, verify count
+        Index->>MySQL: mark retrieval index READY or FAILED
+    else delete library entry
+        Owner->>PaperAPI: DELETE /papers/{paperId}
+        PaperAPI->>Paper: require requester-owned library entry
+        alt last entry is still published
+            Paper-->>Folio: 409 unpublish first
+        else another library entry remains
+            Paper->>MySQL: delete only this owner's entry
+            Paper-->>Folio: shared physical artifacts retained
+        else final library entry
+            Paper->>MySQL: delete entry + Reading Model rows
+            Paper->>Qdrant: delete paper points
+            Paper->>MinIO: delete PDF, chunks, parser artifacts, visual assets
+            Paper-->>Folio: deletion complete
+        end
+    end

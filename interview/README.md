@@ -1,5 +1,11 @@
 # PaperLoom 中文面试材料总目录
 
+> 学习目标与资料入口统一收录在本目录：
+> [`project-evidence-map.md`](project-evidence-map.md) 负责事实边界，
+> [`project-stories.md`](project-stories.md) 负责项目故事，`guides/` 负责专题复习。
+
+学习过程资料放在 [`learning/`](learning/)：目标、教学约束和外部资料，不属于项目技术文档。
+
 这里不是重新编一套八股，也不是把《面渣逆袭》整本改写一遍。整理原则只有三条：
 
 1. 题目必须来自 `面渣逆袭` 目录下现有 PDF，并标明原书题号。

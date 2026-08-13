@@ -1,0 +1,31 @@
+sequenceDiagram
+    autonumber
+    actor User as Guest
+    participant Folio
+    participant Auth as UserController
+    participant JWT as JwtUtils
+    participant Redis
+    participant DB as MySQL
+    participant Security as Spring Security
+
+    User->>Folio: Continue as guest
+    Folio->>Auth: POST /users/guest-login + guest cookie
+    alt valid cookie and GUEST exists
+        Auth->>JWT: validate refresh token
+        Auth->>DB: findByUsername
+        DB-->>Auth: reuse GUEST user
+    else no reusable guest
+        Auth->>Redis: atomic shared daily-attempt check
+        alt guest-login limit exceeded or Redis unavailable
+            Redis-->>Auth: fail closed
+            Auth-->>Folio: 429 or 503
+        else allowed
+            Auth->>DB: create GUEST user
+            Auth->>JWT: generate refresh token
+        end
+    end
+    Auth->>JWT: generate access token
+    Auth-->>Folio: token + HttpOnly cookie
+    Folio->>Auth: GET /users/me
+    Auth-->>Folio: server-owned role = GUEST
+    Note right of Security: GUEST can chat and search own history<br/>Upload requires USER or ADMIN<br/>Admin APIs require ADMIN

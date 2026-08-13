@@ -1,0 +1,35 @@
+sequenceDiagram
+    autonumber
+    actor User
+    participant Folio
+    participant WS as WebSocket
+    participant API as ChatController
+    participant State as Redis Generation State
+    participant MySQL
+
+    User->>Folio: reopen tab or network reconnects
+    Folio->>WS: reconnect with access token + stable clientId
+    WS-->>Folio: connection handshake
+    alt browser knows pending generationId
+        Folio->>API: GET /chat/generation/{generationId}
+        API->>State: getGenerationForUser
+    else no local generationId
+        Folio->>API: GET /chat/active-generation?clientId=...
+        API->>State: getActiveGenerationForUserAndClient
+    end
+    State-->>Folio: owned snapshot or empty
+    alt STREAMING
+        Folio->>Folio: restore pending assistant + progress state
+        loop no stream content change for 8 seconds
+            Folio->>API: GET generation snapshot every 2 seconds
+            API->>State: read current status
+            State-->>Folio: STREAMING / terminal snapshot
+        end
+    else COMPLETED
+        Folio->>Folio: apply terminal snapshot
+        Folio->>MySQL: reload persisted conversation when needed
+    else FAILED or CANCELLED
+        Folio->>Folio: stop loading state and show terminal result
+        Folio->>MySQL: restore persisted branch after failed Retry
+    end
+    Note over API,State: All generation reads are scoped to the authenticated user<br/>clientId prevents one tab from adopting another tab's active run

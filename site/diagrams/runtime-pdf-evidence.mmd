@@ -1,0 +1,34 @@
+sequenceDiagram
+    autonumber
+    actor User
+    participant Folio as Chat / Evidence UI
+    participant Loader as PDF Preview Loader
+    participant API as Java PDF API
+    participant Auth as Paper Access Filter
+    participant MinIO
+    participant PDFJS as PDF.js
+
+    User->>Folio: open citation
+    Folio->>Loader: createPdfPreviewSource(url, token)
+    Loader->>Loader: check source/range cache
+    alt cache hit
+        Loader-->>PDFJS: cached bytes
+    else first open
+        Loader->>API: GET Range bytes=0-1048575
+        API->>Auth: authenticate + authorize paper
+        Auth-->>API: allowed
+        API->>MinIO: read initial range
+        MinIO-->>API: PDF bytes
+        API-->>Loader: 206 + Content-Range
+        Loader-->>PDFJS: PDFDataRangeTransport + initialData
+        loop missing PDF ranges
+            PDFJS->>Loader: requestDataRange(begin, end)
+            Loader->>Loader: deduplicate + range cache
+            Loader->>API: GET PDF Range
+            API->>MinIO: read target range
+            MinIO-->>API: range bytes
+            API-->>Loader: 206 Partial Content
+            Loader-->>PDFJS: onDataRange
+        end
+    end
+    PDFJS-->>Folio: page + text layer + evidence boxes

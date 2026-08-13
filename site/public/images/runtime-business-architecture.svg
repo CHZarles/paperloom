@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1040" viewBox="0 0 1800 1040" role="img" aria-labelledby="title description">
+  <title id="title">PaperLoom major business runtime architecture</title>
+  <desc id="description">Major PaperLoom product surfaces, the Java control plane, asynchronous paper processing, Redis research dispatch, the bounded Python Agent loop, and the MySQL, Redis, MinIO, and Qdrant data plane.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L10 5L0 10Z" fill="#66766f"/>
+    </marker>
+    <marker id="arrow-start" viewBox="0 0 10 10" refX="1.5" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M10 0L0 5L10 10Z" fill="#66766f"/>
+    </marker>
+    <style>
+      .canvas{fill:#f7f8f5}.band-client{fill:#f1f3f1;stroke:#b7c1be;stroke-width:1.5}.band-java{fill:#eef2f8;stroke:#aebed8;stroke-width:1.5}.band-exec{fill:#edf5f1;stroke:#afc8bc;stroke-width:1.5}.band-data{fill:#fbf8ef;stroke:#d8c7a7;stroke-width:1.5}.client{fill:#18212b;stroke:#18212b;stroke-width:2}.java{fill:#e8eef9;stroke:#2356d8;stroke-width:2}.async{fill:#e7f1ec;stroke:#327a63;stroke-width:2}.agent{fill:#fff7e7;stroke:#b6781f;stroke-width:2}.data{fill:#fff;stroke:#8c9995;stroke-width:1.8}.loop{fill:none;stroke:#b6781f;stroke-width:2;stroke-dasharray:8 6}.edge{fill:none;stroke:#66766f;stroke-width:2.2;marker-end:url(#arrow)}.both{fill:none;stroke:#66766f;stroke-width:2.2;marker-start:url(#arrow-start);marker-end:url(#arrow)}.data-edge{fill:none;stroke:#b6781f;stroke-width:2.2;marker-end:url(#arrow)}.title{fill:#18212b;font:700 28px Arial,sans-serif}.subtitle{fill:#4c5962;font:15px Arial,sans-serif}.kicker,.group{fill:#327a63;font:700 14px Consolas,monospace}.group{fill:#4c5962}.node-title{fill:#18212b;font:700 16px Arial,sans-serif}.node-light{fill:#fff;font:700 16px Arial,sans-serif}.copy{fill:#4c5962;font:13px Arial,sans-serif}.copy-light{fill:#dce6e1;font:13px Arial,sans-serif}.label{fill:#4c5962;font:700 11px Consolas,monospace}.loop-label{fill:#8a5a18;font:700 11px Consolas,monospace}.foot{fill:#4c5962;font:14px Arial,sans-serif}
+    </style>
+  </defs>
+
+  <rect class="canvas" width="1800" height="1040"/>
+  <text class="kicker" x="40" y="38">PAPERLOOM / MAJOR BUSINESS RUNTIME</text>
+  <text class="title" x="40" y="74">Product workflows share one Java control plane and one bounded research Agent</text>
+  <text class="subtitle" x="40" y="101">Architecture view: business surfaces and ownership boundaries. The workflow sequence diagrams below show call order and failure branches.</text>
+
+  <rect class="band-client" x="30" y="125" width="1740" height="140" rx="6"/>
+  <text class="group" x="55" y="151">FOLIO / PRODUCT SURFACES</text>
+  <rect class="client" x="60" y="170" width="280" height="70" rx="5"/>
+  <text class="node-light" x="200" y="199" text-anchor="middle">Account + guest entry</text><text class="copy-light" x="200" y="221" text-anchor="middle">register / login / refresh / logout</text>
+  <rect class="client" x="405" y="170" width="280" height="70" rx="5"/>
+  <text class="node-light" x="545" y="199" text-anchor="middle">Paper library</text><text class="copy-light" x="545" y="221" text-anchor="middle">upload / collections / lifecycle</text>
+  <rect class="client" x="750" y="170" width="280" height="70" rx="5"/>
+  <text class="node-light" x="890" y="199" text-anchor="middle">Research Chat</text><text class="copy-light" x="890" y="221" text-anchor="middle">progress / Retry / Cancel / recovery</text>
+  <rect class="client" x="1095" y="170" width="280" height="70" rx="5"/>
+  <text class="node-light" x="1235" y="199" text-anchor="middle">Citation + PDF evidence</text><text class="copy-light" x="1235" y="221" text-anchor="middle">reference reopen / Range preview</text>
+  <rect class="client" x="1440" y="170" width="280" height="70" rx="5"/>
+  <text class="node-light" x="1580" y="199" text-anchor="middle">Admin console</text><text class="copy-light" x="1580" y="221" text-anchor="middle">users / tokens / conversation audit</text>
+
+  <rect class="band-java" x="30" y="290" width="1740" height="190" rx="6"/>
+  <text class="group" x="55" y="316">JAVA / PRODUCT CONTROL PLANE</text>
+  <rect class="java" x="55" y="340" width="245" height="105" rx="5"/>
+  <text class="node-title" x="177.5" y="371" text-anchor="middle">Authentication + RBAC</text><text class="copy" x="177.5" y="397" text-anchor="middle">server-owned role</text><text class="copy" x="177.5" y="419" text-anchor="middle">JWT + Redis token state</text>
+  <rect class="java" x="340" y="340" width="245" height="105" rx="5"/>
+  <text class="node-title" x="462.5" y="371" text-anchor="middle">Paper domain</text><text class="copy" x="462.5" y="397" text-anchor="middle">upload + collections</text><text class="copy" x="462.5" y="419" text-anchor="middle">retry / publish / delete</text>
+  <rect class="java" x="625" y="340" width="245" height="105" rx="5"/>
+  <text class="node-title" x="747.5" y="371" text-anchor="middle">Conversation domain</text><text class="copy" x="747.5" y="397" text-anchor="middle">session + locked scope</text><text class="copy" x="747.5" y="419" text-anchor="middle">history + revisions</text>
+  <rect class="java" x="910" y="340" width="245" height="105" rx="5"/>
+  <text class="node-title" x="1032.5" y="371" text-anchor="middle">Generation + quota</text><text class="copy" x="1032.5" y="397" text-anchor="middle">state + reconnect</text><text class="copy" x="1032.5" y="419" text-anchor="middle">reserve / settle / abort</text>
+  <rect class="java" x="1195" y="340" width="245" height="105" rx="5"/>
+  <text class="node-title" x="1317.5" y="371" text-anchor="middle">Java Corpus API</text><text class="copy" x="1317.5" y="397" text-anchor="middle">fixed scope + candidates</text><text class="copy" x="1317.5" y="419" text-anchor="middle">validated exact read</text>
+  <rect class="java" x="1480" y="340" width="245" height="105" rx="5"/>
+  <text class="node-title" x="1602.5" y="371" text-anchor="middle">Admin control</text><text class="copy" x="1602.5" y="397" text-anchor="middle">users + usage</text><text class="copy" x="1602.5" y="419" text-anchor="middle">conversation audit</text>
+
+  <path class="edge" d="M200 240V340H177.5"/><path class="edge" d="M545 240V320H462.5V340"/><path class="edge" d="M890 240V320H747.5V340"/><path class="edge" d="M890 240V305H1032.5V340"/><path class="edge" d="M1235 240V340H1317.5"/><path class="edge" d="M1580 240V340H1602.5"/>
+
+  <rect class="band-exec" x="30" y="505" width="1740" height="315" rx="6"/>
+  <text class="group" x="55" y="531">ASYNCHRONOUS + MODEL EXECUTION</text>
+  <rect class="async" x="60" y="570" width="330" height="135" rx="5"/>
+  <text class="node-title" x="225" y="603" text-anchor="middle">Paper ingestion runtime</text><text class="copy" x="225" y="631" text-anchor="middle">Kafka PaperProcessingTask</text><text class="copy" x="225" y="654" text-anchor="middle">Consumer -&gt; MinerU -&gt; Reading Model</text><text class="copy" x="225" y="677" text-anchor="middle">visual assets + Qdrant index</text>
+  <rect class="async" x="430" y="570" width="290" height="135" rx="5"/>
+  <text class="node-title" x="575" y="603" text-anchor="middle">Research dispatch</text><text class="copy" x="575" y="631" text-anchor="middle">Redis Streams jobs + events</text><text class="copy" x="575" y="654" text-anchor="middle">leased RedisResearchWorkers</text><text class="copy" x="575" y="677" text-anchor="middle">progress + terminal result</text>
+
+  <rect class="loop" x="765" y="545" width="965" height="245" rx="8"/>
+  <text class="loop-label" x="1247.5" y="565" text-anchor="middle">BOUNDED AGENT LOOP: MODEL -&gt; FUNCTION TOOL -&gt; GUARD -&gt; CORPUS TOOL -&gt; RESULT -&gt; MODEL</text>
+  <rect class="agent" x="795" y="605" width="205" height="110" rx="5"/><text class="node-title" x="897.5" y="639" text-anchor="middle">Agents SDK Runner</text><text class="copy" x="897.5" y="666" text-anchor="middle">Context + Agent</text><text class="copy" x="897.5" y="689" text-anchor="middle">request-local Session</text>
+  <rect class="agent" x="1040" y="605" width="180" height="110" rx="5"/><text class="node-title" x="1130" y="639" text-anchor="middle">MiniMax-M3</text><text class="copy" x="1130" y="666" text-anchor="middle">model response</text><text class="copy" x="1130" y="689" text-anchor="middle">Function Tool calls</text>
+  <rect class="agent" x="1260" y="605" width="205" height="110" rx="5"/><text class="node-title" x="1362.5" y="639" text-anchor="middle">Protocol Guard</text><text class="copy" x="1362.5" y="666" text-anchor="middle">ACTIVE -&gt; REPAIR</text><text class="copy" x="1362.5" y="689" text-anchor="middle">-&gt; COMPLETE</text>
+  <rect class="agent" x="1505" y="605" width="195" height="110" rx="5"/><text class="node-title" x="1602.5" y="639" text-anchor="middle">ReadingCorpusTools</text><text class="copy" x="1602.5" y="666" text-anchor="middle">discover -&gt; locate</text><text class="copy" x="1602.5" y="689" text-anchor="middle">exact read -&gt; submit</text>
+  <path class="edge" d="M462.5 445V520H225V570"/><path class="edge" d="M1032.5 445V520H575V570"/><path class="edge" d="M720 637.5H795"/>
+  <path class="both" d="M1000 660H1040"/><path class="both" d="M1220 660H1260"/><path class="both" d="M1465 660H1505"/>
+  <path class="both" d="M1602.5 605V580H1317.5V445"/>
+  <text class="loop-label" x="1019" y="648" text-anchor="middle">REQUEST / CALLS</text><text class="loop-label" x="1485" y="648" text-anchor="middle">VALIDATE / RESULT</text>
+
+  <rect class="band-data" x="30" y="845" width="1740" height="145" rx="6"/>
+  <text class="group" x="55" y="871">DATA PLANE</text>
+  <rect class="data" x="80" y="895" width="360" height="70" rx="5"/><text class="node-title" x="260" y="924" text-anchor="middle">MySQL / authoritative product state</text><text class="copy" x="260" y="947" text-anchor="middle">users, papers, Reading Models, conversations, ledger</text>
+  <rect class="data" x="505" y="895" width="360" height="70" rx="5"/><text class="node-title" x="685" y="924" text-anchor="middle">Redis / transient coordination</text><text class="copy" x="685" y="947" text-anchor="middle">tokens, generation state, streams, current session</text>
+  <rect class="data" x="930" y="895" width="360" height="70" rx="5"/><text class="node-title" x="1110" y="924" text-anchor="middle">MinIO / durable objects</text><text class="copy" x="1110" y="947" text-anchor="middle">PDFs, parser artifacts, screenshots, evidence crops</text>
+  <rect class="data" x="1355" y="895" width="360" height="70" rx="5"/><text class="node-title" x="1535" y="924" text-anchor="middle">Qdrant / rebuildable projection</text><text class="copy" x="1535" y="947" text-anchor="middle">sparse + dense candidate locations; never authority</text>
+
+  <path class="data-edge" d="M225 705V800H260V895"/><path class="data-edge" d="M225 705V785H1110V895"/><path class="data-edge" d="M225 705V770H1535V895"/>
+  <path class="data-edge" d="M747.5 445V835H260V895"/><path class="data-edge" d="M1032.5 445V830H685V895"/><path class="data-edge" d="M1317.5 445V820H1535V895"/>
+  <text class="foot" x="40" y="1020">Ownership rule: Java fixes identity, authorization, paper scope, quota and durability; Python may reason only inside that boundary; Qdrant and Redis remain rebuildable or transient projections.</text>
+</svg>

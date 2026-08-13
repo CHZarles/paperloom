@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1100" viewBox="0 0 1800 1100" role="img" aria-labelledby="title description">
   <title id="title">PaperLoom current research runtime</title>
-  <desc id="description">The live PaperLoom turn from Folio through Java-owned scope, conversation and generation controls; selectable Redis Streams or HTTP dispatch; the Python Agents SDK runtime and deterministic answer protocol; and the Java Corpus API backed by MySQL and Qdrant.</desc>
+  <desc id="description">The live PaperLoom turn from Folio through Java-owned scope, conversation and generation controls; Redis Streams dispatch; the Python Agents SDK runtime and deterministic answer protocol; and the Java Corpus API backed by MySQL and Qdrant.</desc>
   <defs>
     <marker id="arrow-end" viewBox="0 0 10 10" refX="8.6" refY="5" markerWidth="7" markerHeight="7" orient="auto">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#66766f"/>
@@ -36,6 +36,9 @@
       .node-copy-light { fill: #dce6e1; font: 13px Arial, sans-serif; }
       .mono { fill: #18212b; font: 700 12px "IBM Plex Mono", Consolas, monospace; }
       .edge-label { fill: #4c5962; font: 700 11px "IBM Plex Mono", Consolas, monospace; }
+      .loop-boundary { fill: none; stroke: #b6781f; stroke-width: 2; stroke-dasharray: 8 6; }
+      .loop-title { fill: #8a5a18; font: 700 11px "IBM Plex Mono", Consolas, monospace; }
+      .loop-label { fill: #8a5a18; font: 700 10px "IBM Plex Mono", Consolas, monospace; }
       .footnote { fill: #4c5962; font: 14px Arial, sans-serif; }
       .bullet-blue { fill: #2356d8; }
       .bullet-green { fill: #327a63; }
@@ -46,7 +49,7 @@
   <rect class="canvas" width="1800" height="1100"/>
   <text class="kicker" x="40" y="38">PAPERLOOM / CURRENT RESEARCH RUNTIME</text>
   <text class="title" x="40" y="74">One authorized turn, from product control to a reopenable Source Quote</text>
-  <text class="subtitle" x="40" y="101">Java owns product state and corpus authority. Python owns one bounded Agent run. Redis Streams is the production dispatcher; HTTP NDJSON remains the local and rollback path.</text>
+  <text class="subtitle" x="40" y="101">Java owns product state and corpus authority. Python owns one bounded Agent run. Redis Streams dispatches each authorized research job to a leased Worker.</text>
 
   <rect class="boundary-experience" x="30" y="125" width="170" height="255" rx="6"/>
   <rect class="boundary-java" x="220" y="125" width="750" height="255" rx="6"/>
@@ -80,24 +83,15 @@
   <text class="node-copy" x="860" y="255" text-anchor="middle">request mapping</text>
   <text class="node-copy" x="860" y="276" text-anchor="middle">quota reservation</text>
 
-  <rect class="node-green" x="1015" y="165" width="245" height="88" rx="5"/>
-  <text class="mono" x="1137.5" y="190" text-anchor="middle">PRODUCTION</text>
-  <text class="node-title-small" x="1137.5" y="215" text-anchor="middle">Redis Streams + keys</text>
-  <text class="node-copy" x="1137.5" y="238" text-anchor="middle">jobs / events / status / cancel</text>
+  <rect class="node-green" x="1015" y="195" width="245" height="105" rx="5"/>
+  <text class="mono" x="1137.5" y="222" text-anchor="middle">PRODUCTION DISPATCH</text>
+  <text class="node-title-small" x="1137.5" y="248" text-anchor="middle">Redis Streams + keys</text>
+  <text class="node-copy" x="1137.5" y="274" text-anchor="middle">jobs / events / status / cancel</text>
 
-  <rect class="node-white" x="1015" y="270" width="245" height="80" rx="5"/>
-  <text class="mono" x="1137.5" y="294" text-anchor="middle">LOCAL / ROLLBACK</text>
-  <text class="node-title-small" x="1137.5" y="319" text-anchor="middle">HTTP NDJSON stream</text>
-  <text class="node-copy" x="1137.5" y="340" text-anchor="middle">POST /v1/research/stream</text>
-
-  <rect class="node-green" x="1335" y="165" width="195" height="88" rx="5"/>
-  <text class="node-title-small" x="1432.5" y="194" text-anchor="middle">RedisResearchWorker</text>
-  <text class="node-copy" x="1432.5" y="218" text-anchor="middle">consumer group + lease</text>
-  <text class="node-copy" x="1432.5" y="239" text-anchor="middle">heartbeat + stale recovery</text>
-
-  <rect class="node-white" x="1335" y="270" width="195" height="80" rx="5"/>
-  <text class="node-title-small" x="1432.5" y="300" text-anchor="middle">Starlette / Uvicorn</text>
-  <text class="node-copy" x="1432.5" y="326" text-anchor="middle">HTTP service adapter</text>
+  <rect class="node-green" x="1335" y="195" width="195" height="105" rx="5"/>
+  <text class="node-title-small" x="1432.5" y="225" text-anchor="middle">RedisResearchWorker</text>
+  <text class="node-copy" x="1432.5" y="250" text-anchor="middle">consumer group + lease</text>
+  <text class="node-copy" x="1432.5" y="274" text-anchor="middle">heartbeat + stale recovery</text>
 
   <rect class="node-green" x="1570" y="205" width="170" height="105" rx="5"/>
   <text class="node-title-small" x="1655" y="235" text-anchor="middle">ResearchHarness</text>
@@ -108,18 +102,17 @@
   <path class="edge-both" d="M 180 236 L 245 236"/>
   <path class="edge-both" d="M 425 236 L 460 236"/>
   <path class="edge-both" d="M 740 236 L 775 236"/>
-  <path class="edge-prod" d="M 945 225 L 980 225 L 980 209 L 1015 209"/>
-  <path class="edge-fallback" d="M 945 248 L 980 248 L 980 310 L 1015 310"/>
-  <path class="edge-prod" d="M 1260 209 L 1335 209"/>
-  <path class="edge-fallback" d="M 1260 310 L 1335 310"/>
-  <path class="edge" d="M 1530 209 L 1550 209 L 1550 240 L 1570 240"/>
-  <path class="edge" d="M 1530 310 L 1550 310 L 1550 278 L 1570 278"/>
+  <path class="edge-prod" d="M 945 236 L 1015 236"/>
+  <path class="edge-prod" d="M 1260 247.5 L 1335 247.5"/>
+  <path class="edge" d="M 1530 247.5 L 1570 247.5"/>
   <text class="edge-label" x="900" y="365" text-anchor="middle">AUTHORIZED REQUEST  -&gt;    PROGRESS + TERMINAL RESULT  &lt;-</text>
 
   <rect class="boundary-java" x="30" y="410" width="970" height="620" rx="6"/>
   <rect class="boundary-python" x="1020" y="410" width="750" height="620" rx="6"/>
   <text class="group" x="515" y="440" text-anchor="middle">JAVA CORPUS PLANE / AUTHORITY + DURABILITY</text>
   <text class="group" x="1395" y="440" text-anchor="middle">PYTHON / REQUEST-LOCAL AGENT RUNTIME</text>
+  <rect class="loop-boundary" x="1038" y="452" width="707" height="532" rx="8"/>
+  <text class="loop-title" x="1391.5" y="468" text-anchor="middle">AGENT LOOP: MODEL -&gt; FUNCTION TOOL -&gt; GUARD -&gt; CORPUS TOOL -&gt; RESULT -&gt; MODEL</text>
 
   <rect class="node-blue" x="690" y="475" width="270" height="105" rx="5"/>
   <text class="node-title" x="825" y="506" text-anchor="middle">InternalCorpusController</text>
@@ -134,8 +127,8 @@
   <rect class="node-green" x="1370" y="475" width="360" height="105" rx="5"/>
   <text class="node-title" x="1550" y="498" text-anchor="middle">AgentsSdkHarnessRuntime</text>
   <text class="node-title" x="1550" y="520" text-anchor="middle">+ Agents SDK Runner</text>
-  <text class="node-copy" x="1550" y="544" text-anchor="middle">one Context + Agent + request-local Session</text>
-  <text class="node-copy" x="1550" y="565" text-anchor="middle">serial Function Tools; no free-text finish</text>
+  <text class="node-copy" x="1550" y="544" text-anchor="middle">request-local Context + Agent + Session</text>
+  <text class="node-copy" x="1550" y="565" text-anchor="middle">repeat model -&gt; tools -&gt; result until accepted</text>
 
   <path class="edge" d="M 1655 310 L 1655 395 L 1185 395 L 1185 475"/>
   <path class="edge" d="M 1320 527.5 L 1370 527.5"/>
@@ -159,6 +152,9 @@
   <path class="edge-both" d="M 1550 580 L 1550 610 L 1185 610 L 1185 635"/>
   <path class="edge-both" d="M 1320 712.5 L 1370 712.5"/>
   <path class="edge-both" d="M 1550 790 L 1550 810 L 1010 810 L 1010 527.5 L 960 527.5"/>
+  <text class="loop-label" x="1368" y="603" text-anchor="middle">3 REQUESTED ACTION / 5 STRUCTURED RESULT + REPEAT</text>
+  <text class="loop-label" x="1345" y="699" text-anchor="middle">4 VALIDATE</text>
+  <text class="loop-label" x="1345" y="735" text-anchor="middle">EXECUTE</text>
   <text class="edge-label" x="1260" y="804" text-anchor="middle">INTERNAL JAVA CORPUS API</text>
 
   <rect class="node-blue" x="60" y="635" width="270" height="140" rx="5"/>
@@ -216,6 +212,7 @@
   <text class="node-copy" x="1550" y="909" text-anchor="middle">OpenAI-compatible API</text>
   <text class="node-copy" x="1550" y="932" text-anchor="middle">tool calls return to the SDK Runner</text>
   <path class="edge-both" d="M 1730 527.5 L 1750 527.5 L 1750 895 L 1730 895"/>
+  <text class="loop-label" x="1763" y="711" text-anchor="middle" transform="rotate(90 1763 711)">1 MODEL REQUEST / 2 FUNCTION TOOL CALLS</text>
 
   <text class="footnote" x="40" y="1070">Invariant: Java fixes the paper scope; search only discloses candidates; only a Java-validated exact read returns a citeable source_quote_ref; only an accepted answer contract becomes durable product output.</text>
 </svg>

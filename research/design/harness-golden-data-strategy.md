@@ -57,7 +57,7 @@ Do not make golden expectations for:
 
 Do not enlarge the corpus merely to make the benchmark look substantial. Add a paper or case only
 when it exposes a missing retrieval capability, a grounding failure, a conversation failure, or an
-uncovered paradigm from `research/remake.md`.
+uncovered paradigm from `research/ideation/remake.md`.
 
 The next engineering action after a failure should be the smallest relevant change to the prompt,
 skill guidance, corpus tool, or paper pack. Do not introduce another router or state machine.

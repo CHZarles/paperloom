@@ -1,6 +1,6 @@
 # 可控 Research Harness 协议
 
-> 状态：已完成详细设计；规范见 [`controlled-research-harness-spec-2026-08-11.md`](./controlled-research-harness-spec-2026-08-11.md)。尚未实现，尚未替代 `research/harness-runtime-shape.md`。
+> 状态：已完成详细设计；规范见 [`controlled-research-harness-spec-2026-08-11.md`](./controlled-research-harness-spec-2026-08-11.md)。尚未实现，尚未替代 `research/design/harness-runtime-shape.md`。
 
 ## 1. 目标
 

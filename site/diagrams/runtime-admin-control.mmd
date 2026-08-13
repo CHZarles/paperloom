@@ -1,0 +1,37 @@
+sequenceDiagram
+    autonumber
+    actor Admin
+    actor NonAdmin as GUEST / USER
+    participant Folio
+    participant Security as Spring Security
+    participant API as AdminController
+    participant Users as UserService
+    participant Conversation as ConversationService
+    participant Usage as UsageDashboardService
+    participant Redis
+    participant MySQL
+
+    NonAdmin->>Security: request /api/v1/admin/**
+    Security-->>NonAdmin: 403 before controller
+    Admin->>Folio: open admin users / chat history
+    Folio->>Security: GET /admin/users/list or /admin/conversation
+    Security->>Security: validate cached JWT + require role ADMIN
+    Security->>API: authenticated request
+    API->>API: extract username and revalidate ADMIN
+    alt user and quota management
+        API->>Users: filter + paginate users
+        Users->>MySQL: load users
+        Users->>Redis: read LLM / embedding balances
+        Users->>MySQL: aggregate increases and request counts
+        Users-->>Folio: user rows + usage snapshots
+    else conversation audit
+        API->>Conversation: query by optional user and date range
+        Conversation->>MySQL: load persisted questions, answers, scopes, references, research events
+        Conversation-->>Folio: admin-visible message history
+    else usage overview
+        API->>Usage: buildOverview(days)
+        Usage->>Redis: read current balances
+        Usage->>MySQL: aggregate daily token and request ledger
+        Usage-->>Folio: usage dashboard
+    end
+    Note over Security,API: Menu hiding is visual only<br/>backend RBAC is the authorization boundary
