@@ -25,6 +25,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentHashMap.KeySetView;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -62,6 +64,7 @@ public class ChatHandler {
     private final ProductReadingConversationService productReadingConversationService;
     private final ProductPaperHandleService productPaperHandleService;
     private final ThreadPoolTaskExecutor chatMonitorExecutor;
+    private final ScheduledExecutorService chatLeaseScheduler;
     private final ObjectMapper objectMapper;
     private final int maxUserRetriesPerMessage;
 
@@ -85,6 +88,7 @@ public class ChatHandler {
     private final Map<String, Map<String, Object>> generationEffectiveScopes = new ConcurrentHashMap<>();
     private final Map<String, ConversationRetryContext> generationRetryContexts = new ConcurrentHashMap<>();
     private final Map<String, ChatRequestTiming> generationTimings = new ConcurrentHashMap<>();
+    private final Map<String, ScheduledFuture<?>> generationLeaseRenewals = new ConcurrentHashMap<>();
 
     @Autowired
     public ChatHandler(UsageQuotaService usageQuotaService,
@@ -96,7 +100,8 @@ public class ChatHandler {
                       ProductPaperHandleService productPaperHandleService,
                       ObjectMapper objectMapper,
                       @Value("${research-harness.user-retry-max-per-message:3}") int maxUserRetriesPerMessage,
-                      @Qualifier("chatMonitorExecutor") ThreadPoolTaskExecutor chatMonitorExecutor) {
+                      @Qualifier("chatMonitorExecutor") ThreadPoolTaskExecutor chatMonitorExecutor,
+                      @Qualifier("chatLeaseScheduler") ScheduledExecutorService chatLeaseScheduler) {
         this.usageQuotaService = usageQuotaService;
         this.conversationService = conversationService;
         this.conversationScopeService = conversationScopeService;
@@ -107,6 +112,7 @@ public class ChatHandler {
         this.objectMapper = objectMapper;
         this.maxUserRetriesPerMessage = Math.max(1, maxUserRetriesPerMessage);
         this.chatMonitorExecutor = chatMonitorExecutor;
+        this.chatLeaseScheduler = chatLeaseScheduler;
     }
 
     public void processMessage(String userId, ChatRequest request, WebSocketSession session) {
@@ -176,6 +182,7 @@ public class ChatHandler {
             // 创建一个CompletableFuture来跟踪响应完成状态
             CompletableFuture<String> responseFuture = new CompletableFuture<>();
             responseFutures.put(finalGenerationId, responseFuture);
+            startGenerationLeaseRenewal(userId, finalConversationId, finalGenerationId, responseFuture);
 
             timing.route("PYTHON_RESEARCH_HARNESS");
             timing.mark("intent_route_decided");
@@ -187,12 +194,20 @@ public class ChatHandler {
             } catch (RejectedExecutionException ex) {
                 logger.warn("聊天处理线程池已满，generationId: {}", finalGenerationId);
                 RuntimeException busyException = new RuntimeException("系统繁忙，请稍后重试");
+                responseFuture.completeExceptionally(busyException);
                 chatGenerationStateService.markFailed(finalGenerationId, busyException.getMessage());
                 handleError(userId, requestClientId, finalGenerationId, busyException);
                 sendCompletionNotification(userId, finalGenerationId, finalConversationId, true, false);
                 cleanupGenerationState(finalGenerationId, ex);
             }
 
+        } catch (ChatGenerationStateService.GenerationInProgressException e) {
+            logger.info("拒绝同一对话的并发生成，用户ID: {}, conversationId: {}", userId, requestedConversationId);
+            sendJsonToClient(userId, requestClientId, Map.of(
+                    "type", "error",
+                    "code", 409,
+                    "message", "当前对话还有回答在生成，请先停止或等待完成"
+            ));
         } catch (QuotaExceededException e) {
             sendQuotaMessage(userId, requestClientId, null, e);
         } catch (Exception e) {
@@ -260,6 +275,7 @@ public class ChatHandler {
         responseBuilders.put(generationId, new StringBuilder());
         CompletableFuture<String> responseFuture = new CompletableFuture<>();
         responseFutures.put(generationId, responseFuture);
+        startGenerationLeaseRenewal(safeUserId, conversationId, generationId, responseFuture);
         generationTimings.put(generationId, ChatRequestTiming.start(retryContext.question()));
 
         sendGenerationStart(safeUserId, generationId, conversationId, retryContext);
@@ -274,6 +290,7 @@ public class ChatHandler {
             ));
         } catch (RejectedExecutionException ex) {
             RuntimeException busyException = new RuntimeException("系统繁忙，请稍后重试");
+            responseFuture.completeExceptionally(busyException);
             chatGenerationStateService.markFailed(generationId, busyException.getMessage());
             handleError(safeUserId, safeClientId, generationId, busyException);
             sendCompletionNotification(safeUserId, generationId, conversationId, true, false);
@@ -693,6 +710,9 @@ public class ChatHandler {
                                       CompletableFuture<String> responseFuture,
                                       Map<String, Object> effectiveScope,
                                       ProductTurnResult answer) {
+        if (!ensureGenerationLease(userId, conversationId, generationId)) {
+            return;
+        }
         ChatRequestTiming timing = generationTimings.get(generationId);
         if (timing != null) {
             timing.end("product_reading_react_harness");
@@ -710,10 +730,10 @@ public class ChatHandler {
         }
         if (answer.resultStatus() == ProductResultStatus.CANCELLED) {
             cancelledGenerations.add(generationId);
-            chatGenerationStateService.markCancelled(generationId);
             if (!responseFuture.isDone()) {
                 responseFuture.complete("");
             }
+            chatGenerationStateService.markCancelled(generationId);
             cleanupGenerationState(generationId, null);
             return;
         }
@@ -781,6 +801,10 @@ public class ChatHandler {
                                              String conversationId,
                                              String generationId,
                                              Throwable error) {
+        CompletableFuture<String> responseFuture = responseFutures.get(generationId);
+        if (responseFuture == null || !responseFuture.completeExceptionally(error)) {
+            return;
+        }
         logger.error("Python research harness execution failed: generationId={}", generationId, error);
         chatGenerationStateService.markFailed(generationId, error.getMessage());
         handleError(userId, generationId, error);
@@ -1090,6 +1114,10 @@ public class ChatHandler {
     }
 
     private void cleanupGenerationState(String generationId, Throwable throwable) {
+        ScheduledFuture<?> leaseRenewal = generationLeaseRenewals.remove(generationId);
+        if (leaseRenewal != null) {
+            leaseRenewal.cancel(false);
+        }
         responseBuilders.remove(generationId);
         generationClientIds.remove(generationId);
         generationReferenceMappings.remove(generationId);
@@ -1106,6 +1134,57 @@ public class ChatHandler {
         CompletableFuture<String> future = responseFutures.remove(generationId);
         if (throwable != null && future != null && !future.isDone()) {
             future.completeExceptionally(throwable);
+        }
+    }
+
+    private void startGenerationLeaseRenewal(String userId,
+                                             String conversationId,
+                                             String generationId,
+                                             CompletableFuture<String> responseFuture) {
+        long intervalMillis = ChatGenerationStateService.LEASE_RENEWAL_INTERVAL_MILLIS;
+        ScheduledFuture<?> renewal = chatLeaseScheduler.scheduleAtFixedRate(() -> {
+            if (responseFuture.isDone()) {
+                return;
+            }
+            boolean renewed;
+            try {
+                renewed = chatGenerationStateService.renewConversationLease(generationId);
+            } catch (RuntimeException error) {
+                logger.warn("续租生成任务对话锁失败，将在下一周期重试: generationId={}", generationId, error);
+                return;
+            }
+            if (!renewed && !responseFuture.isDone()) {
+                failGenerationAfterLeaseLoss(userId, conversationId, generationId, responseFuture);
+            }
+        }, intervalMillis, intervalMillis, TimeUnit.MILLISECONDS);
+        generationLeaseRenewals.put(generationId, renewal);
+    }
+
+    private void failGenerationAfterLeaseLoss(String userId,
+                                              String conversationId,
+                                              String generationId,
+                                              CompletableFuture<String> responseFuture) {
+        if (!cancelledGenerations.add(generationId)) {
+            return;
+        }
+        IllegalStateException error = new IllegalStateException("Generation lost its conversation lease");
+        stopFlags.put(generationId, true);
+        responseFuture.completeExceptionally(error);
+        try {
+            try {
+                productReadingConversationService.cancelTurn(generationId);
+            } catch (RuntimeException cancelError) {
+                logger.warn("取消已失去租约的生成任务失败: generationId={}", generationId, cancelError);
+            }
+            try {
+                chatGenerationStateService.markFailed(generationId, error.getMessage());
+            } catch (RuntimeException stateError) {
+                logger.warn("记录生成任务租约丢失状态失败: generationId={}", generationId, stateError);
+            }
+            handleError(userId, generationId, error);
+            sendCompletionNotification(userId, generationId, conversationId, true, false);
+        } finally {
+            cleanupGenerationState(generationId, error);
         }
     }
 
@@ -1241,6 +1320,9 @@ public class ChatHandler {
                                       String generationId,
                                       String conversationId,
                                       Map<String, Object> event) {
+        if (!ensureGenerationLease(userId, conversationId, generationId)) {
+            return;
+        }
         Map<String, Object> payload = new LinkedHashMap<>();
         if (event != null) {
             payload.putAll(event);
@@ -1252,6 +1334,25 @@ public class ChatHandler {
         payload.putIfAbsent("timestamp", System.currentTimeMillis());
         chatGenerationStateService.appendProgressEvent(generationId, payload);
         sendJsonToGenerationClient(userId, generationId, payload);
+    }
+
+    private boolean ensureGenerationLease(String userId, String conversationId, String generationId) {
+        CompletableFuture<String> responseFuture = responseFutures.get(generationId);
+        if (responseFuture == null || responseFuture.isDone() || isGenerationCancelled(generationId)) {
+            return false;
+        }
+        boolean renewed;
+        try {
+            renewed = chatGenerationStateService.renewConversationLease(generationId);
+        } catch (RuntimeException error) {
+            logger.warn("检查生成任务对话租约失败，保留当前任务并等待心跳重试: generationId={}", generationId, error);
+            return true;
+        }
+        if (renewed) {
+            return true;
+        }
+        failGenerationAfterLeaseLoss(userId, conversationId, generationId, responseFuture);
+        return false;
     }
 
     private void sendCompletionNotification(String userId,
@@ -1412,11 +1513,11 @@ public class ChatHandler {
         cancelledGenerations.add(targetGenerationId);
         stopFlags.put(targetGenerationId, true);
         productReadingConversationService.cancelTurn(targetGenerationId);
-        chatGenerationStateService.markCancelled(targetGenerationId);
         CompletableFuture<String> responseFuture = responseFutures.get(targetGenerationId);
         if (responseFuture != null && !responseFuture.isDone()) {
             responseFuture.completeExceptionally(new CancellationException("响应已停止"));
         }
+        chatGenerationStateService.markCancelled(targetGenerationId);
 
         sendJsonToClient(userId, targetClientId, Map.of(
                 "type", "stop",

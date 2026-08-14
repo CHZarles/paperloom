@@ -65,6 +65,7 @@ fallback.
 | `RESEARCH_HARNESS_REDIS_LOCK_PREFIX` | Redis key prefix for worker execution locks |
 | `RESEARCH_HARNESS_QUEUE_MAX_DEPTH` | Java fail-fast queue depth limit for online research turns |
 | `RESEARCH_HARNESS_EVENT_READ_TIMEOUT_SECONDS` | Java wait time for a terminal Redis event before failing the generation |
+| `RESEARCH_HARNESS_HTTP_REQUEST_TIMEOUT_SECONDS` | Total HTTP research-generation timeout; defaults to 930 seconds |
 | `RESEARCH_HARNESS_EVENT_TTL_SECONDS` | Worker TTL for event/status streams and keys |
 | `RESEARCH_HARNESS_STALE_PENDING_SECONDS` | Worker reclaim threshold for stale Redis Stream pending jobs |
 | `RESEARCH_HARNESS_LEASE_TTL_SECONDS` | Renewable Worker ownership lease; default `60`, at least three heartbeat intervals |

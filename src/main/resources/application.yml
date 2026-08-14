@@ -144,6 +144,8 @@ research-harness:
   user-retry-max-per-message: ${RESEARCH_HARNESS_USER_RETRY_MAX_PER_MESSAGE:3}
   base-url: ${RESEARCH_HARNESS_BASE_URL:http://127.0.0.1:8091}
   internal-token: ${RESEARCH_HARNESS_INTERNAL_TOKEN:}
+  http:
+    request-timeout-seconds: ${RESEARCH_HARNESS_HTTP_REQUEST_TIMEOUT_SECONDS:930}
   redis:
     jobs-stream: ${RESEARCH_HARNESS_REDIS_JOBS_STREAM:paperloom:research:harness:jobs}
     status-prefix: ${RESEARCH_HARNESS_REDIS_STATUS_PREFIX:paperloom:research:harness:status:}

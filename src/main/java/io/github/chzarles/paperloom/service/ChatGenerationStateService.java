@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -20,7 +21,18 @@ import java.util.UUID;
 public class ChatGenerationStateService {
 
     private static final Logger logger = LoggerFactory.getLogger(ChatGenerationStateService.class);
-    private static final Duration GENERATION_TTL = Duration.ofMinutes(30);
+    static final Duration GENERATION_TTL = Duration.ofMinutes(30);
+    static final long LEASE_RENEWAL_INTERVAL_MILLIS = GENERATION_TTL.dividedBy(3).toMillis();
+    static final DefaultRedisScript<Long> COMPARE_AND_EXPIRE_SCRIPT = new DefaultRedisScript<>(
+            "if redis.call('GET', KEYS[1]) == ARGV[1] then "
+                    + "return redis.call('PEXPIRE', KEYS[1], ARGV[2]) end; return 0",
+            Long.class
+    );
+    static final DefaultRedisScript<Long> COMPARE_AND_DELETE_SCRIPT = new DefaultRedisScript<>(
+            "if redis.call('GET', KEYS[1]) == ARGV[1] then "
+                    + "return redis.call('DEL', KEYS[1]) end; return 0",
+            Long.class
+    );
     private static final TypeReference<Map<String, Map<String, Object>>> REFERENCE_MAP_TYPE =
             new TypeReference<Map<String, Map<String, Object>>>() {};
     private static final TypeReference<Map<String, Object>> DIAGNOSTICS_MAP_TYPE =
@@ -70,6 +82,12 @@ public class ChatGenerationStateService {
         redisTemplate.delete(progressEventsKey(generationId));
         redisTemplate.opsForValue().set(contentKey(generationId), "", GENERATION_TTL);
         writeMeta(meta);
+        Boolean claimed = redisTemplate.opsForValue().setIfAbsent(
+                conversationActiveGenerationKey(userId, conversationId), generationId, GENERATION_TTL);
+        if (!Boolean.TRUE.equals(claimed)) {
+            deleteGeneration(generationId);
+            throw new GenerationInProgressException(conversationId);
+        }
         redisTemplate.opsForValue().set(activeGenerationKey(userId), generationId, GENERATION_TTL);
         if (meta.clientId() != null) {
             redisTemplate.opsForValue().set(activeGenerationKey(userId, meta.clientId()), generationId, GENERATION_TTL);
@@ -257,6 +275,32 @@ public class ChatGenerationStateService {
         return getGenerationForUser(generationId, userId);
     }
 
+    public boolean renewConversationLease(String generationId) {
+        GenerationMeta meta = readMeta(generationId);
+        if (meta == null || meta.status() != GenerationStatus.STREAMING) {
+            return false;
+        }
+        return renewConversationLease(meta);
+    }
+
+    private boolean renewConversationLease(GenerationMeta meta) {
+        String generationId = meta.generationId();
+        Long renewed = redisTemplate.execute(
+                COMPARE_AND_EXPIRE_SCRIPT,
+                List.of(conversationActiveGenerationKey(meta.userId(), meta.conversationId())),
+                generationId,
+                String.valueOf(GENERATION_TTL.toMillis())
+        );
+        if (!Long.valueOf(1L).equals(renewed)) {
+            return false;
+        }
+        compareAndExpire(activeGenerationKey(meta.userId()), generationId);
+        if (meta.clientId() != null) {
+            compareAndExpire(activeGenerationKey(meta.userId(), meta.clientId()), generationId);
+        }
+        return true;
+    }
+
     private void updateTerminalState(String generationId,
                                      GenerationStatus status,
                                      String errorMessage,
@@ -291,7 +335,7 @@ public class ChatGenerationStateService {
                 meta.replaceMessage()
         );
         writeMeta(updated);
-        clearActiveGeneration(meta.userId(), meta.clientId(), generationId);
+        clearActiveGeneration(meta.userId(), meta.clientId(), meta.conversationId(), generationId);
     }
 
     private void touch(String generationId) {
@@ -319,25 +363,32 @@ public class ChatGenerationStateService {
         );
         writeMeta(updated);
         expireGenerationKeys(generationId);
-        redisTemplate.opsForValue().set(activeGenerationKey(meta.userId()), generationId, GENERATION_TTL);
-        if (meta.clientId() != null) {
-            redisTemplate.opsForValue().set(activeGenerationKey(meta.userId(), meta.clientId()), generationId, GENERATION_TTL);
+        if (meta.status() == GenerationStatus.STREAMING && !renewConversationLease(meta)) {
+            logger.warn("生成任务已失去对话租约: generationId={}, conversationId={}", generationId, meta.conversationId());
         }
     }
 
-    private void clearActiveGeneration(String userId, String clientId, String generationId) {
-        String current = redisTemplate.opsForValue().get(activeGenerationKey(userId));
-        if (generationId.equals(current)) {
-            redisTemplate.delete(activeGenerationKey(userId));
-        }
+    private void clearActiveGeneration(String userId, String clientId, String conversationId, String generationId) {
+        compareAndDelete(activeGenerationKey(userId), generationId);
+        compareAndDelete(conversationActiveGenerationKey(userId, conversationId), generationId);
         String normalizedClientId = trimToNull(clientId);
         if (normalizedClientId == null) {
             return;
         }
-        String currentForClient = redisTemplate.opsForValue().get(activeGenerationKey(userId, normalizedClientId));
-        if (generationId.equals(currentForClient)) {
-            redisTemplate.delete(activeGenerationKey(userId, normalizedClientId));
-        }
+        compareAndDelete(activeGenerationKey(userId, normalizedClientId), generationId);
+    }
+
+    private void compareAndDelete(String key, String generationId) {
+        redisTemplate.execute(COMPARE_AND_DELETE_SCRIPT, List.of(key), generationId);
+    }
+
+    private void compareAndExpire(String key, String generationId) {
+        redisTemplate.execute(
+                COMPARE_AND_EXPIRE_SCRIPT,
+                List.of(key),
+                generationId,
+                String.valueOf(GENERATION_TTL.toMillis())
+        );
     }
 
     private void updateReadingMap(String generationId,
@@ -363,6 +414,18 @@ public class ChatGenerationStateService {
         redisTemplate.expire(readingArtifactsKey(generationId), GENERATION_TTL);
         redisTemplate.expire(readingStatePatchKey(generationId), GENERATION_TTL);
         redisTemplate.expire(progressEventsKey(generationId), GENERATION_TTL);
+    }
+
+    private void deleteGeneration(String generationId) {
+        redisTemplate.delete(List.of(
+                metaKey(generationId),
+                contentKey(generationId),
+                referenceKey(generationId),
+                diagnosticsKey(generationId),
+                readingArtifactsKey(generationId),
+                readingStatePatchKey(generationId),
+                progressEventsKey(generationId)
+        ));
     }
 
     private void writeMeta(GenerationMeta meta) {
@@ -528,6 +591,10 @@ public class ChatGenerationStateService {
         return "chat:user:" + userId + ":client:" + clientId + ":active_generation";
     }
 
+    private String conversationActiveGenerationKey(String userId, String conversationId) {
+        return "chat:user:" + userId + ":conversation:" + conversationId + ":active_generation";
+    }
+
     private String trimToNull(String value) {
         if (value == null) {
             return null;
@@ -541,6 +608,12 @@ public class ChatGenerationStateService {
         COMPLETED,
         FAILED,
         CANCELLED
+    }
+
+    public static final class GenerationInProgressException extends IllegalStateException {
+        public GenerationInProgressException(String conversationId) {
+            super("Conversation already has an active generation: " + conversationId);
+        }
     }
 
     public record GenerationMeta(

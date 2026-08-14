@@ -7,6 +7,7 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ScheduledExecutorService;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -91,7 +92,8 @@ class ChatHandlerStopResponseTest {
                 mock(ProductPaperHandleService.class),
                 new ObjectMapper(),
                 3,
-                mock(ThreadPoolTaskExecutor.class)
+                mock(ThreadPoolTaskExecutor.class),
+                mock(ScheduledExecutorService.class)
         );
     }
 

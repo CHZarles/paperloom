@@ -10,9 +10,13 @@ import java.time.Duration;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -24,6 +28,11 @@ class ChatGenerationStateServiceTest {
         RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.setIfAbsent(
+                eq("chat:user:1:conversation:conversation-1:active_generation"),
+                any(String.class),
+                any(Duration.class)
+        )).thenReturn(true);
         ChatGenerationStateService service = new ChatGenerationStateService(redisTemplate, new ObjectMapper());
 
         ChatGenerationStateService.GenerationSnapshot snapshot =
@@ -39,6 +48,40 @@ class ChatGenerationStateServiceTest {
                 eq(snapshot.generationId()),
                 any(Duration.class)
         );
+    }
+
+    @Test
+    void createGenerationRejectsASecondActiveTurnInTheSameConversation() {
+        RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.setIfAbsent(
+                eq("chat:user:1:conversation:conversation-1:active_generation"),
+                any(String.class),
+                any(Duration.class)
+        )).thenReturn(true, false);
+        ChatGenerationStateService service = new ChatGenerationStateService(redisTemplate, new ObjectMapper());
+
+        service.createGeneration("1", "client-a", "conversation-1", "first question");
+
+        assertThrows(
+                ChatGenerationStateService.GenerationInProgressException.class,
+                () -> service.createGeneration("1", "client-b", "conversation-1", "second question")
+        );
+    }
+
+    @Test
+    void createGenerationAllowsDifferentConversationsToRunInParallel() {
+        RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.setIfAbsent(any(String.class), any(String.class), any(Duration.class))).thenReturn(true);
+        ChatGenerationStateService service = new ChatGenerationStateService(redisTemplate, new ObjectMapper());
+
+        var first = service.createGeneration("1", "client-a", "conversation-1", "first question");
+        var second = service.createGeneration("1", "client-b", "conversation-2", "second question");
+
+        assertNotEquals(first.generationId(), second.generationId());
     }
 
     @Test
@@ -65,14 +108,67 @@ class ChatGenerationStateServiceTest {
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("chat:generation:generation-1:meta")).thenReturn(generationMetaJson());
-        when(valueOperations.get("chat:user:1:active_generation")).thenReturn("generation-1");
-        when(valueOperations.get("chat:user:1:client:client-a:active_generation")).thenReturn("generation-1");
         ChatGenerationStateService service = new ChatGenerationStateService(redisTemplate, new ObjectMapper());
 
         service.markCancelled("generation-1");
 
-        verify(redisTemplate).delete("chat:user:1:active_generation");
-        verify(redisTemplate).delete("chat:user:1:client:client-a:active_generation");
+        verify(redisTemplate).execute(
+                eq(ChatGenerationStateService.COMPARE_AND_DELETE_SCRIPT),
+                eq(List.of("chat:user:1:active_generation")),
+                eq("generation-1")
+        );
+        verify(redisTemplate).execute(
+                eq(ChatGenerationStateService.COMPARE_AND_DELETE_SCRIPT),
+                eq(List.of("chat:user:1:conversation:conversation-1:active_generation")),
+                eq("generation-1")
+        );
+        verify(redisTemplate).execute(
+                eq(ChatGenerationStateService.COMPARE_AND_DELETE_SCRIPT),
+                eq(List.of("chat:user:1:client:client-a:active_generation")),
+                eq("generation-1")
+        );
+        verify(redisTemplate, never()).delete("chat:user:1:conversation:conversation-1:active_generation");
+    }
+
+    @Test
+    void renewConversationLeaseOnlyExtendsTheCurrentOwnersLease() {
+        RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("chat:generation:generation-1:meta")).thenReturn(generationMetaJson());
+        when(redisTemplate.execute(
+                eq(ChatGenerationStateService.COMPARE_AND_EXPIRE_SCRIPT),
+                eq(List.of("chat:user:1:conversation:conversation-1:active_generation")),
+                eq("generation-1"),
+                eq("1800000")
+        )).thenReturn(1L);
+        ChatGenerationStateService service = new ChatGenerationStateService(redisTemplate, new ObjectMapper());
+
+        assertTrue(service.renewConversationLease("generation-1"));
+
+        verify(redisTemplate).execute(
+                eq(ChatGenerationStateService.COMPARE_AND_EXPIRE_SCRIPT),
+                eq(List.of("chat:user:1:conversation:conversation-1:active_generation")),
+                eq("generation-1"),
+                eq("1800000")
+        );
+    }
+
+    @Test
+    void renewConversationLeaseReportsLostOwnership() {
+        RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("chat:generation:generation-1:meta")).thenReturn(generationMetaJson());
+        when(redisTemplate.execute(
+                eq(ChatGenerationStateService.COMPARE_AND_EXPIRE_SCRIPT),
+                eq(List.of("chat:user:1:conversation:conversation-1:active_generation")),
+                eq("generation-1"),
+                eq("1800000")
+        )).thenReturn(0L);
+        ChatGenerationStateService service = new ChatGenerationStateService(redisTemplate, new ObjectMapper());
+
+        assertFalse(service.renewConversationLease("generation-1"));
     }
 
     @Test

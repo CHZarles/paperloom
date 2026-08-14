@@ -16,6 +16,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -23,11 +26,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -125,6 +130,77 @@ class ChatHandlerProductHarnessTest {
         verify(fixture.conversationService).requireActiveOwnedConversationSession(1L, "foreign-conversation");
         verify(fixture.generationStateService, never()).createGeneration(anyString(), anyString(), anyString(), anyString());
         verify(fixture.readingConversationService, never()).runTurn(any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void concurrentTurnInTheSameConversationIsRejected() {
+        ChatFixture fixture = chatFixture();
+        when(fixture.generationStateService.createGeneration("1", "client-1", "conversation-1", "second question"))
+                .thenThrow(new ChatGenerationStateService.GenerationInProgressException("conversation-1"));
+
+        fixture.handler.processMessage(
+                "1",
+                new ChatHandler.ChatRequest("second question", null, "conversation-1"),
+                fixture.session
+        );
+
+        verify(fixture.readingConversationService, never())
+                .submitTurn(any(), any(), any(), any(), any(), any(), any(), any());
+        verify(fixture.sessionRegistry).sendJsonToClient(eq("1"), eq("client-1"), argThat(payload ->
+                Integer.valueOf(409).equals(payload.get("code"))
+                        && "当前对话还有回答在生成，请先停止或等待完成".equals(payload.get("message"))));
+    }
+
+    @Test
+    void silentGenerationRenewsItsConversationLeaseOnSchedule() {
+        ChatFixture fixture = chatFixture();
+        CompletableFuture<ProductTurnResult> pendingTurn = new CompletableFuture<>();
+        when(fixture.readingConversationService.submitTurn(
+                eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
+                .thenReturn(pendingTurn);
+        when(fixture.generationStateService.renewConversationLease("generation-1")).thenReturn(true);
+
+        fixture.handler.processMessage(
+                "1",
+                new ChatHandler.ChatRequest("question", null, "conversation-1"),
+                fixture.session
+        );
+
+        ArgumentCaptor<Runnable> renewalCaptor = ArgumentCaptor.forClass(Runnable.class);
+        verify(fixture.leaseScheduler).scheduleAtFixedRate(
+                renewalCaptor.capture(), anyLong(), anyLong(), eq(TimeUnit.MILLISECONDS));
+        renewalCaptor.getValue().run();
+        verify(fixture.generationStateService).renewConversationLease("generation-1");
+
+        pendingTurn.complete(completedTurn("answer", List.of()));
+        verify(fixture.leaseRenewal).cancel(false);
+    }
+
+    @Test
+    void leaseLossCancelsTheOldGeneration() {
+        ChatFixture fixture = chatFixture();
+        CompletableFuture<ProductTurnResult> pendingTurn = new CompletableFuture<>();
+        when(fixture.readingConversationService.submitTurn(
+                eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
+                .thenReturn(pendingTurn);
+        when(fixture.generationStateService.renewConversationLease("generation-1")).thenReturn(false);
+        when(fixture.generationStateService.getGeneration("generation-1")).thenReturn(Optional.empty());
+
+        fixture.handler.processMessage(
+                "1",
+                new ChatHandler.ChatRequest("question", null, "conversation-1"),
+                fixture.session
+        );
+
+        ArgumentCaptor<Runnable> renewalCaptor = ArgumentCaptor.forClass(Runnable.class);
+        verify(fixture.leaseScheduler).scheduleAtFixedRate(
+                renewalCaptor.capture(), anyLong(), anyLong(), eq(TimeUnit.MILLISECONDS));
+        renewalCaptor.getValue().run();
+
+        verify(fixture.readingConversationService).cancelTurn("generation-1");
+        verify(fixture.generationStateService).markFailed(
+                "generation-1", "Generation lost its conversation lease");
+        verify(fixture.leaseRenewal).cancel(false);
     }
 
     @Test
@@ -986,6 +1062,7 @@ class ChatHandlerProductHarnessTest {
         when(sessionRegistry.getClientId(session)).thenReturn("client-1");
 
         ChatGenerationStateService generationStateService = mock(ChatGenerationStateService.class);
+        when(generationStateService.renewConversationLease(generationId)).thenReturn(true);
         when(generationStateService.createGeneration(eq("1"), eq("client-1"), eq(conversationId), anyString()))
                 .thenReturn(new ChatGenerationStateService.GenerationSnapshot(
                         generationId,
@@ -1040,6 +1117,10 @@ class ChatHandlerProductHarnessTest {
                 )));
         ProductPaperHandleService productPaperHandleService = mock(ProductPaperHandleService.class);
         ConversationService conversationService = mock(ConversationService.class);
+        ScheduledExecutorService leaseScheduler = mock(ScheduledExecutorService.class);
+        ScheduledFuture<?> leaseRenewal = mock(ScheduledFuture.class);
+        doReturn(leaseRenewal).when(leaseScheduler)
+                .scheduleAtFixedRate(any(Runnable.class), anyLong(), anyLong(), eq(TimeUnit.MILLISECONDS));
         ChatHandler handler = new ChatHandler(
                 mock(UsageQuotaService.class),
                 conversationService,
@@ -1050,7 +1131,8 @@ class ChatHandlerProductHarnessTest {
                 productPaperHandleService,
                 new ObjectMapper(),
                 3,
-                executor
+                executor,
+                leaseScheduler
         );
 
         return new ChatFixture(
@@ -1062,6 +1144,8 @@ class ChatHandlerProductHarnessTest {
                 generationStateService,
                 readingConversationService,
                 productPaperHandleService,
+                leaseScheduler,
+                leaseRenewal,
                 conversationId,
                 generationId
         );
@@ -1098,6 +1182,8 @@ class ChatHandlerProductHarnessTest {
             ChatGenerationStateService generationStateService,
             ProductReadingConversationService readingConversationService,
             ProductPaperHandleService productPaperHandleService,
+            ScheduledExecutorService leaseScheduler,
+            ScheduledFuture<?> leaseRenewal,
             String conversationId,
             String generationId
     ) {

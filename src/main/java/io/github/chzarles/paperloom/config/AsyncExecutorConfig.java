@@ -5,6 +5,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 
 @Configuration
@@ -35,5 +37,14 @@ public class AsyncExecutorConfig {
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
         executor.initialize();
         return executor;
+    }
+
+    @Bean(name = "chatLeaseScheduler", destroyMethod = "shutdownNow")
+    public ScheduledExecutorService chatLeaseScheduler() {
+        return Executors.newSingleThreadScheduledExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "chat-lease-renewal");
+            thread.setDaemon(true);
+            return thread;
+        });
     }
 }

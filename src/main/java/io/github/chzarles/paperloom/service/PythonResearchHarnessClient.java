@@ -27,7 +27,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 @Service
@@ -44,6 +47,7 @@ public class PythonResearchHarnessClient implements ResearchHarnessTransport {
     private final URI streamUri;
     private final String internalToken;
     private final Executor requestExecutor;
+    private final Duration requestTimeout;
     private final Map<String, ActiveRequest> activeRequests = new ConcurrentHashMap<>();
 
     public PythonResearchHarnessClient(
@@ -53,6 +57,7 @@ public class PythonResearchHarnessClient implements ResearchHarnessTransport {
             ResearchHarnessResultMapper resultMapper,
             @Value("${research-harness.base-url:http://127.0.0.1:8091}") String baseUrl,
             @Value("${research-harness.internal-token:}") String internalToken,
+            @Value("${research-harness.http.request-timeout-seconds:930}") long requestTimeoutSeconds,
             @Qualifier("researchHarnessExecutor") Executor requestExecutor) {
         this.objectMapper = objectMapper;
         this.usageQuotaService = usageQuotaService;
@@ -61,6 +66,7 @@ public class PythonResearchHarnessClient implements ResearchHarnessTransport {
         this.streamUri = URI.create(baseUrl.replaceAll("/+$", "") + "/v1/research/stream");
         this.internalToken = internalToken == null ? "" : internalToken.trim();
         this.requestExecutor = requestExecutor;
+        this.requestTimeout = Duration.ofSeconds(Math.max(1L, requestTimeoutSeconds));
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
@@ -88,6 +94,7 @@ public class PythonResearchHarnessClient implements ResearchHarnessTransport {
         long startedAtMs = System.currentTimeMillis();
         AtomicBoolean reservationFinished = new AtomicBoolean(false);
         AtomicBoolean failureEventPublished = new AtomicBoolean(false);
+        AtomicReference<InputStream> responseBody = new AtomicReference<>();
         Consumer<Map<String, Object>> trackedProgressListener = event -> {
             if ("job_failed".equals(stringValue(event.get("type")))) {
                 failureEventPublished.set(true);
@@ -96,7 +103,7 @@ public class PythonResearchHarnessClient implements ResearchHarnessTransport {
         };
         FutureTask<Void> task = new FutureTask<>(() -> {
             try {
-                Map<String, Object> response = executeStream(body, trackedProgressListener);
+                Map<String, Object> response = executeStream(body, trackedProgressListener, responseBody);
                 if (future.isDone()) {
                     return null;
                 }
@@ -132,13 +139,17 @@ public class PythonResearchHarnessClient implements ResearchHarnessTransport {
             }
             return null;
         });
-        ActiveRequest active = new ActiveRequest(task, future);
+        ActiveRequest active = new ActiveRequest(task, future, responseBody);
         if (activeRequests.putIfAbsent(generationId, active) != null) {
             usageQuotaService.abortReservation(reservation);
             throw new IllegalStateException("Research generation is already active: " + generationId);
         }
+        future.orTimeout(requestTimeout.toMillis(), TimeUnit.MILLISECONDS);
         future.whenComplete((result, error) -> {
             activeRequests.remove(generationId, active);
+            if (error instanceof TimeoutException) {
+                closeActiveRequest(active);
+            }
             if (error != null && reservationFinished.compareAndSet(false, true)) {
                 usageQuotaService.abortReservation(reservation);
             }
@@ -161,19 +172,20 @@ public class PythonResearchHarnessClient implements ResearchHarnessTransport {
             return;
         }
         active.future().completeExceptionally(new CancellationException("Research generation cancelled"));
-        active.task().cancel(true);
+        closeActiveRequest(active);
     }
 
     @PreDestroy
     void shutdown() {
         activeRequests.values().forEach(active -> {
             active.future().completeExceptionally(new CancellationException("Research harness client stopped"));
-            active.task().cancel(true);
+            closeActiveRequest(active);
         });
     }
 
     private Map<String, Object> executeStream(Map<String, Object> body,
-                                              Consumer<Map<String, Object>> progressListener)
+                                              Consumer<Map<String, Object>> progressListener,
+                                              AtomicReference<InputStream> activeResponseBody)
             throws IOException, InterruptedException {
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(streamUri)
                 .header("Content-Type", "application/json")
@@ -191,8 +203,10 @@ public class PythonResearchHarnessClient implements ResearchHarnessTransport {
         }
 
         Map<String, Object> result = null;
+        InputStream responseBody = response.body();
+        activeResponseBody.set(responseBody);
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(response.body(), StandardCharsets.UTF_8))) {
+                new InputStreamReader(responseBody, StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (Thread.currentThread().isInterrupted()) {
@@ -213,6 +227,8 @@ public class PythonResearchHarnessClient implements ResearchHarnessTransport {
                     publishProgress(progressListener, item);
                 }
             }
+        } finally {
+            activeResponseBody.compareAndSet(responseBody, null);
         }
         if (result == null || result.isEmpty()) {
             throw new IllegalStateException("The Python research harness stream ended without a result");
@@ -226,6 +242,18 @@ public class PythonResearchHarnessClient implements ResearchHarnessTransport {
         } catch (RuntimeException error) {
             logger.warn("Research progress listener failed; continuing generation", error);
         }
+    }
+
+    private void closeActiveRequest(ActiveRequest active) {
+        InputStream responseBody = active.responseBody().getAndSet(null);
+        if (responseBody != null) {
+            try {
+                responseBody.close();
+            } catch (IOException error) {
+                logger.debug("Closing cancelled research response failed", error);
+            }
+        }
+        active.task().cancel(true);
     }
 
     private String firstNonBlank(Object... values) {
@@ -253,6 +281,8 @@ public class PythonResearchHarnessClient implements ResearchHarnessTransport {
         return value == null ? "" : String.valueOf(value).trim();
     }
 
-    private record ActiveRequest(FutureTask<Void> task, CompletableFuture<ProductTurnResult> future) {
+    private record ActiveRequest(FutureTask<Void> task,
+                                 CompletableFuture<ProductTurnResult> future,
+                                 AtomicReference<InputStream> responseBody) {
     }
 }
