@@ -163,8 +163,10 @@ def _function_tool(definition: JsonMap) -> FunctionTool:
                     mode = "finalize_existing_draft"
                     message = (
                         "Treat the content in the immediately preceding _continue_research_turn call as an "
-                        "existing draft. Do not regenerate, summarize, or repeat it as assistant text. Call "
-                        "exactly one submit tool. Preserve supported draft content, use only the allowed "
+                        "existing draft. Do not return Markdown as assistant text. Return exactly one "
+                        "submit_research_answer function call with no other content, and put the corrected Draft "
+                        "in its markdown argument. Do not regenerate or summarize it. Preserve supported draft "
+                        "content, use only the allowed "
                         "source_quote_ref values below, cite every factual Markdown block required by the "
                         "Research contract, replace numeric citations such as [1] and the trailing Sources "
                         "list with inline [[source_quote_ref]] markers, and remove claims that these quotes "

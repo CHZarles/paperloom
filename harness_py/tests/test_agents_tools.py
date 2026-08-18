@@ -156,7 +156,8 @@ class AgentsToolsTest(unittest.TestCase):
 
         payload = json.loads(output)
         self.assertEqual("finalize_existing_draft", payload["mode"])
-        self.assertIn("Do not regenerate", payload["message"])
+        self.assertIn("Do not return Markdown as assistant text", payload["message"])
+        self.assertIn("markdown argument", payload["message"])
         self.assertIn("replace numeric citations", payload["message"])
         self.assertEqual(
             [{

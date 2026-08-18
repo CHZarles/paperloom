@@ -181,7 +181,7 @@ class GoldenDataTest(unittest.TestCase):
         instructions = research_agent_instructions(ResearchSkillRegistry())
 
         self.assertEqual(
-            "3e5181e39dd983fa44b6b47e0073e02a38a7930522032df1aa47028a75083c36",
+            "8dbcfb95216a989c57d2dc10a76b7c5d600fe3381ec7a55a1f7a37d6215dfc60",
             hashlib.sha256(instructions.encode("utf-8")).hexdigest(),
             "expanded Golden Data must not change the established agent prompt",
         )
@@ -202,6 +202,7 @@ class GoldenDataTest(unittest.TestCase):
         self.assertIn("Do not reload a research skill already used", instructions)
         self.assertIn("recommending papers and explaining why is RESEARCH, not CATALOG", instructions)
         self.assertIn("If the reference has no unique antecedent", instructions)
+        self.assertIn("Do not return Markdown as assistant text", instructions)
 
     def test_committed_dataset_has_three_history_snapshots(self) -> None:
         history_cases = [case for case in self.dataset.cases if len(case["messages"]) > 1]

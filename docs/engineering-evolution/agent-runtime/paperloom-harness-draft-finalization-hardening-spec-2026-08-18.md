@@ -310,4 +310,12 @@ The first replay exposed a second duplication path before submission, where repe
 multiple Draft calls. The projection was tightened to retain only the latest active Draft. The final exact-case replay
 completed in 14 calls, 186,776 Tokens, and 92,579 ms; all 186 Harness tests passed. These measurements demonstrate the
 mechanism but remain single-Run evidence.
+
+Production follow-up
+The question `DDoS攻击呢` produced a third recoverable plain-text Draft after correctly converting three citations,
+but the provisional two-repair budget rejected it before submission. The budget was calibrated to three while the
+16-turn bound remained unchanged. Live API probes showed that MiniMax accepted `json_object` and `json_schema`
+response formats but did not enforce either under a conflicting prompt. The finish and finalization instructions were
+therefore tightened to forbid assistant Markdown and place the corrected Draft in the submission tool's `markdown`
+argument; response-format hints were not added as a false correctness boundary.
 ```

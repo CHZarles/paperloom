@@ -376,6 +376,20 @@ finalization path; a fourth still fails, and the independent 16-turn Runner limi
 starts with two repairs consumed, verifies that the third is accepted, and verifies that the next response fails.
 This is a one-step limit calibration from a captured production trace, not an unbounded retry policy.
 
+### 8.5 Output-Constraint Probe And Prompt Tightening
+
+The current MiniMax-M3 endpoint returned HTTP 200 for both `response_format=json_object` and
+`response_format=json_schema`. With a cooperative prompt it produced matching JSON. With a conflicting prompt, both
+requests returned the requested plain text instead; even a strict schema with an enum was not enforced. Therefore
+`response_format` cannot replace Tool Calls or the deterministic Validator on this endpoint.
+
+The DDoS trace also showed a narrower prompt defect: the finalization instruction asked MiniMax to correct citations
+and remove unsupported claims, but did not say where the corrected Markdown must be placed. MiniMax performed the
+content edit and returned the result as assistant text. The global finish instruction and the Draft-finalization
+instruction now explicitly forbid assistant Markdown, require exactly one submission call, and direct the corrected
+Draft into `submit_research_answer`'s `markdown` argument. Bounded recovery remains necessary because these Provider
+controls are behavioral hints rather than server-enforced constraints.
+
 ## 9. Non-Goals
 
 - Pi or TypeScript migration;
