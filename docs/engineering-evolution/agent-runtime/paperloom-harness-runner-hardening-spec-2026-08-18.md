@@ -132,11 +132,11 @@ These are policy states inside the existing request context, not a requirement f
 
 ## 5. Experimental Limits And Calibration
 
-There are currently no product users, so the first implementation may use provisional limits and run a real-model
-regression before acceptance. The initial values are:
+There are currently no product users, so the implementation uses provisional limits calibrated with real Runs. The
+current values are:
 
 ```python
-MAX_PROVIDER_PROTOCOL_REPAIRS = 2
+MAX_PROVIDER_PROTOCOL_REPAIRS = 3
 MAX_AGENT_TURNS = 16
 ```
 
@@ -148,7 +148,7 @@ The budget counts anomalous Provider responses, not individual output items. A r
 function calls consumes one unit; valid sibling calls remain unchanged, and every sanitized internal call ID is
 registered before Runner receives the response.
 
-The value `2` is an experimental starting point, not a conclusion derived from the aggregate average. Calibration
+The value started at `2` and was raised to `3` after the production calibration in Section 8.4. Calibration
 must classify the available traces and regression Runs and record:
 
 | Measurement | Purpose |
@@ -162,8 +162,8 @@ must classify the available traces and regression Runs and record:
 
 | Failure class | Recovery action | Per-Run budget | Terminal reason | Current evidence |
 | --- | --- | ---: | --- | --- |
-| Plain text | Adapter-generated internal correction | Shared experimental total: 2 | `PROVIDER_TOOL_PROTOCOL_VIOLATION` | Common enough that immediate failure is unsafe; final budget pending regression |
-| Malformed/truncated arguments | Adapter-generated sanitized correction | Shared experimental total: 2 | `PROVIDER_TOOL_PROTOCOL_VIOLATION` | Existing compatibility need; final budget pending regression |
+| Plain text | Adapter-generated internal correction | Shared experimental total: 3 | `PROVIDER_TOOL_PROTOCOL_VIOLATION` | A valid production Run required a third correction; the Runner limit remains the outer bound |
+| Malformed/truncated arguments | Adapter-generated sanitized correction | Shared experimental total: 3 | `PROVIDER_TOOL_PROTOCOL_VIOLATION` | Existing compatibility need; shares the same bound so failure types cannot alternate around it |
 | Model-selected internal continuation | Reject unregistered call ID | 0 | `PROVIDER_TOOL_PROTOCOL_VIOLATION` | Already observed 4 times in the runaway Run |
 | Rejected submission | Existing model-visible correction | Overall Run budget | Existing contract outcome | Existing accepted behavior |
 
@@ -338,8 +338,8 @@ Provider returns plain text
   -> existing Contract and citation Validator remains the only publication boundary
 ```
 
-The Harness still does not publish plain text directly, infer citations, or increase the repair budget. Malformed
-arguments retain their previous short repair message and do not enter draft finalization.
+The Harness still does not publish plain text directly or infer citations. Malformed arguments retain their previous
+short repair message and do not enter draft finalization.
 
 After implementation, the same production input completed in Run `run_f991f8cca8f947adb298815222730917`:
 
@@ -362,6 +362,20 @@ preserve deterministic validation, recover within the existing budget, and remai
 The follow-up context, evidence, and diagnostic tightening is specified in
 [PaperLoom Harness Draft Finalization Hardening Spec](paperloom-harness-draft-finalization-hardening-spec-2026-08-18.md).
 
+### 8.4 Production Calibration: DDoS Follow-Up
+
+After deployment, the follow-up question `DDoS攻击呢` failed in Run
+`run_01ba1e994d3e47058cddd873add26b0b` after 12 model calls. The trace ruled out a Worker crash, transport failure,
+Validator rejection, and the 16-turn limit. MiniMax returned plain text on model calls 1, 11, and 12. The first
+response began evidence acquisition, the second produced a cited Draft, and the third correctly replaced numeric
+citations with three known `source_quote_ref` markers but still omitted the submission Tool Call. The provisional
+budget of `2` rejected that third recoverable response as `PROVIDER_TOOL_PROTOCOL_VIOLATION`.
+
+The shared budget is therefore calibrated to `3`. The third deviation is converted into the existing bounded Draft
+finalization path; a fourth still fails, and the independent 16-turn Runner limit is unchanged. The regression test
+starts with two repairs consumed, verifies that the third is accepted, and verifies that the next response fails.
+This is a one-step limit calibration from a captured production trace, not an unbounded retry policy.
+
 ## 9. Non-Goals
 
 - Pi or TypeScript migration;
@@ -376,7 +390,7 @@ The follow-up context, evidence, and diagnostic tightening is specified in
 | --- | --- |
 | Unlimited synthetic continuation | Already produced a 28-call, 632,527-Token runaway Run |
 | Immediate failure for every first deviation | Conflicts with the high observed frequency of recoverable plain-text responses |
-| Treating the experimental budget of 2 as a proven production value | Consecutive and successful-recovery distributions are not yet available |
+| Treating the experimental budget of 2 as a proven production value | A valid production Run produced a third recoverable plain-text response |
 | Renaming `_continue_research_turn` | Cosmetic churn; visibility, authorization, and bounds fix the defect |
 | Pi migration as the bug fix | Replaces the runtime without determining the PaperLoom recovery policy |
 

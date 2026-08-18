@@ -73,7 +73,8 @@ Do not add a Finalizer class, second Runner, Provider interface, message queue, 
 8. Only allowed `source_quote_ref` values may be submitted; the Harness does not infer a reference from `[1]` or a
    human-readable Sources line.
 9. Malformed-argument recovery remains separate from plain-text Draft finalization.
-10. The shared Provider repair budget remains `2`; the SDK Runner limit remains `16`.
+10. The shared Provider repair budget is `3` after the production calibration recorded in the Runner hardening spec;
+    the SDK Runner limit remains `16`.
 
 ## 4. Change 1: Remove A Superseded Draft
 
@@ -274,7 +275,7 @@ network conditions were not paired, so they are not a stable performance claim.
 - automatic attachment of all known evidence to a Draft;
 - an online semantic-entailment Judge;
 - another Agent Loop or dedicated formatting Provider;
-- changing repair or turn limits;
+- further repair or turn-limit changes beyond the recorded production calibration;
 - prompt, retrieval, citation syntax, or answer-contract redesign.
 
 ## 11. Rollback

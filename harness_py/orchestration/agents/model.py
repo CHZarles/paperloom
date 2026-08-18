@@ -38,7 +38,7 @@ _ACTIVE_CONTEXT: ContextVar[ResearchRunContext | None] = ContextVar(
 )
 TEXT_NUDGE_TOOL_NAME = "_continue_research_turn"
 TOOL_ARGUMENT_REPAIR_PREFIX = "[tool_arguments_repair] "
-MAX_PROVIDER_PROTOCOL_REPAIRS = 2
+MAX_PROVIDER_PROTOCOL_REPAIRS = 3
 
 
 @contextmanager

@@ -137,7 +137,7 @@ MiniMax 返回普通文本，`MiniMaxAgentsModel` 会把它转换为内部 `_con
 要求下一步只做结构化提交；没有 Source Quote 的 Research 草稿必须先精确读取。输入投影只保留最新
 活动草稿，并在真实提交出现后删除它，而不是让 SDK 提前把文本当成结果。Runner 注册该
 内部 Tool，但 MiniMax 的工具列表不包含它；只有适配器登记的调用 ID 可以执行。纯文本与损坏参数
-共用每个 Run 两次的实验修复额度。
+共用每个 Run 三次的实验修复额度。
 
 ### Context：向工具注入本轮依赖和状态
 

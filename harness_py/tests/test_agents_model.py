@@ -176,7 +176,7 @@ class AgentsModelTest(unittest.TestCase):
         self.assertEqual({"model.request", "model.response"}, event_kinds)
         self.assertNotIn("test-key", events_text)
 
-    def test_provider_protocol_recovery_stops_after_the_shared_budget(self) -> None:
+    def test_provider_protocol_recovery_allows_three_then_stops(self) -> None:
         model = MiniMaxAgentsModel(ProviderConfig(
             scope="llm",
             provider="minimax",
@@ -212,14 +212,14 @@ class AgentsModelTest(unittest.TestCase):
         context.protocol_repair_count = 2
         context.begin_model_call()
 
-        async def invoke() -> None:
+        async def invoke():
             try:
                 with bind_research_context(context), patch.object(
                     OpenAIChatCompletionsModel,
                     "get_response",
                     new=AsyncMock(return_value=raw_response),
                 ):
-                    await model.get_response(
+                    repaired = await model.get_response(
                         "System prompt",
                         [{"role": "user", "content": "Hello"}],
                         model.research_settings(),
@@ -231,12 +231,28 @@ class AgentsModelTest(unittest.TestCase):
                         conversation_id=None,
                         prompt=None,
                     )
+                    context.begin_model_call()
+                    with self.assertRaisesRegex(ResearchSystemError, "PROVIDER_TOOL_PROTOCOL_VIOLATION"):
+                        await model.get_response(
+                            "System prompt",
+                            [{"role": "user", "content": "Hello"}],
+                            model.research_settings(),
+                            [],
+                            None,
+                            [],
+                            ModelTracing.DISABLED,
+                            previous_response_id=None,
+                            conversation_id=None,
+                            prompt=None,
+                        )
+                    return repaired
             finally:
                 await model.close()
 
-        with self.assertRaisesRegex(ResearchSystemError, "PROVIDER_TOOL_PROTOCOL_VIOLATION"):
-            asyncio.run(invoke())
+        response = asyncio.run(invoke())
 
+        self.assertEqual(TEXT_NUDGE_TOOL_NAME, response.output[0].name)
+        self.assertEqual(3, context.protocol_repair_count)
         self.assertEqual(5, context.total_tokens)
 
     def test_text_only_response_requires_an_explicit_submission_tool(self) -> None:
