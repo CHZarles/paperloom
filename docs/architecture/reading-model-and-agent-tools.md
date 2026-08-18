@@ -114,13 +114,18 @@ sources:
 - `ReadingCorpusTools.definitions()`;
 - `final_answer_tool_definition()` for `submit_research_answer`.
 
-The provider compatibility tool `_continue_research_turn` is also added when the model adapter needs
-to convert a text-only response back into the required submission flow. It is not a product research
-capability.
+Runner also registers the provider compatibility tool `_continue_research_turn` so the model adapter
+can convert text-only or malformed responses back into the required submission flow. The adapter
+removes this internal tool from MiniMax-visible definitions and registers every synthetic call ID;
+unregistered calls are rejected. Plain text and malformed arguments share a two-repair experimental
+budget per Run. Plain text is retained only as the latest unpublished Draft; a real submission removes
+the superseded Draft from later Provider requests, and a Research Draft without known Source Quotes
+must obtain exact evidence before submission. This is not a product research capability.
 
 The SDK is configured with `tool_choice="required"` and `reset_tool_choice=False`. A model may emit
 several Function Calls in one response, but `max_function_tool_concurrency=1` executes them serially.
 That ordering matters because one call may disclose a paper or location required by the next call.
+The SDK Runner stops before a seventeenth model Turn.
 
 ## Request-local State
 

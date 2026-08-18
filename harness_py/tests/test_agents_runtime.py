@@ -16,6 +16,7 @@ from harness_py.orchestration.agents.runtime import (
     AgentsSdkHarnessRuntime,
     _latest_final_submission_only,
 )
+from harness_py.orchestration.agents.model import TEXT_NUDGE_TOOL_NAME, TOOL_ARGUMENT_REPAIR_PREFIX
 from harness_py.orchestration.conversation import ConversationState
 from harness_py.orchestration.live_chat import LiveResearchChatHarness
 from harness_py.utils.errors import HarnessCancelled
@@ -52,6 +53,79 @@ class AgentsRuntimeTest(unittest.TestCase):
             [research_call, research_output, latest_final, latest_error],
             filtered.input,
         )
+
+    def test_model_input_drops_a_superseded_plain_text_draft_after_submission(self) -> None:
+        research_call = {"type": "function_call", "name": "read_paper_content", "call_id": "read_1"}
+        research_output = {"type": "function_call_output", "call_id": "read_1", "output": "evidence"}
+        draft_call = {
+            "type": "function_call",
+            "name": TEXT_NUDGE_TOOL_NAME,
+            "call_id": "draft_1",
+            "arguments": json.dumps({"content": "Complete draft."}),
+        }
+        draft_output = {"type": "function_call_output", "call_id": "draft_1", "output": "finalize it"}
+        final_call = {"type": "function_call", "name": "submit_research_answer", "call_id": "final_1"}
+        final_error = {"type": "function_call_output", "call_id": "final_1", "output": "rejected"}
+
+        filtered = _latest_final_submission_only(CallModelData(
+            model_data=ModelInputData(
+                input=[research_call, research_output, draft_call, draft_output, final_call, final_error],
+                instructions="research",
+            ),
+            agent=None,  # type: ignore[arg-type]
+            context=None,
+        ))
+
+        self.assertEqual([research_call, research_output, final_call, final_error], filtered.input)
+
+    def test_model_input_keeps_only_the_latest_plain_text_draft_before_submission(self) -> None:
+        first_call = {
+            "type": "function_call",
+            "name": TEXT_NUDGE_TOOL_NAME,
+            "call_id": "draft_1",
+            "arguments": json.dumps({"content": "First draft."}),
+        }
+        first_output = {"type": "function_call_output", "call_id": "draft_1", "output": "finalize it"}
+        latest_call = {
+            "type": "function_call",
+            "name": TEXT_NUDGE_TOOL_NAME,
+            "call_id": "draft_2",
+            "arguments": json.dumps({"content": "Latest draft."}),
+        }
+        latest_output = {"type": "function_call_output", "call_id": "draft_2", "output": "finalize it"}
+
+        filtered = _latest_final_submission_only(CallModelData(
+            model_data=ModelInputData(
+                input=[first_call, first_output, latest_call, latest_output],
+                instructions="research",
+            ),
+            agent=None,  # type: ignore[arg-type]
+            context=None,
+        ))
+
+        self.assertEqual([latest_call, latest_output], filtered.input)
+
+    def test_model_input_keeps_a_later_malformed_argument_repair(self) -> None:
+        final_call = {"type": "function_call", "name": "submit_research_answer", "call_id": "final_1"}
+        final_error = {"type": "function_call_output", "call_id": "final_1", "output": "rejected"}
+        repair_call = {
+            "type": "function_call",
+            "name": TEXT_NUDGE_TOOL_NAME,
+            "call_id": "repair_1",
+            "arguments": json.dumps({"content": TOOL_ARGUMENT_REPAIR_PREFIX + "Retry valid JSON."}),
+        }
+        repair_output = {"type": "function_call_output", "call_id": "repair_1", "output": "retry"}
+
+        filtered = _latest_final_submission_only(CallModelData(
+            model_data=ModelInputData(
+                input=[final_call, final_error, repair_call, repair_output],
+                instructions="research",
+            ),
+            agent=None,  # type: ignore[arg-type]
+            context=None,
+        ))
+
+        self.assertEqual([final_call, final_error, repair_call, repair_output], filtered.input)
 
     def test_sdk_runtime_executes_stateful_tools_and_validated_final_submission(self) -> None:
         dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()
@@ -180,6 +254,14 @@ class AgentsRuntimeTest(unittest.TestCase):
             thread.join(timeout=2)
 
         self.assertEqual(2, len(requests), run["diagnostics"])
+        self.assertEqual(1, run["diagnostics"]["provider_protocol_repair_count"])
+        self.assertTrue(all(
+            "_continue_research_turn" not in {
+                tool["function"]["name"]
+                for tool in request.get("tools", [])
+            }
+            for request in requests
+        ))
         self.assertEqual("COMPLETED", run["status"], run["diagnostics"])
         self.assertEqual(
             "Hello. I can help you search, read, and compare papers.",
@@ -203,6 +285,21 @@ class AgentsRuntimeTest(unittest.TestCase):
         self.assertEqual("CANCELLED", run["status"])
         self.assertEqual("RUN_CANCELLED", run["control"]["reason_code"])
         self.assertEqual(1, state.turn_index)
+
+    def test_runtime_stops_before_a_seventeenth_model_turn(self) -> None:
+        dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()
+        model = _LoopingAgentsModel()
+        harness = LiveResearchChatHarness(AgentsSdkHarnessRuntime(model=model))
+
+        run, _ = harness.run_turn(
+            dataset,
+            ConversationState.new("model_turn_limit"),
+            "Keep researching forever.",
+        )
+
+        self.assertEqual("LIMITED", run["status"])
+        self.assertEqual("RUN_MODEL_CALL_LIMIT_EXCEEDED", run["control"]["reason_code"])
+        self.assertEqual(16, model.call_count)
 
 class _ScriptedAgentsModel(Model):
     def __init__(self) -> None:
@@ -260,6 +357,42 @@ class _ScriptedAgentsModel(Model):
                 type="function_call",
             )],
             usage=Usage(requests=1, input_tokens=10, output_tokens=5, total_tokens=15),
+            response_id=None,
+        )
+
+    def stream_response(self, *args, **kwargs) -> AsyncIterator:
+        raise NotImplementedError
+
+
+class _LoopingAgentsModel(Model):
+    def __init__(self) -> None:
+        self.call_count = 0
+
+    async def get_response(
+        self,
+        system_instructions,
+        input,
+        model_settings,
+        tools,
+        output_schema,
+        handoffs,
+        tracing: ModelTracing,
+        *,
+        previous_response_id,
+        conversation_id,
+        prompt,
+    ) -> ModelResponse:
+        self.call_count += 1
+        if self.call_count > 16:
+            raise AssertionError("Runner requested a seventeenth model turn")
+        return ModelResponse(
+            output=[ResponseFunctionToolCall(
+                arguments=json.dumps({"skill_id": "precision_fact_extraction"}),
+                call_id=f"loop_{self.call_count}",
+                name="get_research_skill",
+                type="function_call",
+            )],
+            usage=Usage(requests=1, input_tokens=1, output_tokens=1, total_tokens=2),
             response_id=None,
         )
 

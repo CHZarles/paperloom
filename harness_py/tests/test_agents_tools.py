@@ -28,6 +28,7 @@ from harness_py.orchestration.research_contract import (
 )
 from harness_py.orchestration.runtime import TurnExecutionInput
 from harness_py.tests import test_harness_py as _harness_tests
+from harness_py.utils.errors import ResearchSystemError
 
 
 class AgentsToolsTest(unittest.TestCase):
@@ -110,6 +111,7 @@ class AgentsToolsTest(unittest.TestCase):
             tool_arguments="{}",
         )
         requested = "Retry submit_research_answer with shorter valid JSON."
+        context.synthetic_repair_call_ids = {"call_repair"}
 
         output = asyncio.run(tool.on_invoke_tool(
             tool_context,
@@ -117,6 +119,117 @@ class AgentsToolsTest(unittest.TestCase):
         ))
 
         self.assertEqual(requested, json.loads(output)["message"])
+        self.assertNotIn("call_repair", context.synthetic_repair_call_ids)
+
+    def test_internal_continuation_requests_submission_of_the_existing_plain_text_draft(self) -> None:
+        dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()
+        context = ResearchRunContext(TurnExecutionInput(
+            dataset=dataset,
+            case_id="finalize_draft",
+            run_id="run_finalize_draft",
+            question="hello",
+            conversation_messages=[],
+            research_memory=ResearchMemory(),
+        ))
+        context.corpus.observations_by_evidence_id["source_quote_1"] = {
+            "source_quote_ref": "source_quote_1",
+            "title": "Paper One",
+            "section": "2.2 Standard Attention",
+            "page": 4,
+        }
+        context.synthetic_repair_call_ids = {"call_finalize"}
+        tool = next(
+            item
+            for item in build_agent_tools(context)
+            if item.name == TEXT_NUDGE_TOOL_NAME
+        )
+
+        output = asyncio.run(tool.on_invoke_tool(
+            ToolContext(
+                context=context,
+                tool_name=TEXT_NUDGE_TOOL_NAME,
+                tool_call_id="call_finalize",
+                tool_arguments="{}",
+            ),
+            json.dumps({"content": "A complete draft with source [1]."}),
+        ))
+
+        payload = json.loads(output)
+        self.assertEqual("finalize_existing_draft", payload["mode"])
+        self.assertIn("Do not regenerate", payload["message"])
+        self.assertIn("replace numeric citations", payload["message"])
+        self.assertEqual(
+            [{
+                "source_quote_ref": "source_quote_1",
+                "title": "Paper One",
+                "section": "2.2 Standard Attention",
+                "page": 4,
+            }],
+            payload["allowed_source_quotes"],
+        )
+        self.assertNotIn("draft", payload)
+        self.assertNotIn("call_finalize", context.synthetic_repair_call_ids)
+
+    def test_internal_continuation_requires_evidence_or_a_non_research_submission_without_quotes(self) -> None:
+        dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()
+        context = ResearchRunContext(TurnExecutionInput(
+            dataset=dataset,
+            case_id="finalize_without_quotes",
+            run_id="run_finalize_without_quotes",
+            question="hello",
+            conversation_messages=[],
+            research_memory=ResearchMemory(),
+        ))
+        context.synthetic_repair_call_ids = {"call_finalize"}
+        tool = next(
+            item
+            for item in build_agent_tools(context)
+            if item.name == TEXT_NUDGE_TOOL_NAME
+        )
+
+        output = asyncio.run(tool.on_invoke_tool(
+            ToolContext(
+                context=context,
+                tool_name=TEXT_NUDGE_TOOL_NAME,
+                tool_call_id="call_finalize",
+                tool_arguments="{}",
+            ),
+            json.dumps({"content": "A research-looking draft."}),
+        ))
+
+        payload = json.loads(output)
+        self.assertEqual("acquire_evidence_or_submit_non_research", payload["mode"])
+        self.assertIn("read_paper_content", payload["message"])
+        self.assertIn("Direct or Catalog", payload["message"])
+        self.assertEqual([], payload["allowed_source_quotes"])
+
+    def test_internal_continuation_rejects_an_unregistered_call(self) -> None:
+        dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()
+        context = ResearchRunContext(TurnExecutionInput(
+            dataset=dataset,
+            case_id="unregistered_repair",
+            run_id="run_unregistered_repair",
+            question="hello",
+            conversation_messages=[],
+            research_memory=ResearchMemory(),
+        ))
+        context.synthetic_repair_call_ids = set()
+        tool = next(
+            item
+            for item in build_agent_tools(context)
+            if item.name == TEXT_NUDGE_TOOL_NAME
+        )
+
+        with self.assertRaisesRegex(ResearchSystemError, "PROVIDER_TOOL_PROTOCOL_VIOLATION"):
+            asyncio.run(tool.on_invoke_tool(
+                ToolContext(
+                    context=context,
+                    tool_name=TEXT_NUDGE_TOOL_NAME,
+                    tool_call_id="call_model_selected",
+                    tool_arguments="{}",
+                ),
+                json.dumps({"content": ""}),
+            ))
 
     def test_mixed_final_and_research_calls_are_rejected(self) -> None:
         dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()

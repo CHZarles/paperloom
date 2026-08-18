@@ -53,6 +53,8 @@ class ResearchRunContext:
     tool_call_groups: dict[str, tuple[str, ...]] = field(default_factory=dict)
     tool_call_models: dict[str, str] = field(default_factory=dict)
     transport_attempts: dict[str, int] = field(default_factory=dict)
+    protocol_repair_count: int = 0
+    synthetic_repair_call_ids: set[str] = field(default_factory=set)
     final_draft: JsonMap | None = None
     protocol_state: ProtocolState = field(default_factory=ProtocolState)
     catalog_results_by_ref: dict[str, JsonMap] = field(default_factory=dict)

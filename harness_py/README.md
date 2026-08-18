@@ -110,8 +110,11 @@ Golden Fixture、离线 Audit 和单元测试继续使用 `ReadingCorpusTools` �
 | `get_research_skill` | 按需读取研究范式指导 | 否 |
 | `submit_research_answer` | 提交 Outcome、Markdown 和 Fields，通过最终校验后结束 Run | 不创建；只能引用已知 Evidence |
 
-供应商返回纯文本时，内部 `_continue_research_turn` Tool 会要求模型继续遵守最终提交协议。它不是
-产品能力。
+供应商返回纯文本或损坏的工具参数时，Runner 内部的 `_continue_research_turn` Tool 会要求模型重新
+遵守提交协议。纯文本会作为未发布草稿保留，并连同当前允许的 Source Quote 卡片交给下一步完成结构化
+提交；没有 Source Quote 的 Research 草稿必须先精确读取证据。输入投影最多保留一个当前草稿，并在
+真实 `submit_*` 出现后删除已被替代的草稿；最终仍须通过原有 Validator。该 Tool 不发送给 MiniMax，且只执行适配器登记的调用；每个 Run 最多触发两次协议修复。
+它不是产品能力。整个 SDK Runner 最多执行 16 个模型 Turn。
 
 ## 授权阶梯
 

@@ -145,6 +145,10 @@ def _function_tool(definition: JsonMap) -> FunctionTool:
             context.control.after_boundary("tool_completed", tool_context.tool_call_id)
             return json.dumps(payload, ensure_ascii=False)
         if name == TEXT_NUDGE_TOOL_NAME:
+            if tool_context.tool_call_id not in context.synthetic_repair_call_ids:
+                context.control.terminal_reason = "PROVIDER_TOOL_PROTOCOL_VIOLATION"
+                raise ResearchSystemError("PROVIDER_TOOL_PROTOCOL_VIOLATION")
+            context.synthetic_repair_call_ids.remove(tool_context.tool_call_id)
             # 模型适配器把纯文本响应转换成这个内部调用。这里不接受纯文本为最终答案，而是
             # 明确提醒模型继续使用 submit_research_answer 协议。
             content = str(arguments.get("content") or "")
@@ -153,6 +157,34 @@ def _function_tool(definition: JsonMap) -> FunctionTool:
                 if content.startswith(TOOL_ARGUMENT_REPAIR_PREFIX)
                 else ""
             )
+            if content and not repair_message:
+                quote_cards = _allowed_source_quote_cards(context)
+                if quote_cards:
+                    mode = "finalize_existing_draft"
+                    message = (
+                        "Treat the content in the immediately preceding _continue_research_turn call as an "
+                        "existing draft. Do not regenerate, summarize, or repeat it as assistant text. Call "
+                        "exactly one submit tool. Preserve supported draft content, use only the allowed "
+                        "source_quote_ref values below, cite every factual Markdown block required by the "
+                        "Research contract, replace numeric citations such as [1] and the trailing Sources "
+                        "list with inline [[source_quote_ref]] markers, and remove claims that these quotes "
+                        "do not support."
+                    )
+                else:
+                    mode = "acquire_evidence_or_submit_non_research"
+                    message = (
+                        "The existing draft has no allowed Source Quotes. If it is a Research answer, do not "
+                        "submit it yet: call read_paper_content for exact evidence first. Direct or Catalog "
+                        "answers may call their submit tool without Source Quotes. Do not infer references "
+                        "from search previews or human-readable Sources labels."
+                    )
+                payload = _bounded_model_payload(context, name, {
+                    "continue": True,
+                    "mode": mode,
+                    "message": message,
+                    "allowed_source_quotes": quote_cards,
+                })
+                return json.dumps(payload, ensure_ascii=False)
             return json.dumps({
                 "continue": True,
                 "message": repair_message or (
@@ -276,7 +308,7 @@ def _bounded_model_payload(context: ResearchRunContext, name: str, payload: Json
         return payload
     if name == "read_paper_content":
         return _bounded_read_payload(context, payload, limit)
-    for key in ("candidates", "matches", "locations", "items", "papers"):
+    for key in ("candidates", "matches", "locations", "items", "papers", "allowed_source_quotes"):
         values = as_list(payload.get(key))
         if not values:
             continue
@@ -401,6 +433,22 @@ def _protocol_facts(context: ResearchRunContext, tool_call_id: str, tool_name: s
         catalog_results=context.catalog_results_by_ref,
         sibling_tool_names=context.tool_call_groups.get(tool_call_id, (tool_name,)),
     )
+
+
+def _allowed_source_quote_cards(context: ResearchRunContext) -> list[JsonMap]:
+    quotes = {
+        **context.turn.research_memory.evidence_items_by_id,
+        **context.corpus.observations_by_evidence_id,
+    }
+    return [
+        {
+            "source_quote_ref": ref,
+            "title": str(child_map(quotes[ref]).get("title") or ""),
+            "section": str(child_map(quotes[ref]).get("section") or ""),
+            "page": child_map(quotes[ref]).get("page"),
+        }
+        for ref in sorted(quotes)
+    ]
 
 
 def _finish_protocol_rejection(

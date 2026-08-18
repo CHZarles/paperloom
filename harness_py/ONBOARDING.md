@@ -103,7 +103,7 @@ result = await Runner.run(
     context=context,
     session=RequestBackedSession(turn.run_id, turn.conversation_messages),
     hooks=ResearchRunHooks(),
-    max_turns=None,
+    max_turns=16,
     run_config=run_config,
 )
 ```
@@ -128,12 +128,16 @@ result = await Runner.run(
 组装输入 -> 调模型 -> 执行 function calls -> 把结果交还模型 -> 再调模型
 ```
 
-本项目设置 `max_turns=None`，不人为规定“检索几轮后必须结束”。真正的结束条件是
-`submit_research_answer` 通过校验。
+本项目设置 `max_turns=16`。正常结束条件仍是某个 `submit_*` Tool 通过校验；第 17 个模型 Turn
+不会发给 Provider，Runtime 会返回 `RUN_MODEL_CALL_LIMIT_EXCEEDED`。
 
 `tool_choice="required"` 和 `reset_tool_choice=False` 让每个模型步骤都继续走工具协议。若
 MiniMax 返回普通文本，`MiniMaxAgentsModel` 会把它转换为内部 `_continue_research_turn` 工具
-调用，提醒模型继续并通过最终提交工具结束，而不是让 SDK 提前把文本当成结果。
+调用，并保留去除 Thinking 后的文本作为未发布草稿；内部 Tool 提供当前允许的 Source Quote 卡片，
+要求下一步只做结构化提交；没有 Source Quote 的 Research 草稿必须先精确读取。输入投影只保留最新
+活动草稿，并在真实提交出现后删除它，而不是让 SDK 提前把文本当成结果。Runner 注册该
+内部 Tool，但 MiniMax 的工具列表不包含它；只有适配器登记的调用 ID 可以执行。纯文本与损坏参数
+共用每个 Run 两次的实验修复额度。
 
 ### Context：向工具注入本轮依赖和状态
 

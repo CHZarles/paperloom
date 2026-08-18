@@ -24,6 +24,7 @@ from agents import (
     Model,
     ModelResponse,
     ModelSettings,
+    MaxTurnsExceeded,
     RunConfig,
     RunHooks,
     Runner,
@@ -39,8 +40,16 @@ from ..run_output import build_harness_run
 from ..runtime import HarnessRuntime, TurnExecutionInput, TurnExecutionResult
 from ..run_control import RunLimitExceeded
 from .context import ResearchRunContext
-from .model import bind_research_context, provider_agents_model
+from .model import (
+    TEXT_NUDGE_TOOL_NAME,
+    TOOL_ARGUMENT_REPAIR_PREFIX,
+    bind_research_context,
+    provider_agents_model,
+)
 from .tools import build_agent_tools, tools_to_final_output
+
+
+MAX_AGENT_TURNS = 16
 
 
 class ResearchRunHooks(RunHooks[ResearchRunContext]):
@@ -138,6 +147,7 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
                 "completion_tokens": context.completion_tokens,
                 "total_tokens": context.total_tokens,
                 "model_latency_ms": context.model_latency_ms,
+                "provider_protocol_repair_count": context.protocol_repair_count,
             },
             harness_id=self.harness_id,
             control=context.control.to_dict(),
@@ -233,7 +243,7 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
                             agent,
                             input_items,
                             context=context,
-                            max_turns=None,
+                            max_turns=MAX_AGENT_TURNS,
                             hooks=ResearchRunHooks(),
                             run_config=run_config,
                             session=session,
@@ -243,6 +253,9 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
                 except asyncio.TimeoutError as error:
                     context.control.terminal_reason = "RUN_DEADLINE_EXCEEDED"
                     raise RunLimitExceeded("RUN_DEADLINE_EXCEEDED") from error
+                except MaxTurnsExceeded as error:
+                    context.control.terminal_reason = "RUN_MODEL_CALL_LIMIT_EXCEEDED"
+                    raise RunLimitExceeded("RUN_MODEL_CALL_LIMIT_EXCEEDED") from error
         finally:
             # 只关闭本方法自己创建的 Model。注入模型的生命周期由注入方管理。
             if owns_model:
@@ -260,28 +273,51 @@ def _latest_final_submission_only(
     data: CallModelData[ResearchRunContext],
 ) -> ModelInputData:
     items = data.model_data.input
-    final_call_ids = [
-        str(item.get("call_id") or "")
-        for item in items
+    final_calls = [
+        (index, str(item.get("call_id") or ""))
+        for index, item in enumerate(items)
         if isinstance(item, dict)
         and item.get("type") == "function_call"
         and item.get("name") in SUBMISSION_TOOL_NAMES
         and item.get("call_id")
     ]
+    final_call_ids = [call_id for _, call_id in final_calls]
     obsolete = set(final_call_ids[:-1])
-    if not obsolete:
+    draft_calls = [
+        (index, str(item.get("call_id") or ""))
+        for index, item in enumerate(items)
+        if isinstance(item, dict)
+        and item.get("type") == "function_call"
+        and item.get("name") == TEXT_NUDGE_TOOL_NAME
+        and _is_plain_text_draft_call(item)
+    ]
+    latest_final_index = final_calls[-1][0] if final_calls else -1
+    active_drafts = [item for item in draft_calls if item[0] > latest_final_index]
+    active_draft_id = active_drafts[-1][1] if active_drafts else ""
+    superseded_drafts = {call_id for _, call_id in draft_calls if call_id != active_draft_id}
+    discarded = obsolete | superseded_drafts
+    if not discarded:
         return data.model_data
     return ModelInputData(
         input=[
             item for item in items
             if not (
                 isinstance(item, dict)
-                and item.get("call_id") in obsolete
+                and item.get("call_id") in discarded
                 and item.get("type") in {"function_call", "function_call_output"}
             )
         ],
         instructions=data.model_data.instructions,
     )
+
+
+def _is_plain_text_draft_call(item: JsonMap) -> bool:
+    try:
+        arguments = json.loads(str(item.get("arguments") or ""))
+    except json.JSONDecodeError:
+        return False
+    content = str(arguments.get("content") or "") if isinstance(arguments, dict) else ""
+    return bool(content) and not content.startswith(TOOL_ARGUMENT_REPAIR_PREFIX)
 
 
 def _evidence_card(item: JsonMap) -> JsonMap:
