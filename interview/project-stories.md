@@ -1,4 +1,4 @@
-# PaperLoom 八个项目难点面试稿
+# PaperLoom 九个项目难点面试稿
 
 下面不是编故事，而是把仓库已有实现和实验记录压缩成可口述版本。
 
@@ -245,3 +245,47 @@ PDF 中位数 1632.3 ms，页面图 2210.7 ms，图片反而慢 578.4 ms。根�
 为什么请求数比字节数更重要、HTTP Range/206/Content-Range、反向代理为什么会吞 Range、如何避免性能
 测试自欺、为什么暂缓图片方案、Vue 条件渲染与 nextTick、为什么用热缓存隔离前端耗时、预加载的延迟与
 带宽权衡、为什么先定义实验保留线。
+
+## 9. 如何让 MiniMax 的协议错误在有限轮次内自动收敛？
+
+**90 秒回答：**
+
+> Research Harness 要求模型最终通过 `submit_research_answer` 提交结构化答案，但 MiniMax 即使收到
+> `tool_choice=required`，仍可能返回内容正确的纯文本。一次线上 Run 因第三次可恢复的纯文本超过暂定的
+> 两次修复预算，被报成内部错误。我沿 Trace 排除了 Redis Worker、网络、Validator 和总轮数限制，确认
+> 根因是 Provider 输出与 Harness 工具协议之间的概率性偏差。
+>
+> 修复没有直接发布纯文本，也没有无限重试。我保留纯文本作为未发布 Draft，用更明确的 Finalization
+> Prompt 要求下一次调用把 Draft 放进 `submit_research_answer.markdown`；协议修复保持有界，总模型调用
+> 仍限制为 16 次。最终正确性继续由确定性 Validator 负责，而不是依赖模型自检。真实 Retry 中，第 7 次
+> MiniMax 返回纯文本 Draft，第 8 次正确调用提交工具，但 Validator 发现第 6 个事实段落缺少引用并返回
+> `UNCITED_CONTENT_BLOCK`；第 9 次模型补上授权引用、删掉无证据的具体表述，再次提交后通过。
+>
+> 这次 Run 在 9 次模型调用、约 32.1 秒内完成，共发生两次协议修复，新增的第三次修复额度并未使用，
+> 因此成功不能只归因于放宽阈值。Harness 全量测试为 186 个通过、7 个跳过。这个案例证明的是“有界恢复
+> 和确定性发布门有效”，不是凭单次随机运行宣称稳定性能提升或彻底解决 MiniMax 工具调用违规。
+
+**状态变化：**
+
+```text
+第 7 次：纯文本 Draft
+-> Harness 保留内容并要求按工具协议提交
+第 8 次：submit_research_answer attempt=1
+-> Validator 拒绝 block_6：UNCITED_CONTENT_BLOCK，Run 保持 ACTIVE
+第 9 次：补引用、收缩无证据表述、再次提交
+-> Validator 通过，Run 从 ACTIVE 进入 COMPLETE
+```
+
+**面试时的准确结论：**
+
+> 我不能保证第三方模型永远遵守工具协议，所以用有界修复降低偶发协议错误导致整次任务失败的概率，
+> 再用确定性 Validator 守住引用和发布边界。
+
+**不能夸大的边界：**一次成功 Retry 只能证明机制工作，不能证明稳定成功率或 p95 延迟提升；MiniMax 对
+`response_format=json_object/json_schema` 只表现为行为提示，冲突 Prompt 实测仍可返回纯文本，因此它
+不能替代工具协议和 Validator。
+
+**证据文件：**`docs/engineering-evolution/agent-runtime/paperloom-harness-draft-finalization-hardening-spec-2026-08-18.md`。
+
+**必备追问：**为什么纯文本不能直接发布、Draft 和最终答案的区别、为什么拒绝提交不等于 Run 失败、
+Validator 为什么必须是确定性代码、Repair Budget 与总轮数上限分别防什么、为什么一次 Run 不能证明性能。

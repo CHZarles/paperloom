@@ -319,3 +319,42 @@ response formats but did not enforce either under a conflicting prompt. The fini
 therefore tightened to forbid assistant Markdown and place the corrected Draft in the submission tool's `markdown`
 argument; response-format hints were not added as a false correctness boundary.
 ```
+
+### 12.1 Production Retry: Draft Finalization And Citation Repair
+
+The production question `DDoS攻击呢` was retried after the finalization Prompt change. Run
+`run_4518caea33144de08e6aeeb026f055` completed with the following trace:
+
+```text
+model_7: MiniMax returned a useful plain-text Draft instead of a submission Tool Call
+model_8: MiniMax followed the repair instruction and called submit_research_answer
+validator: rejected block_6 with UNCITED_CONTENT_BLOCK; Run remained ACTIVE
+model_9: MiniMax cited the scope claim, removed unsupported specificity, and submitted again
+validator: accepted; Run transitioned ACTIVE -> COMPLETE
+```
+
+The rejected paragraph claimed that the paper covered Agent/MCP operational threats rather than traditional network
+DDoS and listed UDP, SYN, and HTTP floods, but supplied no inline Source Quote. The accepted revision narrowed the
+claim to the paper's stated `Enterprise Agentic Threat Taxonomy` scope, attached an authorized `source_quote_ref`, and
+removed or softened details not supported by the available evidence.
+
+| Metric | Result |
+| --- | ---: |
+| Terminal status | `COMPLETED`, `RESEARCH`, `answered` |
+| Model calls | `9` |
+| Provider repairs | `2` |
+| Submission attempts | `2` |
+| Prompt / completion / total Tokens | `97,775 / 2,494 / 100,269` |
+| Model / Harness / Java end-to-end latency | `31,008 / 32,133 / 32,258 ms` |
+| Accepted Source Quotes | `2` |
+| Visible answer length | `855` characters |
+
+Only `model_1` and `model_7` required plain-text transformation. The newly available third repair was not consumed,
+so this Run does not support attributing success solely to the budget change. It demonstrates both halves of the
+mechanism: bounded recovery converted a useful Draft into the required Tool protocol, while the deterministic
+Validator still blocked an unsupported factual paragraph and returned actionable feedback for a second submission.
+
+The full Harness suite remained `186 passed, 7 skipped`. This single stochastic Retry is mechanism evidence, not a
+stable success-rate or latency benchmark. The defensible conclusion is that the change reduces recoverable Provider
+format failures without weakening the citation publication boundary; it does not guarantee that MiniMax will always
+obey the Tool protocol.

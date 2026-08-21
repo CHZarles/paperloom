@@ -23,6 +23,7 @@ An evolution record is worth keeping when it documents at least one of the follo
 - [Research Harness Redis Streams Queue Spec](agent-runtime/research-harness-redis-streams-queue-spec-2026-07-26.md)
 - [PaperLoom Harness Runner Hardening Spec](agent-runtime/paperloom-harness-runner-hardening-spec-2026-08-18.md)
 - [PaperLoom Harness Draft Finalization Hardening Spec](agent-runtime/paperloom-harness-draft-finalization-hardening-spec-2026-08-18.md)
+- [Research Answer Scope Regression](agent-runtime/research-answer-scope-regression-2026-08-21.md)
 - [Pi Agent TypeScript Runtime Migration Design (historical)](agent-runtime/pi-agent-typescript-runtime-migration-design-2026-08-17.md)
 - [Redis Worker Safe Lease Recovery Spec](agent-runtime/redis-worker-safe-lease-recovery-spec-2026-08-12.md)
 - [Redis Live Job False Reclaim Incident](agent-runtime/redis-live-job-false-reclaim-incident-2026-08-12.md)
