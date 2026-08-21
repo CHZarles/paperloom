@@ -1,7 +1,7 @@
 # Research Answer Scope Regression: Asymmetric Quantization
 
 Date: 2026-08-21
-Status: Prompt contract clarified after two production replays; final replay pending
+Status: Implemented, deployed, and verified with one production replay
 Question: `什么事非对称量化`
 
 ## Problem
@@ -141,4 +141,30 @@ be interpreted as “answer a factual technical question through the Direct cont
 that a short technical definition still uses `RESEARCH`, reads the minimum exact evidence, and submits a short
 `submit_research_answer`. The protocol state machine was not weakened or changed.
 
-Pending deployment and replay of this contract clarification.
+Commit `eea17ed` was deployed to all four Redis Harness Workers and replayed with the same question and 36-paper
+scope.
+
+Trace: `run_f3f2b341564040ea8ac3db96bc5c6a6f`
+
+| Metric | Baseline | Final replay |
+| --- | ---: | ---: |
+| Status | `COMPLETED` | `COMPLETED` |
+| Model calls | `12` | `6` |
+| Tool calls | `9` | `5` |
+| Submission attempts | `4` | `1` |
+| Provider protocol repairs | `0` | `0` |
+| Total Tokens | `172,262` | `43,478` |
+| Harness duration | `152,597 ms` | `35,152 ms` |
+| Rendered visible answer | `3,492` chars | `778` chars |
+
+The accepted answer used two short paragraphs, directly defined the concept, gave the ReLU contrast, contained no
+equation, NF4 section, headings, or paper survey, and passed citation validation with three known Source Quotes. It
+also avoided the Direct-contract trap and made only one submission.
+
+One minor scope leak remains: the optional comparison paragraph added one sentence about asymmetric Transformer
+outliers after the ReLU example. This does not justify another Prompt rule from one stochastic Run; further tightening
+would risk turning progressive disclosure into another rigid template. Keep this sentence as a watch item in later
+definition-question replays.
+
+The measurements show that this Run did less work than the baseline and demonstrate the intended mechanism. They do
+not establish a stable Token, latency, or success-rate improvement without repeated paired runs.
