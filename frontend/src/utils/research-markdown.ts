@@ -3,6 +3,39 @@ import type MarkdownIt from 'markdown-it';
 
 const BOX_DRAWING_RE = /[┌┐└┘├┤┬┴┼│─═║╔╗╚╝╠╣╦╩╬]/;
 const ASCII_BORDER_RE = /^[\s+\-|\\/=_—]{6,}$/;
+const DISPLAY_MATH_DELIMITER_RE = /^[ \t]*\$\$[ \t]*$/;
+const LEGACY_DISPLAY_MATH_CITATION_RE = /^([ \t]*\$\$)[ \t]+((?:\[\d+\][ \t]*)+)$/;
+const FENCE_RE = /^[ \t]*(`{3,}|~{3,})/;
+
+export function normalizeLegacyDisplayMathCitations(content: string) {
+  const normalized: string[] = [];
+  let fenceMarker = '';
+  let inDisplayMath = false;
+
+  for (const line of content.split('\n')) {
+    let output = [line];
+    const fence = FENCE_RE.exec(line);
+    if (fence) {
+      const marker = fence[1][0];
+      if (!fenceMarker) fenceMarker = marker;
+      else if (fenceMarker === marker) fenceMarker = '';
+    } else if (!fenceMarker) {
+      if (!inDisplayMath && DISPLAY_MATH_DELIMITER_RE.test(line)) {
+        inDisplayMath = true;
+      } else if (inDisplayMath) {
+        const citation = LEGACY_DISPLAY_MATH_CITATION_RE.exec(line);
+        if (citation) {
+          output = [citation[1], '', citation[2].trimEnd()];
+          inDisplayMath = false;
+        } else if (DISPLAY_MATH_DELIMITER_RE.test(line)) inDisplayMath = false;
+      }
+    }
+
+    normalized.push(...output);
+  }
+
+  return normalized.join('\n');
+}
 
 export function looksLikeResearchPreformattedBlock(content: string) {
   const normalized = content.replace(/\r\n?/g, '\n').trimEnd();

@@ -2,6 +2,7 @@
 import { defineAsyncComponent, nextTick } from 'vue';
 import { router } from '@/router';
 import { request } from '@/service/request';
+import { normalizeLegacyDisplayMathCitations } from '@/utils/research-markdown';
 import StreamingMarkdown from '@/components/custom/streaming-markdown.vue';
 import ProductReadingPaperChoiceList from './product-reading-paper-choice-list.vue';
 
@@ -530,7 +531,7 @@ const content = computed(() => {
 
   // 只对助手消息处理来源链接
   if (props.msg.role === 'assistant') {
-    return normalizeBareUrls(processCompactCitationLinks(rawContent));
+    return normalizeBareUrls(processCompactCitationLinks(normalizeLegacyDisplayMathCitations(rawContent)));
   }
 
   return rawContent;
@@ -974,7 +975,7 @@ async function handleSourceFileClick(fileInfo: {
               <span v-if="revision.timestamp">{{ revision.timestamp }}</span>
             </div>
             <div class="answer-revision__content">
-              <VueMarkdownIt :content="revision.answer || ''" />
+              <VueMarkdownIt :content="normalizeLegacyDisplayMathCitations(revision.answer || '')" />
             </div>
             <div v-if="revisionReferenceEntries(revision).length" class="answer-revision__refs">
               <NButton

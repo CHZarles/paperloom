@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import MarkdownIt from 'markdown-it';
-import { configureResearchMarkdown, looksLikeResearchPreformattedBlock } from '../src/utils/research-markdown';
+import {
+  configureResearchMarkdown,
+  looksLikeResearchPreformattedBlock,
+  normalizeLegacyDisplayMathCitations
+} from '../src/utils/research-markdown';
 
 const diagram = `——————————————————————————--
       Encoder (N=6 层)              Decoder (N=6 层)
@@ -36,3 +40,30 @@ const fencedRendered = markdown.render(`\`\`\`\n${diagram}\n\`\`\``);
 assert.match(fencedRendered, /research-preformatted-block--fence/);
 assert.doesNotMatch(fencedRendered, /language-javascript/);
 assert.doesNotMatch(fencedRendered, /class="line"/);
+
+const legacyFormulaMarkdown = `$$
+x = 1
+$$ [1]
+
+## Following heading
+
+Normal paragraph.
+
+$$
+y = 2
+$$ [2] [3]
+
+\`\`\`markdown
+$$
+z = 3
+$$ [9]
+\`\`\``;
+const normalizedFormulaMarkdown = normalizeLegacyDisplayMathCitations(legacyFormulaMarkdown);
+const renderedFormulaMarkdown = markdown.render(normalizedFormulaMarkdown);
+
+assert.match(normalizedFormulaMarkdown, /\$\$\n\n\[1]/);
+assert.match(normalizedFormulaMarkdown, /\$\$\n\n\[2] \[3]/);
+assert.match(normalizedFormulaMarkdown, /```markdown\n\$\$\nz = 3\n\$\$ \[9]\n```/);
+assert.equal((renderedFormulaMarkdown.match(/katex-display/g) || []).length, 2);
+assert.doesNotMatch(renderedFormulaMarkdown, /katex-error/);
+assert.match(renderedFormulaMarkdown, /<h2>Following heading<\/h2>/);

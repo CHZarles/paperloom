@@ -1,7 +1,7 @@
 <script lang="ts">
 import { onBeforeUnmount, shallowRef, watch } from 'vue';
 import MarkdownIt from 'markdown-it';
-import { configureResearchMarkdown } from '@/utils/research-markdown';
+import { configureResearchMarkdown, normalizeLegacyDisplayMathCitations } from '@/utils/research-markdown';
 
 const STREAMING_MARKDOWN_RENDER_INTERVAL_MS = 140;
 
@@ -43,7 +43,7 @@ function clearRenderTimer() {
 }
 
 function renderContent(value: string) {
-  renderedContent.value = markdown.render(value || '');
+  renderedContent.value = markdown.render(normalizeLegacyDisplayMathCitations(value || ''));
   lastRenderedAt = Date.now();
 }
 

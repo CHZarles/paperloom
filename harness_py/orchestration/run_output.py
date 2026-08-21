@@ -2,6 +2,8 @@ from __future__ import annotations
 
 """Build the stable product Run and project tool progress/trace payloads."""
 
+import re
+
 from ..utils.models import RUN_TRACE_SCHEMA_VERSION, JsonMap, as_list, child_map, stable_id, unique_strings, utc_now_iso
 from ..corpus.tools import ReadingCorpusTools
 from .research_contract import CITATION_RE, SUBMISSION_TOOL_NAMES
@@ -259,6 +261,11 @@ def _render_citations(
 ) -> str:
     numbers = {evidence_id: index for index, evidence_id in enumerate(cited_ids, start=1)}
     rendered = CITATION_RE.sub(lambda match: f"[{numbers[match.group(1)]}]", markdown)
+    rendered = re.sub(
+        r"(?m)^([ \t]*\$\$)[ \t]+((?:\[\d+\][ \t]*)+)$",
+        lambda match: f"{match.group(1)}\n\n{match.group(2).rstrip()}",
+        rendered,
+    )
     if not cited_ids:
         return rendered
     sources = []
