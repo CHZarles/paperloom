@@ -181,7 +181,7 @@ class GoldenDataTest(unittest.TestCase):
         instructions = research_agent_instructions(ResearchSkillRegistry())
 
         self.assertEqual(
-            "bc4284f90147262f3021cb9ed0ce2befaacf9b059810bf0fe2c448045f42857d",
+            "a276ac18da5b4bc0947d67fb62f2ec1ce982243c52ee78fb1352b4c3c48c48e5",
             hashlib.sha256(instructions.encode("utf-8")).hexdigest(),
             "expanded Golden Data must not change the established agent prompt",
         )
@@ -209,7 +209,9 @@ class GoldenDataTest(unittest.TestCase):
 
         self.assertIn("shortest complete answer", instructions)
         self.assertIn("does not determine which topics belong in the answer", instructions)
+        self.assertIn("Stop researching once the evidence directly supports the requested scope", instructions)
         self.assertIn("make a proportional correction", instructions)
+        self.assertIn("For a citation-only rejection, do not add sections or topics", instructions)
         self.assertIn("paper-specific notation as a universal definition", instructions)
 
     def test_committed_dataset_has_three_history_snapshots(self) -> None:

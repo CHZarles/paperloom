@@ -1,7 +1,7 @@
 # Research Answer Scope Regression: Asymmetric Quantization
 
 Date: 2026-08-21
-Status: Prompt change implemented; production replay pending
+Status: Prompt priority tightened after the first production replay; final replay pending
 Question: `什么事非对称量化`
 
 ## Problem
@@ -93,4 +93,33 @@ Acceptance checks:
 
 ## Production Replay
 
-Pending deployment and replay.
+### First Replay: Directionally Better, Acceptance Failed
+
+Commit `73be742` was deployed to all four Redis Harness Workers and replayed against the same 36-paper scope.
+
+Trace: `run_c8ed36cf4dc34a798a59ad051c62fff7`
+
+| Metric | Baseline | First replay |
+| --- | ---: | ---: |
+| Status | `COMPLETED` | `COMPLETED` |
+| Model calls | `12` | `7` |
+| Tool calls | `9` | `8` |
+| Submission attempts | `4` | `3` |
+| Total Tokens | `172,262` | `81,011` |
+| Harness duration | `152,597 ms` | `74,827 ms` |
+| Rendered visible answer | `3,492` chars | `1,772` chars |
+
+The change reduced work, but the answer still included an equation, Transformer-specific framing, and a QLoRA NF4
+section. It therefore failed checks 3, 4, and 5. These single-Run reductions are diagnostic measurements, not stable
+performance claims.
+
+The trace showed why the first Prompt was too weak. MiniMax initially submitted a compact 570-character definition
+without reading evidence. After the Validator rejected it for missing evidence, the model searched LLM.int8 and QLoRA,
+then allowed the retrieved material to expand the answer despite the new general guidance. The follow-up makes
+progressive disclosure explicit for introductory `what is X?` questions, tells the Agent to stop once the requested
+scope has direct support, repeats scope guidance in the submission Tool description, and forbids adding sections or
+topics for a citation-only repair. No runtime component or Validator rule was added.
+
+### Final Replay
+
+Pending deployment and replay of the tightened Prompt.

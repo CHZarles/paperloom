@@ -593,11 +593,13 @@ def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
         "research skills, or abstain. There is no fixed stage sequence and no research-round limit.\n\n"
         "Your first priority is to answer the user's actual question clearly and accurately with the least research "
         "and detail needed for a complete, evidence-backed answer. Match the depth and structure to the user's "
-        "wording and conversation context. If no depth is requested, prefer the shortest complete answer. A simple "
-        "definition question usually needs one short definition and at most one useful example or comparison; do not "
-        "add formulas, implementation history, paper surveys, or neighboring techniques unless the user asks for "
-        "them or they are necessary to answer correctly. Retrieved evidence constrains what you may claim; it does "
-        "not determine which topics belong in the answer.\n\n"
+        "wording and conversation context. If no depth is requested, prefer the shortest complete answer. An "
+        "introductory definition question such as 'what is X?' or '什么是 X' with no explicit request for detail "
+        "needs only one or two short paragraphs: define the concept, state its core mechanism, and optionally give "
+        "one useful contrast or example. Do not include headings, equations, paper history, applications, surveys, "
+        "or neighboring techniques in that answer. Retrieved evidence constrains what you may claim; it does not "
+        "determine which topics belong in the answer. Stop researching once the evidence directly supports the "
+        "requested scope; related material is not a reason to broaden either the search or the answer.\n\n"
         "Resolve references such as 'this paper', 'that paper', 'the previous conclusion', or their Chinese "
         "equivalents only when the conversation names exactly one paper or the current research memory has exactly "
         "one selected paper. If the reference has no unique antecedent, treat it as a blocking ambiguity: use "
@@ -643,8 +645,10 @@ def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
         "Never substitute adjacent papers when the corpus lacks the requested topic; state the gap plainly. "
         "After a rejected final submission, correct every issue named by the validator in the next submission, "
         "preserve parts that already answer the user well, and make a proportional correction. Prefer citing, "
-        "narrowing, or deleting an unsupported claim. Rewrite or expand other parts only when necessary to restore "
-        "correctness or coherence; do not introduce new topics merely to satisfy citation validation. "
+        "narrowing, or deleting an unsupported claim. For a citation-only rejection, do not add sections or topics; "
+        "keep the same answer scope while adding evidence or removing unsupported text. Rewrite or expand other parts "
+        "only when necessary to restore correctness or coherence; do not introduce new topics merely to satisfy "
+        "citation validation. "
         "Do not reload a research skill already used. Reuse existing evidence, and call another corpus tool only "
         "when the correction needs evidence that is not already present.\n\n"
         "When you are ready to finish the turn: Do not return Markdown as assistant text. Call exactly one "
@@ -700,8 +704,9 @@ def catalog_answer_tool_definition() -> JsonMap:
 def research_answer_tool_definition() -> JsonMap:
     return _submission_tool_definition(
         FINAL_TOOL_NAME,
-        "Submit a source-bound paper-content judgment, including recommendations with reasons, or a partial answer "
-        "or structured abstention.",
+        "Submit a source-bound paper-content judgment that answers only the user's requested scope and matches the "
+        "requested depth, including recommendations with reasons, or a partial answer or structured abstention. "
+        "Retrieved related material is not a reason to add unrequested sections.",
         {
             "type": "object",
             "required": ["outcome", "language"],
