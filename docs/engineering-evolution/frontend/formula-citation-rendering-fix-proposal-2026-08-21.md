@@ -1,7 +1,7 @@
 # Formula Citation Rendering Compatibility Fix Proposal
 
 Date: 2026-08-21
-Status: Implemented locally; not deployed
+Status: Implemented and deployed
 Production Run: `run_a3fdfde318d34f8389d854ea46385edc`
 
 ## Problem

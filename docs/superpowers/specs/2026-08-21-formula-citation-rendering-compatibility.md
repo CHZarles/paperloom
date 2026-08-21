@@ -1,7 +1,7 @@
 # Formula Citation Rendering Compatibility Spec
 
 **Date:** 2026-08-21
-**Status:** Implemented locally; not deployed
+**Status:** Implemented and deployed
 **Incident:** Production Run `run_a3fdfde318d34f8389d854ea46385edc`
 **Proposal:** `docs/engineering-evolution/frontend/formula-citation-rendering-fix-proposal-2026-08-21.md`
 
@@ -190,3 +190,12 @@ Completed on 2026-08-21:
 - Frontend Markdown regression: passed.
 - Frontend typecheck: passed.
 - ESLint on the four touched frontend files: passed.
+
+## Deployment Verification
+
+Commit `208596c` was deployed to Wuyun on 2026-08-21:
+
+- the production frontend build and bundle-budget checks passed;
+- `https://paperloom.me/` returned HTTP `200` after the build;
+- all four Redis Harness Workers restarted as `active` and reported `status: ready`;
+- no Java backend or database restart was required.
