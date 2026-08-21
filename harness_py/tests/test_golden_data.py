@@ -181,7 +181,7 @@ class GoldenDataTest(unittest.TestCase):
         instructions = research_agent_instructions(ResearchSkillRegistry())
 
         self.assertEqual(
-            "a276ac18da5b4bc0947d67fb62f2ec1ce982243c52ee78fb1352b4c3c48c48e5",
+            "fb80de34697c7adada0f9a95c88a5584d15a33800262ac6da81c4319fd56fe29",
             hashlib.sha256(instructions.encode("utf-8")).hexdigest(),
             "expanded Golden Data must not change the established agent prompt",
         )
@@ -208,6 +208,7 @@ class GoldenDataTest(unittest.TestCase):
         instructions = research_agent_instructions(ResearchSkillRegistry())
 
         self.assertIn("shortest complete answer", instructions)
+        self.assertIn("A short factual technical definition still uses RESEARCH", instructions)
         self.assertIn("does not determine which topics belong in the answer", instructions)
         self.assertIn("Stop researching once the evidence directly supports the requested scope", instructions)
         self.assertIn("make a proportional correction", instructions)

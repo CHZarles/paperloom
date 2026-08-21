@@ -1,7 +1,7 @@
 # Research Answer Scope Regression: Asymmetric Quantization
 
 Date: 2026-08-21
-Status: Prompt priority tightened after the first production replay; final replay pending
+Status: Prompt contract clarified after two production replays; final replay pending
 Question: `什么事非对称量化`
 
 ## Problem
@@ -122,4 +122,23 @@ topics for a citation-only repair. No runtime component or Validator rule was ad
 
 ### Final Replay
 
-Pending deployment and replay of the tightened Prompt.
+The next replay of commit `513f703` exposed a separate contract-selection interaction rather than an answer-length
+result.
+
+Trace: `run_de273932a1a641169c46124af5560e80`
+
+MiniMax correctly recognized the request as an introductory definition and produced a compact answer, but tried to
+put that substantive answer in `submit_direct_answer`. The deterministic protocol rejected it with
+`DIRECT_QUESTION_NOT_ALLOWED` and locked the Run to the Direct contract. Research tools were no longer legal, so after
+five calls the model converged to an unnecessary clarification instead of answering:
+
+```text
+你希望了解哪个层面的“非对称量化”？例如：某篇具体论文中的实现方式，或一般性的技术概念定义？
+```
+
+This proved that answer depth and evidence contract must be stated independently. “Use the least research” must not
+be interpreted as “answer a factual technical question through the Direct contract.” The Prompt now explicitly says
+that a short technical definition still uses `RESEARCH`, reads the minimum exact evidence, and submits a short
+`submit_research_answer`. The protocol state machine was not weakened or changed.
+
+Pending deployment and replay of this contract clarification.
