@@ -252,7 +252,7 @@ decision = (
 
 ```text
 DirectSubmission = {
-  kind: GREETING | CLARIFICATION | CAPABILITIES | OUT_OF_SCOPE,
+  kind: GREETING | CLARIFICATION | PAPERLOOM_CAPABILITIES | OUT_OF_SCOPE,
   language: ZH_CN | EN,
   question?: string
 }
@@ -273,6 +273,9 @@ ResearchSubmission = {
   abstention_reason?: NO_MATCHING_PAPER | NO_SUPPORTING_SOURCE | OUT_OF_SCOPE
 }
 ```
+
+`PAPERLOOM_CAPABILITIES` 只表示用户询问 PaperLoom 自身能做什么。单独的“你知道 X 吗”尚未提出
+实质问题，进入 `CLARIFICATION` 简短确认并询问关注点；定义、原理和比较等实质问题进入 `RESEARCH`。
 
 `language` 由模型根据当前对话选择。Runtime 不推断语言；它只在需要渲染固定文案时按该枚举选择中文或英文模板。
 

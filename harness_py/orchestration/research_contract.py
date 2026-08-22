@@ -142,7 +142,7 @@ _RESEARCH_TOOL_NAMES = frozenset({
     FINAL_TOOL_NAME,
 })
 _INITIAL_TOOL_NAMES = _CATALOG_TOOL_NAMES | _RESEARCH_TOOL_NAMES | {DIRECT_FINAL_TOOL_NAME}
-_DIRECT_KINDS = frozenset({"GREETING", "CLARIFICATION", "CAPABILITIES", "OUT_OF_SCOPE"})
+_DIRECT_KINDS = frozenset({"GREETING", "CLARIFICATION", "PAPERLOOM_CAPABILITIES", "OUT_OF_SCOPE"})
 _LANGUAGES = frozenset({"ZH_CN", "EN"})
 _CATALOG_VIEWS = frozenset({"COUNT", "LIST"})
 _CATALOG_FIELDS = frozenset({"title", "authors", "year", "venue", "doi", "arxiv_id"})
@@ -313,14 +313,14 @@ def render_direct_submission(payload: JsonMap) -> JsonMap:
     messages = {
         "ZH_CN": {
             "GREETING": "你好，我可以帮你检索、阅读和比较论文。",
-            "CAPABILITIES": (
+            "PAPERLOOM_CAPABILITIES": (
                 "我可以检索论文、阅读原文、比较方法，并基于可追溯证据回答问题。"
             ),
             "OUT_OF_SCOPE": "这个请求不在论文研究范围内。",
         },
         "EN": {
             "GREETING": "Hello. I can help you search, read, and compare papers.",
-            "CAPABILITIES": (
+            "PAPERLOOM_CAPABILITIES": (
                 "I can search papers, read source text, compare methods, "
                 "and answer with traceable evidence."
             ),
@@ -608,7 +608,11 @@ def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
         "one selected paper. If the reference has no unique antecedent, treat it as a blocking ambiguity: use "
         "submit_direct_answer with one CLARIFICATION asking which paper the user means. Do not search the whole "
         "corpus and guess an identity from a venue, year, answer fragment, or general knowledge.\n\n"
-        "Keep ordinary conversation natural and concise. For a greeting, use submit_direct_answer. If a recommendation "
+        "Keep ordinary conversation natural and concise. Use PAPERLOOM_CAPABILITIES only when the user asks what "
+        "PaperLoom or the assistant can do. A bare familiarity check such as 'Do you know X?' or '你知道 X 吗？' "
+        "asks about X, not PaperLoom's capabilities, but does not yet ask a substantive question: use CLARIFICATION "
+        "with a brief acknowledgment and ask what the user wants to know. If the user asks for a definition, details, "
+        "mechanism, or comparison, use RESEARCH. For a greeting, use submit_direct_answer. If a recommendation "
         "request is missing only its topic, submit one CLARIFICATION asking what topic to focus on; "
         "do not demand optional purpose, venue, year, or paper-type constraints. A recommendation request with a "
         "stated topic is not missing a blocking input: research it instead of asking for optional preferences.\n\n"
@@ -656,7 +660,8 @@ def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
         "when the correction needs evidence that is not already present.\n\n"
         "When you are ready to finish the turn: Do not return Markdown as assistant text. Call exactly one "
         "submission tool as the only response and put user-facing answer text only in that tool's arguments. Use "
-        "submit_direct_answer only for a greeting, one blocking clarification, capabilities, or an out-of-scope request. "
+        "submit_direct_answer only for a greeting, one blocking clarification, PaperLoom's capabilities, or an "
+        "out-of-scope request. "
         "Use submit_catalog_answer only for counts and metadata-only lists from a current paper_result_ref. Use "
         "submit_research_answer for every paper-content judgment; put ANSWERED or PARTIAL text in markdown, or use a "
         "structured ABSTAINED reason when the corpus cannot support an answer. Select ZH_CN or EN from the conversation; "
@@ -670,12 +675,17 @@ def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
 def direct_answer_tool_definition() -> JsonMap:
     return _submission_tool_definition(
         DIRECT_FINAL_TOOL_NAME,
-        "Submit a greeting, one blocking clarification, a capability response, or an out-of-scope response.",
+        "Submit a greeting, one blocking clarification, a response about PaperLoom's capabilities, or an "
+        "out-of-scope response. Never label a named-topic familiarity check as PAPERLOOM_CAPABILITIES.",
         {
             "type": "object",
             "required": ["kind", "language"],
             "properties": {
-                "kind": {"type": "string", "enum": sorted(_DIRECT_KINDS)},
+                "kind": {
+                    "type": "string",
+                    "enum": sorted(_DIRECT_KINDS),
+                    "description": "PAPERLOOM_CAPABILITIES means the user asks what PaperLoom itself can do.",
+                },
                 "language": {"type": "string", "enum": sorted(_LANGUAGES)},
                 "question": {"type": "string", "maxLength": 500},
             },

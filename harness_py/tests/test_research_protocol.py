@@ -16,9 +16,11 @@ from harness_py.orchestration.research_contract import (
     render_catalog_submission,
     render_direct_submission,
     render_research_submission,
+    research_agent_instructions,
     research_answer_tool_definition,
     validate_submission,
 )
+from harness_py.orchestration.research_skills import ResearchSkillRegistry
 
 
 class ResearchProtocolTest(unittest.TestCase):
@@ -196,11 +198,24 @@ class ResearchProtocolTest(unittest.TestCase):
         self.assertEqual(("UNKNOWN_CATALOG_RESULT_REF",), tuple(issue.code for issue in unknown.issues))
 
     def test_submission_tools_distinguish_metadata_lists_from_recommendation_reasons(self) -> None:
+        direct_tool = direct_answer_tool_definition()["function"]
         catalog_description = catalog_answer_tool_definition()["function"]["description"]
         research_description = research_answer_tool_definition()["function"]["description"]
+        direct_kinds = direct_tool["parameters"]["properties"]["kind"]["enum"]
 
+        self.assertIn("PAPERLOOM_CAPABILITIES", direct_kinds)
+        self.assertNotIn("CAPABILITIES", direct_kinds)
+        self.assertIn("PaperLoom's capabilities", direct_tool["description"])
         self.assertIn("Do not use for recommendations with reasons", catalog_description)
         self.assertIn("recommendations with reasons", research_description)
+
+    def test_agent_prompt_treats_do_you_know_as_a_question_about_the_topic(self) -> None:
+        instructions = research_agent_instructions(ResearchSkillRegistry())
+
+        self.assertIn("A bare familiarity check such as 'Do you know X?'", instructions)
+        self.assertIn("asks about X, not PaperLoom's capabilities", instructions)
+        self.assertIn("use CLARIFICATION with a brief acknowledgment", instructions)
+        self.assertIn("asks for a definition, details, mechanism, or comparison, use RESEARCH", instructions)
 
     def test_research_validation_binds_every_content_block_to_known_quotes(self) -> None:
         facts = ProtocolFacts(known_source_quotes={

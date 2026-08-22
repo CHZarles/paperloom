@@ -168,3 +168,34 @@ definition-question replays.
 
 The measurements show that this Run did less work than the baseline and demonstrate the intended mechanism. They do
 not establish a stable Token, latency, or success-rate improvement without repeated paired runs.
+
+## Bare Familiarity Check Misroute
+
+On 2026-08-22, the production question `你知道 vLLM 吗` returned the fixed PaperLoom capability message instead of
+acknowledging the named topic.
+
+Production trace: `run_d2894d98e26340c09239a522dbd20dad`
+
+The model submitted `submit_direct_answer(kind=CAPABILITIES)`, which the Runtime correctly rendered as the fixed
+capability template. The failure was therefore Contract selection, not retrieval or frontend rendering. The generic
+`CAPABILITIES` enum conflated “what can PaperLoom do?” with the Chinese conversational form “do you know X?”. The Run
+made two model calls, consumed 8,679 Tokens, and took 10,946 ms before returning the irrelevant template.
+
+The repair keeps the existing three-Contract architecture:
+
+- rename the internal Direct kind to `PAPERLOOM_CAPABILITIES`;
+- reserve it for questions about PaperLoom itself;
+- route a bare named-topic familiarity check to `CLARIFICATION`, with a brief acknowledgment and a question about the
+  user's desired focus;
+- keep definitions, mechanisms, details, and comparisons on `RESEARCH`.
+
+Local MiniMax replay: `run_2e7c1198fcc8450ea583010276e61395`
+
+The same question completed with one `submit_direct_answer` call and no corpus search:
+
+```text
+我知道 vLLM。你想了解它的哪方面内容？例如核心机制（PagedAttention）、与其它推理框架的对比、复现步骤，或是想从论文资料中检索相关信息？
+```
+
+The replay used one model call and 4,184 Tokens. Its 15,849 ms duration is recorded for reproducibility but is not
+compared as a performance improvement because it was a separate stochastic call against a different local corpus.
