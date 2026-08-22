@@ -45,7 +45,7 @@ function phaseOf(input: PhaseInput): Phase {
   if (input.tool === 'search_paper_content' || input.tool === 'get_paper_structure') return 'locate';
   if (input.tool === 'read_paper_content') return 'read';
   if (input.tool === 'get_citation_edges') return 'cite';
-  if (type === 'model_call_started' || type === 'model_call_completed') return 'think';
+  if (type === 'model_call_started' || type === 'model_call_completed' || type === 'repairing_response') return 'think';
   if (type === 'answer_completed' || type === 'run_limited' || type === 'job_completed') return 'answer';
   return 'think';
 }
@@ -53,7 +53,7 @@ function phaseOf(input: PhaseInput): Phase {
 function stateOf(input: PhaseInput): 'running' | 'completed' | 'failed' {
   const type = eventTypeOf(input);
   if (type === 'job_failed' || input.status === 'failed') return 'failed';
-  if (type === 'tool_started' || type === 'model_call_started') return 'running';
+  if (type === 'tool_started' || type === 'model_call_started' || type === 'repairing_response') return 'running';
   return 'completed';
 }
 
@@ -91,7 +91,7 @@ function headlineOf(input: PhaseInput, phase: Phase): string {
     case 'cite':
       return citeHeadline(output);
     case 'think':
-      return 'Reasoning';
+      return eventTypeOf(input) === 'repairing_response' ? 'Repairing answer format' : 'Reasoning';
     case 'answer':
       return eventTypeOf(input) === 'run_limited' ? 'Research limit reached' : 'Answer prepared';
     case 'error':
@@ -235,20 +235,6 @@ const isResearchActive = computed(
       !events.value.some(e => ['job_completed', 'job_failed', 'job_cancelled'].includes(e.eventType || e.type)))
 );
 const MAX_VISIBLE_EVENTS = 100;
-
-function toolLabel(tool?: string, running = false) {
-  const labels: Record<string, [string, string]> = {
-    search_paper_candidates: ['Searching papers', 'Searched papers'],
-    search_paper_content: ['Finding relevant locations', 'Found relevant locations'],
-    get_paper_structure: ['Inspecting paper structure', 'Inspected paper structure'],
-    read_paper_content: ['Reading paper locations', 'Read paper locations'],
-    get_citation_edges: ['Tracing citations', 'Traced citations'],
-    get_research_skill: ['Loading research guidance', 'Loaded research guidance']
-  };
-  const pair = labels[tool || ''];
-  if (pair) return running ? pair[0] : pair[1];
-  return running ? `Running ${tool || 'tool'}` : `Completed ${tool || 'tool'}`;
-}
 
 // Introduced for the phase-card template migration in Task 2.
 // Filter out *_started events and collapse consecutive same-phase events in

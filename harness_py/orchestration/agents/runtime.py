@@ -130,31 +130,32 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
 
         # 单路径旧模式：每轮只有一个 Context、一个 Model、一个 SDK Runner。
         context = ResearchRunContext(turn)
-        final = asyncio.run(self._run_agent(context))
-        context.check_cancelled()
-        run = build_harness_run(
-            case_id=turn.case_id,
-            final=final,
-            prior_evidence=turn.research_memory.evidence_items_by_id,
-            corpus=context.corpus,
-            trace=context.trace,
-            skills_used=context.skills_used,
-            started_at=context.started_at,
-            duration_ms=round((perf_counter() - context.started_monotonic) * 1000),
-            diagnostics={
-                "model_call_count": context.model_call_count,
-                "prompt_tokens": context.prompt_tokens,
-                "completion_tokens": context.completion_tokens,
-                "total_tokens": context.total_tokens,
-                "model_latency_ms": context.model_latency_ms,
-                "provider_protocol_repair_count": context.protocol_repair_count,
-            },
-            harness_id=self.harness_id,
-            control=context.control.to_dict(),
-        )
-        # build_harness_run 会生成稳定的内部 ID；在线请求使用请求开始时分配的真实 run_id。
-        run["run_id"] = turn.run_id
-        return TurnExecutionResult(run=run)
+        try:
+            final = asyncio.run(self._run_agent(context))
+            context.check_cancelled()
+            run = build_harness_run(
+                case_id=turn.case_id,
+                final=final,
+                prior_evidence=turn.research_memory.evidence_items_by_id,
+                corpus=context.corpus,
+                trace=context.trace,
+                skills_used=context.skills_used,
+                started_at=context.started_at,
+                duration_ms=round((perf_counter() - context.started_monotonic) * 1000),
+                diagnostics=context.run_diagnostics(),
+                harness_id=self.harness_id,
+                control=context.control.to_dict(),
+            )
+            # build_harness_run 会生成稳定的内部 ID；在线请求使用请求开始时分配的真实 run_id。
+            run["run_id"] = turn.run_id
+            return TurnExecutionResult(run=run)
+        except Exception as error:
+            diagnostics = getattr(error, "diagnostics", None)
+            if isinstance(diagnostics, dict):
+                diagnostics.update(context.run_diagnostics())
+            else:
+                error.diagnostics = context.run_diagnostics()
+            raise
 
     async def _run_agent(self, context: ResearchRunContext) -> JsonMap:
         """装配 Agent 并让 SDK 跑到最终答案通过校验为止。"""

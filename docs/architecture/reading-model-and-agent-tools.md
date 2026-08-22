@@ -117,8 +117,9 @@ sources:
 Runner also registers the provider compatibility tool `_continue_research_turn` so the model adapter
 can convert text-only or malformed responses back into the required submission flow. The adapter
 removes this internal tool from MiniMax-visible definitions and registers every synthetic call ID;
-unregistered calls are rejected. Plain text and malformed arguments share a three-repair experimental
-budget per Run. Plain text is retained only as the latest unpublished Draft; a real submission removes
+unregistered calls are rejected. Plain text and malformed arguments share three deterministic repairs
+per Run; repeated MiniMax plain text may use one separate diagnostic-assisted repair. Plain text is
+retained only as the latest unpublished Draft; a real submission removes
 the superseded Draft from later Provider requests, and a Research Draft without known Source Quotes
 must obtain exact evidence before submission. This is not a product research capability.
 

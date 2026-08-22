@@ -256,6 +256,7 @@ function progressEventTitle(event: Api.Chat.ResearchProgressEvent) {
   if (eventType === 'model_call_started')
     return event.attempt && event.attempt > 1 ? `Thinking · pass ${event.attempt}` : 'Thinking';
   if (eventType === 'model_call_completed') return `Completed model pass ${event.attempt || ''}`.trim();
+  if (eventType === 'repairing_response') return 'Repairing answer format';
   if (eventType === 'answer_completed') return 'Preparing the answer';
   if (eventType === 'run_limited') return 'Research limit reached';
   if (eventType === 'job_completed') return 'Research completed';
@@ -327,7 +328,8 @@ function progressEventDetail(event: Api.Chat.ResearchProgressEvent) {
 function progressEventState(event: Api.Chat.ResearchProgressEvent): ProgressEventState {
   const eventType = event.eventType || event.type;
   if (eventType === 'job_failed' || event.status === 'failed') return 'failed';
-  if (eventType === 'tool_started' || eventType === 'model_call_started') return 'running';
+  if (eventType === 'tool_started' || eventType === 'model_call_started' || eventType === 'repairing_response')
+    return 'running';
   return 'completed';
 }
 

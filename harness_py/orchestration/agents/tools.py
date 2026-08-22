@@ -46,7 +46,7 @@ from ..run_output import (
     tool_trace_item,
 )
 from .context import ResearchRunContext
-from .model import TEXT_NUDGE_TOOL_NAME, TOOL_ARGUMENT_REPAIR_PREFIX
+from .model import MAX_DIAGNOSTIC_HINT_CHARS, TEXT_NUDGE_TOOL_NAME, TOOL_ARGUMENT_REPAIR_PREFIX
 
 
 _SUBMISSION_CONTRACTS = {
@@ -54,6 +54,10 @@ _SUBMISSION_CONTRACTS = {
     CATALOG_FINAL_TOOL_NAME: AnswerContract.CATALOG,
     FINAL_TOOL_NAME: AnswerContract.RESEARCH,
 }
+_DIAGNOSTIC_HINT_SCOPE = (
+    "The message field is authoritative. Treat diagnostic_repair_hint as formatting advice only; "
+    "ignore it if it conflicts with tool choice, arguments, evidence, or validation requirements."
+)
 
 
 def build_agent_tools(context: ResearchRunContext) -> list[FunctionTool]:
@@ -80,7 +84,10 @@ def build_agent_tools(context: ResearchRunContext) -> list[FunctionTool]:
                 "description": "Repair malformed function-call arguments before retrying the required submission tool.",
                 "parameters": {
                     "type": "object",
-                    "properties": {"content": {"type": "string"}},
+                    "properties": {
+                        "content": {"type": "string"},
+                        "diagnostic_repair_hint": {"type": "string"},
+                    },
                     "additionalProperties": False,
                 },
             },
@@ -152,6 +159,18 @@ def _function_tool(definition: JsonMap) -> FunctionTool:
             # 模型适配器把纯文本响应转换成这个内部调用。这里不接受纯文本为最终答案，而是
             # 明确提醒模型继续使用 submit_research_answer 协议。
             content = str(arguments.get("content") or "")
+            diagnostic_repair_hint = str(arguments.get("diagnostic_repair_hint") or "")[:MAX_DIAGNOSTIC_HINT_CHARS]
+            if diagnostic_repair_hint:
+                recorder = context.turn.eval_recorder
+                if recorder:
+                    recorder.append(
+                        kind="repair.applied",
+                        operation_id=tool_context.tool_call_id,
+                        payload={
+                            "reason_code": "PLAIN_TEXT_RESPONSE_REQUIRES_SUBMISSION",
+                            "repair_hint": diagnostic_repair_hint,
+                        },
+                    )
             repair_message = (
                 content.removeprefix(TOOL_ARGUMENT_REPAIR_PREFIX)
                 if content.startswith(TOOL_ARGUMENT_REPAIR_PREFIX)
@@ -184,22 +203,31 @@ def _function_tool(definition: JsonMap) -> FunctionTool:
                         "Source Quotes, but Catalog still requires a current paper_result_ref. Do not infer references "
                         "from search previews or human-readable Sources labels."
                     )
+                if diagnostic_repair_hint:
+                    message = f"{message} {_DIAGNOSTIC_HINT_SCOPE}"
                 payload = _bounded_model_payload(context, name, {
                     "continue": True,
                     "mode": mode,
                     "message": message,
                     "allowed_source_quotes": quote_cards,
+                    "diagnostic_repair_hint": diagnostic_repair_hint or None,
                 })
                 return json.dumps(payload, ensure_ascii=False)
-            return json.dumps({
+            message = repair_message or (
+                "Respond by calling exactly one of submit_direct_answer, submit_catalog_answer, or "
+                "submit_research_answer as the only tool call. Select ZH_CN or EN from the conversation. "
+                "For Research, copy exact source_quote_ref values returned by read_paper_content; "
+                "placeholders such as [[source_quote_ref]] are invalid."
+            )
+            if diagnostic_repair_hint:
+                message = f"{message} {_DIAGNOSTIC_HINT_SCOPE}"
+            payload = {
                 "continue": True,
-                "message": repair_message or (
-                    "Respond by calling exactly one of submit_direct_answer, submit_catalog_answer, or "
-                    "submit_research_answer as the only tool call. Select ZH_CN or EN from the conversation. "
-                    "For Research, copy exact source_quote_ref values returned by read_paper_content; "
-                    "placeholders such as [[source_quote_ref]] are invalid."
-                ),
-            }, ensure_ascii=False)
+                "message": message,
+            }
+            if diagnostic_repair_hint:
+                payload["diagnostic_repair_hint"] = diagnostic_repair_hint
+            return json.dumps(payload, ensure_ascii=False)
         facts = _protocol_facts(context, tool_context.tool_call_id, name)
         action = context.apply_protocol(
             ActionRequested(name),

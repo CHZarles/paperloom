@@ -9,6 +9,13 @@ class RunLimitExceeded(RuntimeError):
 
 
 class ResearchSystemError(RuntimeError):
-    def __init__(self, reason_code: str, message: str = "") -> None:
+    def __init__(
+        self,
+        reason_code: str,
+        message: str = "",
+        *,
+        diagnostics: dict[str, object] | None = None,
+    ) -> None:
         self.reason_code = reason_code
+        self.diagnostics = diagnostics or {}
         super().__init__(message or reason_code)

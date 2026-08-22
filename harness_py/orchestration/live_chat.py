@@ -109,7 +109,14 @@ class LiveResearchChatHarness:
             ))
             run = result.run
         except RunLimitExceeded as error:
-            run = _limited_run(run_id, case_id, user_message, error.reason_code, control)
+            run = _limited_run(
+                run_id,
+                case_id,
+                user_message,
+                error.reason_code,
+                control,
+                diagnostics=getattr(error, "diagnostics", None),
+            )
         except ResearchSystemError as error:
             run = _technical_failure_run(
                 run_id,
@@ -118,6 +125,7 @@ class LiveResearchChatHarness:
                 str(error),
                 reason_code=error.reason_code,
                 control=control,
+                diagnostics=error.diagnostics,
             )
         except (HarnessCancelled, BrokenPipeError, ConnectionResetError) as error:
             if recorder:
@@ -126,7 +134,13 @@ class LiveResearchChatHarness:
                     operation_id="run",
                     payload={"error_type": type(error).__name__, "message": str(error)},
                 )
-            run = _cancelled_run(run_id, case_id, user_message, control)
+            run = _cancelled_run(
+                run_id,
+                case_id,
+                user_message,
+                control,
+                diagnostics=getattr(error, "diagnostics", None),
+            )
         except Exception as error:
             # 普通技术异常被收敛成 FAILED_TECHNICAL Run，调用方仍能得到稳定响应结构。
             if recorder:
@@ -142,6 +156,7 @@ class LiveResearchChatHarness:
                 str(error),
                 reason_code="INTERNAL_UNEXPECTED",
                 control=control,
+                diagnostics=getattr(error, "diagnostics", None),
             )
         self._finish_recorder(recorder, run)
 
@@ -219,6 +234,7 @@ def _technical_failure_run(
     *,
     reason_code: str = "INTERNAL_UNEXPECTED",
     control: RunControl | None = None,
+    diagnostics: JsonMap | None = None,
 ) -> JsonMap:
     answer = {
         "answer_id": stable_id("answer", case_id),
@@ -265,6 +281,7 @@ def _technical_failure_run(
             "finish_reason": "react_runtime_failed",
             "tool_call_count": 0,
             "error": message,
+            **(diagnostics or {}),
         },
     }
 
@@ -275,6 +292,8 @@ def _limited_run(
     question: str,
     reason_code: str,
     control: RunControl,
+    *,
+    diagnostics: JsonMap | None = None,
 ) -> JsonMap:
     markdown = (
         "This research request reached its execution limit before a verifiable answer was ready. "
@@ -325,6 +344,7 @@ def _limited_run(
             "finish_reason": reason_code,
             "tool_call_count": 0,
             "control": control.to_dict(),
+            **(diagnostics or {}),
         },
     }
 
@@ -334,6 +354,8 @@ def _cancelled_run(
     case_id: str,
     question: str,
     control: RunControl,
+    *,
+    diagnostics: JsonMap | None = None,
 ) -> JsonMap:
     answer = {
         "answer_id": stable_id("answer", case_id),
@@ -380,6 +402,7 @@ def _cancelled_run(
             "finish_reason": "RUN_CANCELLED",
             "tool_call_count": 0,
             "control": control.to_dict(),
+            **(diagnostics or {}),
         },
     }
 def _dataset_for_scope(dataset: GoldenDataset, paper_ids: list[str]) -> GoldenDataset:

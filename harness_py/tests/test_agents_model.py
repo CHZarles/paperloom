@@ -1,19 +1,23 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import json
 import tempfile
 import threading
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from time import perf_counter
 from unittest.mock import AsyncMock, patch
 
+import httpx
 from agents import FunctionTool, ModelResponse, ModelTracing, OpenAIChatCompletionsModel, Usage
-from openai.types.responses import ResponseOutputMessage, ResponseOutputText
+from openai.types.responses import ResponseFunctionToolCall, ResponseOutputMessage, ResponseOutputText
 
 from harness_py.evaluation.eval_recorder import EvalRecorder
 from harness_py.orchestration.agents.context import ResearchRunContext
 from harness_py.orchestration.agents.model import (
+    DIAGNOSTIC_FALLBACK_HINT,
     MiniMaxAgentsModel,
     OpenAIResponsesAgentsModel,
     TEXT_NUDGE_TOOL_NAME,
@@ -22,6 +26,7 @@ from harness_py.orchestration.agents.model import (
     provider_agents_model,
 )
 from harness_py.orchestration.memory import ResearchMemory
+from harness_py.orchestration.run_control import RunLimits
 from harness_py.orchestration.runtime import TurnExecutionInput
 from harness_py.transport.provider_config import ProviderConfig
 from harness_py.tests import test_harness_py as _harness_tests
@@ -43,6 +48,20 @@ class AgentsModelTest(unittest.TestCase):
             settings = model.research_settings()
             self.assertEqual("required", settings.tool_choice)
             self.assertIsNone(settings.max_tokens)
+        finally:
+            asyncio.run(model.close())
+
+    def test_chat_compatible_non_minimax_provider_does_not_enable_minimax_diagnosis(self) -> None:
+        model = provider_agents_model(ProviderConfig(
+            scope="llm",
+            provider="openai",
+            api_style="openai-compatible",
+            api_base_url="https://example.invalid/v1",
+            model="gpt-test",
+            api_key="test-key",
+        ))
+        try:
+            self.assertFalse(model.supports_online_diagnosis)
         finally:
             asyncio.run(model.close())
 
@@ -176,10 +195,10 @@ class AgentsModelTest(unittest.TestCase):
         self.assertEqual({"model.request", "model.response"}, event_kinds)
         self.assertNotIn("test-key", events_text)
 
-    def test_provider_protocol_recovery_allows_three_then_stops(self) -> None:
+    def test_deterministic_provider_protocol_recovery_allows_three_then_stops(self) -> None:
         model = MiniMaxAgentsModel(ProviderConfig(
             scope="llm",
-            provider="minimax",
+            provider="openai",
             api_style="openai-compatible",
             api_base_url="https://example.invalid/v1",
             model="MiniMax-M3",
@@ -217,7 +236,10 @@ class AgentsModelTest(unittest.TestCase):
                 with bind_research_context(context), patch.object(
                     OpenAIChatCompletionsModel,
                     "get_response",
-                    new=AsyncMock(return_value=raw_response),
+                    new=AsyncMock(side_effect=[
+                        copy.deepcopy(raw_response),
+                        copy.deepcopy(raw_response),
+                    ]),
                 ):
                     repaired = await model.get_response(
                         "System prompt",
@@ -254,6 +276,78 @@ class AgentsModelTest(unittest.TestCase):
         self.assertEqual(TEXT_NUDGE_TOOL_NAME, response.output[0].name)
         self.assertEqual(3, context.protocol_repair_count)
         self.assertEqual(5, context.total_tokens)
+
+    def test_second_plain_text_can_diagnose_after_deterministic_budget_is_spent(self) -> None:
+        model = MiniMaxAgentsModel(ProviderConfig(
+            scope="llm",
+            provider="minimax",
+            api_style="openai-compatible",
+            api_base_url="https://example.invalid/v1",
+            model="MiniMax-M3",
+            api_key="test-key",
+        ))
+        raw_response = ModelResponse(
+            output=[ResponseOutputMessage(
+                id="message_1",
+                content=[ResponseOutputText(
+                    annotations=[],
+                    text="A second unsubmitted draft.",
+                    type="output_text",
+                )],
+                role="assistant",
+                status="completed",
+                type="message",
+            )],
+            usage=Usage(requests=1, input_tokens=3, output_tokens=2, total_tokens=5),
+            response_id="response_1",
+        )
+        context = ResearchRunContext(TurnExecutionInput(
+            dataset=_harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset(),
+            case_id="repair_budget_diagnosis",
+            run_id="run_repair_budget_diagnosis",
+            question="Hello",
+            conversation_messages=[],
+            research_memory=ResearchMemory(),
+        ))
+        context.protocol_repair_count = 3
+        context.plain_text_response_streak = 1
+        context.begin_model_call()
+
+        async def diagnose(*_args, **_kwargs) -> str:
+            context.diagnostic_model_calls += 1
+            return "Use one submission Tool Call."
+
+        async def invoke():
+            try:
+                with bind_research_context(context), patch.object(
+                    OpenAIChatCompletionsModel,
+                    "get_response",
+                    new=AsyncMock(return_value=raw_response),
+                ), patch.object(model, "_diagnose_plain_text_response", side_effect=diagnose):
+                    return await model.get_response(
+                        "System prompt",
+                        [{"role": "user", "content": "Hello"}],
+                        model.research_settings(),
+                        [],
+                        None,
+                        [],
+                        ModelTracing.DISABLED,
+                        previous_response_id=None,
+                        conversation_id=None,
+                        prompt=None,
+                    )
+            finally:
+                await model.close()
+
+        response = asyncio.run(invoke())
+
+        self.assertEqual(TEXT_NUDGE_TOOL_NAME, response.output[0].name)
+        self.assertEqual(
+            "Use one submission Tool Call.",
+            json.loads(response.output[0].arguments)["diagnostic_repair_hint"],
+        )
+        self.assertEqual(4, context.protocol_repair_count)
+        self.assertTrue(context.diagnostic_repair_pending)
 
     def test_text_only_response_requires_an_explicit_submission_tool(self) -> None:
         model = MiniMaxAgentsModel(ProviderConfig(
@@ -399,6 +493,131 @@ class AgentsModelTest(unittest.TestCase):
             {"content": "A direct model answer."},
             json.loads(response.output[0].arguments),
         )
+
+    def test_online_diagnosis_timeout_uses_the_fixed_hint(self) -> None:
+        model = MiniMaxAgentsModel(ProviderConfig(
+            scope="llm",
+            provider="minimax",
+            api_style="openai-compatible",
+            api_base_url="https://example.invalid/v1",
+            model="MiniMax-M3",
+            api_key="test-key",
+        ))
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        recorder = EvalRecorder(temporary.name, "run_diagnosis_timeout")
+        context = ResearchRunContext(TurnExecutionInput(
+            dataset=_harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset(),
+            case_id="diagnosis_timeout",
+            run_id="run_diagnosis_timeout",
+            question="Hello",
+            conversation_messages=[],
+            research_memory=ResearchMemory(),
+            eval_recorder=recorder,
+            run_limits=RunLimits(max_wall_clock_ms=50),
+        ))
+
+        async def slow_response(*_args, **_kwargs) -> httpx.Response:
+            await asyncio.sleep(0.2)
+            return httpx.Response(
+                200,
+                request=httpx.Request("POST", "https://example.invalid/v1/chat/completions"),
+                json={
+                    "choices": [{"message": {"content": json.dumps({
+                        "diagnosis": "late",
+                        "repair_hint": "late",
+                    })}}],
+                    "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+                },
+            )
+
+        async def invoke() -> str:
+            try:
+                with patch.object(
+                    httpx.AsyncClient,
+                    "post",
+                    new=AsyncMock(side_effect=slow_response),
+                ):
+                    return await model._diagnose_plain_text_response(context, [], [], "Draft")
+            finally:
+                await model.close()
+
+        started = perf_counter()
+        hint = asyncio.run(invoke())
+        elapsed = perf_counter() - started
+        recorder.finish({"status": "COMPLETED"})
+        events = [
+            json.loads(line)
+            for line in recorder.events_path.read_text(encoding="utf-8").splitlines()
+        ]
+
+        self.assertEqual(DIAGNOSTIC_FALLBACK_HINT, hint)
+        self.assertLess(elapsed, 0.15)
+        self.assertEqual(1, context.diagnostic_model_calls)
+        self.assertEqual(0, context.diagnostic_total_tokens)
+        self.assertEqual(
+            ["timeout"],
+            [event["payload"]["failure_kind"] for event in events if event["kind"] == "diagnosis.failed"],
+        )
+
+    def test_malformed_tool_arguments_fail_after_diagnosis(self) -> None:
+        model = MiniMaxAgentsModel(ProviderConfig(
+            scope="llm",
+            provider="minimax",
+            api_style="openai-compatible",
+            api_base_url="https://example.invalid/v1",
+            model="MiniMax-M3",
+            api_key="test-key",
+        ))
+        raw_response = ModelResponse(
+            output=[ResponseFunctionToolCall(
+                arguments='{"outcome":"answered","markdown":"truncated',
+                call_id="call_truncated_after_diagnosis",
+                name="submit_research_answer",
+                type="function_call",
+            )],
+            usage=Usage(requests=1, input_tokens=3, output_tokens=2, total_tokens=5),
+            response_id="response_after_diagnosis",
+        )
+        context = ResearchRunContext(TurnExecutionInput(
+            dataset=_harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset(),
+            case_id="malformed_after_diagnosis",
+            run_id="run_malformed_after_diagnosis",
+            question="Hello",
+            conversation_messages=[],
+            research_memory=ResearchMemory(),
+        ))
+        context.diagnostic_repair_pending = True
+        context.begin_model_call()
+
+        async def invoke() -> None:
+            try:
+                with bind_research_context(context), patch.object(
+                    OpenAIChatCompletionsModel,
+                    "get_response",
+                    new=AsyncMock(return_value=raw_response),
+                ):
+                    await model.get_response(
+                        "System prompt",
+                        [{"role": "user", "content": "Hello"}],
+                        model.research_settings(),
+                        [],
+                        None,
+                        [],
+                        ModelTracing.DISABLED,
+                        previous_response_id=None,
+                        conversation_id=None,
+                        prompt=None,
+                    )
+            finally:
+                await model.close()
+
+        with self.assertRaises(ResearchSystemError) as raised:
+            asyncio.run(invoke())
+
+        self.assertEqual("PROVIDER_TOOL_PROTOCOL_VIOLATION", raised.exception.reason_code)
+        self.assertFalse(context.diagnostic_repair_succeeded)
+        self.assertEqual(0, context.protocol_repair_count)
 
     def test_malformed_tool_arguments_become_a_valid_repair_call(self) -> None:
         class Handler(BaseHTTPRequestHandler):

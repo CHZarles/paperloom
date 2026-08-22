@@ -13,6 +13,7 @@ import hashlib
 import re
 from contextlib import contextmanager
 from contextvars import ContextVar
+from time import perf_counter
 from typing import Any, Iterator
 from urllib.parse import urlparse
 from uuid import uuid4
@@ -38,7 +39,15 @@ _ACTIVE_CONTEXT: ContextVar[ResearchRunContext | None] = ContextVar(
 )
 TEXT_NUDGE_TOOL_NAME = "_continue_research_turn"
 TOOL_ARGUMENT_REPAIR_PREFIX = "[tool_arguments_repair] "
-MAX_PROVIDER_PROTOCOL_REPAIRS = 3
+MAX_DETERMINISTIC_PROTOCOL_REPAIRS = 3
+MAX_DIAGNOSTIC_DRAFT_CHARS = 4000
+MAX_DIAGNOSTIC_REPAIR_PROMPT_CHARS = 2000
+MAX_DIAGNOSIS_CHARS = 800
+MAX_DIAGNOSTIC_HINT_CHARS = 1200
+DIAGNOSTIC_FALLBACK_HINT = (
+    "Follow the authoritative message in the preceding Tool result for tool selection, evidence, "
+    "and arguments. Return only the valid function call that message requests, with no assistant text."
+)
 
 
 @contextmanager
@@ -61,6 +70,7 @@ class _ObservedOpenAIModel:
 
     provider: ProviderConfig
     hide_internal_continuation_tool = False
+    supports_online_diagnosis = False
 
     async def close(self) -> None:
         await self._client.close()
@@ -137,6 +147,12 @@ class _ObservedOpenAIModel:
                 repaired_items.append((index, item, repaired))
 
         if repaired_items:
+            if context and context.diagnostic_repair_pending:
+                _raise_protocol_violation(
+                    context,
+                    response,
+                    "TOOL_ARGUMENTS_INVALID_AFTER_DIAGNOSIS",
+                )
             if not _consume_protocol_repair(context):
                 _raise_protocol_violation(context, response, "TOOL_ARGUMENTS_INVALID_OR_TRUNCATED")
             for index, item, repaired in repaired_items:
@@ -151,10 +167,15 @@ class _ObservedOpenAIModel:
                 )
         response.output = repaired_output
         if any(getattr(item, "type", "") == "function_call" for item in response.output):
+            if context:
+                context.plain_text_response_streak = 0
+                if context.diagnostic_repair_pending:
+                    context.diagnostic_repair_pending = False
+                    context.diagnostic_repair_succeeded = True
             return response
 
-        if not _consume_protocol_repair(context):
-            _raise_protocol_violation(context, response, "PLAIN_TEXT_RESPONSE_REQUIRES_SUBMISSION")
+        if context and context.diagnostic_repair_pending:
+            _raise_protocol_violation(context, response, "PLAIN_TEXT_RESPONSE_AFTER_DIAGNOSIS")
 
         text = "\n".join(
             value
@@ -162,8 +183,30 @@ class _ObservedOpenAIModel:
             if value
         )
         text = re.sub(r"<think(?:\s[^>]*)?>.*?</think>\s*", "", text, flags=re.IGNORECASE | re.DOTALL).strip()
+        should_diagnose = bool(
+            context
+            and context.plain_text_response_streak == 1
+            and context.diagnostic_model_calls == 0
+            and self.supports_online_diagnosis
+        )
+        if should_diagnose and context:
+            context.protocol_repair_count += 1
+        elif not _consume_protocol_repair(context):
+            _raise_protocol_violation(context, response, "PLAIN_TEXT_RESPONSE_REQUIRES_SUBMISSION")
+
+        nudge_arguments = {"content": text}
+        if context:
+            context.plain_text_response_streak += 1
+            if should_diagnose:
+                context.diagnostic_repair_pending = True
+                nudge_arguments["diagnostic_repair_hint"] = await self._diagnose_plain_text_response(
+                    context,
+                    input,
+                    provider_tools,
+                    text,
+                )
         nudge_call = ResponseFunctionToolCall(
-            arguments=json.dumps({"content": text}, ensure_ascii=False),
+            arguments=json.dumps(nudge_arguments, ensure_ascii=False),
             call_id=f"call_text_nudge_{uuid4().hex}",
             name=TEXT_NUDGE_TOOL_NAME,
             type="function_call",
@@ -231,6 +274,133 @@ class MiniMaxAgentsModel(_ObservedOpenAIModel, OpenAIChatCompletionsModel):
 
     hide_internal_continuation_tool = True
 
+    async def _diagnose_plain_text_response(
+        self,
+        context: ResearchRunContext,
+        model_input: list[Any],
+        tools: list[Any],
+        draft: str,
+    ) -> str:
+        context.diagnostic_model_calls += 1
+        context.emit_progress({"type": "repairing_response"})
+        previous_prompt = _previous_repair_instruction(model_input)[:MAX_DIAGNOSTIC_REPAIR_PROMPT_CHARS]
+        bounded_draft = draft[:MAX_DIAGNOSTIC_DRAFT_CHARS]
+        protocol_state = {
+            "phase": context.protocol_state.phase.value,
+            "contract": context.protocol_state.contract.value if context.protocol_state.contract else None,
+            "submission_attempt": context.protocol_state.submission_attempt,
+        }
+        tool_names = [str(getattr(tool, "name", "")) for tool in tools if getattr(tool, "name", "")]
+        issue_codes = list(context.protocol_state.validation_issues)
+        operation_id = f"diagnosis_{context.diagnostic_model_calls}"
+        recorder = context.turn.eval_recorder
+        if recorder:
+            recorder.append(
+                kind="diagnosis.started",
+                operation_id=operation_id,
+                payload={
+                    "reason_code": "PLAIN_TEXT_RESPONSE_REQUIRES_SUBMISSION",
+                    "draft": _text_fingerprint(bounded_draft),
+                    "previous_repair_prompt": _text_fingerprint(previous_prompt),
+                    "protocol_state": protocol_state,
+                    "tool_names": tool_names,
+                    "validator_issue_codes": issue_codes,
+                },
+            )
+
+        request_body = {
+            "model": self.provider.model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "Diagnose only why an assistant response violated a required function-call protocol. "
+                        "Return one JSON object with string fields diagnosis and repair_hint. The hint must tell "
+                        "the model how to format its next response, but must defer tool selection, arguments, "
+                        "evidence, and validation requirements to previous_repair_instruction. Do not solve or "
+                        "rewrite the user's answer."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": json.dumps({
+                        "reason_code": "PLAIN_TEXT_RESPONSE_REQUIRES_SUBMISSION",
+                        "protocol_state": protocol_state,
+                        "available_tool_names": tool_names,
+                        "latest_draft": bounded_draft,
+                        "previous_repair_instruction": previous_prompt,
+                        "validator_issue_codes": issue_codes,
+                    }, ensure_ascii=False),
+                },
+            ],
+            "temperature": 0,
+            "top_p": 1,
+            "max_tokens": 512,
+            "response_format": {"type": "json_object"},
+            "thinking": {"type": "disabled"},
+        }
+        timeout = min(10.0, context.control.remaining_seconds())
+        started = perf_counter()
+        usage_recorded = False
+        try:
+            async def request_diagnosis() -> httpx.Response:
+                async with httpx.AsyncClient(
+                    trust_env=not _is_loopback_url(self.provider.api_base_url),
+                    timeout=timeout,
+                ) as client:
+                    return await client.post(
+                        self.provider.api_base_url.rstrip("/") + "/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {self.provider.api_key}",
+                            "Content-Type": "application/json",
+                        },
+                        json=request_body,
+                    )
+
+            response = await asyncio.wait_for(request_diagnosis(), timeout=timeout)
+            response.raise_for_status()
+            body = response.json()
+            latency_ms = round((perf_counter() - started) * 1000)
+            usage = body.get("usage") if isinstance(body, dict) else {}
+            prompt_tokens = int((usage or {}).get("prompt_tokens") or 0)
+            completion_tokens = int((usage or {}).get("completion_tokens") or 0)
+            total_tokens = int((usage or {}).get("total_tokens") or 0)
+            context.record_diagnostic_usage(prompt_tokens, completion_tokens, total_tokens, latency_ms)
+            usage_recorded = True
+            content = body["choices"][0]["message"]["content"]
+            diagnosis, repair_hint = _parse_diagnostic_output(content)
+            if recorder:
+                recorder.append(
+                    kind="diagnosis.completed",
+                    operation_id=operation_id,
+                    payload={
+                        "diagnosis": diagnosis,
+                        "repair_hint": repair_hint,
+                        "usage": {
+                            "prompt_tokens": prompt_tokens,
+                            "completion_tokens": completion_tokens,
+                            "total_tokens": total_tokens,
+                        },
+                        "latency_ms": latency_ms,
+                    },
+                )
+            return repair_hint
+        except Exception as error:
+            latency_ms = round((perf_counter() - started) * 1000)
+            if not usage_recorded:
+                context.diagnostic_latency_ms += latency_ms
+            if recorder:
+                recorder.append(
+                    kind="diagnosis.failed",
+                    operation_id=operation_id,
+                    payload={
+                        "failure_kind": _diagnostic_failure_kind(error),
+                        "repair_hint": DIAGNOSTIC_FALLBACK_HINT,
+                        "latency_ms": latency_ms,
+                    },
+                )
+            return DIAGNOSTIC_FALLBACK_HINT
+
     def __init__(
         self,
         provider: ProviderConfig,
@@ -239,6 +409,7 @@ class MiniMaxAgentsModel(_ObservedOpenAIModel, OpenAIChatCompletionsModel):
         max_attempts: int = 2,
     ) -> None:
         self.provider = provider
+        self.supports_online_diagnosis = provider.provider.casefold() == "minimax"
 
         client = _client(self, provider, timeout_seconds, max_attempts)
 
@@ -337,6 +508,56 @@ def _json_or_text(value: str) -> Any:
         return value
 
 
+def _previous_repair_instruction(model_input: list[Any]) -> str:
+    for item in reversed(model_input):
+        if not isinstance(item, dict) or item.get("type") != "function_call_output":
+            continue
+        output = item.get("output")
+        try:
+            payload = json.loads(output) if isinstance(output, str) else output
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict) and payload.get("message"):
+            return str(payload["message"])
+    return ""
+
+
+def _parse_diagnostic_output(content: Any) -> tuple[str, str]:
+    text = str(content or "").strip()
+    start = text.find("{")
+    if start < 0:
+        raise ValueError("diagnostic response did not contain a JSON object")
+    payload, _ = json.JSONDecoder().raw_decode(text[start:])
+    if not isinstance(payload, dict):
+        raise ValueError("diagnostic response must be a JSON object")
+    diagnosis_value = payload.get("diagnosis")
+    repair_hint_value = payload.get("repair_hint")
+    if not isinstance(diagnosis_value, str) or not isinstance(repair_hint_value, str):
+        raise ValueError("diagnostic response fields must be strings")
+    diagnosis = diagnosis_value.strip()[:MAX_DIAGNOSIS_CHARS]
+    repair_hint = repair_hint_value.strip()[:MAX_DIAGNOSTIC_HINT_CHARS]
+    if not diagnosis or not repair_hint:
+        raise ValueError("diagnostic response omitted required fields")
+    return diagnosis, repair_hint
+
+
+def _text_fingerprint(value: str) -> JsonMap:
+    return {
+        "chars": len(value),
+        "sha256": hashlib.sha256(value.encode("utf-8")).hexdigest(),
+    }
+
+
+def _diagnostic_failure_kind(error: Exception) -> str:
+    if isinstance(error, (asyncio.TimeoutError, httpx.TimeoutException)):
+        return "timeout"
+    if isinstance(error, httpx.HTTPStatusError):
+        return "provider_5xx" if error.response.status_code >= 500 else "provider_4xx"
+    if isinstance(error, (json.JSONDecodeError, KeyError, IndexError, TypeError, ValueError)):
+        return "invalid_json"
+    return "provider_error"
+
+
 def _provider_reason_code(error: Exception) -> str:
     if isinstance(error, (asyncio.TimeoutError, httpx.TimeoutException, APITimeoutError)):
         return "PROVIDER_TIMEOUT"
@@ -348,7 +569,7 @@ def _provider_reason_code(error: Exception) -> str:
 
 
 def _consume_protocol_repair(context: ResearchRunContext | None) -> bool:
-    if context is None or context.protocol_repair_count >= MAX_PROVIDER_PROTOCOL_REPAIRS:
+    if context is None or context.protocol_repair_count >= MAX_DETERMINISTIC_PROTOCOL_REPAIRS:
         return False
     context.protocol_repair_count += 1
     return True

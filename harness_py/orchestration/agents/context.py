@@ -54,6 +54,14 @@ class ResearchRunContext:
     tool_call_models: dict[str, str] = field(default_factory=dict)
     transport_attempts: dict[str, int] = field(default_factory=dict)
     protocol_repair_count: int = 0
+    plain_text_response_streak: int = 0
+    diagnostic_model_calls: int = 0
+    diagnostic_prompt_tokens: int = 0
+    diagnostic_completion_tokens: int = 0
+    diagnostic_total_tokens: int = 0
+    diagnostic_latency_ms: int = 0
+    diagnostic_repair_pending: bool = False
+    diagnostic_repair_succeeded: bool = False
     synthetic_repair_call_ids: set[str] = field(default_factory=set)
     final_draft: JsonMap | None = None
     protocol_state: ProtocolState = field(default_factory=ProtocolState)
@@ -129,6 +137,40 @@ class ResearchRunContext:
                 "cumulativeTotalTokens": self.total_tokens,
             },
         })
+
+    def record_diagnostic_usage(
+        self,
+        prompt_tokens: int,
+        completion_tokens: int,
+        total_tokens: int,
+        latency_ms: int,
+    ) -> None:
+        """Count the bounded diagnosis request without consuming an Agent turn."""
+
+        self.diagnostic_prompt_tokens += max(0, prompt_tokens)
+        self.diagnostic_completion_tokens += max(0, completion_tokens)
+        self.diagnostic_total_tokens += max(0, total_tokens)
+        self.diagnostic_latency_ms += max(0, latency_ms)
+        self.control.record_model_usage(prompt_tokens, completion_tokens, total_tokens)
+        self.prompt_tokens = self.control.prompt_tokens
+        self.completion_tokens = self.control.completion_tokens
+        self.total_tokens = self.control.total_tokens
+
+    def run_diagnostics(self) -> JsonMap:
+        return {
+            "model_call_count": self.model_call_count,
+            "prompt_tokens": self.prompt_tokens,
+            "completion_tokens": self.completion_tokens,
+            "total_tokens": self.total_tokens,
+            "model_latency_ms": self.model_latency_ms,
+            "provider_protocol_repair_count": self.protocol_repair_count,
+            "diagnostic_model_calls": self.diagnostic_model_calls,
+            "diagnostic_prompt_tokens": self.diagnostic_prompt_tokens,
+            "diagnostic_completion_tokens": self.diagnostic_completion_tokens,
+            "diagnostic_total_tokens": self.diagnostic_total_tokens,
+            "diagnostic_latency_ms": self.diagnostic_latency_ms,
+            "diagnostic_repair_succeeded": self.diagnostic_repair_succeeded,
+        }
 
     def register_tool_group(self, call_ids_and_names: list[tuple[str, str]]) -> None:
         """记录同一次模型响应产生的全部工具调用。
