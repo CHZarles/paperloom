@@ -250,6 +250,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       if (snapshot.diagnostics) {
         assistant.diagnostics = snapshot.diagnostics;
         assistant.route = normalizeChatRoute(snapshot.diagnostics.route) || assistant.route;
+        assistant.answerMode = snapshot.diagnostics.answerMode || assistant.answerMode;
       }
       if (snapshot.readingArtifacts) {
         assistant.readingArtifacts = snapshot.readingArtifacts;
@@ -290,6 +291,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       replaceMessage: Boolean(snapshot.replaceMessage),
       referenceMappings: snapshot.referenceMappings,
       diagnostics: snapshot.diagnostics,
+      answerMode: snapshot.diagnostics?.answerMode,
       readingArtifacts: snapshot.readingArtifacts,
       readingStatePatch: snapshot.readingStatePatch,
       researchAuditTrail: snapshot.researchAuditTrail,
@@ -341,6 +343,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
       assistant.status = 'loading';
       assistant.referenceMappings = undefined;
       assistant.diagnostics = undefined;
+      assistant.answerMode = undefined;
       assistant.readingArtifacts = undefined;
       assistant.readingStatePatch = undefined;
       assistant.researchAuditTrail = undefined;

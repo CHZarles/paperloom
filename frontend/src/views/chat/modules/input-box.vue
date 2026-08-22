@@ -320,6 +320,7 @@ function handleStartPayload(assistant: Api.Chat.Message, payload: Record<string,
     startedAssistant.status = 'loading';
     startedAssistant.referenceMappings = undefined;
     startedAssistant.diagnostics = undefined;
+    startedAssistant.answerMode = undefined;
     startedAssistant.readingArtifacts = undefined;
     startedAssistant.readingStatePatch = undefined;
     startedAssistant.researchAuditTrail = undefined;
@@ -374,6 +375,10 @@ function applyCompletionMetadata(assistant: Api.Chat.Message, payload: Record<st
 function applyCompletionArtifacts(assistant: Api.Chat.Message, payload: Record<string, any>) {
   if (payload.diagnostics) {
     assistant.diagnostics = payload.diagnostics;
+  }
+  const answerMode = payload.answerMode || payload.diagnostics?.answerMode;
+  if (['chat', 'catalog', 'research'].includes(answerMode)) {
+    assistant.answerMode = answerMode as Api.Chat.AnswerMode;
   }
   if (Array.isArray(payload.productStateItems)) {
     assistant.productStateItems = payload.productStateItems as Api.Chat.ProductStateItem[];

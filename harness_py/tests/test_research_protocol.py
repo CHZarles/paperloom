@@ -29,7 +29,11 @@ class ResearchProtocolTest(unittest.TestCase):
             (
                 "accepted direct",
                 ProtocolState(),
-                SubmissionRequested(AnswerContract.DIRECT, {"kind": "GREETING"}, True),
+                SubmissionRequested(
+                    AnswerContract.DIRECT,
+                    {"outcome": "answered", "markdown": "Hello."},
+                    True,
+                ),
                 Phase.COMPLETE,
                 AnswerContract.DIRECT,
             ),
@@ -152,15 +156,19 @@ class ResearchProtocolTest(unittest.TestCase):
         self.assertEqual("PROTOCOL_ERROR", mismatch.model_result["error_code"])
         self.assertEqual(AnswerContract.RESEARCH, mismatch.next_state.contract)
 
-    def test_submission_schemas_and_renderers_keep_direct_and_catalog_authoritative(self) -> None:
+    def test_submission_schemas_and_renderers_keep_direct_natural_and_catalog_authoritative(self) -> None:
         self.assertEqual("submit_direct_answer", direct_answer_tool_definition()["function"]["name"])
         self.assertEqual("submit_research_answer", research_answer_tool_definition()["function"]["name"])
-        direct = {"kind": "GREETING", "language": "ZH_CN"}
+        direct = {
+            "outcome": "needs_clarification",
+            "markdown": "我知道 vLLM，它是一个大模型推理与服务框架。\n\n你想了解哪一方面？",
+        }
         self.assertTrue(validate_submission(AnswerContract.DIRECT, direct, ProtocolFacts()).accepted)
         self.assertEqual(
-            "你好，我可以帮你检索、阅读和比较论文。",
+            direct["markdown"],
             render_direct_submission(direct)["markdown"],
         )
+        self.assertEqual("needs_clarification", render_direct_submission(direct)["outcome"])
 
         facts = ProtocolFacts(catalog_results={
             "paper_result_1": {
@@ -201,11 +209,13 @@ class ResearchProtocolTest(unittest.TestCase):
         direct_tool = direct_answer_tool_definition()["function"]
         catalog_description = catalog_answer_tool_definition()["function"]["description"]
         research_description = research_answer_tool_definition()["function"]["description"]
-        direct_kinds = direct_tool["parameters"]["properties"]["kind"]["enum"]
 
-        self.assertIn("PAPERLOOM_CAPABILITIES", direct_kinds)
-        self.assertNotIn("CAPABILITIES", direct_kinds)
-        self.assertIn("PaperLoom's capabilities", direct_tool["description"])
+        self.assertEqual(
+            ["markdown", "outcome"],
+            sorted(direct_tool["parameters"]["required"]),
+        )
+        self.assertNotIn("kind", direct_tool["parameters"]["properties"])
+        self.assertIn("natural conversational response", direct_tool["description"])
         self.assertIn("Do not use for recommendations with reasons", catalog_description)
         self.assertIn("recommendations with reasons", research_description)
 
@@ -213,8 +223,8 @@ class ResearchProtocolTest(unittest.TestCase):
         instructions = research_agent_instructions(ResearchSkillRegistry())
 
         self.assertIn("A bare familiarity check such as 'Do you know X?'", instructions)
-        self.assertIn("asks about X, not PaperLoom's capabilities", instructions)
-        self.assertIn("use CLARIFICATION with a brief acknowledgment", instructions)
+        self.assertIn("briefly acknowledge X", instructions)
+        self.assertIn("outcome=needs_clarification", instructions)
         self.assertIn("asks for a definition, details, mechanism, or comparison, use RESEARCH", instructions)
 
     def test_research_validation_binds_every_content_block_to_known_quotes(self) -> None:

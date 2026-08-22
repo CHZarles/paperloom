@@ -21,6 +21,12 @@ public class ResearchHarnessResultMapper {
     public ProductTurnResult toProductResult(ProductTurnRequest request, Map<String, Object> response) {
         Map<String, Object> answer = objectMap(response.get("answer"));
         String markdown = stringValue(answer.get("markdown"));
+        String answerMode = switch (stringValue(answer.get("answer_contract"))) {
+            case "DIRECT" -> "chat";
+            case "CATALOG" -> "catalog";
+            case "RESEARCH" -> "research";
+            default -> "";
+        };
         String status = stringValue(response.get("status"));
         List<Map<String, Object>> references = references(response.get("citations"));
         ProductResultStatus resultStatus = switch (status) {
@@ -60,7 +66,8 @@ public class ResearchHarnessResultMapper {
                 ReadingResearchTrace.empty(),
                 stopReason(resultStatus, stringValue(control.get("reason_code"))),
                 resultStatus,
-                diagnostics(control, response.get("usage"), response.get("run_id"))
+                diagnostics(control, response.get("usage"), response.get("run_id")),
+                answerMode
         );
     }
 

@@ -16,8 +16,24 @@ public record ProductTurnResult(
         ReadingResearchTrace researchTrace,
         ProductStopReason stopReason,
         ProductResultStatus resultStatus,
-        Map<String, Object> diagnostics
+        Map<String, Object> diagnostics,
+        String answerMode
 ) {
+    public ProductTurnResult(String finalAnswerMarkdown,
+                             AnswerEnvelope envelope,
+                             List<Map<String, Object>> references,
+                             List<ToolProgressEvent> progressEvents,
+                             List<Map<String, Object>> productStateItems,
+                             ReadingTurnArtifacts readingArtifacts,
+                             ReadingStatePatch readingStatePatch,
+                             ReadingResearchTrace researchTrace,
+                             ProductStopReason stopReason,
+                             ProductResultStatus resultStatus,
+                             Map<String, Object> diagnostics) {
+        this(finalAnswerMarkdown, envelope, references, progressEvents, productStateItems, readingArtifacts,
+                readingStatePatch, researchTrace, stopReason, resultStatus, diagnostics, "");
+    }
+
     public ProductTurnResult(String finalAnswerMarkdown,
                              AnswerEnvelope envelope,
                              List<Map<String, Object>> references,
@@ -74,6 +90,10 @@ public record ProductTurnResult(
         stopReason = stopReason == null ? ProductStopReason.COMPLETED : stopReason;
         resultStatus = resultStatus == null ? ProductResultStatus.COMPLETED : resultStatus;
         diagnostics = diagnostics == null ? Map.of() : Map.copyOf(diagnostics);
+        answerMode = switch (answerMode == null ? "" : answerMode.trim()) {
+            case "chat", "catalog", "research" -> answerMode.trim();
+            default -> "";
+        };
     }
 
     private static List<Map<String, Object>> copyMapList(List<Map<String, Object>> items) {

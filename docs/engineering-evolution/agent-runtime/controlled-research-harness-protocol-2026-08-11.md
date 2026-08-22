@@ -1,6 +1,10 @@
 # 可控 Research Harness 协议
 
-> 状态：已完成详细设计；规范见 [`controlled-research-harness-spec-2026-08-11.md`](./controlled-research-harness-spec-2026-08-11.md)。尚未实现，尚未替代 `research/design/harness-runtime-shape.md`。
+> 2026-08-22 修订：下文的固定 Direct 模板已被有界的 `outcome + markdown` 自然对话提交替代。Java 持久化映射后的
+> `chat | catalog | research` 模式，前端将其显示为信任标签。见
+> [research-answer-scope-regression-2026-08-21.md](research-answer-scope-regression-2026-08-21.md#follow-up-remove-the-canned-direct-response-contract)。
+
+> 状态：已实现；2026-08-22 按上方说明修订。规范见 [`controlled-research-harness-spec-2026-08-11.md`](./controlled-research-harness-spec-2026-08-11.md)。
 
 ## 1. 目标
 

@@ -188,8 +188,8 @@ class AgentsRuntimeTest(unittest.TestCase):
                     finish_reason = "length"
                 else:
                     arguments = json.dumps({
-                        "kind": "GREETING",
-                        "language": "EN",
+                        "outcome": "answered",
+                        "markdown": "Hello. How can I help?",
                     })
                     finish_reason = "tool_calls"
                 body = json.dumps({
@@ -264,7 +264,7 @@ class AgentsRuntimeTest(unittest.TestCase):
         ))
         self.assertEqual("COMPLETED", run["status"], run["diagnostics"])
         self.assertEqual(
-            "Hello. I can help you search, read, and compare papers.",
+            "Hello. How can I help?",
             run["research_answer"]["markdown"],
         )
         self.assertEqual("DIRECT", run["research_answer"]["answer_contract"])

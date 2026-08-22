@@ -774,7 +774,8 @@ public class ChatHandler {
                 answer.readingStatePatch(),
                 researchEvents,
                 generationId,
-                retryContext
+                retryContext,
+                answer.answerMode()
         );
         if (conversationRecordId != null) {
             generationConversationRecordIds.put(generationId, conversationRecordId);
@@ -831,6 +832,9 @@ public class ChatHandler {
         diagnostics.put("resultStatus", answer.resultStatus().name());
         diagnostics.put("stopReason", answer.stopReason().name());
         diagnostics.putAll(answer.diagnostics());
+        if (!answer.answerMode().isBlank()) {
+            diagnostics.put("answerMode", answer.answerMode());
+        }
         if (answer.envelope() != null) {
             diagnostics.put("answerType", answer.envelope().answerType().name());
         }
@@ -1381,6 +1385,10 @@ public class ChatHandler {
             Map<String, Object> diagnostics = generationDiagnostics.get(generationId);
             if (diagnostics != null && !diagnostics.isEmpty()) {
                 notification.put("diagnostics", diagnostics);
+                String answerMode = stringDetail(diagnostics, "answerMode");
+                if (answerMode != null) {
+                    notification.put("answerMode", answerMode);
+                }
             }
             List<Map<String, Object>> productStateItems = generationProductStateItems.get(generationId);
             if (productStateItems != null && !productStateItems.isEmpty()) {

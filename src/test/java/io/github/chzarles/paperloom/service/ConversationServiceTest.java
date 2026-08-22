@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -207,7 +208,8 @@ class ConversationServiceTest {
                 ReadingStatePatch.empty(),
                 List.of(),
                 "generation-new",
-                retryContext
+                retryContext,
+                "research"
         );
 
         ArgumentCaptor<Conversation> conversationCaptor = ArgumentCaptor.forClass(Conversation.class);
@@ -220,6 +222,7 @@ class ConversationServiceTest {
         assertEquals(2, saved.getAnswerRevision());
         assertEquals(12L, saved.getForkedFromConversationRecordId());
         assertEquals("generation-old", saved.getRetryOfGenerationId());
+        assertEquals("research", saved.getAnswerMode());
         assertTrue(saved.getCurrentRevision());
         verify(conversationRepository).hideCurrentAnswersAfterSlot(1L, "conversation-1", 12L);
     }
@@ -325,17 +328,20 @@ class ConversationServiceTest {
         ArgumentCaptor<Conversation> conversationCaptor = ArgumentCaptor.forClass(Conversation.class);
         verify(conversationRepository).save(conversationCaptor.capture());
         Conversation conversation = conversationCaptor.getValue();
+        conversation.setAnswerMode("catalog");
         assertTrue(conversation.getReadingArtifactsJson().contains("read agent evaluation papers"));
         assertTrue(conversation.getReadingStatePatchJson().contains("paper_handle_abc"));
 
         List<Map<String, Object>> messages = conversationService.toMessageHistory(List.of(conversation), false);
         Map<String, Object> assistantMessage = messages.get(1);
+        assertFalse(messages.get(0).containsKey("answerMode"));
         @SuppressWarnings("unchecked")
         Map<String, Object> persistedPatch = (Map<String, Object>) assistantMessage.get("readingStatePatch");
         @SuppressWarnings("unchecked")
         Map<String, Object> selectedPaper = (Map<String, Object>) persistedPatch.get("selectedPaper");
         assertEquals("paper_handle_abc", selectedPaper.get("paperHandle"));
         assertTrue(assistantMessage.containsKey("readingArtifacts"));
+        assertEquals("catalog", assistantMessage.get("answerMode"));
         assertTrue(session.getConversationMemoryJson().contains("paper_handle_abc"));
     }
 

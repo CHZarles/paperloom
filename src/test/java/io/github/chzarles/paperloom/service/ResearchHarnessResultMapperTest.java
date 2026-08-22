@@ -26,7 +26,7 @@ class ResearchHarnessResultMapperTest {
         Map<String, Object> response = Map.of(
                 "run_id", "run-trace-1",
                 "status", "COMPLETED",
-                "answer", Map.of("markdown", "answer [1]"),
+                "answer", Map.of("markdown", "answer [1]", "answer_contract", "RESEARCH"),
                 "citations", List.of(Map.of(
                         "reference_number", 1,
                         "evidence_id", "ev_1",
@@ -53,8 +53,26 @@ class ResearchHarnessResultMapperTest {
         assertEquals("source_quote_1", result.references().get(0).get("sourceQuoteRef"));
         assertEquals("PYTHON_RESEARCH_HARNESS", result.references().get(0).get("retrievalRoute"));
         assertEquals("run-trace-1", result.diagnostics().get("agentTraceRunId"));
+        assertEquals("research", result.answerMode());
         assertEquals(1, result.productStateItems().size());
         assertEquals("paper_handle_paper-1", result.productStateItems().get(0).get("paperHandle"));
+    }
+
+    @Test
+    void mapsAllHarnessContractsToClientAnswerModes() {
+        ResearchHarnessResultMapper mapper = new ResearchHarnessResultMapper(new ObjectMapper());
+        ProductTurnRequest request = new ProductTurnRequest(
+                7L, "conversation-1", "generation-1", "question", SourceScope.auto(),
+                List.of(), Map.of(), ProductModelContext.defaults());
+
+        assertEquals("chat", mapper.toProductResult(request, Map.of(
+                "status", "COMPLETED",
+                "answer", Map.of("markdown", "hello", "answer_contract", "DIRECT")
+        )).answerMode());
+        assertEquals("catalog", mapper.toProductResult(request, Map.of(
+                "status", "COMPLETED",
+                "answer", Map.of("markdown", "2 papers", "answer_contract", "CATALOG")
+        )).answerMode());
     }
 
     @Test

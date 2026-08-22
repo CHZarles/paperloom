@@ -88,7 +88,8 @@ class ChatHandlerProductHarnessTest {
                 any(),
                 any(),
                 eq("generation-1"),
-                isNull()
+                isNull(),
+                eq("research")
         );
     }
 
@@ -289,7 +290,8 @@ class ChatHandlerProductHarnessTest {
                 any(),
                 any(),
                 eq("generation-retry"),
-                eq(retryContext)
+                eq(retryContext),
+                eq("research")
         )).thenReturn(99L);
 
         Map<String, Object> started = fixture.handler.retryGeneration(
@@ -702,7 +704,8 @@ class ChatHandlerProductHarnessTest {
                 any(),
                 any(),
                 eq("generation-1"),
-                isNull()
+                isNull(),
+                eq("research")
         );
         assertSourceQuoteMapping(persistedReferencesCaptor.getValue().get("1"));
         assertEquals("AUTO_LIBRARY", persistedScopeCaptor.getValue().get("scopeMode"));
@@ -727,7 +730,8 @@ class ChatHandlerProductHarnessTest {
                 any(),
                 any(),
                 eq("generation-1"),
-                isNull()
+                isNull(),
+                eq("research")
         )).thenReturn(9001L);
         when(fixture.readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
                 .thenReturn(completedTurn(
@@ -746,6 +750,7 @@ class ChatHandlerProductHarnessTest {
 
         Map<String, Object> completion = completionPayload(fixture, "finished");
         assertEquals(9001L, completion.get("conversationRecordId"));
+        assertEquals("research", completion.get("answerMode"));
         verify(fixture.generationStateService).updateConversationRecordId("generation-1", 9001L);
     }
 
@@ -1044,8 +1049,13 @@ class ChatHandlerProductHarnessTest {
                 references,
                 List.of(),
                 productStateItems,
+                null,
+                null,
+                null,
                 ProductStopReason.COMPLETED,
-                ProductResultStatus.COMPLETED
+                ProductResultStatus.COMPLETED,
+                Map.of(),
+                "research"
         );
     }
 

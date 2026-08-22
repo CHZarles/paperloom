@@ -70,6 +70,12 @@ assert.match(
   /class="assistant-progress-strip"/,
   'live retrieval progress should render inline in the assistant message'
 );
+assert.match(messageSource, /\[\{\{ msg\.answerMode \}\}\]/, 'assistant answers should show their trust mode');
+assert.match(
+  inputSource,
+  /\['chat', 'catalog', 'research'\]\.includes\(answerMode\)/,
+  'websocket completion should accept only known answer modes'
+);
 assert.match(
   messageSource,
   /const INLINE_PROGRESS_EVENT_LIMIT = 4;/,

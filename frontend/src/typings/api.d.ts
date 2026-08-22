@@ -658,6 +658,8 @@ declare namespace Api {
       | 'CLARIFY'
       | 'PAPER_QA';
 
+    type AnswerMode = 'chat' | 'catalog' | 'research';
+
     interface Message {
       role: 'user' | 'assistant';
       content: string;
@@ -676,6 +678,7 @@ declare namespace Api {
       replaceMessage?: boolean;
       username?: string;
       route?: Route;
+      answerMode?: AnswerMode;
       referenceMappings?: Record<string, ReferenceEvidence>;
       diagnostics?: Diagnostics;
       productStateItems?: ProductStateItem[];
@@ -688,6 +691,7 @@ declare namespace Api {
     }
 
     interface Diagnostics {
+      answerMode?: AnswerMode;
       route?: string;
       scopeMode?: string;
       scannedCount?: number;
@@ -824,6 +828,7 @@ declare namespace Api {
       retryOfGenerationId?: string | null;
       question: string;
       answer: string;
+      answerMode?: AnswerMode | null;
       timestamp?: string | null;
       referenceMappings?: Record<string, ReferenceEvidence>;
       researchEvents?: ResearchProgressEvent[];

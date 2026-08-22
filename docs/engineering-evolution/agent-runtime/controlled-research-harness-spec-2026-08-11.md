@@ -1,6 +1,11 @@
 # Controlled Research Harness Specification
 
-> Status: Accepted for implementation on 2026-08-11. Not yet implemented.
+> 2026-08-22 amendment: the fixed Direct templates described below were replaced by a bounded
+> `outcome + markdown` conversational submission. Java persists the mapped `chat | catalog | research` mode and the
+> frontend displays it as a trust label. See
+> [research-answer-scope-regression-2026-08-21.md](research-answer-scope-regression-2026-08-21.md#follow-up-remove-the-canned-direct-response-contract).
+
+> Status: Implemented; amended on 2026-08-22 as noted above.
 >
 > Design source: [`controlled-research-harness-protocol-2026-08-11.md`](./controlled-research-harness-protocol-2026-08-11.md)
 >

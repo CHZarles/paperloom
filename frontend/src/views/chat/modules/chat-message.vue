@@ -898,6 +898,7 @@ async function handleSourceFileClick(fileInfo: {
             </div>
           </div>
         </div>
+        <span v-if="msg.role === 'assistant' && msg.answerMode" class="answer-mode">[{{ msg.answerMode }}]</span>
         <NText v-if="msg.status === 'error'" class="message-error">
           {{ msg.content || '服务器繁忙，请稍后再试' }}
         </NText>
@@ -1159,6 +1160,13 @@ async function handleSourceFileClick(fileInfo: {
   border: 0;
   background: transparent;
   padding: 2px 0 0;
+}
+
+.answer-mode {
+  color: var(--color-text-muted);
+  font-family: var(--font-utility);
+  font-size: 11px;
+  line-height: 1;
 }
 
 .assistant-content :deep(p) {

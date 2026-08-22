@@ -146,11 +146,25 @@ public class ConversationService {
                                    List<Map<String, Object>> researchEvents,
                                    String generationId,
                                    ConversationRetryContext retryContext) {
+        return recordConversation(userId, question, answer, conversationId, referenceMappings, effectiveScope,
+                readingArtifacts, readingStatePatch, researchEvents, generationId, retryContext, null);
+    }
+
+    @Transactional
+    public Long recordConversation(Long userId, String question, String answer, String conversationId,
+                                   Map<String, Map<String, Object>> referenceMappings,
+                                   Map<String, Object> effectiveScope,
+                                   ReadingTurnArtifacts readingArtifacts,
+                                   ReadingStatePatch readingStatePatch,
+                                   List<Map<String, Object>> researchEvents,
+                                   String generationId,
+                                   ConversationRetryContext retryContext,
+                                   String answerMode) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
 
         Long conversationRecordId = saveConversation(user, question, answer, conversationId, referenceMappings, effectiveScope,
-                readingArtifacts, readingStatePatch, researchEvents, generationId, retryContext);
+                readingArtifacts, readingStatePatch, researchEvents, generationId, retryContext, answerMode);
         updateSessionReadingMemory(userId, conversationId, readingStatePatch);
         updateSessionTitleIfDefault(userId, conversationId, question);
         touchSessionUpdatedAt(userId, conversationId);
@@ -175,6 +189,19 @@ public class ConversationService {
                                   List<Map<String, Object>> researchEvents,
                                   String generationId,
                                   ConversationRetryContext retryContext) {
+        return saveConversation(user, question, answer, conversationId, referenceMappings, effectiveScope,
+                readingArtifacts, readingStatePatch, researchEvents, generationId, retryContext, null);
+    }
+
+    private Long saveConversation(User user, String question, String answer, String conversationId,
+                                  Map<String, Map<String, Object>> referenceMappings,
+                                  Map<String, Object> effectiveScope,
+                                  ReadingTurnArtifacts readingArtifacts,
+                                  ReadingStatePatch readingStatePatch,
+                                  List<Map<String, Object>> researchEvents,
+                                  String generationId,
+                                  ConversationRetryContext retryContext,
+                                  String answerMode) {
         Conversation conversation = new Conversation();
         conversation.setUser(user);
         conversation.setQuestion(question);
@@ -185,6 +212,7 @@ public class ConversationService {
         conversation.setReadingArtifactsJson(writeReadingArtifacts(readingArtifacts));
         conversation.setReadingStatePatchJson(writeReadingStatePatch(readingStatePatch));
         conversation.setResearchEventsJson(writeResearchEvents(researchEvents));
+        conversation.setAnswerMode(trimToNull(answerMode));
         conversation.setGenerationId(trimToNull(generationId));
         if (retryContext != null) {
             conversationRepository.clearCurrentRevision(user.getId(), retryContext.answerSlotId());
@@ -660,7 +688,7 @@ public class ConversationService {
                             parseJsonObject(conversation.getReadingStatePatchJson(), "reading state patch"),
                             researchEvents,
                             researchAuditTrailProjector.project("COMPLETED", referenceMappings, researchEvents),
-                            revisionMetadata(conversation)
+                            answerMetadata(conversation)
                     ));
                 });
 
@@ -693,6 +721,14 @@ public class ConversationService {
         }
         if (conversation.getRetryKind() != null && !conversation.getRetryKind().isBlank()) {
             metadata.put("retryKind", conversation.getRetryKind());
+        }
+        return metadata;
+    }
+
+    private Map<String, Object> answerMetadata(Conversation conversation) {
+        Map<String, Object> metadata = new LinkedHashMap<>(revisionMetadata(conversation));
+        if (conversation != null && conversation.getAnswerMode() != null && !conversation.getAnswerMode().isBlank()) {
+            metadata.put("answerMode", conversation.getAnswerMode());
         }
         return metadata;
     }
@@ -827,6 +863,7 @@ public class ConversationService {
                     item.put("retryOfGenerationId", conversation.getRetryOfGenerationId());
                     item.put("question", conversation.getQuestion());
                     item.put("answer", conversation.getAnswer());
+                    item.put("answerMode", conversation.getAnswerMode());
                     item.put("timestamp", formatTimestamp(conversation.getTimestamp()));
                     item.put("referenceMappings", parseReferenceMappings(conversation.getReferenceMappingsJson()));
                     item.put("researchEvents", parseResearchEvents(conversation.getResearchEventsJson()));

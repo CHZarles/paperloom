@@ -142,7 +142,7 @@ _RESEARCH_TOOL_NAMES = frozenset({
     FINAL_TOOL_NAME,
 })
 _INITIAL_TOOL_NAMES = _CATALOG_TOOL_NAMES | _RESEARCH_TOOL_NAMES | {DIRECT_FINAL_TOOL_NAME}
-_DIRECT_KINDS = frozenset({"GREETING", "CLARIFICATION", "PAPERLOOM_CAPABILITIES", "OUT_OF_SCOPE"})
+_DIRECT_OUTCOMES = frozenset({"answered", "needs_clarification"})
 _LANGUAGES = frozenset({"ZH_CN", "EN"})
 _CATALOG_VIEWS = frozenset({"COUNT", "LIST"})
 _CATALOG_FIELDS = frozenset({"title", "authors", "year", "venue", "doi", "arxiv_id"})
@@ -306,28 +306,11 @@ def submission_requested(
 
 
 def render_direct_submission(payload: JsonMap) -> JsonMap:
-    kind = str(payload["kind"])
-    language = str(payload["language"])
-    if kind == "CLARIFICATION":
-        return _normalized_answer("needs_clarification", _single_line(payload["question"]), AnswerContract.DIRECT)
-    messages = {
-        "ZH_CN": {
-            "GREETING": "你好，我可以帮你检索、阅读和比较论文。",
-            "PAPERLOOM_CAPABILITIES": (
-                "我可以检索论文、阅读原文、比较方法，并基于可追溯证据回答问题。"
-            ),
-            "OUT_OF_SCOPE": "这个请求不在论文研究范围内。",
-        },
-        "EN": {
-            "GREETING": "Hello. I can help you search, read, and compare papers.",
-            "PAPERLOOM_CAPABILITIES": (
-                "I can search papers, read source text, compare methods, "
-                "and answer with traceable evidence."
-            ),
-            "OUT_OF_SCOPE": "This request is outside the paper-research scope.",
-        },
-    }
-    return _normalized_answer("answered", messages[language][kind], AnswerContract.DIRECT)
+    return _normalized_answer(
+        str(payload["outcome"]),
+        str(payload["markdown"]).strip(),
+        AnswerContract.DIRECT,
+    )
 
 
 def render_catalog_submission(payload: JsonMap, facts: ProtocolFacts) -> JsonMap:
@@ -384,25 +367,18 @@ def render_research_submission(payload: JsonMap, facts: ProtocolFacts) -> JsonMa
 
 
 def _validate_direct_submission(payload: JsonMap) -> SubmissionValidation:
-    issues = _shape_issues(payload, {"kind", "language", "question"}, {"kind", "language"})
-    kind = payload.get("kind")
-    language = payload.get("language")
-    if not isinstance(kind, str) or kind not in _DIRECT_KINDS:
-        issues.append(_format_issue("DIRECT_KIND_INVALID"))
-    if not isinstance(language, str) or language not in _LANGUAGES:
-        issues.append(_format_issue("LANGUAGE_INVALID"))
-    question = payload.get("question")
-    if kind == "CLARIFICATION":
-        if (
-            not isinstance(question, str)
-            or not question.strip()
-            or len(question) > 500
-            or "\n" in question
-            or _DOUBLE_BRACKET_MARKER_RE.search(question)
-        ):
-            issues.append(_format_issue("CLARIFICATION_QUESTION_INVALID"))
-    elif question is not None:
-        issues.append(_format_issue("DIRECT_QUESTION_NOT_ALLOWED"))
+    issues = _shape_issues(payload, {"outcome", "markdown"}, {"outcome", "markdown"})
+    outcome = payload.get("outcome")
+    markdown = payload.get("markdown")
+    if not isinstance(outcome, str) or outcome not in _DIRECT_OUTCOMES:
+        issues.append(_format_issue("DIRECT_OUTCOME_INVALID"))
+    if (
+        not isinstance(markdown, str)
+        or not markdown.strip()
+        or len(markdown) > 4000
+        or _DOUBLE_BRACKET_MARKER_RE.search(markdown)
+    ):
+        issues.append(_format_issue("DIRECT_MARKDOWN_INVALID"))
     return SubmissionValidation(tuple(_unique_issues(issues)))
 
 
@@ -606,14 +582,14 @@ def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
         "Resolve references such as 'this paper', 'that paper', 'the previous conclusion', or their Chinese "
         "equivalents only when the conversation names exactly one paper or the current research memory has exactly "
         "one selected paper. If the reference has no unique antecedent, treat it as a blocking ambiguity: use "
-        "submit_direct_answer with one CLARIFICATION asking which paper the user means. Do not search the whole "
+        "submit_direct_answer with outcome=needs_clarification and ask which paper the user means. Do not search the whole "
         "corpus and guess an identity from a venue, year, answer fragment, or general knowledge.\n\n"
-        "Keep ordinary conversation natural and concise. Use PAPERLOOM_CAPABILITIES only when the user asks what "
-        "PaperLoom or the assistant can do. A bare familiarity check such as 'Do you know X?' or '你知道 X 吗？' "
-        "asks about X, not PaperLoom's capabilities, but does not yet ask a substantive question: use CLARIFICATION "
-        "with a brief acknowledgment and ask what the user wants to know. If the user asks for a definition, details, "
+        "Keep ordinary conversation natural and concise, and write the actual user-facing response in the direct "
+        "submission instead of selecting a canned response kind. A bare familiarity check such as 'Do you know X?' "
+        "or '你知道 X 吗？' does not yet ask a substantive question: briefly acknowledge X, ask what the user wants "
+        "to know, and submit outcome=needs_clarification. If the user asks for a definition, details, "
         "mechanism, or comparison, use RESEARCH. For a greeting, use submit_direct_answer. If a recommendation "
-        "request is missing only its topic, submit one CLARIFICATION asking what topic to focus on; "
+        "request is missing only its topic, submit one natural clarification asking what topic to focus on; "
         "do not demand optional purpose, venue, year, or paper-type constraints. A recommendation request with a "
         "stated topic is not missing a blocking input: research it instead of asking for optional preferences.\n\n"
         "Choose CATALOG only when every requested output is a corpus count or one of these metadata fields: title, "
@@ -660,12 +636,12 @@ def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
         "when the correction needs evidence that is not already present.\n\n"
         "When you are ready to finish the turn: Do not return Markdown as assistant text. Call exactly one "
         "submission tool as the only response and put user-facing answer text only in that tool's arguments. Use "
-        "submit_direct_answer only for a greeting, one blocking clarification, PaperLoom's capabilities, or an "
-        "out-of-scope request. "
+        "submit_direct_answer only for natural conversation that needs no paper evidence, including a greeting, one "
+        "blocking clarification, PaperLoom's capabilities, or an out-of-scope request. "
         "Use submit_catalog_answer only for counts and metadata-only lists from a current paper_result_ref. Use "
         "submit_research_answer for every paper-content judgment; put ANSWERED or PARTIAL text in markdown, or use a "
-        "structured ABSTAINED reason when the corpus cannot support an answer. Select ZH_CN or EN from the conversation; "
-        "the runtime does not infer the response language. Do not expose internal skills, tool names, "
+        "structured ABSTAINED reason when the corpus cannot support an answer. For Catalog and Research submissions, "
+        "select ZH_CN or EN from the conversation; the runtime does not infer the response language. Do not expose internal skills, tool names, "
         "schemas, statuses, reasoning traces, evidence-id syntax, or validation rules in the user-facing answer.\n\n"
         "AVAILABLE RESEARCH SKILLS\n"
         f"{skills.catalog()}"
@@ -675,19 +651,14 @@ def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
 def direct_answer_tool_definition() -> JsonMap:
     return _submission_tool_definition(
         DIRECT_FINAL_TOOL_NAME,
-        "Submit a greeting, one blocking clarification, a response about PaperLoom's capabilities, or an "
-        "out-of-scope response. Never label a named-topic familiarity check as PAPERLOOM_CAPABILITIES.",
+        "Submit a natural conversational response that needs no paper evidence. Use needs_clarification only when "
+        "one blocking question prevents a substantive answer.",
         {
             "type": "object",
-            "required": ["kind", "language"],
+            "required": ["outcome", "markdown"],
             "properties": {
-                "kind": {
-                    "type": "string",
-                    "enum": sorted(_DIRECT_KINDS),
-                    "description": "PAPERLOOM_CAPABILITIES means the user asks what PaperLoom itself can do.",
-                },
-                "language": {"type": "string", "enum": sorted(_LANGUAGES)},
-                "question": {"type": "string", "maxLength": 500},
+                "outcome": {"type": "string", "enum": sorted(_DIRECT_OUTCOMES)},
+                "markdown": {"type": "string", "minLength": 1, "maxLength": 4000},
             },
             "additionalProperties": False,
         },

@@ -199,3 +199,29 @@ The same question completed with one `submit_direct_answer` call and no corpus s
 
 The replay used one model call and 4,184 Tokens. Its 15,849 ms duration is recorded for reproducibility but is not
 compared as a performance improvement because it was a separate stochastic call against a different local corpus.
+
+### Follow-up: remove the canned Direct response contract
+
+A later production replay exposed a second problem: MiniMax first produced a useful two-paragraph vLLM response, but
+the Direct Validator rejected it because `CLARIFICATION.question` allowed only one line. The repair attempt then
+collapsed to a much weaker question. The root cause was the Direct schema itself: `kind + question` asked the model to
+select a fixed template instead of submitting its natural conversational answer.
+
+Production retry: `run_f350119af499448196868b552ae9a709`. It made four model calls and two
+`submit_direct_answer` calls, with no corpus retrieval, consuming 18,137 Tokens in 16,804 ms. The first submission
+correctly introduced vLLM and asked a follow-up in two paragraphs; only the newline triggered
+`CLARIFICATION_QUESTION_INVALID`. These numbers document the incident, not a before/after performance claim.
+
+The Direct tool now accepts only `outcome + markdown`. Multiline conversational responses are valid, while technical
+definitions and paper-content claims still use Research. The product maps the three internal contracts to visible
+trust labels without embedding them in answer Markdown:
+
+```text
+DIRECT   -> [chat]      conversational model answer; no paper-evidence guarantee
+CATALOG  -> [catalog]   deterministic corpus metadata
+RESEARCH -> [research]  source-backed answer with citation validation
+```
+
+`answerMode` is carried through live completion metadata and persisted with each conversation record, so the label
+survives refresh and Retry history. Existing records with no mode remain unlabeled rather than being guessed from
+their text or citations.

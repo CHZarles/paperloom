@@ -50,6 +50,9 @@ public class Conversation {
     @Column(name = "research_events_json", columnDefinition = "LONGTEXT")
     private String researchEventsJson;
 
+    @Column(name = "answer_mode", length = 16)
+    private String answerMode;
+
     @Column(name = "generation_id", length = 64)
     private String generationId;
 
