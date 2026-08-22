@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import MarkdownIt from 'markdown-it';
 import {
   configureResearchMarkdown,
@@ -67,3 +69,10 @@ assert.match(normalizedFormulaMarkdown, /```markdown\n\$\$\nz = 3\n\$\$ \[9]\n``
 assert.equal((renderedFormulaMarkdown.match(/katex-display/g) || []).length, 2);
 assert.doesNotMatch(renderedFormulaMarkdown, /katex-error/);
 assert.match(renderedFormulaMarkdown, /<h2>Following heading<\/h2>/);
+
+const subscriptFormula = markdown.render('$X_{f16}$');
+const baseClass = subscriptFormula.match(/<span class="((?:katex-)?base)">/)?.[1];
+const katexCss = readFileSync(createRequire(import.meta.url).resolve('katex/dist/katex.css'), 'utf8');
+
+assert.ok(baseClass, 'KaTeX should render a formula base');
+assert.match(katexCss, new RegExp(`\\.katex \\.${baseClass}\\s*\\{`));
