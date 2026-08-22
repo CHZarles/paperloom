@@ -269,6 +269,96 @@ class AgentsRuntimeTest(unittest.TestCase):
         )
         self.assertEqual("DIRECT", run["research_answer"]["answer_contract"])
 
+    def test_runtime_recovers_a_plain_text_clarification_with_an_explicit_submission_nudge(self) -> None:
+        requests: list[dict] = []
+        clarification = "请告诉我你想了解 vLLM 的哪个具体方面。"
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self) -> None:
+                length = int(self.headers.get("Content-Length") or 0)
+                request = json.loads(self.rfile.read(length).decode("utf-8"))
+                requests.append(request)
+                tool_messages = [
+                    json.loads(message["content"])
+                    for message in request.get("messages", [])
+                    if message.get("role") == "tool"
+                ]
+                repair_message = str(tool_messages[-1].get("message") or "") if tool_messages else ""
+                follows_nudge = (
+                    "submit_direct_answer with outcome=needs_clarification" in repair_message
+                    and "markdown argument" in repair_message
+                )
+                message = {
+                    "role": "assistant",
+                    "content": "" if follows_nudge else clarification,
+                }
+                if follows_nudge:
+                    message["tool_calls"] = [{
+                        "id": "call_submit_direct",
+                        "type": "function",
+                        "function": {
+                            "name": "submit_direct_answer",
+                            "arguments": json.dumps({
+                                "outcome": "needs_clarification",
+                                "markdown": clarification,
+                            }, ensure_ascii=False),
+                        },
+                    }]
+                body = json.dumps({
+                    "id": f"response_{len(requests)}",
+                    "object": "chat.completion",
+                    "created": len(requests),
+                    "model": "MiniMax-M3",
+                    "choices": [{
+                        "index": 0,
+                        "message": message,
+                        "finish_reason": "tool_calls" if follows_nudge else "stop",
+                    }],
+                    "usage": {
+                        "prompt_tokens": 10,
+                        "completion_tokens": 5,
+                        "total_tokens": 15,
+                    },
+                }, ensure_ascii=False).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, format, *args) -> None:
+                return
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        provider = ProviderConfig(
+            scope="llm",
+            provider="minimax",
+            api_style="openai-compatible",
+            api_base_url=f"http://127.0.0.1:{server.server_port}/v1",
+            model="MiniMax-M3",
+            api_key="test-key",
+        )
+        harness = LiveResearchChatHarness(AgentsSdkHarnessRuntime(provider=provider))
+
+        try:
+            run, _ = harness.run_turn(
+                _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset(),
+                ConversationState.new("plain_text_clarification"),
+                "比如",
+            )
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+
+        self.assertEqual(2, len(requests), run["diagnostics"])
+        self.assertEqual("NEEDS_CLARIFICATION", run["status"], run["diagnostics"])
+        self.assertEqual(1, run["diagnostics"]["provider_protocol_repair_count"])
+        self.assertEqual(clarification, run["research_answer"]["markdown"])
+        self.assertEqual("DIRECT", run["research_answer"]["answer_contract"])
+
     def test_cancelled_turn_returns_a_terminal_run(self) -> None:
         dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()
 

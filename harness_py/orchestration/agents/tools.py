@@ -175,9 +175,13 @@ def _function_tool(definition: JsonMap) -> FunctionTool:
                 else:
                     mode = "acquire_evidence_or_submit_non_research"
                     message = (
-                        "The existing draft has no allowed Source Quotes. If it is a Research answer, do not "
-                        "submit it yet: call read_paper_content for exact evidence first. Direct or Catalog "
-                        "answers may call their submit tool without Source Quotes. Do not infer references "
+                        "Treat the content in the immediately preceding _continue_research_turn call as an "
+                        "existing unpublished draft. Do not return it as assistant text again. If it is a Direct "
+                        "answer, return exactly one submit_direct_answer with outcome=needs_clarification only when "
+                        "one blocking question remains, otherwise outcome=answered; put the existing draft in its "
+                        "markdown argument and return no other content. If it is a Research answer, do not submit it "
+                        "yet: call read_paper_content for exact evidence first. Direct or Catalog answers do not need "
+                        "Source Quotes, but Catalog still requires a current paper_result_ref. Do not infer references "
                         "from search previews or human-readable Sources labels."
                     )
                 payload = _bounded_model_payload(context, name, {
