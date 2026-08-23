@@ -32,7 +32,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-class CorpusRetrievalServiceTest {
+class PaperReadingServiceTest {
 
     @Test
     void explicitSmallComparisonRecallsCandidatesFromEveryRequestedPaper() {
@@ -53,12 +53,12 @@ class CorpusRetrievalServiceTest {
                 canonicalFor("paper-b", "rm-b", "location-b", "paragraph")
         );
 
-        CorpusRetrievalService.LocationSearchResult result = fixture.service.searchLocations(
-                new CorpusRetrievalService.LocationSearchQuery(
+        PaperReadingService.ContentSearchResult result = fixture.service.searchPaperContent(
+                new PaperReadingService.ContentSearchQuery(
                         7L, scope, scope, "query", "", List.of(), null, null, 2));
 
         assertEquals(Set.of("location-a", "location-b"), result.locations().stream()
-                .map(CorpusRetrievalService.LocationCandidate::locationRef)
+                .map(PaperReadingService.LocationCandidate::locationRef)
                 .collect(Collectors.toSet()));
         assertEquals(Set.of("location-a", "location-b"), result.evidencePayloads().stream()
                 .map(CanonicalReadingLocationService.EvidencePayload::locationRef)
@@ -95,12 +95,12 @@ class CorpusRetrievalServiceTest {
                 canonicalFor("paper-c", "rm-c", "location-c", "paragraph")
         );
 
-        CorpusRetrievalService.LocationSearchResult result = fixture.service.searchLocations(
-                new CorpusRetrievalService.LocationSearchQuery(
+        PaperReadingService.ContentSearchResult result = fixture.service.searchPaperContent(
+                new PaperReadingService.ContentSearchQuery(
                         7L, scope, scope, "query", "", List.of(), null, null, 2));
 
         assertEquals(List.of("location-c", "location-b"), result.locations().stream()
-                .map(CorpusRetrievalService.LocationCandidate::locationRef).toList());
+                .map(PaperReadingService.LocationCandidate::locationRef).toList());
     }
 
     @Test
@@ -128,13 +128,13 @@ class CorpusRetrievalServiceTest {
                 canonicalFor("paper-a", "rm-a", "abstract-ref", "section")
         );
 
-        CorpusRetrievalService.LocationSearchResult result = fixture.service.searchLocations(
-                new CorpusRetrievalService.LocationSearchQuery(
+        PaperReadingService.ContentSearchResult result = fixture.service.searchPaperContent(
+                new PaperReadingService.ContentSearchQuery(
                         7L, scope, scope, "benchmark structure task instances evaluation", "",
                         List.of(), null, null, 3));
 
         assertEquals(List.of("location-1", "location-2", "abstract-ref"), result.locations().stream()
-                .map(CorpusRetrievalService.LocationCandidate::locationRef).toList());
+                .map(PaperReadingService.LocationCandidate::locationRef).toList());
     }
 
     @Test
@@ -168,12 +168,12 @@ class CorpusRetrievalServiceTest {
                 canonicalFor("paper-b", "rm-b", "b-abstract", "section")
         );
 
-        CorpusRetrievalService.LocationSearchResult result = fixture.service.searchLocations(
-                new CorpusRetrievalService.LocationSearchQuery(
+        PaperReadingService.ContentSearchResult result = fixture.service.searchPaperContent(
+                new PaperReadingService.ContentSearchQuery(
                         7L, scope, scope, "ReAct", "", List.of(), null, null, 4));
 
         assertEquals(Set.of("a-hit", "b-hit", "a-abstract", "b-abstract"), result.locations().stream()
-                .map(CorpusRetrievalService.LocationCandidate::locationRef)
+                .map(PaperReadingService.LocationCandidate::locationRef)
                 .collect(Collectors.toSet()));
     }
 
@@ -202,12 +202,12 @@ class CorpusRetrievalServiceTest {
                 canonicalFor("paper-b", "rm-b", "b-abstract", "section")
         );
 
-        CorpusRetrievalService.LocationSearchResult result = fixture.service.searchLocations(
-                new CorpusRetrievalService.LocationSearchQuery(
+        PaperReadingService.ContentSearchResult result = fixture.service.searchPaperContent(
+                new PaperReadingService.ContentSearchQuery(
                         7L, scope, scope, "ReAct", "", List.of(), null, null, 2));
 
         assertEquals(List.of("a-hit", "b-hit"), result.locations().stream()
-                .map(CorpusRetrievalService.LocationCandidate::locationRef).toList());
+                .map(PaperReadingService.LocationCandidate::locationRef).toList());
     }
 
     @Test
@@ -218,10 +218,11 @@ class CorpusRetrievalServiceTest {
         fixture.models(readyModel("paper-a", "rm-1"));
         when(fixture.searchability.isSearchable(any(PaperReadingModel.class))).thenReturn(false);
 
-        assertThrows(IllegalStateException.class, () -> fixture.service.searchLocations(
-                new CorpusRetrievalService.LocationSearchQuery(
+        PaperReadingException error = assertThrows(PaperReadingException.class, () -> fixture.service.searchPaperContent(
+                new PaperReadingService.ContentSearchQuery(
                         7L, scope, scope, "query", "", List.of(), null, null, 8)));
 
+        assertEquals("RETRIEVAL_UNAVAILABLE", error.code());
         verifyNoInteractions(fixture.retriever, fixture.locationRepository, fixture.readService);
     }
 
@@ -237,8 +238,8 @@ class CorpusRetrievalServiceTest {
         fixture.locations(locationFor("paper-a", "rm-1", "table-ref"));
         fixture.canonical(canonicalFor("paper-a", "rm-1", "table-ref", "table"));
 
-        CorpusRetrievalService.LocationSearchResult result = fixture.service.searchLocations(
-                new CorpusRetrievalService.LocationSearchQuery(
+        PaperReadingService.ContentSearchResult result = fixture.service.searchPaperContent(
+                new PaperReadingService.ContentSearchQuery(
                         7L, scope, scope, "query", "", List.of("table"), null, null, 1));
 
         ArgumentCaptor<LocationRetrievalRequest> request =
@@ -259,8 +260,8 @@ class CorpusRetrievalServiceTest {
         ));
         fixture.locations(locationFor("paper-a", "rm-stale", "stale-ref"));
 
-        CorpusRetrievalService.LocationSearchResult result = fixture.service.searchLocations(
-                new CorpusRetrievalService.LocationSearchQuery(
+        PaperReadingService.ContentSearchResult result = fixture.service.searchPaperContent(
+                new PaperReadingService.ContentSearchQuery(
                         7L, scope, scope, "query", "", List.of(), null, null, 8));
 
         assertEquals(0, result.returnedCount());
@@ -274,8 +275,8 @@ class CorpusRetrievalServiceTest {
         fixture.authorize(scope);
         fixture.models(readyModel("paper-a", "rm-a"), readyModel("paper-b", "rm-b"));
 
-        CorpusRetrievalService.PaperSearchResult result = fixture.service.searchPapers(
-                new CorpusRetrievalService.PaperSearchQuery(
+        PaperReadingService.PaperSearchResult result = fixture.service.searchPaperCandidates(
+                new PaperReadingService.PaperSearchQuery(
                         7L, scope, "", List.of(), List.of(), List.of(), null, null, 0, 20));
 
         assertEquals(2, result.returnedCount());
@@ -289,12 +290,27 @@ class CorpusRetrievalServiceTest {
     void locationSearchRejectsPaperOutsideLockedScopeBeforeRetrieval() {
         Fixture fixture = new Fixture();
 
-        assertThrows(IllegalArgumentException.class, () -> fixture.service.searchLocations(
-                new CorpusRetrievalService.LocationSearchQuery(
+        PaperReadingException error = assertThrows(PaperReadingException.class, () -> fixture.service.searchPaperContent(
+                new PaperReadingService.ContentSearchQuery(
                         7L, List.of("paper-a"), List.of("paper-b"), "query", "",
                         List.of(), null, null, 8)));
 
+        assertEquals("PAPER_NOT_AVAILABLE", error.code());
         verifyNoInteractions(fixture.paperService, fixture.retriever, fixture.readService);
+    }
+
+    @Test
+    void locationSearchRejectsPaperOutsideAclEvenWhenLockedScopeContainsIt() {
+        Fixture fixture = new Fixture();
+
+        PaperReadingException error = assertThrows(PaperReadingException.class, () -> fixture.service.searchPaperContent(
+                new PaperReadingService.ContentSearchQuery(
+                        7L, List.of("paper-a"), List.of("paper-a"), "query", "",
+                        List.of(), null, null, 8)));
+
+        assertEquals("PAPER_NOT_AVAILABLE", error.code());
+        verify(fixture.paperService).getAccessiblePapersByIds("7", List.of("paper-a"));
+        verifyNoInteractions(fixture.retriever, fixture.readService);
     }
 
     @Test
@@ -302,9 +318,10 @@ class CorpusRetrievalServiceTest {
         Fixture fixture = new Fixture();
         List<String> refs = IntStream.range(0, 21).mapToObj(index -> "location-" + index).toList();
 
-        assertThrows(IllegalArgumentException.class, () -> fixture.service.readLocations(
-                new CorpusRetrievalService.LocationReadQuery(7L, List.of("paper-a"), refs)));
+        PaperReadingException error = assertThrows(PaperReadingException.class, () -> fixture.service.readLocations(
+                new PaperReadingService.LocationReadQuery(7L, List.of("paper-a"), refs)));
 
+        assertEquals("READING_ARGUMENTS_INVALID", error.code());
         verifyNoInteractions(fixture.paperService, fixture.modelRepository, fixture.readService);
     }
 
@@ -322,7 +339,7 @@ class CorpusRetrievalServiceTest {
                 new CanonicalReadingLocationService.ReadBatch(List.of(), List.of("passage-ref"));
         when(fixture.readService.read(List.of("passage-ref"), scope, List.of(payload))).thenReturn(batch);
 
-        fixture.service.readLocations(new CorpusRetrievalService.LocationReadQuery(
+        fixture.service.readLocations(new PaperReadingService.LocationReadQuery(
                 7L, scope, List.of("passage-ref"), List.of(payload)));
 
         verify(fixture.readService).read(List.of("passage-ref"), scope, List.of(payload));
@@ -349,8 +366,8 @@ class CorpusRetrievalServiceTest {
         when(fixture.sectionRepository.findByPaperIdAndModelVersionOrderByPageNumberFromAscDisplayOrderAsc(
                 "paper-a", "rm-1")).thenReturn(List.of(section));
 
-        CorpusRetrievalService.StructureResult result = fixture.service.getStructure(
-                new CorpusRetrievalService.StructureQuery(7L, scope, scope, "SECTION", "", null, null));
+        PaperReadingService.StructureResult result = fixture.service.getPaperStructure(
+                new PaperReadingService.StructureQuery(7L, scope, scope, "SECTION", "", null, null));
 
         assertEquals("SECTION", result.structureType());
         assertEquals(1, result.items().size());
@@ -468,7 +485,7 @@ class CorpusRetrievalServiceTest {
         private final PaperSourceQuoteReadService sourceQuoteReadService = mock(PaperSourceQuoteReadService.class);
         private final PaperSearchabilityService searchability = mock(PaperSearchabilityService.class);
         private final ReadingLocationRetriever retriever = mock(ReadingLocationRetriever.class);
-        private final CorpusRetrievalService service = new CorpusRetrievalService(
+        private final PaperReadingService service = new PaperReadingService(
                 paperService, modelRepository, locationRepository, sectionRepository, readService, sourceQuoteReadService,
                 searchability, retriever);
 
@@ -478,7 +495,7 @@ class CorpusRetrievalServiceTest {
 
         private void authorize(List<String> paperIds) {
             when(paperService.getAccessiblePapersByIds("7", paperIds))
-                    .thenReturn(paperIds.stream().map(CorpusRetrievalServiceTest::paper).toList());
+                    .thenReturn(paperIds.stream().map(PaperReadingServiceTest::paper).toList());
         }
 
         private void models(PaperReadingModel... models) {

@@ -1,6 +1,6 @@
 package io.github.chzarles.paperloom.controller;
 
-import io.github.chzarles.paperloom.service.CorpusRetrievalService;
+import io.github.chzarles.paperloom.service.PaperReadingService;
 import io.github.chzarles.paperloom.service.CanonicalReadingLocationService;
 import io.github.chzarles.paperloom.service.PaperSourceQuoteReadService;
 import io.github.chzarles.paperloom.service.ReadingModelQdrantIndexService;
@@ -22,12 +22,12 @@ class InternalCorpusControllerTest {
 
     @Test
     void blankInternalTokenRejectsCorpusRequests() throws Exception {
-        CorpusRetrievalService retrievalService = mock(CorpusRetrievalService.class);
+        PaperReadingService readingService = mock(PaperReadingService.class);
         ReadingModelQdrantIndexService indexService = mock(ReadingModelQdrantIndexService.class);
-        when(retrievalService.searchPapers(any())).thenReturn(
-                new CorpusRetrievalService.PaperSearchResult("", List.of(), 0, 0, "complete", null));
+        when(readingService.searchPaperCandidates(any())).thenReturn(
+                new PaperReadingService.PaperSearchResult("", List.of(), 0, 0, "complete", null));
         MockMvc mvc = MockMvcBuilders.standaloneSetup(
-                new InternalCorpusController(retrievalService, indexService, "")
+                new InternalCorpusController(readingService, indexService, "")
         ).build();
 
         mvc.perform(post("/internal/v1/corpus/papers/search")
@@ -44,12 +44,12 @@ class InternalCorpusControllerTest {
 
     @Test
     void locationSearchPreservesModelVisibleCoverageContract() throws Exception {
-        CorpusRetrievalService retrievalService = mock(CorpusRetrievalService.class);
+        PaperReadingService readingService = mock(PaperReadingService.class);
         ReadingModelQdrantIndexService indexService = mock(ReadingModelQdrantIndexService.class);
-        when(retrievalService.searchLocations(any())).thenReturn(
-                new CorpusRetrievalService.LocationSearchResult(List.of(), 12, 8, "test-index"));
+        when(readingService.searchPaperContent(any())).thenReturn(
+                new PaperReadingService.ContentSearchResult(List.of(), 12, 8, "test-index"));
         MockMvc mvc = MockMvcBuilders.standaloneSetup(
-                new InternalCorpusController(retrievalService, indexService, "internal-secret")
+                new InternalCorpusController(readingService, indexService, "internal-secret")
         ).build();
 
         mvc.perform(post("/internal/v1/corpus/locations/search")
@@ -71,9 +71,9 @@ class InternalCorpusControllerTest {
 
     @Test
     void locationReadExposesCanonicalVisualEvidenceFields() throws Exception {
-        CorpusRetrievalService retrievalService = mock(CorpusRetrievalService.class);
+        PaperReadingService readingService = mock(PaperReadingService.class);
         ReadingModelQdrantIndexService indexService = mock(ReadingModelQdrantIndexService.class);
-        when(retrievalService.readLocations(any())).thenReturn(
+        when(readingService.readLocations(any())).thenReturn(
                 new PaperSourceQuoteReadService.ReadResult(
                         List.of(new PaperSourceQuoteReadService.ReadItem(
                                 new CanonicalReadingLocationService.CanonicalLocation(
@@ -105,7 +105,7 @@ class InternalCorpusControllerTest {
                 )
         );
         MockMvc mvc = MockMvcBuilders.standaloneSetup(
-                new InternalCorpusController(retrievalService, indexService, "internal-secret")
+                new InternalCorpusController(readingService, indexService, "internal-secret")
         ).build();
 
         mvc.perform(post("/internal/v1/corpus/locations/read")
@@ -131,7 +131,7 @@ class InternalCorpusControllerTest {
 
     @Test
     void currentModelCandidateExportReturnsMySqlPayloadWithoutSearch() throws Exception {
-        CorpusRetrievalService retrievalService = mock(CorpusRetrievalService.class);
+        PaperReadingService readingService = mock(PaperReadingService.class);
         ReadingModelQdrantIndexService indexService = mock(ReadingModelQdrantIndexService.class);
         when(indexService.exportCurrentModelLocations("paper-a")).thenReturn(
                 new ReadingModelQdrantIndexService.CandidateExport(
@@ -145,7 +145,7 @@ class InternalCorpusControllerTest {
                         "source_span_json", "{\"spans\":[]}"
                 )))));
         MockMvc mvc = MockMvcBuilders.standaloneSetup(
-                new InternalCorpusController(retrievalService, indexService, "internal-secret")
+                new InternalCorpusController(readingService, indexService, "internal-secret")
         ).build();
 
         mvc.perform(post("/internal/v1/corpus/locations/export")

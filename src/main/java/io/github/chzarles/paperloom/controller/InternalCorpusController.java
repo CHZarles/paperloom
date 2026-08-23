@@ -1,7 +1,7 @@
 package io.github.chzarles.paperloom.controller;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import io.github.chzarles.paperloom.service.CorpusRetrievalService;
+import io.github.chzarles.paperloom.service.PaperReadingService;
 import io.github.chzarles.paperloom.service.PaperSourceQuoteReadService;
 import io.github.chzarles.paperloom.service.ReadingModelQdrantIndexService;
 import org.slf4j.Logger;
@@ -29,14 +29,14 @@ public class InternalCorpusController {
 
     private static final Logger logger = LoggerFactory.getLogger(InternalCorpusController.class);
 
-    private final CorpusRetrievalService retrievalService;
+    private final PaperReadingService readingService;
     private final ReadingModelQdrantIndexService indexService;
     private final String internalToken;
 
-    public InternalCorpusController(CorpusRetrievalService retrievalService,
+    public InternalCorpusController(PaperReadingService readingService,
                                     ReadingModelQdrantIndexService indexService,
                                     @Value("${research-harness.internal-token:}") String internalToken) {
-        this.retrievalService = retrievalService;
+        this.readingService = readingService;
         this.indexService = indexService;
         this.internalToken = internalToken == null ? "" : internalToken.trim();
     }
@@ -68,8 +68,8 @@ public class InternalCorpusController {
                                             @RequestBody PaperSearchRequest request) {
         authorize(authorization);
         if (request.identity() != null && !request.identity().isEmpty()) {
-            CorpusRetrievalService.IdentitySearchResult result = retrievalService.findPapersByIdentity(
-                    new CorpusRetrievalService.IdentitySearchQuery(
+            PaperReadingService.IdentitySearchResult result = readingService.findPapersByIdentity(
+                    new PaperReadingService.IdentitySearchQuery(
                             request.userId(), request.scopePaperIds(), request.identity())
             );
             Map<String, Object> response = new LinkedHashMap<>();
@@ -80,8 +80,8 @@ public class InternalCorpusController {
             }
             return response;
         }
-        CorpusRetrievalService.PaperSearchResult result = retrievalService.searchPapers(
-                new CorpusRetrievalService.PaperSearchQuery(
+        PaperReadingService.PaperSearchResult result = readingService.searchPaperCandidates(
+                new PaperReadingService.PaperSearchQuery(
                         request.userId(),
                         request.scopePaperIds(),
                         request.queryText(),
@@ -108,8 +108,8 @@ public class InternalCorpusController {
     public Map<String, Object> searchLocations(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                @RequestBody LocationSearchRequest request) {
         authorize(authorization);
-        CorpusRetrievalService.LocationSearchResult result = retrievalService.searchLocations(
-                new CorpusRetrievalService.LocationSearchQuery(
+        PaperReadingService.ContentSearchResult result = readingService.searchPaperContent(
+                new PaperReadingService.ContentSearchQuery(
                         request.userId(),
                         request.scopePaperIds(),
                         request.paperIds(),
@@ -137,8 +137,8 @@ public class InternalCorpusController {
     public Map<String, Object> readLocations(@RequestHeader(value = "Authorization", required = false) String authorization,
                                              @RequestBody LocationReadRequest request) {
         authorize(authorization);
-        PaperSourceQuoteReadService.ReadResult result = retrievalService.readLocations(
-                new CorpusRetrievalService.LocationReadQuery(
+        PaperSourceQuoteReadService.ReadResult result = readingService.readLocations(
+                new PaperReadingService.LocationReadQuery(
                         request.userId(), request.scopePaperIds(), request.locationRefs(), request.evidencePayloads().stream()
                                 .map(payload -> new io.github.chzarles.paperloom.service.CanonicalReadingLocationService.EvidencePayload(
                                         payload.paperId(), payload.modelVersion(), payload.locationRef(), payload.locationType(),
@@ -155,8 +155,8 @@ public class InternalCorpusController {
     public Map<String, Object> getStructure(@RequestHeader(value = "Authorization", required = false) String authorization,
                                             @RequestBody StructureRequest request) {
         authorize(authorization);
-        CorpusRetrievalService.StructureResult result = retrievalService.getStructure(
-                new CorpusRetrievalService.StructureQuery(
+        PaperReadingService.StructureResult result = readingService.getPaperStructure(
+                new PaperReadingService.StructureQuery(
                         request.userId(), request.scopePaperIds(), request.paperIds(), request.structureType(),
                         request.sectionQuery(), request.pageFrom(), request.pageTo())
         );
@@ -201,7 +201,7 @@ public class InternalCorpusController {
         }
     }
 
-    private Map<String, Object> paperCard(CorpusRetrievalService.PaperCard card) {
+    private Map<String, Object> paperCard(PaperReadingService.PaperCard card) {
         Map<String, Object> result = new LinkedHashMap<>();
         put(result, "paper_id", card.paperId());
         put(result, "title", card.title());
@@ -215,7 +215,7 @@ public class InternalCorpusController {
         return result;
     }
 
-    private Map<String, Object> locationCandidate(CorpusRetrievalService.LocationCandidate candidate) {
+    private Map<String, Object> locationCandidate(PaperReadingService.LocationCandidate candidate) {
         Map<String, Object> result = new LinkedHashMap<>();
         put(result, "paper_id", candidate.paperId());
         put(result, "title", candidate.title());
@@ -304,7 +304,7 @@ public class InternalCorpusController {
         return result;
     }
 
-    private Map<String, Object> structureItem(CorpusRetrievalService.StructureItem item) {
+    private Map<String, Object> structureItem(PaperReadingService.StructureItem item) {
         Map<String, Object> result = new LinkedHashMap<>();
         put(result, "paper_id", item.paperId());
         put(result, "title", item.title());

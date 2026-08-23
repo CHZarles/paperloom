@@ -29,7 +29,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
-public class CorpusRetrievalService {
+public class PaperReadingService {
 
     private static final int MAX_PAPER_LIMIT = 100;
     private static final int MAX_LOCATION_LIMIT = 20;
@@ -44,7 +44,7 @@ public class CorpusRetrievalService {
     private final ReadingLocationRetriever readingLocationRetriever;
 
     @Autowired
-    public CorpusRetrievalService(PaperService paperService,
+    public PaperReadingService(PaperService paperService,
                                   PaperReadingModelRepository modelRepository,
                                   PaperLocationRepository locationRepository,
                                   PaperSectionRepository sectionRepository,
@@ -63,7 +63,7 @@ public class CorpusRetrievalService {
     }
 
     @Transactional(readOnly = true)
-    public PaperSearchResult searchPapers(PaperSearchQuery query) {
+    public PaperSearchResult searchPaperCandidates(PaperSearchQuery query) {
         List<Paper> papers = authorizedPapers(query.userId(), query.scopePaperIds());
         Set<String> scope = normalizedSet(query.scopePaperIds());
         Set<String> requestedIds = normalizedSet(query.paperIds());
@@ -75,7 +75,7 @@ public class CorpusRetrievalService {
                 ? papers.stream().map(Paper::getPaperId).collect(java.util.stream.Collectors.toSet())
                 : scope;
         if (!requestedIds.isEmpty() && !sessionScope.containsAll(requestedIds)) {
-            throw new IllegalArgumentException("paper_ids must be a subset of scope_paper_ids");
+            throw paperNotAvailable();
         }
         Set<String> authors = normalizedSet(query.authors());
         Set<String> venues = normalizedSet(query.venues());
@@ -135,11 +135,11 @@ public class CorpusRetrievalService {
         return new IdentitySearchResult(status, matches, null);
     }
 
-    public LocationSearchResult searchLocations(LocationSearchQuery query) {
+    public ContentSearchResult searchPaperContent(ContentSearchQuery query) {
         Set<String> scope = normalizedSet(query.scopePaperIds());
         Set<String> requested = normalizedSet(query.paperIds());
         if (requested.isEmpty()) {
-            throw new IllegalArgumentException("paper_ids is required");
+            throw invalidArguments("paper_ids is required");
         }
         // Empty scope_paper_ids means the session is in AUTO_LIBRARY mode — the session
         // covers the user's globally accessible papers. Otherwise scope_paper_ids is the
@@ -149,7 +149,7 @@ public class CorpusRetrievalService {
                         .map(Paper::getPaperId).collect(java.util.stream.Collectors.toSet())
                 : scope;
         if (!sessionScope.containsAll(requested)) {
-            throw new IllegalArgumentException("paper_ids must be a subset of scope_paper_ids");
+            throw paperNotAvailable();
         }
         List<Paper> accessible = accessiblePapers(query.userId(), new ArrayList<>(requested));
         List<String> authorizedIds = accessible.stream()
@@ -158,13 +158,13 @@ public class CorpusRetrievalService {
                 .distinct()
                 .toList();
         if (authorizedIds.size() != requested.size()) {
-            throw new IllegalArgumentException("paper_ids contains an unavailable paper");
+            throw paperNotAvailable();
         }
         Map<String, PaperReadingModel> currentModels = currentReadyModels(authorizedIds);
         Map<String, String> activeModels = activeModels(authorizedIds, currentModels);
         String retrievalQuery = String.join(" ", List.of(safe(query.queryText()), safe(query.sectionQuery()))).trim();
         if (retrievalQuery.isBlank()) {
-            return new LocationSearchResult(List.of(), List.of(), 0, 0, "");
+            return new ContentSearchResult(List.of(), List.of(), 0, 0, "");
         }
 
         int topK = Math.max(1, Math.min(query.topK(), MAX_LOCATION_LIMIT));
@@ -228,7 +228,7 @@ public class CorpusRetrievalService {
             ));
             evidencePayloads.add(evidencePayload(location, hit.payload()));
         }
-        return new LocationSearchResult(
+        return new ContentSearchResult(
                 candidates,
                 evidencePayloads,
                 valid.size(),
@@ -245,7 +245,7 @@ public class CorpusRetrievalService {
                 .distinct()
                 .toList();
         if (locationRefs.size() > MAX_LOCATION_LIMIT) {
-            throw new IllegalArgumentException("location_refs cannot contain more than " + MAX_LOCATION_LIMIT + " items");
+            throw invalidArguments("location_refs cannot contain more than " + MAX_LOCATION_LIMIT + " items");
         }
         List<String> authorizedIds = authorizedPapers(query.userId(), query.scopePaperIds()).stream()
                 .map(Paper::getPaperId)
@@ -256,29 +256,29 @@ public class CorpusRetrievalService {
     }
 
     @Transactional(readOnly = true)
-    public StructureResult getStructure(StructureQuery query) {
+    public StructureResult getPaperStructure(StructureQuery query) {
         Set<String> requested = normalizedSet(query.paperIds());
         if (requested.isEmpty()) {
-            throw new IllegalArgumentException("paper_ids is required");
+            throw invalidArguments("paper_ids is required");
         }
         Set<String> scope = normalizedSet(query.scopePaperIds());
         Set<String> sessionScope = scope.isEmpty()
                 ? accessiblePapers(query.userId(), List.of()).stream().map(Paper::getPaperId).collect(Collectors.toSet())
                 : scope;
         if (!sessionScope.containsAll(requested)) {
-            throw new IllegalArgumentException("paper_ids must be a subset of scope_paper_ids");
+            throw paperNotAvailable();
         }
         List<Paper> accessible = accessiblePapers(query.userId(), new ArrayList<>(requested));
         if (accessible.size() != requested.size()) {
-            throw new IllegalArgumentException("paper_ids contains an unavailable paper");
+            throw paperNotAvailable();
         }
         Map<String, PaperReadingModel> models = currentReadyModels(accessible.stream().map(Paper::getPaperId).toList());
         if (models.size() != requested.size()) {
-            throw new IllegalArgumentException("paper_ids contains a paper without a current reading model");
+            throw new PaperReadingException("READING_MODEL_NOT_READY", "The current reading model is not ready");
         }
         String type = safe(query.structureType()).toUpperCase(Locale.ROOT);
         if (!"SECTION".equals(type) && !"PAGE".equals(type)) {
-            throw new IllegalArgumentException("structure_type must be SECTION or PAGE");
+            throw invalidArguments("structure_type must be SECTION or PAGE");
         }
         List<StructureItem> items = new ArrayList<>();
         for (Paper paper : accessible) {
@@ -303,7 +303,7 @@ public class CorpusRetrievalService {
 
     private List<Paper> accessiblePapers(Long userId, List<String> scopePaperIds) {
         if (userId == null) {
-            throw new IllegalArgumentException("user_id is required");
+            throw invalidArguments("user_id is required");
         }
         Set<String> scope = normalizedSet(scopePaperIds);
         if (scope.isEmpty()) {
@@ -393,7 +393,7 @@ public class CorpusRetrievalService {
             PaperReadingModel model = currentModels.get(paperId);
             if (model == null
                     || !paperSearchabilityService.isSearchable(model)) {
-                throw new IllegalStateException("Retrieval index is unavailable for paperId=" + paperId);
+                throw new PaperReadingException("RETRIEVAL_UNAVAILABLE", "Paper retrieval is temporarily unavailable");
             }
             models.put(paperId, model.getModelVersion());
         }
@@ -499,7 +499,7 @@ public class CorpusRetrievalService {
 
     private List<StructureItem> pageStructure(Paper paper, PaperReadingModel model, Integer pageFrom, Integer pageTo) {
         if (pageFrom != null && pageTo != null && pageFrom > pageTo) {
-            throw new IllegalArgumentException("page_from must not be greater than page_to");
+            throw invalidArguments("page_from must not be greater than page_to");
         }
         return locationRepository
                 .findByPaperIdAndModelVersionAndLocationTypeOrderByPageNumberAscIdAsc(
@@ -613,7 +613,7 @@ public class CorpusRetrievalService {
                 .distinct()
                 .toList();
         if (normalized.stream().anyMatch(value -> !Set.of("passage", "table", "figure").contains(value))) {
-            throw new IllegalArgumentException("element_types must contain only passage, table, or figure");
+            throw invalidArguments("element_types must contain only passage, table, or figure");
         }
         return normalized;
     }
@@ -660,6 +660,14 @@ public class CorpusRetrievalService {
         return value == null ? "" : value.trim();
     }
 
+    private PaperReadingException invalidArguments(String message) {
+        return new PaperReadingException("READING_ARGUMENTS_INVALID", message);
+    }
+
+    private PaperReadingException paperNotAvailable() {
+        return new PaperReadingException("PAPER_NOT_AVAILABLE", "The requested paper is not available");
+    }
+
     private String sha256(String value) {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")
@@ -695,17 +703,17 @@ public class CorpusRetrievalService {
         }
     }
 
-    public record LocationSearchQuery(Long userId, List<String> scopePaperIds, List<String> paperIds,
+    public record ContentSearchQuery(Long userId, List<String> scopePaperIds, List<String> paperIds,
                                       String queryText, String sectionQuery, List<String> elementTypes,
                                       Integer pageFrom, Integer pageTo, int topK, List<String> sectionRefs) {
-        public LocationSearchQuery(Long userId, List<String> scopePaperIds, List<String> paperIds,
+        public ContentSearchQuery(Long userId, List<String> scopePaperIds, List<String> paperIds,
                                    String queryText, String sectionQuery, List<String> elementTypes,
                                    Integer pageFrom, Integer pageTo, int topK) {
             this(userId, scopePaperIds, paperIds, queryText, sectionQuery, elementTypes,
                     pageFrom, pageTo, topK, List.of());
         }
 
-        public LocationSearchQuery {
+        public ContentSearchQuery {
             scopePaperIds = scopePaperIds == null ? List.of() : List.copyOf(scopePaperIds);
             paperIds = paperIds == null ? List.of() : List.copyOf(paperIds);
             queryText = queryText == null ? "" : queryText.trim();
@@ -756,17 +764,17 @@ public class CorpusRetrievalService {
                                     double denseScore, double sparseScore, double fusedScore) {
     }
 
-    public record LocationSearchResult(List<LocationCandidate> locations,
+    public record ContentSearchResult(List<LocationCandidate> locations,
                                        List<CanonicalReadingLocationService.EvidencePayload> evidencePayloads,
                                        int matchedCount,
                                        int returnedCount,
                                        String indexVersion) {
-        public LocationSearchResult(List<LocationCandidate> locations, int matchedCount,
+        public ContentSearchResult(List<LocationCandidate> locations, int matchedCount,
                                     int returnedCount, String indexVersion) {
             this(locations, List.of(), matchedCount, returnedCount, indexVersion);
         }
 
-        public LocationSearchResult {
+        public ContentSearchResult {
             locations = locations == null ? List.of() : List.copyOf(locations);
             evidencePayloads = evidencePayloads == null ? List.of() : List.copyOf(evidencePayloads);
         }
