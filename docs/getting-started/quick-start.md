@@ -101,6 +101,18 @@ scripts/paperloom-start-harness.sh status
 
 The harness health endpoint is `http://127.0.0.1:8091/health`.
 
+To expose the optional stateless, read-only MCP Tools on loopback:
+
+```bash
+uv venv .venv-mcp
+uv pip sync paperloom_mcp/requirements.lock --python .venv-mcp/bin/python
+.venv-mcp/bin/python -m paperloom_mcp --host 127.0.0.1 --port 8090
+```
+
+MCP clients connect to `http://127.0.0.1:8090/mcp` with a PaperLoom user JWT in the Bearer header.
+The server exposes only `search_papers`, `get_paper`, `get_paper_structure`,
+`search_paper_content`, and `read_paper_content`.
+
 ## 5. Start the Backend
 
 For normal development:
