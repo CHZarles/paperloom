@@ -88,6 +88,7 @@ src/main/resources/cert
 .superpowers/
 .qoder/
 .venv-harness/
+.venv-mcp/
 /research/golden-data/local-runs/
 /research/golden-data/product-corpus-map*.local.yaml
 /research/benchmark/local/
