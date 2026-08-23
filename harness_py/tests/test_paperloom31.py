@@ -1,10 +1,17 @@
 import hashlib
+import io
 import json
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import MagicMock, patch
 
+import yaml
+
+from harness_py.cli import main
 from harness_py.evaluation.paperloom31 import (
+    PreparationError,
     build_agent_cases,
     build_targets,
     ensure_benchmark_config,
@@ -14,12 +21,242 @@ from harness_py.evaluation.paperloom31 import (
     _assess_protocol_trace,
     _controlled_protocol_metrics,
     _looks_like_bibliography,
+    _load_source_aligned_queries,
     _retrieval_metrics,
+    _run_l2,
+    run_benchmark,
     _source_quotes_cover,
 )
 
 
 class Paperloom31PreparationTest(unittest.TestCase):
+    def test_source_aligned_query_contract(self) -> None:
+        snapshot = {"dataset_id": "paperloom-31-v1", "targets": {"target_1": {"query": "问题"}}}
+        query_hash = hashlib.sha256("问题".encode("utf-8")).hexdigest()
+        valid = {
+            "schema_version": "paperloom-source-aligned-queries/v1",
+            "dataset_id": "paperloom-31-v1",
+            "targets": {"target_1": {
+                "original_query_sha256": query_hash,
+                "source_aligned_query": "Question",
+            }},
+        }
+        invalid = [
+            ("schema_version", {**valid, "schema_version": "unknown"}, snapshot),
+            ("dataset_id", {**valid, "dataset_id": "other"}, snapshot),
+            ("targets", {**valid, "targets": {"target_2": {}}}, snapshot),
+            ("original_query_sha256", {**valid, "targets": {"target_1": {
+                **valid["targets"]["target_1"], "original_query_sha256": "stale",
+            }}}, snapshot),
+            ("source_aligned_query", {**valid, "targets": {"target_1": {
+                **valid["targets"]["target_1"], "source_aligned_query": " padded ",
+            }}}, snapshot),
+            ("source_aligned_query", {**valid, "targets": {"target_1": {
+                **valid["targets"]["target_1"], "source_aligned_query": "",
+            }}}, snapshot),
+        ]
+
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "queries.yaml"
+            path.write_text(yaml.safe_dump(valid, allow_unicode=True), encoding="utf-8")
+            self.assertEqual({"target_1": "Question"}, _load_source_aligned_queries(path, snapshot))
+            for expected, value, source_snapshot in invalid:
+                path.write_text(yaml.safe_dump(value, allow_unicode=True), encoding="utf-8")
+                with self.subTest(expected=expected), self.assertRaisesRegex(PreparationError, expected):
+                    _load_source_aligned_queries(path, source_snapshot)
+
+            malformed = Path(directory) / "malformed.yaml"
+            malformed.write_text("targets: [\n", encoding="utf-8")
+            for source in (Path(directory) / "missing.yaml", malformed):
+                with self.subTest(source=source.name), self.assertRaises(PreparationError):
+                    _load_source_aligned_queries(source, snapshot)
+
+    def test_l2_query_sets_share_one_execution_path(self) -> None:
+        snapshot = {
+            "targets": {
+                "target_1": {
+                    "product_paper_id": "paper_1",
+                    "query": "原始问题",
+                    "location_ref": "location_1",
+                    "location_type": "PASSAGE",
+                }
+            }
+        }
+        calls: dict[str, object] = {"fail": False}
+
+        class Reader:
+            def load_metadata_dataset(self):
+                return object()
+
+        class Gateway:
+            def reader(self, **arguments):
+                calls["reader"] = arguments
+                return Reader()
+
+        class Tools:
+            def __init__(self, dataset, reader):
+                self.evidence_payloads_by_location_ref = {}
+
+            def find_papers_by_identity(self, arguments):
+                return {"status": "resolved"}
+
+            def search_paper_content(self, arguments):
+                if calls["fail"]:
+                    raise TimeoutError("retrieval timed out")
+                calls["search"] = arguments
+                return {"locations": []}
+
+        with patch("harness_py.evaluation.paperloom31.ReadingCorpusTools", Tools):
+            result = _run_l2(
+                snapshot,
+                Gateway(),
+                7,
+                query_by_target={"target_1": "Original question"},
+                stage_name="L2_SOURCE_ALIGNED",
+                request_label="l2-source-aligned",
+            )
+
+        self.assertEqual(
+            {
+                "paper_ids": ["paper_1"],
+                "query_text": "Original question",
+                "element_types": ["passage"],
+                "top_k": 10,
+            },
+            calls["search"],
+        )
+        self.assertEqual(["paper_1"], calls["reader"]["scope_paper_ids"])
+        self.assertEqual("paperloom31-l2-source-aligned-target_1", calls["reader"]["request_id"])
+        self.assertEqual([], result["technical_errors"])
+
+        calls.clear()
+        calls["fail"] = False
+        with patch("harness_py.evaluation.paperloom31.ReadingCorpusTools", Tools):
+            _run_l2(snapshot, Gateway(), 7)
+
+        self.assertEqual("原始问题", calls["search"]["query_text"])
+        self.assertEqual("paperloom31-l2-target_1", calls["reader"]["request_id"])
+
+        calls["fail"] = True
+        with patch("harness_py.evaluation.paperloom31.ReadingCorpusTools", Tools):
+            failed = _run_l2(
+                snapshot,
+                Gateway(),
+                7,
+                query_by_target={"target_1": "Original question"},
+                stage_name="L2_SOURCE_ALIGNED",
+                request_label="l2-source-aligned",
+            )
+        self.assertEqual("L2_SOURCE_ALIGNED", failed["technical_errors"][0]["stage"])
+
+    def test_paperloom31_cli_contract(self) -> None:
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit) as raised:
+            main(["paperloom31", "run", "--snapshot", "snapshot.json"])
+        self.assertEqual(2, raised.exception.code)
+
+        for errors, expected_code in (([], 0), ([{"stage": "L2_SOURCE_ALIGNED"}], 2)):
+            report = {
+                "l1": {"metrics": {}},
+                "l2": {"metrics": {}},
+                "l2_source_aligned": {
+                    "metrics": {"recall_at_5": 0.8},
+                    "technical_errors": errors,
+                },
+                "l3": {"hard_passed": 1},
+            }
+            output = io.StringIO()
+            with self.subTest(errors=bool(errors)), \
+                    patch("harness_py.cli._provider", return_value=object()), \
+                    patch("harness_py.cli.run_benchmark", return_value=(Path("saved-run"), report)) as run, \
+                    redirect_stdout(output):
+                code = main([
+                    "paperloom31", "run", "--snapshot", "snapshot.json",
+                    "--source-aligned-queries", "queries.yaml",
+                ])
+            summary = json.loads(output.getvalue())
+            self.assertEqual(expected_code, code)
+            self.assertEqual("queries.yaml", run.call_args.kwargs["source_aligned_queries_path"])
+            self.assertEqual({"recall_at_5": 0.8}, summary["l2_source_aligned_metrics"])
+            self.assertEqual("saved-run", summary["out"])
+
+    def test_benchmark_runs_source_aligned_l2_after_l3(self) -> None:
+        order: list[str] = []
+        empty_stage = {"executed": True, "passed": True, "failures": [], "technical_errors": []}
+
+        def run_l2(snapshot, gateway, user_id, **arguments):
+            order.append("source" if arguments.get("query_by_target") is not None else "raw")
+            return {"executed": True, "targets": [], "technical_errors": []}
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            config_path = root / "benchmark.yaml"
+            config_path.write_text("config", encoding="utf-8")
+            snapshot_path = root / "snapshot.json"
+            snapshot_path.write_text(json.dumps({
+                "dataset_id": "paperloom-31-v1",
+                "config_sha256": hashlib.sha256(b"config").hexdigest(),
+                "papers": {},
+                "targets": {"target_1": {"query": "问题"}},
+            }), encoding="utf-8")
+            query_path = root / "queries.yaml"
+            query_path.write_text(yaml.safe_dump({
+                "schema_version": "paperloom-source-aligned-queries/v1",
+                "dataset_id": "paperloom-31-v1",
+                "targets": {"target_1": {
+                    "original_query_sha256": hashlib.sha256("问题".encode("utf-8")).hexdigest(),
+                    "source_aligned_query": "Question",
+                }},
+            }, allow_unicode=True), encoding="utf-8")
+            query_file_hash = hashlib.sha256(query_path.read_bytes()).hexdigest()
+            api = MagicMock()
+            api.__enter__.return_value = api
+            api.me.return_value = {"id": 1}
+            api.users.return_value = [{"id": 2, "username": "benchmark", "role": "USER"}]
+            api.papers.return_value = []
+            gateway = MagicMock()
+            gateway.reader.return_value.load_metadata_dataset.return_value = object()
+            provider = MagicMock()
+            provider.public_diagnostics.return_value = {}
+
+            def run_l3(*arguments, **keywords):
+                order.append("l3")
+                query_path.unlink()
+                return {"executed": True, "cases": [], "technical_errors": []}
+
+            with patch("harness_py.evaluation.paperloom31.validate_snapshot"), \
+                    patch("harness_py.evaluation.paperloom31._canonical_sha256", return_value="snapshot"), \
+                    patch("harness_py.evaluation.paperloom31._credentials", return_value=("admin", "password")), \
+                    patch("harness_py.evaluation.paperloom31._ProductApi", return_value=api), \
+                    patch("harness_py.evaluation.paperloom31.JavaCorpusGateway", return_value=gateway), \
+                    patch("harness_py.evaluation.paperloom31._run_l0", return_value=empty_stage), \
+                    patch("harness_py.evaluation.paperloom31._run_g0", return_value=empty_stage), \
+                    patch("harness_py.evaluation.paperloom31._run_l1", return_value=empty_stage), \
+                    patch("harness_py.evaluation.paperloom31._run_l2", side_effect=run_l2), \
+                    patch("harness_py.evaluation.paperloom31.build_harness_runtime"), \
+                    patch("harness_py.evaluation.paperloom31.LiveResearchChatHarness"), \
+                    patch("harness_py.evaluation.paperloom31.MiniMaxJudgeModel"), \
+                    patch("harness_py.evaluation.paperloom31._run_l3", side_effect=run_l3):
+                _, report = run_benchmark(
+                    snapshot_path,
+                    source_aligned_queries_path=query_path,
+                    config_path=config_path,
+                    runs_dir=root / "runs",
+                    provider=provider,
+                    api_base_url="http://example.test",
+                )
+
+        self.assertEqual(["raw", "l3", "source"], order)
+        self.assertEqual("paperloom-benchmark-run/v3", report["schema_version"])
+        self.assertEqual(query_file_hash, report["l2_source_aligned"]["query_set"]["file_sha256"])
+
+    def test_checked_in_source_aligned_queries_contain_31_targets(self) -> None:
+        root = Path(__file__).resolve().parents[2]
+        query_set = yaml.safe_load(
+            (root / "research/benchmark/paperloom-31-v1/source-aligned-queries-v1.yaml")
+            .read_text(encoding="utf-8")
+        )
+        self.assertEqual(31, len(query_set["targets"]))
+
     def test_retrieval_metrics_use_one_based_rank(self) -> None:
         self.assertEqual(
             {"count": 3, "recall_at_1": 1 / 3, "recall_at_3": 2 / 3, "mrr": 4 / 9},

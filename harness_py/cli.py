@@ -112,9 +112,10 @@ def main(argv: list[str] | None = None) -> int:
     paperloom31_snapshot.add_argument("--provider-source", choices=PROVIDER_SOURCE_CHOICES, default="env")
     paperloom31_run = paperloom31_commands.add_parser(
         "run",
-        help="Run L0/G0/L1/L2/L3 against one immutable PaperLoom-31 snapshot.",
+        help="Run L0/G0/L1/L2-Raw/L3/L2-Source-Aligned against one immutable snapshot.",
     )
     paperloom31_run.add_argument("--snapshot", required=True)
+    paperloom31_run.add_argument("--source-aligned-queries", required=True)
     paperloom31_run.add_argument(
         "--config",
         default="research/benchmark/paperloom-31-v1/benchmark.yaml",
@@ -298,6 +299,7 @@ def main(argv: list[str] | None = None) -> int:
             provider = _provider(args.provider_source)
             path, report = run_benchmark(
                 args.snapshot,
+                source_aligned_queries_path=args.source_aligned_queries,
                 config_path=args.config,
                 runs_dir=args.runs_dir,
                 provider=provider,
@@ -315,6 +317,7 @@ def main(argv: list[str] | None = None) -> int:
                 "detail": str(error),
             }, indent=2), file=sys.stderr)
             return 2
+        source_aligned = child_map(report.get("l2_source_aligned"))
         print(json.dumps({
             "out": str(path),
             "run_id": report.get("run_id"),
@@ -322,9 +325,10 @@ def main(argv: list[str] | None = None) -> int:
             "internal_beta_gate": report.get("internal_beta_gate"),
             "l1_metrics": child_map(report.get("l1")).get("metrics"),
             "l2_metrics": child_map(report.get("l2")).get("metrics"),
+            "l2_source_aligned_metrics": source_aligned.get("metrics"),
             "l3_hard_passed": child_map(report.get("l3")).get("hard_passed"),
         }, indent=2, ensure_ascii=False))
-        return 0
+        return 2 if as_list(source_aligned.get("technical_errors")) else 0
 
     if args.command == "validate":
         dataset = load_dataset(args.manifest)

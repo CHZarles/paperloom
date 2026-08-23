@@ -48,7 +48,8 @@ CASE_LAYOUT_VERSION = "paperloom-agent-case-layout-v5"
 EVIDENCE_TYPES = {"PASSAGE", "TABLE", "FIGURE"}
 MIN_PASSAGE_CHARS = 220
 MIN_ANSWER_SPAN_CHARS = 40
-RUN_SCHEMA_VERSION = "paperloom-benchmark-run/v2"
+RUN_SCHEMA_VERSION = "paperloom-benchmark-run/v3"
+SOURCE_ALIGNED_QUERY_SCHEMA_VERSION = "paperloom-source-aligned-queries/v1"
 
 
 class PreparationError(RuntimeError):
@@ -927,9 +928,52 @@ def file_sha256(path: str | Path) -> str:
     return digest.hexdigest()
 
 
+def _load_source_aligned_queries(
+    path: str | Path,
+    snapshot: dict[str, object],
+) -> dict[str, str]:
+    source = Path(path)
+    try:
+        value = _mapping(yaml.safe_load(source.read_text(encoding="utf-8")))
+    except (OSError, yaml.YAMLError) as error:
+        raise PreparationError(
+            "run",
+            "SOURCE_ALIGNED_QUERY_INVALID",
+            f"{source}: {error}",
+        ) from error
+    if value.get("schema_version") != SOURCE_ALIGNED_QUERY_SCHEMA_VERSION:
+        raise PreparationError("run", "SOURCE_ALIGNED_QUERY_INVALID", "schema_version")
+    if value.get("dataset_id") != snapshot.get("dataset_id"):
+        raise PreparationError("run", "SOURCE_ALIGNED_QUERY_INVALID", "dataset_id")
+    rows = _mapping(value.get("targets"))
+    targets = _mapping(snapshot.get("targets"))
+    if set(rows) != set(targets):
+        raise PreparationError("run", "SOURCE_ALIGNED_QUERY_INVALID", "targets")
+    queries: dict[str, str] = {}
+    for target_id, row in rows.items():
+        record = _mapping(row)
+        expected_hash = _text_sha256(str(_mapping(targets[target_id]).get("query") or ""))
+        if record.get("original_query_sha256") != expected_hash:
+            raise PreparationError(
+                "run",
+                "SOURCE_ALIGNED_QUERY_INVALID",
+                f"{target_id}: original_query_sha256",
+            )
+        query = record.get("source_aligned_query")
+        if not isinstance(query, str) or not query or query != query.strip():
+            raise PreparationError(
+                "run",
+                "SOURCE_ALIGNED_QUERY_INVALID",
+                f"{target_id}: source_aligned_query",
+            )
+        queries[target_id] = query
+    return queries
+
+
 def run_benchmark(
     snapshot_path: str | Path,
     *,
+    source_aligned_queries_path: str | Path,
     config_path: str | Path,
     runs_dir: str | Path,
     provider: ProviderConfig,
@@ -944,6 +988,11 @@ def run_benchmark(
         raise PreparationError("run", "SNAPSHOT_HASH_MISMATCH", str(snapshot_source))
     if file_sha256(config_path) != snapshot.get("config_sha256"):
         raise PreparationError("run", "CONFIG_HASH_MISMATCH", str(config_path))
+    source_aligned_queries = _load_source_aligned_queries(
+        source_aligned_queries_path,
+        snapshot,
+    )
+    source_aligned_query_file_sha256 = file_sha256(source_aligned_queries_path)
 
     run_id = f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{uuid4().hex[:8]}"
     out = Path(runs_dir) / run_id
@@ -990,6 +1039,20 @@ def run_benchmark(
     )
     dataset = dataset_reader.load_metadata_dataset()
     l3 = _run_l3(snapshot, dataset, gateway, user_id, harness, judge, out)
+    l2_source_aligned = {
+        **_run_l2(
+            snapshot,
+            gateway,
+            user_id,
+            query_by_target=source_aligned_queries,
+            stage_name="L2_SOURCE_ALIGNED",
+            request_label="l2-source-aligned",
+        ),
+        "query_set": {
+            "schema_version": SOURCE_ALIGNED_QUERY_SCHEMA_VERSION,
+            "file_sha256": source_aligned_query_file_sha256,
+        },
+    }
 
     agent_usage = {
         key: sum(int(_mapping(item.get("usage")).get(key) or 0) for item in _records(l3.get("cases")))
@@ -1030,6 +1093,7 @@ def run_benchmark(
         "g0": g0,
         "l1": l1,
         "l2": l2,
+        "l2_source_aligned": l2_source_aligned,
         "l3": l3,
         "usage": {
             "agent": agent_usage,
@@ -1040,7 +1104,7 @@ def run_benchmark(
         },
         "technical_errors": [
             failure
-            for stage in (l0, g0, l1, l2, l3)
+            for stage in (l0, g0, l1, l2, l3, l2_source_aligned)
             for failure in _records(stage.get("technical_errors"))
         ],
         "baseline": {
@@ -1183,6 +1247,10 @@ def _run_l2(
     snapshot: dict[str, object],
     gateway: JavaCorpusGateway,
     user_id: int,
+    *,
+    query_by_target: dict[str, str] | None = None,
+    stage_name: str = "L2",
+    request_label: str = "l2",
 ) -> dict[str, object]:
     rows: list[dict[str, object]] = []
     errors: list[dict[str, object]] = []
@@ -1197,8 +1265,8 @@ def _run_l2(
         }
         try:
             reader = gateway.reader(
-                request_id=f"paperloom31-l2-{target_id}",
-                conversation_id=f"paperloom31-l2-{target_id}",
+                request_id=f"paperloom31-{request_label}-{target_id}",
+                conversation_id=f"paperloom31-{request_label}-{target_id}",
                 user_id=user_id,
                 scope_paper_ids=[paper_id],
             )
@@ -1208,7 +1276,11 @@ def _run_l2(
                 raise ValueError("oracle paper identity did not resolve")
             search = tools.search_paper_content({
                 "paper_ids": [paper_id],
-                "query_text": target.get("query"),
+                "query_text": (
+                    query_by_target[target_id]
+                    if query_by_target is not None
+                    else target.get("query")
+                ),
                 "element_types": [str(target.get("location_type") or "").lower()],
                 "top_k": 10,
             })
@@ -1241,7 +1313,7 @@ def _run_l2(
                 row["source_quote_ref"] = quote.get("source_quote_ref")
                 row["exact_read_passed"] = all(checks.values())
         except Exception as error:
-            errors.append(_failure("L2", type(error).__name__, f"{target_id}: {error}", technical=True))
+            errors.append(_failure(stage_name, type(error).__name__, f"{target_id}: {error}", technical=True))
         rows.append(row)
     by_type = {
         location_type: _retrieval_metrics(
