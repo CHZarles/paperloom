@@ -77,6 +77,7 @@ public class SecurityConfig {
                                     "/api/v1/users/logout",
                                     "/api/v1/users/logout-all"
                             ).hasAnyRole("GUEST", "USER", "ADMIN")
+                            .requestMatchers("/api/v1/reading/**").hasAnyRole("USER", "ADMIN")
                             .requestMatchers("/api/v1/users/**").hasAnyRole("USER", "ADMIN")
                             // 游客聊天页会读取自己的集合列表；游客只能看到自己的空列表，不能创建或修改集合。
                             .requestMatchers(HttpMethod.GET, "/api/v1/paper-collections")
