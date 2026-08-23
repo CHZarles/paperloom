@@ -254,6 +254,7 @@ class MinerUOutputMapperTest {
                       ]
                     },
                     {
+                      "page_size": [1000, 1000],
                       "para_blocks": [
                         {
                           "blocks": [

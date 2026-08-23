@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -53,7 +54,9 @@ class ResearchHarnessPayloadFactoryTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> limits = (Map<String, Object>) options.get("run_limits");
         assertEquals("paperloom-run-limits/v1", limits.get("schema_version"));
-        assertEquals(12, limits.get("max_model_calls"));
+        assertEquals(Set.of(
+                "schema_version", "max_wall_clock_ms", "max_model_visible_tool_chars", "max_history_chars"
+        ), limits.keySet());
     }
 
     @Test
