@@ -16,6 +16,10 @@ public interface PaperSectionRepository extends JpaRepository<PaperSection, Long
                                                                          String modelVersion,
                                                                          String sectionId);
 
+    List<PaperSection> findByPaperIdAndModelVersionAndSectionIdIn(String paperId,
+                                                                  String modelVersion,
+                                                                  List<String> sectionIds);
+
     long countByPaperIdAndModelVersion(String paperId, String modelVersion);
 
     void deleteByPaperId(String paperId);

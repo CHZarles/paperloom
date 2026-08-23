@@ -13,6 +13,10 @@ public interface PaperPassageRepository extends JpaRepository<PaperPassage, Long
 
     List<PaperPassage> findByPaperIdAndModelVersionOrderByDocumentOrdinalAsc(String paperId, String modelVersion);
 
+    List<PaperPassage> findByPaperIdAndModelVersionAndPassageRefIn(String paperId,
+                                                                   String modelVersion,
+                                                                   List<String> passageRefs);
+
     List<PaperPassage> findByPaperIdAndModelVersionAndParentSectionIdOrderBySectionOrdinalAsc(
             String paperId,
             String modelVersion,

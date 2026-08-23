@@ -4,12 +4,16 @@ import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.model.PaperLocation;
 import io.github.chzarles.paperloom.model.PaperLocationType;
 import io.github.chzarles.paperloom.model.PaperPage;
+import io.github.chzarles.paperloom.model.PaperPassage;
+import io.github.chzarles.paperloom.model.PaperReadingElement;
 import io.github.chzarles.paperloom.model.PaperReadingModel;
 import io.github.chzarles.paperloom.model.PaperReadingModelStatus;
 import io.github.chzarles.paperloom.model.PaperSection;
 import io.github.chzarles.paperloom.model.PaperVisualAsset;
 import io.github.chzarles.paperloom.repository.PaperLocationRepository;
 import io.github.chzarles.paperloom.repository.PaperPageRepository;
+import io.github.chzarles.paperloom.repository.PaperPassageRepository;
+import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.repository.PaperSectionRepository;
@@ -17,14 +21,12 @@ import io.github.chzarles.paperloom.repository.PaperVisualAssetRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -35,31 +37,30 @@ public class CanonicalReadingLocationService {
     private final PaperReadingModelRepository modelRepository;
     private final PaperPageRepository pageRepository;
     private final PaperSectionRepository sectionRepository;
+    private final PaperPassageRepository passageRepository;
+    private final PaperReadingElementRepository elementRepository;
     private final PaperRepository paperRepository;
     private final PaperVisualAssetRepository visualAssetRepository;
     public CanonicalReadingLocationService(PaperLocationRepository locationRepository,
                                            PaperReadingModelRepository modelRepository,
                                            PaperPageRepository pageRepository,
                                            PaperSectionRepository sectionRepository,
+                                           PaperPassageRepository passageRepository,
+                                           PaperReadingElementRepository elementRepository,
                                            PaperRepository paperRepository,
                                            PaperVisualAssetRepository visualAssetRepository) {
         this.locationRepository = locationRepository;
         this.modelRepository = modelRepository;
         this.pageRepository = pageRepository;
         this.sectionRepository = sectionRepository;
+        this.passageRepository = passageRepository;
+        this.elementRepository = elementRepository;
         this.paperRepository = paperRepository;
         this.visualAssetRepository = visualAssetRepository;
     }
 
     @Transactional(readOnly = true)
     public ReadBatch read(List<String> locationRefs, List<String> authorizedPaperIds) {
-        return read(locationRefs, authorizedPaperIds, List.of());
-    }
-
-    @Transactional(readOnly = true)
-    public ReadBatch read(List<String> locationRefs,
-                          List<String> authorizedPaperIds,
-                          List<EvidencePayload> evidencePayloads) {
         List<String> refs = locationRefs == null ? List.of() : locationRefs.stream()
                 .filter(ref -> ref != null && !ref.isBlank())
                 .distinct()
@@ -67,12 +68,9 @@ public class CanonicalReadingLocationService {
         if (refs.isEmpty()) {
             return new ReadBatch(List.of(), List.of());
         }
+        Set<String> authorized = authorizedPaperIds == null ? Set.of() : Set.copyOf(authorizedPaperIds);
         Map<String, PaperLocation> locations = locationRepository.findByLocationRefIn(refs).stream()
-                .collect(Collectors.toMap(PaperLocation::getLocationRef, Function.identity(), (left, right) -> left));
-        Map<String, EvidencePayload> payloadsByRef = (evidencePayloads == null ? List.<EvidencePayload>of() : evidencePayloads)
-                .stream()
-                .filter(payload -> !blank(payload.locationRef()))
-                .collect(Collectors.toMap(EvidencePayload::locationRef, Function.identity(), (left, right) -> left,
+                .collect(Collectors.toMap(PaperLocation::getLocationRef, Function.identity(), (left, right) -> left,
                         LinkedHashMap::new));
         Map<String, PaperReadingModel> currentModels = currentModels(locations.values().stream()
                 .map(PaperLocation::getPaperId)
@@ -82,11 +80,18 @@ public class CanonicalReadingLocationService {
                 .map(PaperLocation::getPaperId)
                 .distinct()
                 .toList());
+        CanonicalEntities entities = loadCanonicalEntities(locations.values().stream()
+                .filter(location -> authorized.contains(location.getPaperId()))
+                .filter(location -> {
+                    PaperReadingModel current = currentModels.get(location.getPaperId());
+                    return current != null && location.getModelVersion().equals(current.getModelVersion());
+                })
+                .toList());
         List<CanonicalLocation> items = new ArrayList<>();
         List<String> missing = new ArrayList<>();
         for (String ref : refs) {
             PaperLocation location = locations.get(ref);
-            if (location == null || !authorizedPaperIds.contains(location.getPaperId())) {
+            if (location == null || !authorized.contains(location.getPaperId())) {
                 missing.add(ref);
                 continue;
             }
@@ -95,10 +100,8 @@ public class CanonicalReadingLocationService {
                 missing.add(ref);
                 continue;
             }
-            CanonicalLocation item = isEvidenceLocation(location)
-                    ? resolveEvidence(location, current, titles.getOrDefault(location.getPaperId(), location.getPaperId()),
-                    payloadsByRef.get(ref))
-                    : resolveStructure(location, current, titles.getOrDefault(location.getPaperId(), location.getPaperId()));
+            CanonicalLocation item = resolve(location, current,
+                    titles.getOrDefault(location.getPaperId(), location.getPaperId()), entities);
             if (item == null || item.spanText().isBlank()) {
                 missing.add(ref);
                 continue;
@@ -108,48 +111,163 @@ public class CanonicalReadingLocationService {
         return new ReadBatch(items, missing);
     }
 
-    private CanonicalLocation resolveStructure(PaperLocation location,
-                                               PaperReadingModel model,
-                                               String paperTitle) {
-        PaperLocationType type = location.getLocationType();
-        if (type == PaperLocationType.PAGE) {
-            Optional<PaperPage> page = pageRepository.findFirstByPaperIdAndModelVersionAndPageNumber(
-                    location.getPaperId(), location.getModelVersion(), location.getPageNumber());
-            if (page.isEmpty() || blank(page.get().getPageText())) {
-                return null;
-            }
-            return item(location, model, paperTitle, "page", page.get().getPageText(), null,
-                    page.get().getParserName(), page.get().getParserVersion(), null);
-        }
-        if (type == PaperLocationType.SECTION) {
-            Optional<PaperSection> section = sectionRepository.findFirstByPaperIdAndModelVersionAndSectionId(
-                    location.getPaperId(), location.getModelVersion(), trim(location.getSourceObjectId()));
-            if (section.isEmpty() || blank(section.get().getSectionText())) {
-                return null;
-            }
-            return item(location, model, paperTitle, "section", section.get().getSectionText(), null,
-                    section.get().getParserName(), section.get().getParserVersion(), null);
-        }
-        return null;
+    private CanonicalLocation resolve(PaperLocation location,
+                                      PaperReadingModel model,
+                                      String paperTitle,
+                                      CanonicalEntities entities) {
+        ObjectKey objectKey = new ObjectKey(
+                location.getPaperId(), location.getModelVersion(), trim(location.getSourceObjectId()));
+        return switch (location.getLocationType()) {
+            case PAGE -> resolvePage(location, model, paperTitle, entities.pages().get(new PageKey(
+                    location.getPaperId(), location.getModelVersion(), location.getPageNumber())));
+            case SECTION -> resolveSection(location, model, paperTitle, entities.sections().get(objectKey));
+            case PASSAGE -> resolvePassage(location, model, paperTitle, entities.passages().get(objectKey));
+            case TABLE, FIGURE -> resolveElement(location, model, paperTitle, entities.elements().get(objectKey));
+        };
     }
 
-    private CanonicalLocation resolveEvidence(PaperLocation location,
-                                              PaperReadingModel model,
-                                              String paperTitle,
-                                              EvidencePayload payload) {
-        if (payload == null
-                || !location.getPaperId().equals(payload.paperId())
-                || !location.getModelVersion().equals(payload.modelVersion())
-                || !location.getLocationRef().equals(payload.locationRef())
-                || !location.getLocationType().name().equalsIgnoreCase(payload.locationType())
-                || blank(payload.contentText())
-                || !sha256(payload.contentText()).equals(payload.contentHash())
-                || blank(payload.sourceSpanJson())
-                || !payload.sourceSpanJson().equals(location.getSourceSpanJson())) {
+    private CanonicalLocation resolvePage(PaperLocation location, PaperReadingModel model,
+                                          String title, PaperPage page) {
+        if (page == null || !Objects.equals(location.getPageNumber(), page.getPageNumber())
+                || blank(page.getPageText()) || !sameSpan(location.getSourceSpanJson(), page.getSourceSpanJson())) {
             return null;
         }
-        return item(location, model, paperTitle, payload.locationType().toLowerCase(), payload.contentText(),
-                payload.sourceSpanJson(), model.getParserName(), model.getParserVersion(), location.getSourceObjectId());
+        return item(location, model, title, "page", page.getPageText(), null,
+                page.getParserName(), page.getParserVersion(), null);
+    }
+
+    private CanonicalLocation resolveSection(PaperLocation location, PaperReadingModel model,
+                                             String title, PaperSection section) {
+        if (section == null || !Objects.equals(location.getPaperId(), section.getPaperId())
+                || !Objects.equals(location.getModelVersion(), section.getModelVersion())
+                || !Objects.equals(location.getSourceObjectId(), section.getSectionId())
+                || blank(section.getSectionText())
+                || !sameSpan(location.getSourceSpanJson(), section.getSourceSpanJson())) {
+            return null;
+        }
+        return item(location, model, title, "section", section.getSectionText(), null,
+                section.getParserName(), section.getParserVersion(), section.getSectionId());
+    }
+
+    private CanonicalLocation resolvePassage(PaperLocation location, PaperReadingModel model,
+                                             String title, PaperPassage passage) {
+        if (passage == null || !Objects.equals(location.getPaperId(), passage.getPaperId())
+                || !Objects.equals(location.getModelVersion(), passage.getModelVersion())
+                || !Objects.equals(location.getSourceObjectId(), passage.getPassageRef())
+                || blank(canonicalPassageContent(passage))
+                || !sameSpan(location.getSourceSpanJson(), passage.getSourceSpanJson())) {
+            return null;
+        }
+        return item(location, model, title, "passage", canonicalPassageContent(passage),
+                location.getSourceSpanJson(), model.getParserName(), model.getParserVersion(), passage.getPassageRef());
+    }
+
+    private CanonicalLocation resolveElement(PaperLocation location, PaperReadingModel model,
+                                             String title, PaperReadingElement element) {
+        if (element == null
+                || !Objects.equals(location.getSourceObjectId(), element.getReadingElementId())
+                || !Objects.equals(location.getPaperId(), element.getPaperId())
+                || !Objects.equals(location.getModelVersion(), element.getModelVersion())
+                || !Objects.equals(location.getLocationRef(), element.getLocationRef())
+                || location.getLocationType() != element.getLocationType()
+                || !validElementType(location.getLocationType(), element.getElementType())
+                || blank(location.getSourceSpanJson())
+                || blank(canonicalElementContent(element))) {
+            return null;
+        }
+        return item(location, model, title, location.getLocationType().name().toLowerCase(),
+                canonicalElementContent(element), location.getSourceSpanJson(), element.getParserName(),
+                element.getParserVersion(), element.getReadingElementId());
+    }
+
+    private CanonicalEntities loadCanonicalEntities(List<PaperLocation> locations) {
+        Map<PageKey, PaperPage> pages = new LinkedHashMap<>();
+        Map<ObjectKey, PaperSection> sections = new LinkedHashMap<>();
+        Map<ObjectKey, PaperPassage> passages = new LinkedHashMap<>();
+        Map<ObjectKey, PaperReadingElement> elements = new LinkedHashMap<>();
+        Map<PaperModelKey, List<PaperLocation>> byModel = locations.stream().collect(Collectors.groupingBy(
+                location -> new PaperModelKey(location.getPaperId(), location.getModelVersion()),
+                LinkedHashMap::new,
+                Collectors.toList()));
+        for (Map.Entry<PaperModelKey, List<PaperLocation>> entry : byModel.entrySet()) {
+            PaperModelKey key = entry.getKey();
+            List<PaperLocation> group = entry.getValue();
+            List<Integer> pageNumbers = group.stream()
+                    .filter(location -> location.getLocationType() == PaperLocationType.PAGE)
+                    .map(PaperLocation::getPageNumber).filter(java.util.Objects::nonNull).distinct().toList();
+            if (!pageNumbers.isEmpty()) {
+                pageRepository.findByPaperIdAndModelVersionAndPageNumberIn(
+                                key.paperId(), key.modelVersion(), pageNumbers)
+                        .forEach(page -> pages.put(new PageKey(
+                                page.getPaperId(), page.getModelVersion(), page.getPageNumber()), page));
+            }
+            loadObjects(key, group, PaperLocationType.SECTION,
+                    ids -> sectionRepository.findByPaperIdAndModelVersionAndSectionIdIn(
+                            key.paperId(), key.modelVersion(), ids),
+                    PaperSection::getSectionId, sections);
+            loadObjects(key, group, PaperLocationType.PASSAGE,
+                    ids -> passageRepository.findByPaperIdAndModelVersionAndPassageRefIn(
+                            key.paperId(), key.modelVersion(), ids),
+                    PaperPassage::getPassageRef, passages);
+            List<String> elementIds = group.stream()
+                    .filter(location -> location.getLocationType() == PaperLocationType.TABLE
+                            || location.getLocationType() == PaperLocationType.FIGURE)
+                    .map(PaperLocation::getSourceObjectId).filter(value -> !blank(value)).distinct().toList();
+            if (!elementIds.isEmpty()) {
+                elementRepository.findByPaperIdAndModelVersionAndReadingElementIdIn(
+                                key.paperId(), key.modelVersion(), elementIds)
+                        .forEach(element -> elements.put(new ObjectKey(
+                                element.getPaperId(), element.getModelVersion(), element.getReadingElementId()), element));
+            }
+        }
+        return new CanonicalEntities(pages, sections, passages, elements);
+    }
+
+    private <T> void loadObjects(PaperModelKey key,
+                                 List<PaperLocation> locations,
+                                 PaperLocationType type,
+                                 Function<List<String>, List<T>> loader,
+                                 Function<T, String> id,
+                                 Map<ObjectKey, T> target) {
+        List<String> ids = locations.stream().filter(location -> location.getLocationType() == type)
+                .map(PaperLocation::getSourceObjectId).filter(value -> !blank(value)).distinct().toList();
+        if (!ids.isEmpty()) {
+            loader.apply(ids).forEach(value -> target.put(
+                    new ObjectKey(key.paperId(), key.modelVersion(), id.apply(value)), value));
+        }
+    }
+
+    static String canonicalPassageContent(PaperPassage passage) {
+        return passage == null ? "" : passage.getContentText();
+    }
+
+    static String passageIndexText(PaperPassage passage) {
+        return passage == null ? "" : firstNonBlankStatic(passage.getIndexText(), passage.getContentText());
+    }
+
+    static String canonicalElementContent(PaperReadingElement element) {
+        return element == null ? "" : firstNonBlankStatic(
+                element.getSearchableText(), element.getBodyText(), element.getCaptionText());
+    }
+
+    private static String firstNonBlankStatic(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return "";
+    }
+
+    private boolean validElementType(PaperLocationType type, String elementType) {
+        String normalized = trim(elementType).toUpperCase();
+        return type == PaperLocationType.TABLE
+                ? "TABLE".equals(normalized)
+                : Set.of("IMAGE", "FIGURE", "CHART").contains(normalized);
+    }
+
+    private boolean sameSpan(String locationSpan, String entitySpan) {
+        return !blank(locationSpan) && locationSpan.equals(entitySpan);
     }
 
     private CanonicalLocation item(PaperLocation location,
@@ -176,7 +294,7 @@ public class CanonicalReadingLocationService {
                 location.getPageNumber(),
                 location.getPageEndNumber(),
                 trim(location.getSectionTitle()),
-                trim(text),
+                text,
                 trim(bboxJson),
                 firstNonBlank(parserName, model.getParserName()),
                 firstNonBlank(parserVersion, model.getParserVersion()),
@@ -276,26 +394,6 @@ public class CanonicalReadingLocationService {
         return value == null ? "" : value.trim();
     }
 
-    private boolean isEvidenceLocation(PaperLocation location) {
-        return location.getLocationType() == PaperLocationType.PASSAGE
-                || location.getLocationType() == PaperLocationType.TABLE
-                || location.getLocationType() == PaperLocationType.FIGURE;
-    }
-
-    private String sha256(String value) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(value.getBytes(StandardCharsets.UTF_8));
-            StringBuilder result = new StringBuilder(digest.length * 2);
-            for (byte item : digest) {
-                result.append(String.format("%02x", item));
-            }
-            return result.toString();
-        } catch (NoSuchAlgorithmException error) {
-            throw new IllegalStateException(error);
-        }
-    }
-
     public record CanonicalLocation(String paperId,
                                     String title,
                                     String paperVersion,
@@ -336,25 +434,18 @@ public class CanonicalReadingLocationService {
         }
     }
 
-    public record EvidencePayload(String paperId,
-                                  String modelVersion,
-                                  String locationRef,
-                                  String locationType,
-                                  String contentText,
-                                  String contentHash,
-                                  String sourceSpanJson) {
-        public EvidencePayload {
-            paperId = trimValue(paperId);
-            modelVersion = trimValue(modelVersion);
-            locationRef = trimValue(locationRef);
-            locationType = trimValue(locationType);
-            contentText = contentText == null ? "" : contentText;
-            contentHash = trimValue(contentHash);
-            sourceSpanJson = sourceSpanJson == null ? "" : sourceSpanJson;
-        }
+    private record PaperModelKey(String paperId, String modelVersion) {
+    }
 
-        private static String trimValue(String value) {
-            return value == null ? "" : value.trim();
-        }
+    private record PageKey(String paperId, String modelVersion, Integer pageNumber) {
+    }
+
+    private record ObjectKey(String paperId, String modelVersion, String objectId) {
+    }
+
+    private record CanonicalEntities(Map<PageKey, PaperPage> pages,
+                                     Map<ObjectKey, PaperSection> sections,
+                                     Map<ObjectKey, PaperPassage> passages,
+                                     Map<ObjectKey, PaperReadingElement> elements) {
     }
 }

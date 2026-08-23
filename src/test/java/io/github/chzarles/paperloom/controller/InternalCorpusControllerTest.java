@@ -2,6 +2,7 @@ package io.github.chzarles.paperloom.controller;
 
 import io.github.chzarles.paperloom.service.PaperReadingService;
 import io.github.chzarles.paperloom.service.CanonicalReadingLocationService;
+import io.github.chzarles.paperloom.service.HarnessReadingService;
 import io.github.chzarles.paperloom.service.PaperSourceQuoteReadService;
 import io.github.chzarles.paperloom.service.ReadingModelQdrantIndexService;
 import org.junit.jupiter.api.Test;
@@ -27,7 +28,7 @@ class InternalCorpusControllerTest {
         when(readingService.searchPaperCandidates(any())).thenReturn(
                 new PaperReadingService.PaperSearchResult("", List.of(), 0, 0, "complete", null));
         MockMvc mvc = MockMvcBuilders.standaloneSetup(
-                new InternalCorpusController(readingService, indexService, "")
+                new InternalCorpusController(readingService, mock(HarnessReadingService.class), indexService, "")
         ).build();
 
         mvc.perform(post("/internal/v1/corpus/papers/search")
@@ -49,7 +50,7 @@ class InternalCorpusControllerTest {
         when(readingService.searchPaperContent(any())).thenReturn(
                 new PaperReadingService.ContentSearchResult(List.of(), 12, 8, "test-index"));
         MockMvc mvc = MockMvcBuilders.standaloneSetup(
-                new InternalCorpusController(readingService, indexService, "internal-secret")
+                new InternalCorpusController(readingService, mock(HarnessReadingService.class), indexService, "internal-secret")
         ).build();
 
         mvc.perform(post("/internal/v1/corpus/locations/search")
@@ -66,14 +67,16 @@ class InternalCorpusControllerTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.query_text").value("agent evaluation"))
-                .andExpect(jsonPath("$.coverage").value("truncated"));
+                .andExpect(jsonPath("$.coverage").value("truncated"))
+                .andExpect(jsonPath("$.evidence_payloads").doesNotExist());
     }
 
     @Test
     void locationReadExposesCanonicalVisualEvidenceFields() throws Exception {
         PaperReadingService readingService = mock(PaperReadingService.class);
+        HarnessReadingService harnessReadingService = mock(HarnessReadingService.class);
         ReadingModelQdrantIndexService indexService = mock(ReadingModelQdrantIndexService.class);
-        when(readingService.readLocations(any())).thenReturn(
+        when(harnessReadingService.readAndCreateQuotes(any())).thenReturn(
                 new PaperSourceQuoteReadService.ReadResult(
                         List.of(new PaperSourceQuoteReadService.ReadItem(
                                 new CanonicalReadingLocationService.CanonicalLocation(
@@ -105,7 +108,7 @@ class InternalCorpusControllerTest {
                 )
         );
         MockMvc mvc = MockMvcBuilders.standaloneSetup(
-                new InternalCorpusController(readingService, indexService, "internal-secret")
+                new InternalCorpusController(readingService, harnessReadingService, indexService, "internal-secret")
         ).build();
 
         mvc.perform(post("/internal/v1/corpus/locations/read")
@@ -145,7 +148,7 @@ class InternalCorpusControllerTest {
                         "source_span_json", "{\"spans\":[]}"
                 )))));
         MockMvc mvc = MockMvcBuilders.standaloneSetup(
-                new InternalCorpusController(readingService, indexService, "internal-secret")
+                new InternalCorpusController(readingService, mock(HarnessReadingService.class), indexService, "internal-secret")
         ).build();
 
         mvc.perform(post("/internal/v1/corpus/locations/export")

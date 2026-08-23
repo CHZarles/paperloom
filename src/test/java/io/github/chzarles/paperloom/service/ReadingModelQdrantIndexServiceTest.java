@@ -151,6 +151,31 @@ class ReadingModelQdrantIndexServiceTest {
         assertEquals(List.of("page-ref"), indexed.get(0).payload().get("page_location_refs"));
     }
 
+    @Test
+    void indexesTableUsingTheSharedCanonicalElementTextRule() {
+        PaperReadingElement table = new PaperReadingElement();
+        table.setPaperId("paper-a");
+        table.setModelVersion("rm-1");
+        table.setReadingElementId("table-1");
+        table.setElementType("TABLE");
+        table.setBodyText("canonical table body");
+        PaperLocation tableLocation = location(
+                "table-ref", PaperLocationType.TABLE, "table-1", "Results");
+        tableLocation.setSourceSpanJson("{\"spans\":[]}");
+
+        when(elementRepository.findByPaperIdAndModelVersionOrderByPageNumberAscReadingOrderAscIdAsc(
+                "paper-a", "rm-1")).thenReturn(List.of(table));
+        when(locationRepository.findByPaperIdAndModelVersionOrderByPageNumberAscIdAsc(
+                "paper-a", "rm-1")).thenReturn(List.of(tableLocation));
+        when(passageRepository.findByPaperIdAndModelVersionOrderByDocumentOrdinalAsc(
+                "paper-a", "rm-1")).thenReturn(List.of());
+
+        List<ReadingModelQdrantIndexService.IndexedLocation> indexed =
+                service.buildIndexedLocations("paper-a", "rm-1");
+
+        assertEquals("canonical table body", indexed.get(0).payload().get("content_text"));
+    }
+
     private PaperReadingModel model(PaperRetrievalIndexStatus status) {
         PaperReadingModel model = new PaperReadingModel();
         model.setPaperId("paper-a");

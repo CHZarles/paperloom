@@ -39,7 +39,6 @@ public class PaperReadingService {
     private final PaperLocationRepository locationRepository;
     private final PaperSectionRepository sectionRepository;
     private final CanonicalReadingLocationService canonicalReadService;
-    private final PaperSourceQuoteReadService sourceQuoteReadService;
     private final PaperSearchabilityService paperSearchabilityService;
     private final ReadingLocationRetriever readingLocationRetriever;
 
@@ -49,7 +48,6 @@ public class PaperReadingService {
                                   PaperLocationRepository locationRepository,
                                   PaperSectionRepository sectionRepository,
                                   CanonicalReadingLocationService canonicalReadService,
-                                  PaperSourceQuoteReadService sourceQuoteReadService,
                                   PaperSearchabilityService paperSearchabilityService,
                                   ReadingLocationRetriever readingLocationRetriever) {
         this.paperService = paperService;
@@ -57,7 +55,6 @@ public class PaperReadingService {
         this.locationRepository = locationRepository;
         this.sectionRepository = sectionRepository;
         this.canonicalReadService = canonicalReadService;
-        this.sourceQuoteReadService = sourceQuoteReadService;
         this.paperSearchabilityService = paperSearchabilityService;
         this.readingLocationRetriever = readingLocationRetriever;
     }
@@ -164,7 +161,7 @@ public class PaperReadingService {
         Map<String, String> activeModels = activeModels(authorizedIds, currentModels);
         String retrievalQuery = String.join(" ", List.of(safe(query.queryText()), safe(query.sectionQuery()))).trim();
         if (retrievalQuery.isBlank()) {
-            return new ContentSearchResult(List.of(), List.of(), 0, 0, "");
+            return new ContentSearchResult(List.of(), 0, 0, "");
         }
 
         int topK = Math.max(1, Math.min(query.topK(), MAX_LOCATION_LIMIT));
@@ -203,7 +200,6 @@ public class PaperReadingService {
         Map<String, Paper> papersById = accessible.stream()
                 .collect(Collectors.toMap(Paper::getPaperId, Function.identity(), (left, right) -> left));
         List<LocationCandidate> candidates = new ArrayList<>();
-        List<CanonicalReadingLocationService.EvidencePayload> evidencePayloads = new ArrayList<>();
         for (FusedHit hit : selected) {
             PaperLocation location = locationsByRef.get(hit.locationRef());
             String content = stringPayload(hit.payload(), "content_text", "");
@@ -226,19 +222,17 @@ public class PaperReadingService {
                     hit.sparseScore(),
                     hit.fusedScore()
             ));
-            evidencePayloads.add(evidencePayload(location, hit.payload()));
         }
         return new ContentSearchResult(
                 candidates,
-                evidencePayloads,
                 valid.size(),
                 candidates.size(),
                 retrieval.indexVersion()
         );
     }
 
-    @Transactional
-    public PaperSourceQuoteReadService.ReadResult readLocations(LocationReadQuery query) {
+    @Transactional(readOnly = true)
+    public ContentReadResult readPaperContent(ContentReadQuery query) {
         List<String> locationRefs = query.locationRefs().stream()
                 .filter(ref -> ref != null && !ref.isBlank())
                 .map(String::trim)
@@ -247,12 +241,12 @@ public class PaperReadingService {
         if (locationRefs.size() > MAX_LOCATION_LIMIT) {
             throw invalidArguments("location_refs cannot contain more than " + MAX_LOCATION_LIMIT + " items");
         }
-        List<String> authorizedIds = authorizedPapers(query.userId(), query.scopePaperIds()).stream()
+        List<String> authorizedIds = accessiblePapers(query.userId(), query.scopePaperIds()).stream()
                 .map(Paper::getPaperId)
                 .distinct()
                 .toList();
-        return sourceQuoteReadService.createQuotes(canonicalReadService.read(
-                locationRefs, authorizedIds, query.evidencePayloads()));
+        CanonicalReadingLocationService.ReadBatch batch = canonicalReadService.read(locationRefs, authorizedIds);
+        return new ContentReadResult(batch.items(), batch.missingLocationRefs());
     }
 
     @Transactional(readOnly = true)
@@ -370,20 +364,6 @@ public class PaperReadingService {
                 && sha256(content).equals(stringPayload(hit.payload(), "content_hash", ""))
                 && !sourceSpan.isBlank()
                 && sourceSpan.equals(stringPayload(hit.payload(), "source_span_json", ""));
-    }
-
-    private CanonicalReadingLocationService.EvidencePayload evidencePayload(
-            PaperLocation location,
-            Map<String, Object> payload) {
-        return new CanonicalReadingLocationService.EvidencePayload(
-                location.getPaperId(),
-                location.getModelVersion(),
-                location.getLocationRef(),
-                location.getLocationType().name(),
-                stringPayload(payload, "content_text", ""),
-                stringPayload(payload, "content_hash", ""),
-                stringPayload(payload, "source_span_json", "")
-        );
     }
 
     private Map<String, String> activeModels(List<String> paperIds,
@@ -723,18 +703,12 @@ public class PaperReadingService {
         }
     }
 
-    public record LocationReadQuery(Long userId,
-                                    List<String> scopePaperIds,
-                                    List<String> locationRefs,
-                                    List<CanonicalReadingLocationService.EvidencePayload> evidencePayloads) {
-        public LocationReadQuery(Long userId, List<String> scopePaperIds, List<String> locationRefs) {
-            this(userId, scopePaperIds, locationRefs, List.of());
-        }
-
-        public LocationReadQuery {
+    public record ContentReadQuery(Long userId,
+                                   List<String> scopePaperIds,
+                                   List<String> locationRefs) {
+        public ContentReadQuery {
             scopePaperIds = scopePaperIds == null ? List.of() : List.copyOf(scopePaperIds);
             locationRefs = locationRefs == null ? List.of() : List.copyOf(locationRefs);
-            evidencePayloads = evidencePayloads == null ? List.of() : List.copyOf(evidencePayloads);
         }
     }
 
@@ -765,18 +739,19 @@ public class PaperReadingService {
     }
 
     public record ContentSearchResult(List<LocationCandidate> locations,
-                                       List<CanonicalReadingLocationService.EvidencePayload> evidencePayloads,
                                        int matchedCount,
                                        int returnedCount,
                                        String indexVersion) {
-        public ContentSearchResult(List<LocationCandidate> locations, int matchedCount,
-                                    int returnedCount, String indexVersion) {
-            this(locations, List.of(), matchedCount, returnedCount, indexVersion);
-        }
-
         public ContentSearchResult {
             locations = locations == null ? List.of() : List.copyOf(locations);
-            evidencePayloads = evidencePayloads == null ? List.of() : List.copyOf(evidencePayloads);
+        }
+    }
+
+    public record ContentReadResult(List<CanonicalReadingLocationService.CanonicalLocation> items,
+                                    List<String> missingLocationRefs) {
+        public ContentReadResult {
+            items = items == null ? List.of() : List.copyOf(items);
+            missingLocationRefs = missingLocationRefs == null ? List.of() : List.copyOf(missingLocationRefs);
         }
     }
 

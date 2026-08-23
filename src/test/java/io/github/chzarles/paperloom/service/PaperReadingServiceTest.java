@@ -60,9 +60,6 @@ class PaperReadingServiceTest {
         assertEquals(Set.of("location-a", "location-b"), result.locations().stream()
                 .map(PaperReadingService.LocationCandidate::locationRef)
                 .collect(Collectors.toSet()));
-        assertEquals(Set.of("location-a", "location-b"), result.evidencePayloads().stream()
-                .map(CanonicalReadingLocationService.EvidencePayload::locationRef)
-                .collect(Collectors.toSet()));
         ArgumentCaptor<LocationRetrievalRequest> request =
                 ArgumentCaptor.forClass(LocationRetrievalRequest.class);
         verify(fixture.retriever).retrieve(request.capture());
@@ -318,31 +315,27 @@ class PaperReadingServiceTest {
         Fixture fixture = new Fixture();
         List<String> refs = IntStream.range(0, 21).mapToObj(index -> "location-" + index).toList();
 
-        PaperReadingException error = assertThrows(PaperReadingException.class, () -> fixture.service.readLocations(
-                new PaperReadingService.LocationReadQuery(7L, List.of("paper-a"), refs)));
+        PaperReadingException error = assertThrows(PaperReadingException.class, () -> fixture.service.readPaperContent(
+                new PaperReadingService.ContentReadQuery(7L, List.of("paper-a"), refs)));
 
         assertEquals("READING_ARGUMENTS_INVALID", error.code());
         verifyNoInteractions(fixture.paperService, fixture.modelRepository, fixture.readService);
     }
 
     @Test
-    void exactEvidenceReadUsesTheSearchPayloadInsteadOfHydratingContent() {
+    void exactReadUsesTheDurableResolverWithoutCreatingQuotes() {
         Fixture fixture = new Fixture();
         List<String> scope = List.of("paper-a");
         fixture.authorize(scope);
-        fixture.models(readyModel("paper-a", "rm-1"));
-        String content = "Qdrant payload content.";
-        CanonicalReadingLocationService.EvidencePayload payload =
-                new CanonicalReadingLocationService.EvidencePayload(
-                        "paper-a", "rm-1", "passage-ref", "PASSAGE", content, sha256(content), "{}");
         CanonicalReadingLocationService.ReadBatch batch =
                 new CanonicalReadingLocationService.ReadBatch(List.of(), List.of("passage-ref"));
-        when(fixture.readService.read(List.of("passage-ref"), scope, List.of(payload))).thenReturn(batch);
+        when(fixture.readService.read(List.of("passage-ref"), scope)).thenReturn(batch);
 
-        fixture.service.readLocations(new PaperReadingService.LocationReadQuery(
-                7L, scope, List.of("passage-ref"), List.of(payload)));
+        PaperReadingService.ContentReadResult result = fixture.service.readPaperContent(
+                new PaperReadingService.ContentReadQuery(7L, scope, List.of("passage-ref")));
 
-        verify(fixture.readService).read(List.of("passage-ref"), scope, List.of(payload));
+        assertEquals(List.of("passage-ref"), result.missingLocationRefs());
+        verify(fixture.readService).read(List.of("passage-ref"), scope);
     }
 
     @Test
@@ -482,11 +475,10 @@ class PaperReadingServiceTest {
         private final PaperLocationRepository locationRepository = mock(PaperLocationRepository.class);
         private final PaperSectionRepository sectionRepository = mock(PaperSectionRepository.class);
         private final CanonicalReadingLocationService readService = mock(CanonicalReadingLocationService.class);
-        private final PaperSourceQuoteReadService sourceQuoteReadService = mock(PaperSourceQuoteReadService.class);
         private final PaperSearchabilityService searchability = mock(PaperSearchabilityService.class);
         private final ReadingLocationRetriever retriever = mock(ReadingLocationRetriever.class);
         private final PaperReadingService service = new PaperReadingService(
-                paperService, modelRepository, locationRepository, sectionRepository, readService, sourceQuoteReadService,
+                paperService, modelRepository, locationRepository, sectionRepository, readService,
                 searchability, retriever);
 
         private Fixture() {

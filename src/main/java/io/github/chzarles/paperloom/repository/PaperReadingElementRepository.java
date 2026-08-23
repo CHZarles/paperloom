@@ -22,6 +22,10 @@ public interface PaperReadingElementRepository extends JpaRepository<PaperReadin
                                                                                        String modelVersion,
                                                                                        String readingElementId);
 
+    List<PaperReadingElement> findByPaperIdAndModelVersionAndReadingElementIdIn(String paperId,
+                                                                                String modelVersion,
+                                                                                List<String> readingElementIds);
+
     List<PaperReadingElement> findByPaperIdAndModelVersionAndElementTypeInOrderByPageNumberAscReadingOrderAscIdAsc(String paperId,
                                                                                                                      String modelVersion,
                                                                                                                      List<String> elementTypes);

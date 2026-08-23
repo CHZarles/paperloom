@@ -340,18 +340,18 @@ public class ReadingModelQdrantIndexService {
                                                   Map<String, PaperReadingElement> elementsById) {
         if (location.getLocationType() == PaperLocationType.PASSAGE) {
             PaperPassage passage = passagesByRef.get(location.getSourceObjectId());
-            return passage == null || blank(passage.getContentText())
+            return passage == null || blank(CanonicalReadingLocationService.canonicalPassageContent(passage))
                     ? null
                     : new ResolvedLocation(
-                            passage.getIndexText(), passage.getContentText(), passage.getContentHash(),
+                            CanonicalReadingLocationService.passageIndexText(passage),
+                            CanonicalReadingLocationService.canonicalPassageContent(passage), passage.getContentHash(),
                             passage.getSourceSpanJson(), null, null, passage.getPassageRef(), passage);
         }
         PaperReadingElement element = elementsById.get(location.getSourceObjectId());
         if (element == null) {
             return null;
         }
-        String text = firstNonBlank(
-                element.getSearchableText(), element.getBodyText(), element.getCaptionText());
+        String text = CanonicalReadingLocationService.canonicalElementContent(element);
         return blank(text)
                 ? null
                 : new ResolvedLocation(

@@ -1,6 +1,7 @@
 package io.github.chzarles.paperloom.controller;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.github.chzarles.paperloom.service.HarnessReadingService;
 import io.github.chzarles.paperloom.service.PaperReadingService;
 import io.github.chzarles.paperloom.service.PaperSourceQuoteReadService;
 import io.github.chzarles.paperloom.service.ReadingModelQdrantIndexService;
@@ -30,13 +31,16 @@ public class InternalCorpusController {
     private static final Logger logger = LoggerFactory.getLogger(InternalCorpusController.class);
 
     private final PaperReadingService readingService;
+    private final HarnessReadingService harnessReadingService;
     private final ReadingModelQdrantIndexService indexService;
     private final String internalToken;
 
     public InternalCorpusController(PaperReadingService readingService,
+                                    HarnessReadingService harnessReadingService,
                                     ReadingModelQdrantIndexService indexService,
                                     @Value("${research-harness.internal-token:}") String internalToken) {
         this.readingService = readingService;
+        this.harnessReadingService = harnessReadingService;
         this.indexService = indexService;
         this.internalToken = internalToken == null ? "" : internalToken.trim();
     }
@@ -129,7 +133,6 @@ public class InternalCorpusController {
         response.put("returned_count", result.returnedCount());
         response.put("coverage", result.returnedCount() >= result.matchedCount() ? "complete" : "truncated");
         response.put("index_version", result.indexVersion());
-        response.put("evidence_payloads", result.evidencePayloads().stream().map(this::evidencePayload).toList());
         return response;
     }
 
@@ -137,13 +140,9 @@ public class InternalCorpusController {
     public Map<String, Object> readLocations(@RequestHeader(value = "Authorization", required = false) String authorization,
                                              @RequestBody LocationReadRequest request) {
         authorize(authorization);
-        PaperSourceQuoteReadService.ReadResult result = readingService.readLocations(
-                new PaperReadingService.LocationReadQuery(
-                        request.userId(), request.scopePaperIds(), request.locationRefs(), request.evidencePayloads().stream()
-                                .map(payload -> new io.github.chzarles.paperloom.service.CanonicalReadingLocationService.EvidencePayload(
-                                        payload.paperId(), payload.modelVersion(), payload.locationRef(), payload.locationType(),
-                                        payload.contentText(), payload.contentHash(), payload.sourceSpanJson()))
-                                .toList())
+        PaperSourceQuoteReadService.ReadResult result = harnessReadingService.readAndCreateQuotes(
+                new PaperReadingService.ContentReadQuery(
+                        request.userId(), request.scopePaperIds(), request.locationRefs())
         );
         return Map.of(
                 "items", result.items().stream().map(this::readItem).toList(),
@@ -228,19 +227,6 @@ public class InternalCorpusController {
         put(result, "dense_score", candidate.denseScore());
         put(result, "sparse_score", candidate.sparseScore());
         put(result, "fused_score", candidate.fusedScore());
-        return result;
-    }
-
-    private Map<String, Object> evidencePayload(
-            io.github.chzarles.paperloom.service.CanonicalReadingLocationService.EvidencePayload payload) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        put(result, "paper_id", payload.paperId());
-        put(result, "model_version", payload.modelVersion());
-        put(result, "location_ref", payload.locationRef());
-        put(result, "location_type", payload.locationType());
-        put(result, "content_text", payload.contentText());
-        put(result, "content_hash", payload.contentHash());
-        put(result, "source_span_json", payload.sourceSpanJson());
         return result;
     }
 
@@ -384,25 +370,12 @@ public class InternalCorpusController {
             @JsonProperty("conversation_id") String conversationId,
             @JsonProperty("user_id") Long userId,
             @JsonProperty("scope_paper_ids") List<String> scopePaperIds,
-            @JsonProperty("location_refs") List<String> locationRefs,
-            @JsonProperty("evidence_payloads") List<EvidencePayloadRequest> evidencePayloads
+            @JsonProperty("location_refs") List<String> locationRefs
     ) {
         public LocationReadRequest {
             scopePaperIds = scopePaperIds == null ? List.of() : List.copyOf(scopePaperIds);
             locationRefs = locationRefs == null ? List.of() : List.copyOf(locationRefs);
-            evidencePayloads = evidencePayloads == null ? List.of() : List.copyOf(evidencePayloads);
         }
-    }
-
-    public record EvidencePayloadRequest(
-            @JsonProperty("paper_id") String paperId,
-            @JsonProperty("model_version") String modelVersion,
-            @JsonProperty("location_ref") String locationRef,
-            @JsonProperty("location_type") String locationType,
-            @JsonProperty("content_text") String contentText,
-            @JsonProperty("content_hash") String contentHash,
-            @JsonProperty("source_span_json") String sourceSpanJson
-    ) {
     }
 
     public record CandidateExportRequest(@JsonProperty("paper_id") String paperId) {
