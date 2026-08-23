@@ -329,6 +329,20 @@ class PaperReadingServiceTest {
     }
 
     @Test
+    void paperSearchKeepsZeroYearBoundsAsUnsetSentinels() {
+        Fixture fixture = new Fixture();
+        List<String> scope = List.of("paper-a");
+        fixture.authorize(scope);
+        fixture.models(readyModel("paper-a", "rm-a"));
+
+        PaperReadingService.PaperSearchResult result = fixture.service.searchPaperCandidates(
+                new PaperReadingService.PaperSearchQuery(
+                        7L, scope, "", List.of(), List.of(), List.of(), 0, 0, 0, 20));
+
+        assertEquals(1, result.returnedCount());
+    }
+
+    @Test
     void locationSearchRejectsPaperOutsideLockedScopeBeforeRetrieval() {
         Fixture fixture = new Fixture();
 

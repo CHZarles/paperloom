@@ -750,6 +750,8 @@ public class PaperReadingService {
             paperIds = paperIds == null ? List.of() : List.copyOf(paperIds);
             authors = authors == null ? List.of() : List.copyOf(authors);
             venues = venues == null ? List.of() : List.copyOf(venues);
+            yearFrom = yearFrom != null && yearFrom == 0 ? null : yearFrom;
+            yearTo = yearTo != null && yearTo == 0 ? null : yearTo;
         }
     }
 
