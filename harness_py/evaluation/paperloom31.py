@@ -979,6 +979,8 @@ def run_benchmark(
     provider: ProviderConfig,
     api_base_url: str,
     env_path: str | Path = ".env",
+    benchmark_user_id: int,
+    baseline_run_path: str | Path | None = None,
 ) -> tuple[Path, dict[str, object]]:
     snapshot_source = Path(snapshot_path)
     snapshot = _mapping(json.loads(snapshot_source.read_text(encoding="utf-8")))
@@ -993,31 +995,63 @@ def run_benchmark(
         snapshot,
     )
     source_aligned_query_file_sha256 = file_sha256(source_aligned_queries_path)
-
-    run_id = f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{uuid4().hex[:8]}"
-    out = Path(runs_dir) / run_id
-    out.mkdir(parents=True, exist_ok=False)
-    (out / "agent").mkdir()
-    (out / "judge").mkdir()
+    provider_identity = provider.public_diagnostics()
 
     username, password = _credentials(env_path)
     with _ProductApi(api_base_url) as api:
         api.login(username, password)
         admin = api.me()
         users = api.users()
+        benchmark_user = next(
+            (
+                user for user in users
+                if str(user.get("id") or "") == str(benchmark_user_id)
+                and str(user.get("role") or "").upper() == "USER"
+            ),
+            None,
+        )
+        if not benchmark_user:
+            raise PreparationError(
+                "run", "BENCHMARK_USER_INVALID", f"user {benchmark_user_id} does not exist or is not a USER"
+            )
+        starting_token_balances = api.user_usage(benchmark_user_id)
         product_rows = api.papers()
     admin_id = int(admin.get("id") or 0)
-    benchmark_user = next(
-        (user for user in users if str(user.get("role") or "").upper() == "USER"),
-        None,
-    )
-    if not benchmark_user:
-        raise PreparationError(
-            "run", "BENCHMARK_USER_MISSING", "create one ordinary USER account before running G0"
-        )
-    user_id = int(benchmark_user.get("id") or 0)
+    user_id = benchmark_user_id
     if admin_id <= 0 or user_id <= 0:
         raise PreparationError("run", "BENCHMARK_USER_INVALID", "admin and ordinary user IDs are required")
+    if baseline_run_path is not None:
+        try:
+            baseline = _mapping(json.loads(Path(baseline_run_path).read_text(encoding="utf-8")))
+        except (OSError, json.JSONDecodeError) as error:
+            raise PreparationError("run", "BASELINE_RUN_INVALID", str(error)) from error
+        expected = {
+            "snapshot": baseline.get("snapshot_sha256"),
+            "config": baseline.get("config_sha256"),
+            "source_aligned_queries": _mapping(
+                _mapping(baseline.get("l2_source_aligned")).get("query_set")
+            ).get("file_sha256"),
+            "provider": baseline.get("provider"),
+            "ordinary_user_id": _mapping(baseline.get("benchmark_user")).get("ordinary_user_id"),
+            "starting_token_balances": _mapping(baseline.get("benchmark_user")).get("starting_token_balances"),
+        }
+        actual = {
+            "snapshot": snapshot_sha256,
+            "config": snapshot.get("config_sha256"),
+            "source_aligned_queries": source_aligned_query_file_sha256,
+            "provider": provider_identity,
+            "ordinary_user_id": user_id,
+            "starting_token_balances": starting_token_balances,
+        }
+        mismatches = [key for key in actual if actual[key] != expected[key]]
+        if mismatches:
+            raise PreparationError("run", "BASELINE_IDENTITY_MISMATCH", ", ".join(mismatches))
+
+    run_id = f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{uuid4().hex[:8]}"
+    out = Path(runs_dir) / run_id
+    out.mkdir(parents=True, exist_ok=False)
+    (out / "agent").mkdir()
+    (out / "judge").mkdir()
 
     started_at = utc_now_iso()
     gateway = JavaCorpusGateway(max_response_bytes=32 * 1024 * 1024)
@@ -1081,13 +1115,14 @@ def run_benchmark(
         "config_sha256": snapshot["config_sha256"],
         "snapshot_sha256": snapshot_sha256,
         "code_revision": _git_revision(),
-        "provider": provider.public_diagnostics(),
+        "provider": provider_identity,
         "generator": snapshot.get("generator"),
-        "judge": {**provider.public_diagnostics(), "prompt_version": "paperloom-agent-judge-v1"},
+        "judge": {**provider_identity, "prompt_version": "paperloom-agent-judge-v1"},
         "benchmark_user": {
             "admin_user_id": admin_id,
             "ordinary_user_id": user_id,
             "ordinary_username": benchmark_user.get("username"),
+            "starting_token_balances": starting_token_balances,
         },
         "l0": l0,
         "g0": g0,
@@ -1254,6 +1289,7 @@ def _run_l2(
 ) -> dict[str, object]:
     rows: list[dict[str, object]] = []
     errors: list[dict[str, object]] = []
+    exported_by_paper: dict[str, dict[str, dict[str, object]]] = {}
     for target_id, raw in _mapping(snapshot.get("targets")).items():
         target = _mapping(raw)
         paper_id = str(target.get("product_paper_id") or "")
@@ -1290,7 +1326,13 @@ def _run_l2(
             row["rank"] = rank
             row["returned_location_refs"] = refs
             if rank is not None:
-                payload = tools.evidence_payloads_by_location_ref.get(expected_ref, {})
+                if paper_id not in exported_by_paper:
+                    exported = gateway.post("/internal/v1/corpus/locations/export", {"paper_id": paper_id})
+                    exported_by_paper[paper_id] = {
+                        str(item.get("location_ref") or ""): item
+                        for item in _records(exported.get("candidates"))
+                    }
+                source_span = str(exported_by_paper[paper_id].get(expected_ref, {}).get("source_span") or "")
                 read = tools.read_paper_content({"location_refs": [expected_ref]})
                 item = next(
                     (child_map(value) for value in as_list(read.get("items")) if child_map(value).get("location_ref") == expected_ref),
@@ -1305,8 +1347,8 @@ def _run_l2(
                     "paper": item.get("paper_id") == paper_id,
                     "page": item.get("page") == target.get("page"),
                     "content_hash": _text_sha256(str(item.get("span_text") or "")) == target.get("content_hash"),
-                    "source_span_hash": _text_sha256(str(payload.get("source_span_json") or "")) == target.get("source_span_hash"),
-                    "source_span_read": _source_quotes_cover(item.get("source_quotes"), payload.get("source_span_json")),
+                    "source_span_hash": _text_sha256(source_span) == target.get("source_span_hash"),
+                    "source_span_read": _source_quotes_cover(item.get("source_quotes"), source_span),
                     "source_quote": bool(str(quote.get("source_quote_ref") or "")),
                 }
                 row["checks"] = checks
@@ -1798,6 +1840,30 @@ class _ProductApi:
 
     def users(self) -> list[dict[str, object]]:
         return _records(self._request("GET", "/admin/users").get("data"))
+
+    def user_usage(self, user_id: int) -> dict[str, int]:
+        page = 1
+        while True:
+            data = _mapping(self._request(
+                "GET", "/admin/users/list", params={"page": page, "size": 100}
+            ).get("data"))
+            user = next(
+                (row for row in _records(data.get("content")) if str(row.get("userId") or "") == str(user_id)),
+                None,
+            )
+            if user:
+                usage = _mapping(user.get("usage"))
+                balances = {
+                    scope: _mapping(usage.get(scope)).get("remainingTokens")
+                    for scope in ("llm", "embedding")
+                }
+                if all(isinstance(value, int) and not isinstance(value, bool) for value in balances.values()):
+                    return {scope: int(value) for scope, value in balances.items()}
+                break
+            if page >= int(data.get("totalPages") or 0):
+                break
+            page += 1
+        raise PreparationError("run", "BENCHMARK_USER_BALANCE_MISSING", str(user_id))
 
     def prepare(
         self,

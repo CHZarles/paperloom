@@ -72,6 +72,8 @@ class Paperloom31PreparationTest(unittest.TestCase):
                     _load_source_aligned_queries(source, snapshot)
 
     def test_l2_query_sets_share_one_execution_path(self) -> None:
+        source_span = '{"locationType":"PASSAGE","sourceObjectId":"p1","spans":[]}'
+        content = "canonical content"
         snapshot = {
             "targets": {
                 "target_1": {
@@ -79,6 +81,9 @@ class Paperloom31PreparationTest(unittest.TestCase):
                     "query": "原始问题",
                     "location_ref": "location_1",
                     "location_type": "PASSAGE",
+                    "page": 1,
+                    "content_hash": hashlib.sha256(content.encode()).hexdigest(),
+                    "source_span_hash": hashlib.sha256(source_span.encode()).hexdigest(),
                 }
             }
         }
@@ -89,13 +94,17 @@ class Paperloom31PreparationTest(unittest.TestCase):
                 return object()
 
         class Gateway:
+            def post(self, path, body):
+                calls.setdefault("exports", []).append((path, body))
+                return {"candidates": [{"location_ref": "location_1", "source_span": source_span}]}
+
             def reader(self, **arguments):
                 calls["reader"] = arguments
                 return Reader()
 
         class Tools:
             def __init__(self, dataset, reader):
-                self.evidence_payloads_by_location_ref = {}
+                pass
 
             def find_papers_by_identity(self, arguments):
                 return {"status": "resolved"}
@@ -104,7 +113,20 @@ class Paperloom31PreparationTest(unittest.TestCase):
                 if calls["fail"]:
                     raise TimeoutError("retrieval timed out")
                 calls["search"] = arguments
-                return {"locations": []}
+                return {"locations": [{"location_ref": "location_1"}]}
+
+            def read_paper_content(self, arguments):
+                return {"items": [{
+                    "location_ref": "location_1",
+                    "paper_id": "paper_1",
+                    "page": 1,
+                    "span_text": content,
+                    "source_quotes": [{
+                        "location_ref": "location_1",
+                        "source_quote_ref": "quote_1",
+                        "source_span_json": source_span,
+                    }],
+                }]}
 
         with patch("harness_py.evaluation.paperloom31.ReadingCorpusTools", Tools):
             result = _run_l2(
@@ -128,6 +150,10 @@ class Paperloom31PreparationTest(unittest.TestCase):
         self.assertEqual(["paper_1"], calls["reader"]["scope_paper_ids"])
         self.assertEqual("paperloom31-l2-source-aligned-target_1", calls["reader"]["request_id"])
         self.assertEqual([], result["technical_errors"])
+        self.assertEqual(1, result["exact_read_passed"])
+        self.assertEqual([
+            ("/internal/v1/corpus/locations/export", {"paper_id": "paper_1"})
+        ], calls["exports"])
 
         calls.clear()
         calls["fail"] = False
@@ -172,10 +198,14 @@ class Paperloom31PreparationTest(unittest.TestCase):
                 code = main([
                     "paperloom31", "run", "--snapshot", "snapshot.json",
                     "--source-aligned-queries", "queries.yaml",
+                    "--benchmark-user-id", "7",
+                    "--baseline-run", "baseline/run.json",
                 ])
             summary = json.loads(output.getvalue())
             self.assertEqual(expected_code, code)
             self.assertEqual("queries.yaml", run.call_args.kwargs["source_aligned_queries_path"])
+            self.assertEqual(7, run.call_args.kwargs["benchmark_user_id"])
+            self.assertEqual("baseline/run.json", run.call_args.kwargs["baseline_run_path"])
             self.assertEqual({"recall_at_5": 0.8}, summary["l2_source_aligned_metrics"])
             self.assertEqual("saved-run", summary["out"])
 
@@ -208,10 +238,25 @@ class Paperloom31PreparationTest(unittest.TestCase):
                 }},
             }, allow_unicode=True), encoding="utf-8")
             query_file_hash = hashlib.sha256(query_path.read_bytes()).hexdigest()
+            baseline_path = root / "baseline.json"
+            baseline_path.write_text(json.dumps({
+                "snapshot_sha256": "snapshot",
+                "config_sha256": hashlib.sha256(b"config").hexdigest(),
+                "provider": {},
+                "benchmark_user": {
+                    "ordinary_user_id": 3,
+                    "starting_token_balances": {"llm": 999, "embedding": 2000},
+                },
+                "l2_source_aligned": {"query_set": {"file_sha256": query_file_hash}},
+            }), encoding="utf-8")
             api = MagicMock()
             api.__enter__.return_value = api
             api.me.return_value = {"id": 1}
-            api.users.return_value = [{"id": 2, "username": "benchmark", "role": "USER"}]
+            api.users.return_value = [
+                {"id": 2, "username": "wrong", "role": "USER"},
+                {"id": 3, "username": "benchmark", "role": "USER"},
+            ]
+            api.user_usage.return_value = {"llm": 1000, "embedding": 2000}
             api.papers.return_value = []
             gateway = MagicMock()
             gateway.reader.return_value.load_metadata_dataset.return_value = object()
@@ -236,6 +281,18 @@ class Paperloom31PreparationTest(unittest.TestCase):
                     patch("harness_py.evaluation.paperloom31.LiveResearchChatHarness"), \
                     patch("harness_py.evaluation.paperloom31.MiniMaxJudgeModel"), \
                     patch("harness_py.evaluation.paperloom31._run_l3", side_effect=run_l3):
+                with self.assertRaisesRegex(PreparationError, "BASELINE_IDENTITY_MISMATCH"):
+                    run_benchmark(
+                        snapshot_path,
+                        source_aligned_queries_path=query_path,
+                        config_path=config_path,
+                        runs_dir=root / "runs",
+                        provider=provider,
+                        api_base_url="http://example.test",
+                        benchmark_user_id=3,
+                        baseline_run_path=baseline_path,
+                    )
+                self.assertEqual([], order)
                 _, report = run_benchmark(
                     snapshot_path,
                     source_aligned_queries_path=query_path,
@@ -243,11 +300,18 @@ class Paperloom31PreparationTest(unittest.TestCase):
                     runs_dir=root / "runs",
                     provider=provider,
                     api_base_url="http://example.test",
+                    benchmark_user_id=3,
                 )
 
         self.assertEqual(["raw", "l3", "source"], order)
         self.assertEqual("paperloom-benchmark-run/v3", report["schema_version"])
         self.assertEqual(query_file_hash, report["l2_source_aligned"]["query_set"]["file_sha256"])
+        self.assertEqual({
+            "admin_user_id": 1,
+            "ordinary_user_id": 3,
+            "ordinary_username": "benchmark",
+            "starting_token_balances": {"llm": 1000, "embedding": 2000},
+        }, report["benchmark_user"])
 
     def test_checked_in_source_aligned_queries_contain_31_targets(self) -> None:
         root = Path(__file__).resolve().parents[2]

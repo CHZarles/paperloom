@@ -121,6 +121,8 @@ def main(argv: list[str] | None = None) -> int:
         default="research/benchmark/paperloom-31-v1/benchmark.yaml",
     )
     paperloom31_run.add_argument("--runs-dir", default="research/benchmark/local/runs")
+    paperloom31_run.add_argument("--benchmark-user-id", type=int, required=True)
+    paperloom31_run.add_argument("--baseline-run")
     paperloom31_run.add_argument(
         "--api-base-url",
         default=os.getenv("PAPERLOOM_API_BASE_URL", "http://127.0.0.1:8081/api/v1"),
@@ -305,6 +307,8 @@ def main(argv: list[str] | None = None) -> int:
                 provider=provider,
                 api_base_url=args.api_base_url,
                 env_path=args.env_file,
+                benchmark_user_id=args.benchmark_user_id,
+                baseline_run_path=args.baseline_run,
             )
         except PreparationError as error:
             print(json.dumps({"error": "paperloom31_run_failed", **error.as_dict()}, indent=2), file=sys.stderr)
