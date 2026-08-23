@@ -11,9 +11,11 @@ from harness_py.orchestration.agents.context import ResearchRunContext
 from harness_py.orchestration.agents.tools import (
     FINAL_TOOL_NAME,
     _bounded_read_payload,
+    _corpus_reason_code,
     _normalize_structured_arguments,
     build_agent_tools,
 )
+from harness_py.corpus.gateway import CorpusGatewayError
 from harness_py.orchestration.agents.model import (
     TEXT_NUDGE_TOOL_NAME,
     TOOL_ARGUMENT_REPAIR_PREFIX,
@@ -32,6 +34,14 @@ from harness_py.utils.errors import ResearchSystemError
 
 
 class AgentsToolsTest(unittest.TestCase):
+    def test_java_reading_failures_are_classified_by_error_code(self) -> None:
+        self.assertEqual("READING_MODEL_NOT_READY", _corpus_reason_code(
+            CorpusGatewayError(409, "READING_MODEL_NOT_READY", "not ready")
+        ))
+        self.assertEqual("RETRIEVAL_UNAVAILABLE", _corpus_reason_code(
+            CorpusGatewayError(503, "RETRIEVAL_UNAVAILABLE", "unavailable")
+        ))
+
     def test_context_applies_protocol_and_records_only_replayable_projection(self) -> None:
         events = []
 

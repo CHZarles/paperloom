@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..utils.models import JsonMap, as_list, child_map
-from .gateway import CorpusReader
+from .gateway import CorpusGatewayError, CorpusReader
 
 
 # 公开常量：工具 schema 和 payload 大小限制需要；in-memory 路径共用同一组。
@@ -39,7 +39,6 @@ MODEL_REDACTED_FIELDS = {
     "sparse_score",
     "fused_score",
     "index_version",
-    "evidence_payloads",
     "source_span_json",
     "bbox_json",
     "bbox_or_cell_ref",
@@ -92,7 +91,6 @@ class ReadingCorpusTools:
     observations_by_evidence_id: dict[str, JsonMap] = field(default_factory=dict)
     authorized_paper_ids: set[str] = field(default_factory=set)
     disclosed_location_refs: set[str] = field(default_factory=set)
-    evidence_payloads_by_location_ref: dict[str, JsonMap] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.reader is None:
@@ -239,11 +237,8 @@ class ReadingCorpusTools:
         }[name](arguments))
 
     def search_paper_candidates(self, arguments: JsonMap) -> JsonMap:
-        arguments = normalize_paper_search_arguments(arguments)
-        error = paper_search_preflight(arguments)
-        if error:
-            return error
-        payload = self.reader.search_papers(arguments)
+        payload = self._forward(
+            "search_paper_candidates", "candidates", lambda: self.reader.search_papers(arguments))
         # 公开的论文才能在后续 tool 里继续读正文位置；先记授权。
         self.authorized_paper_ids.update(
             str(child_map(card).get("paper_id"))
@@ -253,10 +248,8 @@ class ReadingCorpusTools:
         return payload
 
     def find_papers_by_identity(self, arguments: JsonMap) -> JsonMap:
-        error = identity_search_preflight(arguments)
-        if error:
-            return error
-        payload = self.reader.find_papers_by_identity(arguments)
+        payload = self._forward(
+            "find_papers_by_identity", "matches", lambda: self.reader.find_papers_by_identity(arguments))
         if payload.get("status") == "resolved":
             self.authorized_paper_ids.update(
                 str(child_map(card).get("paper_id"))
@@ -266,40 +259,15 @@ class ReadingCorpusTools:
         return payload
 
     def search_paper_content(self, arguments: JsonMap) -> JsonMap:
-        _, error = reading_paper_preflight(arguments, self.authorized_paper_ids, "locations")
+        error = _paper_disclosure_error(arguments, self.authorized_paper_ids, "locations")
         if error:
             return error
-        if _invalid_integer(arguments, "top_k", minimum=1, maximum=SEARCH_RESULT_LIMIT):
-            return recoverable_error(
-                "invalid_top_k", "TOOL_ARGUMENTS_INVALID", "search_paper_content", "locations"
-            )
-        if any(_invalid_integer(arguments, key, minimum=1, maximum=None) for key in ("page_from", "page_to")):
-            return recoverable_error(
-                "invalid_page_range", "TOOL_ARGUMENTS_INVALID", "search_paper_content", "locations"
-            )
-        unsupported_types = sorted({
-            str(value) for value in as_list(arguments.get("element_types")) if value
-        } - set(EVIDENCE_ELEMENT_TYPES))
-        if unsupported_types:
-            return recoverable_error(
-                "unsupported_element_types",
-                "TOOL_ARGUMENTS_INVALID",
-                "search_paper_content",
-                "locations",
-                unsupported_element_types=unsupported_types,
-            )
-        if _invalid_page_range(arguments):
-            return recoverable_error(
-                "invalid_page_range",
-                "TOOL_ARGUMENTS_INVALID",
-                "search_paper_content",
-                "locations",
-            )
-        if as_list(arguments.get("section_refs")):
-            _, error = reading_location_preflight(arguments, self.disclosed_location_refs, "locations", key="section_refs")
-            if error:
-                return error
-        payload = self.reader.search_locations(arguments)
+        error = _location_disclosure_error(
+            arguments, self.disclosed_location_refs, "locations", key="section_refs")
+        if error:
+            return error
+        payload = self._forward(
+            "search_paper_content", "locations", lambda: self.reader.search_locations(arguments))
         disclosed = {
             str(child_map(item).get("location_ref"))
             for item in as_list(payload.get("locations"))
@@ -308,19 +276,14 @@ class ReadingCorpusTools:
         self.disclosed_location_refs.update(
             disclosed
         )
-        self.evidence_payloads_by_location_ref.update({
-            location_ref: item
-            for raw in as_list(payload.get("evidence_payloads"))
-            if (item := child_map(raw))
-            if (location_ref := str(item.get("location_ref") or "").strip()) in disclosed
-        })
         return payload
 
     def get_paper_structure(self, arguments: JsonMap) -> JsonMap:
-        _, error = reading_structure_preflight(arguments, self.authorized_paper_ids, "items")
+        error = _paper_disclosure_error(arguments, self.authorized_paper_ids, "items")
         if error:
             return error
-        payload = self.reader.get_structure(arguments)
+        payload = self._forward(
+            "get_paper_structure", "items", lambda: self.reader.get_structure(arguments))
         self.disclosed_location_refs.update(
             str(child_map(item).get("location_ref"))
             for item in as_list(payload.get("items"))
@@ -329,17 +292,11 @@ class ReadingCorpusTools:
         return payload
 
     def read_paper_content(self, arguments: JsonMap) -> JsonMap:
-        refs, error = reading_location_preflight(arguments, self.disclosed_location_refs, "items")
+        error = _location_disclosure_error(arguments, self.disclosed_location_refs, "items")
         if error:
             return error
-        payload = self.reader.read_locations({
-            **arguments,
-            "_evidence_payloads": [
-                self.evidence_payloads_by_location_ref[ref]
-                for ref in dict.fromkeys(refs)
-                if ref in self.evidence_payloads_by_location_ref
-            ],
-        })
+        payload = self._forward(
+            "read_paper_content", "items", lambda: self.reader.read_locations(arguments))
         for raw in as_list(payload.get("items")):
             item = child_map(raw)
             for raw_quote in as_list(item.get("source_quotes")):
@@ -353,158 +310,66 @@ class ReadingCorpusTools:
                     }
         return payload
 
+    def _forward(self, tool_name: str, result_key: str, call) -> JsonMap:
+        try:
+            return call()
+        except CorpusGatewayError as error:
+            if error.error_code not in {"READING_ARGUMENTS_INVALID", "PAPER_NOT_AVAILABLE"}:
+                raise
+            return recoverable_error(
+                error.error_code.lower(), error.error_code, tool_name, result_key,
+                message=error.safe_message,
+            )
+
     def get_citation_edges(self, arguments: JsonMap) -> JsonMap:
         return self.reader.find_papers_by_identity(
             dict(arguments)
         ).get("edges", [])  # 实际走 search_papers 让 reader 实现；保留兼容签名
 
 
-def _paper_ids(arguments: JsonMap) -> list[str]:
-    return list(dict.fromkeys(
-        str(value).strip()
-        for value in as_list(arguments.get("paper_ids"))
-        if str(value).strip()
-    ))
-
-
-def paper_search_preflight(arguments: JsonMap) -> JsonMap | None:
-    for key in ("paper_ids", "authors", "venues"):
-        values = [str(value).strip() if value is not None else "" for value in as_list(arguments.get(key))]
-        if any(not value for value in values) or len(set(values)) != len(values) or len(values) > PAPER_RESULT_LIMIT:
-            return recoverable_error(
-                f"{key}_invalid", "TOOL_ARGUMENTS_INVALID", "search_paper_candidates", "candidates"
-            )
-    for key, minimum, maximum in (
-        ("offset", 0, None),
-        ("limit", 1, PAPER_RESULT_LIMIT),
-        ("year_from", 0, None),
-        ("year_to", 0, None),
-    ):
-        if _invalid_integer(arguments, key, minimum=minimum, maximum=maximum):
-            return recoverable_error(
-                f"{key}_invalid", "TOOL_ARGUMENTS_INVALID", "search_paper_candidates", "candidates"
-            )
-    if _invalid_page_range(arguments, "year_from", "year_to"):
-        return recoverable_error(
-            "invalid_year_range", "TOOL_ARGUMENTS_INVALID", "search_paper_candidates", "candidates"
-        )
-    return None
-
-
-def normalize_paper_search_arguments(arguments: JsonMap) -> JsonMap:
-    return {
-        key: value
-        for key, value in arguments.items()
-        if not (key in {"year_from", "year_to"} and value == 0)
-    }
-
-
-def identity_search_preflight(arguments: JsonMap) -> JsonMap | None:
-    identity_keys = {"paper_id", "title", "filename", "doi", "arxiv_id", "authors", "year"}
-    hints = {key: value for key, value in arguments.items() if key in identity_keys and value not in (None, "", [])}
-    if not hints:
-        return recoverable_error(
-            "identity_hints_required", "TOOL_ARGUMENTS_INVALID", "search_paper_candidates", "matches"
-        )
-    if _invalid_integer(arguments, "year", minimum=0, maximum=None):
-        return recoverable_error(
-            "year_invalid", "TOOL_ARGUMENTS_INVALID", "search_paper_candidates", "matches"
-        )
-    authors = [str(value).strip() if value is not None else "" for value in as_list(arguments.get("authors"))]
-    if any(not author for author in authors) or len(set(authors)) != len(authors) or len(authors) > PAPER_RESULT_LIMIT:
-        return recoverable_error(
-            "authors_invalid", "TOOL_ARGUMENTS_INVALID", "search_paper_candidates", "matches"
-        )
-    for key in identity_keys - {"authors", "year"}:
-        if key in arguments and arguments[key] is not None and not str(arguments[key]).strip():
-            return recoverable_error(
-                f"{key}_invalid", "TOOL_ARGUMENTS_INVALID", "search_paper_candidates", "matches"
-            )
-    return None
-
-
-def reading_paper_preflight(
+def _paper_disclosure_error(
     arguments: JsonMap,
-    authorized_paper_ids: set[str],
+    disclosed_paper_ids: set[str],
     result_key: str,
-) -> tuple[list[str], JsonMap | None]:
-    raw_paper_ids = as_list(arguments.get("paper_ids"))
-    paper_ids = [str(value).strip() if value is not None else "" for value in raw_paper_ids]
-    if any(not paper_id for paper_id in paper_ids):
-        return [], recoverable_error(
-            "paper_ids_invalid",
-            "TOOL_ARGUMENTS_INVALID",
-            "find_papers_by_identity",
-            result_key,
-        )
-    if not paper_ids:
-        return [], recoverable_error(
-            "paper_ids_required",
-            "TOOL_ARGUMENTS_INVALID",
-            "find_papers_by_identity",
-            result_key,
-        )
-    if len(set(paper_ids)) != len(paper_ids) or len(paper_ids) > SEARCH_RESULT_LIMIT:
-        return [], recoverable_error(
-            "paper_ids_invalid",
-            "TOOL_ARGUMENTS_INVALID",
-            "find_papers_by_identity",
-            result_key,
-        )
-    unauthorized = [paper_id for paper_id in paper_ids if paper_id not in authorized_paper_ids]
-    if unauthorized:
-        return paper_ids, recoverable_error(
-            "paper_not_authorized_for_reading",
-            "PAPER_ID_NOT_DISCLOSED",
-            "find_papers_by_identity",
-            result_key,
-            unauthorized_paper_ids=unauthorized,
-        )
-    return paper_ids, None
-
-
-def reading_structure_preflight(
-    arguments: JsonMap,
-    authorized_paper_ids: set[str],
-    result_key: str,
-) -> tuple[list[str], JsonMap | None]:
-    paper_ids, error = reading_paper_preflight(arguments, authorized_paper_ids, result_key)
-    if error:
-        return paper_ids, error
-    if str(arguments.get("structure_type") or "SECTION").upper() not in {"SECTION", "PAGE"}:
-        return paper_ids, recoverable_error(
-            "invalid_structure_type", "TOOL_ARGUMENTS_INVALID", "get_paper_structure", result_key
-        )
-    if (
-        any(_invalid_integer(arguments, key, minimum=1, maximum=None) for key in ("page_from", "page_to"))
-        or _invalid_page_range(arguments)
+) -> JsonMap | None:
+    values = arguments.get("paper_ids")
+    if not isinstance(values, list) or not values or not all(
+        isinstance(value, str) and value.strip() for value in values
     ):
-        return paper_ids, recoverable_error(
-            "invalid_page_range", "TOOL_ARGUMENTS_INVALID", "get_paper_structure", result_key
-        )
-    return paper_ids, None
+        return None
+    paper_ids = [value.strip() for value in values]
+    unauthorized = [paper_id for paper_id in paper_ids if paper_id not in disclosed_paper_ids]
+    return recoverable_error(
+        "paper_not_authorized_for_reading",
+        "PAPER_ID_NOT_DISCLOSED",
+        "find_papers_by_identity",
+        result_key,
+        unauthorized_paper_ids=unauthorized,
+    ) if unauthorized else None
 
 
-def reading_location_preflight(
+def _location_disclosure_error(
     arguments: JsonMap,
     disclosed_location_refs: set[str],
     result_key: str,
     *,
     key: str = "location_refs",
-) -> tuple[list[str], JsonMap | None]:
-    next_action = "read_paper_content" if key == "location_refs" else "search_paper_content"
-    refs = [str(value).strip() if value is not None else "" for value in as_list(arguments.get(key))]
-    if not refs or any(not ref for ref in refs):
-        return [], recoverable_error("location_refs_required", "TOOL_ARGUMENTS_INVALID", next_action, result_key)
-    if len(set(refs)) != len(refs) or len(refs) > SEARCH_RESULT_LIMIT:
-        return [], recoverable_error("location_refs_invalid", "TOOL_ARGUMENTS_INVALID", next_action, result_key)
+) -> JsonMap | None:
+    values = arguments.get(key)
+    if values in (None, []) or not isinstance(values, list) or not all(
+        isinstance(value, str) and value.strip() for value in values
+    ):
+        return None
+    refs = [value.strip() for value in values]
     undisclosed = [ref for ref in refs if ref not in disclosed_location_refs]
-    if undisclosed:
-        return [], recoverable_error(
-            "location_ref_not_disclosed", "LOCATION_NOT_DISCLOSED", next_action, result_key,
-            location_refs=undisclosed,
-        )
-    return refs, None
+    next_action = "read_paper_content" if key == "location_refs" else "search_paper_content"
+    return recoverable_error(
+        "location_ref_not_disclosed",
+        "LOCATION_NOT_DISCLOSED",
+        next_action,
+        result_key,
+        location_refs=undisclosed,
+    ) if undisclosed else None
 
 
 def recoverable_error(
@@ -522,23 +387,3 @@ def recoverable_error(
         **details,
         result_key: [],
     }
-
-
-def _invalid_page_range(arguments: JsonMap, lower_key: str = "page_from", upper_key: str = "page_to") -> bool:
-    try:
-        lower = arguments.get(lower_key)
-        upper = arguments.get(upper_key)
-        return lower is not None and upper is not None and int(lower) > int(upper)
-    except (TypeError, ValueError):
-        return True
-
-
-def _invalid_integer(arguments: JsonMap, key: str, *, minimum: int, maximum: int | None) -> bool:
-    value = arguments.get(key)
-    if value is None:
-        return False
-    try:
-        number = int(value)
-    except (TypeError, ValueError):
-        return True
-    return isinstance(value, bool) or number < minimum or (maximum is not None and number > maximum)

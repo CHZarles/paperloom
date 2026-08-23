@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import hashlib
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,7 +9,7 @@ from unittest.mock import patch
 import httpx
 
 from harness_py.utils.errors import HarnessCancelled
-from harness_py.corpus.gateway import JavaCorpusGateway, JavaCorpusGatewayReader
+from harness_py.corpus.gateway import CorpusGatewayError, JavaCorpusGateway, JavaCorpusGatewayReader
 from harness_py.corpus_test_fixtures.in_memory_tools import InMemoryTools
 from harness_py.corpus.tools import ReadingCorpusTools, model_facing_payload
 
@@ -22,6 +21,10 @@ class FakeGateway:
     def post(self, path: str, payload: dict) -> dict:
         self.calls.append((path, payload))
         if path.endswith("/papers/search"):
+            if payload.get("limit") == 0:
+                raise CorpusGatewayError(400, "READING_ARGUMENTS_INVALID", "limit is invalid")
+            if payload.get("paper_ids") == ["unavailable"]:
+                raise CorpusGatewayError(404, "PAPER_NOT_AVAILABLE", "paper is unavailable")
             if payload.get("identity"):
                 return {
                     "status": "resolved",
@@ -36,7 +39,8 @@ class FakeGateway:
                 "next_offset": None,
             }
         if path.endswith("/locations/search"):
-            content = "Exact canonical content."
+            if payload.get("top_k") == "bad":
+                raise CorpusGatewayError(400, "READING_ARGUMENTS_INVALID", "top_k is invalid")
             return {
                 "query_text": payload.get("query_text", ""),
                 "locations": [{
@@ -53,15 +57,6 @@ class FakeGateway:
                 "returned_count": 1,
                 "coverage": "complete",
                 "index_version": "test-index",
-                "evidence_payloads": [{
-                    "paper_id": "paper-a",
-                    "model_version": "rm-1",
-                    "location_ref": "location_ref_a",
-                    "location_type": "PASSAGE",
-                    "content_text": content,
-                    "content_hash": hashlib.sha256(content.encode("utf-8")).hexdigest(),
-                    "source_span_json": "{\"spans\":[]}",
-                }],
             }
         if path.endswith("/locations/read"):
             return {
@@ -174,8 +169,8 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         self.assertEqual("location_ref_a", location_result["locations"][0]["location_ref"])
         self.assertEqual("complete", location_result["coverage"])
         paper_request = next(payload for path, payload in gateway.calls if path.endswith("/papers/search"))
-        self.assertIsNone(paper_request["year_from"])
-        self.assertIsNone(paper_request["year_to"])
+        self.assertEqual(0, paper_request["year_from"])
+        self.assertEqual(0, paper_request["year_to"])
         self.assertNotIn("evidence_payloads", model_facing_payload(location_result))
         self.assertNotIn("evidence_id", location_result["locations"][0])
         self.assertEqual({}, tools.observations_by_evidence_id)
@@ -195,7 +190,8 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         self.assertTrue(read_result["items"][0]["page_screenshot_available"])
         self.assertEqual("{\"coordinateSystem\":\"top_left_1000\"}", read_result["items"][0]["bbox_json"])
         read_request = next(payload for path, payload in gateway.calls if path.endswith("/locations/read"))
-        self.assertEqual("Exact canonical content.", read_request["evidence_payloads"][0]["content_text"])
+        self.assertNotIn("evidence_payloads", read_request)
+        self.assertFalse(hasattr(tools, "evidence_payloads_by_location_ref"))
         self.assertTrue(all(payload["user_id"] == 7 for _, payload in gateway.calls))
         self.assertTrue(all(payload["scope_paper_ids"] == ["paper-a"] for _, payload in gateway.calls))
 
@@ -255,7 +251,7 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         self.assertEqual(["paper-a.pdf"], structure["unauthorized_paper_ids"])
         self.assertEqual([], gateway.calls)
 
-    def test_invalid_model_arguments_are_recoverable_before_java_io(self) -> None:
+    def test_java_argument_errors_are_mapped_to_recoverable_tool_results(self) -> None:
         gateway = FakeGateway()
         reader = JavaCorpusGatewayReader(
             gateway=gateway,
@@ -267,12 +263,16 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         tools = ReadingCorpusTools(reader.load_metadata_dataset(), reader=reader)
 
         invalid_search = tools.search_paper_candidates({"limit": 0})
+        unavailable = tools.search_paper_candidates({"paper_ids": ["unavailable"]})
         tools.authorized_paper_ids.add("paper-a")
         invalid_content = tools.search_paper_content({"paper_ids": ["paper-a"], "top_k": "bad"})
 
-        self.assertEqual("TOOL_ARGUMENTS_INVALID", invalid_search["error_code"])
-        self.assertEqual("TOOL_ARGUMENTS_INVALID", invalid_content["error_code"])
-        self.assertEqual([], gateway.calls)
+        self.assertEqual("READING_ARGUMENTS_INVALID", invalid_search["error_code"])
+        self.assertEqual("PAPER_NOT_AVAILABLE", unavailable["error_code"])
+        self.assertEqual("READING_ARGUMENTS_INVALID", invalid_content["error_code"])
+        self.assertEqual(0, gateway.calls[0][1]["limit"])
+        self.assertEqual("bad", gateway.calls[2][1]["top_k"])
+        self.assertEqual(3, len(gateway.calls))
 
     def test_gateway_rejects_oversized_response(self) -> None:
         client = httpx.Client(

@@ -26,11 +26,13 @@ from ..corpus.tools import (
     EVIDENCE_ELEMENT_TYPES,
     ReadingCorpusTools,
     SEARCH_RESULT_LIMIT,
-    _invalid_integer,
+    recoverable_error,
+)
+from .preflight import (
     identity_search_preflight,
+    invalid_integer as _invalid_integer,
     normalize_paper_search_arguments,
     paper_search_preflight,
-    recoverable_error,
     reading_location_preflight,
     reading_paper_preflight,
     reading_structure_preflight,

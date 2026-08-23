@@ -164,14 +164,14 @@ class JavaCorpusGatewayReader:
     def search_papers(self, arguments: JsonMap) -> JsonMap:
         response = self._post("/internal/v1/corpus/papers/search", {
             **self._context(),
-            "query_text": str(arguments.get("query_text") or ""),
-            "paper_ids": unique_strings(arguments.get("paper_ids")),
-            "authors": unique_strings(arguments.get("authors")),
-            "venues": unique_strings(arguments.get("venues")),
+            "query_text": arguments.get("query_text"),
+            "paper_ids": arguments.get("paper_ids"),
+            "authors": arguments.get("authors"),
+            "venues": arguments.get("venues"),
             "year_from": arguments.get("year_from"),
             "year_to": arguments.get("year_to"),
-            "offset": int(arguments.get("offset") or 0),
-            "limit": int(arguments.get("limit") or 20),
+            "offset": arguments.get("offset"),
+            "limit": arguments.get("limit"),
         })
         self._remember_paper_cards(response.get("candidates"))
         return response
@@ -181,7 +181,6 @@ class JavaCorpusGatewayReader:
             key: value
             for key, value in arguments.items()
             if key in {"paper_id", "title", "filename", "doi", "arxiv_id", "authors", "year"}
-            and value not in (None, "", [])
         }
         response = self._post("/internal/v1/corpus/papers/search", {
             **self._context(),
@@ -193,21 +192,20 @@ class JavaCorpusGatewayReader:
     def search_locations(self, arguments: JsonMap) -> JsonMap:
         return self._post("/internal/v1/corpus/locations/search", {
             **self._context(),
-            "paper_ids": unique_strings(arguments.get("paper_ids")),
-            "query_text": str(arguments.get("query_text") or ""),
-            "section_query": str(arguments.get("section_query") or ""),
-            "element_types": unique_strings(arguments.get("element_types")),
+            "paper_ids": arguments.get("paper_ids"),
+            "query_text": arguments.get("query_text"),
+            "section_query": arguments.get("section_query"),
+            "element_types": arguments.get("element_types"),
             "page_from": arguments.get("page_from"),
             "page_to": arguments.get("page_to"),
-            "top_k": int(arguments.get("top_k") or 8),
-            "section_refs": unique_strings(arguments.get("section_refs")),
+            "top_k": arguments.get("top_k"),
+            "section_refs": arguments.get("section_refs"),
         })
 
     def read_locations(self, arguments: JsonMap) -> JsonMap:
         response = self._post("/internal/v1/corpus/locations/read", {
             **self._context(),
-            "location_refs": unique_strings(arguments.get("location_refs")),
-            "evidence_payloads": as_list(arguments.get("_evidence_payloads")),
+            "location_refs": arguments.get("location_refs"),
         })
         items: list[JsonMap] = []
         for raw in as_list(response.get("items")):
@@ -270,9 +268,9 @@ class JavaCorpusGatewayReader:
     def get_structure(self, arguments: JsonMap) -> JsonMap:
         return self._post("/internal/v1/corpus/locations/structure", {
             **self._context(),
-            "paper_ids": unique_strings(arguments.get("paper_ids")),
-            "structure_type": str(arguments.get("structure_type") or "SECTION"),
-            "section_query": str(arguments.get("section_query") or ""),
+            "paper_ids": arguments.get("paper_ids"),
+            "structure_type": arguments.get("structure_type"),
+            "section_query": arguments.get("section_query"),
             "page_from": arguments.get("page_from"),
             "page_to": arguments.get("page_to"),
         })

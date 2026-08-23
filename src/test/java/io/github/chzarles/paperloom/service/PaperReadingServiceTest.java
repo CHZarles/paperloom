@@ -11,6 +11,7 @@ import io.github.chzarles.paperloom.repository.PaperLocationRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.repository.PaperSectionRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.mockito.ArgumentCaptor;
 
 import java.nio.charset.StandardCharsets;
@@ -33,6 +34,33 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class PaperReadingServiceTest {
+
+    @Test
+    void ordinaryArgumentValidationLivesInTheJavaService() {
+        Fixture fixture = new Fixture();
+        List<Executable> invalidCalls = List.of(
+                () -> fixture.service.searchPaperCandidates(new PaperReadingService.PaperSearchQuery(
+                        7L, List.of(), "", List.of(), List.of(), List.of(), null, null, 0, 0)),
+                () -> fixture.service.searchPaperCandidates(new PaperReadingService.PaperSearchQuery(
+                        7L, List.of(), "", List.of(), List.of(), List.of(), 2026, 2025, 0, 20)),
+                () -> fixture.service.findPapersByIdentity(new PaperReadingService.IdentitySearchQuery(
+                        7L, List.of(), Map.of())),
+                () -> fixture.service.searchPaperContent(new PaperReadingService.ContentSearchQuery(
+                        7L, List.of(), List.of(), "query", "", List.of(), null, null, 8)),
+                () -> fixture.service.searchPaperContent(new PaperReadingService.ContentSearchQuery(
+                        7L, List.of("paper-a"), List.of("paper-a"), "query", "", List.of(), null, null, 0)),
+                () -> fixture.service.getPaperStructure(new PaperReadingService.StructureQuery(
+                        7L, List.of("paper-a"), List.of("paper-a"), "PAGE", "", 3, 2)),
+                () -> fixture.service.readPaperContent(new PaperReadingService.ContentReadQuery(
+                        7L, List.of("paper-a"), List.of()))
+        );
+
+        for (Executable call : invalidCalls) {
+            PaperReadingException error = assertThrows(PaperReadingException.class, call);
+            assertEquals("READING_ARGUMENTS_INVALID", error.code());
+        }
+        verifyNoInteractions(fixture.paperService);
+    }
 
     @Test
     void explicitSmallComparisonRecallsCandidatesFromEveryRequestedPaper() {
@@ -64,6 +92,23 @@ class PaperReadingServiceTest {
                 ArgumentCaptor.forClass(LocationRetrievalRequest.class);
         verify(fixture.retriever).retrieve(request.capture());
         assertEquals(Map.of("paper-a", "rm-a", "paper-b", "rm-b"), request.getValue().activeModels());
+    }
+
+    @Test
+    void contentSearchAcceptsTheFullLockedPaperScope() {
+        Fixture fixture = new Fixture();
+        List<String> scope = IntStream.range(0, 31).mapToObj(index -> "paper-" + index).toList();
+        fixture.authorize(scope);
+        fixture.models(scope.stream().map(paperId -> readyModel(paperId, "rm-1"))
+                .toArray(PaperReadingModel[]::new));
+        when(fixture.retriever.retrieve(any())).thenReturn(retrieval());
+        fixture.locations();
+
+        PaperReadingService.ContentSearchResult result = fixture.service.searchPaperContent(
+                new PaperReadingService.ContentSearchQuery(
+                        7L, scope, scope, "query", "", List.of(), null, null, 20));
+
+        assertEquals(0, result.returnedCount());
     }
 
     @Test
@@ -336,6 +381,25 @@ class PaperReadingServiceTest {
 
         assertEquals(List.of("passage-ref"), result.missingLocationRefs());
         verify(fixture.readService).read(List.of("passage-ref"), scope);
+    }
+
+    @Test
+    void exactReadPreservesPartialSuccessWhenOneSourceSpanIsInconsistent() {
+        Fixture fixture = new Fixture();
+        List<String> scope = List.of("paper-a");
+        fixture.authorize(scope);
+        CanonicalReadingLocationService.CanonicalLocation valid = canonicalFor(
+                "paper-a", "rm-1", "valid-ref", "passage");
+        when(fixture.readService.read(List.of("valid-ref", "span-mismatch"), scope)).thenReturn(
+                new CanonicalReadingLocationService.ReadBatch(List.of(valid), List.of("span-mismatch")));
+
+        PaperReadingService.ContentReadResult result = fixture.service.readPaperContent(
+                new PaperReadingService.ContentReadQuery(
+                        7L, scope, List.of("valid-ref", "span-mismatch")));
+
+        assertEquals(List.of("valid-ref"), result.items().stream()
+                .map(CanonicalReadingLocationService.CanonicalLocation::locationRef).toList());
+        assertEquals(List.of("span-mismatch"), result.missingLocationRefs());
     }
 
     @Test

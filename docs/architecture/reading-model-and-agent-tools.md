@@ -1,8 +1,9 @@
 # Reading Model And `harness_py` Tools
 
-PaperLoom has one durable Reading Model. In the product runtime, Java indexes its canonical locations
-into Qdrant and exposes a narrow Corpus API; Python keeps the model-visible tool contract and request
-authorization state. Golden fixtures use the same tools through an in-memory adapter.
+PaperLoom has one durable Reading Model. `PaperReadingService` owns the five Java reading operations,
+including ACL/Scope intersection, Current Model checks, Qdrant candidate retrieval, and durable MySQL
+exact reads. Python keeps the model-visible tool contract, disclosure state, and current-run Evidence
+Ledger. Golden fixtures use the same tool contract through an in-memory adapter.
 
 The durable model remains richer than the current Python retrieval surface. Retrieval can change
 without redefining paper identity, source locations, or persisted references.
@@ -135,8 +136,8 @@ The SDK Runner stops before a seventeenth model Turn.
 | Field | Meaning |
 | --- | --- |
 | `authorized_paper_ids` | Papers returned by candidate search or a unique identity match, within the dataset already limited by Java `scope.paper_ids` |
-| `disclosed_location_refs` | Location refs returned by `find_reading_locations` |
-| `observations_by_evidence_id` | Exact reads created by `read_locations`; the current run's Evidence Ledger |
+| `disclosed_location_refs` | Location refs returned by `search_paper_content` or `get_paper_structure` |
+| `observations_by_evidence_id` | Source Quotes returned by `read_paper_content`; the current run's Evidence Ledger |
 
 The model cannot claim that it already opened a paper or location. Tool code checks these sets and
 records snapshots before and after each call.
@@ -153,8 +154,9 @@ Anchor data during a run.
 | `get_research_skill` | None | Adds the selected ID to `skills_used` | No |
 | `search_paper_candidates` | Dataset already limited by Java scope | Adds returned papers to `authorized_paper_ids` | No; cards support metadata answers only |
 | `find_papers_by_identity` | Dataset already limited by Java scope | Adds one uniquely resolved paper to `authorized_paper_ids` | No |
-| `find_reading_locations` | Every requested paper is in `authorized_paper_ids` | Adds returned refs to `disclosed_location_refs` | No |
-| `read_locations` | Every requested ref is in `disclosed_location_refs` | Adds exact reads to `observations_by_evidence_id` | Yes |
+| `search_paper_content` | Every requested paper is in `authorized_paper_ids` | Adds returned refs to `disclosed_location_refs` | No |
+| `get_paper_structure` | Every requested paper is in `authorized_paper_ids` | Adds returned refs to `disclosed_location_refs` | No |
+| `read_paper_content` | Every requested ref is in `disclosed_location_refs` | Adds Source Quotes to `observations_by_evidence_id` | Yes |
 | `submit_research_answer` | Known evidence or a non-complete outcome | Ends the Runner only after validation accepts the draft | It may cite known Evidence IDs but creates none |
 
 ## Tool Behavior
@@ -171,7 +173,7 @@ Resolves a specific paper from structured identity hints. One unique match discl
 multiple matches return ambiguity rather than choosing one silently. It is not a topical search or
 recommendation tool.
 
-### `find_reading_locations`
+### `search_paper_content`
 
 Searches disclosed papers and returns `location_ref` values plus non-citeable previews. The product
 adapter encodes the query as both a BM25-style sparse vector and a MiniMax-embedding dense vector,
@@ -194,10 +196,18 @@ as an independent retrieval surface.
 The product path never treats Qdrant payload text as Evidence. It exposes only candidates; exact
 content still comes from the Current Reading Model in MySQL.
 
-### `read_locations`
+### `read_paper_content`
 
-Reads exact content only from locations previously disclosed by `find_reading_locations`. It is the
-only live content tool that creates Evidence IDs and enters items into the Evidence Ledger.
+Reads exact content only from previously disclosed locations. The internal adapter calls
+`HarnessReadingService`, which runs `PaperReadingService.readPaperContent` and Source Quote
+materialization in one transaction. Exact text and Source Span come from the Current MySQL Reading
+Model; Qdrant payload text is never echoed through Python. Resolver-unavailable locations remain a
+partial-success result, while Source Quote failures roll back the request.
+
+Java returns stable reading error codes. Python maps `READING_ARGUMENTS_INVALID` and
+`PAPER_NOT_AVAILABLE` to recoverable tool results, while `READING_MODEL_NOT_READY` and
+`RETRIEVAL_UNAVAILABLE` end the run as technical failures. Python performs only Paper and Location
+disclosure checks before forwarding model arguments.
 
 ### `get_research_skill`
 

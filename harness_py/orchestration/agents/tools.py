@@ -560,6 +560,8 @@ def _record_eval_tool(
 
 
 def _corpus_reason_code(error: CorpusGatewayError) -> str:
+    if error.error_code in {"READING_MODEL_NOT_READY", "RETRIEVAL_UNAVAILABLE"}:
+        return error.error_code
     if error.status_code == 401:
         return "CORPUS_AUTHENTICATION_FAILED"
     if error.status_code >= 500:

@@ -1,6 +1,7 @@
 package io.github.chzarles.paperloom.controller;
 
 import io.github.chzarles.paperloom.service.PaperReadingService;
+import io.github.chzarles.paperloom.service.PaperReadingException;
 import io.github.chzarles.paperloom.service.CanonicalReadingLocationService;
 import io.github.chzarles.paperloom.service.HarnessReadingService;
 import io.github.chzarles.paperloom.service.PaperSourceQuoteReadService;
@@ -20,6 +21,60 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class InternalCorpusControllerTest {
+
+    @Test
+    void malformedJsonFieldTypesAndArrayShapesReturnStableArgumentErrors() throws Exception {
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new InternalCorpusController(
+                mock(PaperReadingService.class), mock(HarnessReadingService.class),
+                mock(ReadingModelQdrantIndexService.class), "internal-secret")).build();
+
+        for (String body : List.of(
+                "{",
+                "{\"user_id\":7,\"paper_ids\":[\"paper-a\"],\"top_k\":\"bad\"}",
+                "{\"user_id\":7,\"paper_ids\":\"paper-a\"}")) {
+            mvc.perform(post("/internal/v1/corpus/locations/search")
+                            .header("Authorization", "Bearer internal-secret")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error").value("READING_ARGUMENTS_INVALID"));
+        }
+    }
+
+    @Test
+    void paperReadingErrorsExposeStableCodesAndSafeMessages() throws Exception {
+        PaperReadingService readingService = mock(PaperReadingService.class);
+        when(readingService.searchPaperContent(any())).thenThrow(new PaperReadingException(
+                "PAPER_NOT_AVAILABLE", "The requested paper is not available"));
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new InternalCorpusController(
+                readingService, mock(HarnessReadingService.class),
+                mock(ReadingModelQdrantIndexService.class), "internal-secret")).build();
+
+        mvc.perform(post("/internal/v1/corpus/locations/search")
+                        .header("Authorization", "Bearer internal-secret")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"user_id\":7,\"paper_ids\":[\"paper-a\"]}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("PAPER_NOT_AVAILABLE"))
+                .andExpect(jsonPath("$.message").value("The requested paper is not available"));
+    }
+
+    @Test
+    void sourceQuoteFailuresRemainTechnical() throws Exception {
+        HarnessReadingService harnessReadingService = mock(HarnessReadingService.class);
+        when(harnessReadingService.readAndCreateQuotes(any()))
+                .thenThrow(new IllegalArgumentException("PASSAGE_SOURCE_SPAN_INVALID"));
+        MockMvc mvc = MockMvcBuilders.standaloneSetup(new InternalCorpusController(
+                mock(PaperReadingService.class), harnessReadingService,
+                mock(ReadingModelQdrantIndexService.class), "internal-secret")).build();
+
+        mvc.perform(post("/internal/v1/corpus/locations/read")
+                        .header("Authorization", "Bearer internal-secret")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"user_id\":7,\"location_refs\":[\"location-a\"]}"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.error").value("RETRIEVAL_UNAVAILABLE"));
+    }
 
     @Test
     void blankInternalTokenRejectsCorpusRequests() throws Exception {

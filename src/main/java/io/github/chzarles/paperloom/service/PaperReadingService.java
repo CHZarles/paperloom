@@ -33,6 +33,7 @@ public class PaperReadingService {
 
     private static final int MAX_PAPER_LIMIT = 100;
     private static final int MAX_LOCATION_LIMIT = 20;
+    private static final Set<String> EVIDENCE_ELEMENT_TYPES = Set.of("passage", "table", "figure");
 
     private final PaperService paperService;
     private final PaperReadingModelRepository modelRepository;
@@ -61,6 +62,7 @@ public class PaperReadingService {
 
     @Transactional(readOnly = true)
     public PaperSearchResult searchPaperCandidates(PaperSearchQuery query) {
+        validatePaperSearch(query);
         List<Paper> papers = authorizedPapers(query.userId(), query.scopePaperIds());
         Set<String> scope = normalizedSet(query.scopePaperIds());
         Set<String> requestedIds = normalizedSet(query.paperIds());
@@ -71,7 +73,9 @@ public class PaperReadingService {
         Set<String> sessionScope = scope.isEmpty()
                 ? papers.stream().map(Paper::getPaperId).collect(java.util.stream.Collectors.toSet())
                 : scope;
-        if (!requestedIds.isEmpty() && !sessionScope.containsAll(requestedIds)) {
+        Set<String> availableIds = papers.stream().map(Paper::getPaperId).collect(Collectors.toSet());
+        if (!requestedIds.isEmpty()
+                && (!sessionScope.containsAll(requestedIds) || !availableIds.containsAll(requestedIds))) {
             throw paperNotAvailable();
         }
         Set<String> authors = normalizedSet(query.authors());
@@ -120,9 +124,7 @@ public class PaperReadingService {
 
     @Transactional(readOnly = true)
     public IdentitySearchResult findPapersByIdentity(IdentitySearchQuery query) {
-        if (query.hints() == null || query.hints().isEmpty()) {
-            return new IdentitySearchResult("not_found", List.of(), "identity_hints_required");
-        }
+        validateIdentitySearch(query);
         List<PaperCard> matches = authorizedPapers(query.userId(), query.scopePaperIds()).stream()
                 .filter(paper -> matchesIdentity(paper, query.hints()))
                 .sorted(Comparator.comparing(Paper::getPaperId))
@@ -133,11 +135,9 @@ public class PaperReadingService {
     }
 
     public ContentSearchResult searchPaperContent(ContentSearchQuery query) {
+        validateContentSearch(query);
         Set<String> scope = normalizedSet(query.scopePaperIds());
         Set<String> requested = normalizedSet(query.paperIds());
-        if (requested.isEmpty()) {
-            throw invalidArguments("paper_ids is required");
-        }
         // Empty scope_paper_ids means the session is in AUTO_LIBRARY mode — the session
         // covers the user's globally accessible papers. Otherwise scope_paper_ids is the
         // explicit pin and we enforce paper_ids ⊆ scope_paper_ids.
@@ -164,7 +164,7 @@ public class PaperReadingService {
             return new ContentSearchResult(List.of(), 0, 0, "");
         }
 
-        int topK = Math.max(1, Math.min(query.topK(), MAX_LOCATION_LIMIT));
+        int topK = query.topK();
         Set<String> elementTypeHints = new LinkedHashSet<>(normalizeElementTypes(query.elementTypes()));
         Set<String> sectionRefs = normalizedSet(query.sectionRefs());
         RetrievalCandidates retrieval = readingLocationRetriever.retrieve(
@@ -233,14 +233,13 @@ public class PaperReadingService {
 
     @Transactional(readOnly = true)
     public ContentReadResult readPaperContent(ContentReadQuery query) {
+        validateExecutionContext(query.userId(), query.scopePaperIds());
+        validateStringList(query.locationRefs(), "location_refs", MAX_LOCATION_LIMIT, true);
         List<String> locationRefs = query.locationRefs().stream()
                 .filter(ref -> ref != null && !ref.isBlank())
                 .map(String::trim)
                 .distinct()
                 .toList();
-        if (locationRefs.size() > MAX_LOCATION_LIMIT) {
-            throw invalidArguments("location_refs cannot contain more than " + MAX_LOCATION_LIMIT + " items");
-        }
         List<String> authorizedIds = accessiblePapers(query.userId(), query.scopePaperIds()).stream()
                 .map(Paper::getPaperId)
                 .distinct()
@@ -251,10 +250,8 @@ public class PaperReadingService {
 
     @Transactional(readOnly = true)
     public StructureResult getPaperStructure(StructureQuery query) {
+        validateStructure(query);
         Set<String> requested = normalizedSet(query.paperIds());
-        if (requested.isEmpty()) {
-            throw invalidArguments("paper_ids is required");
-        }
         Set<String> scope = normalizedSet(query.scopePaperIds());
         Set<String> sessionScope = scope.isEmpty()
                 ? accessiblePapers(query.userId(), List.of()).stream().map(Paper::getPaperId).collect(Collectors.toSet())
@@ -271,9 +268,6 @@ public class PaperReadingService {
             throw new PaperReadingException("READING_MODEL_NOT_READY", "The current reading model is not ready");
         }
         String type = safe(query.structureType()).toUpperCase(Locale.ROOT);
-        if (!"SECTION".equals(type) && !"PAGE".equals(type)) {
-            throw invalidArguments("structure_type must be SECTION or PAGE");
-        }
         List<StructureItem> items = new ArrayList<>();
         for (Paper paper : accessible) {
             PaperReadingModel model = models.get(paper.getPaperId());
@@ -371,8 +365,10 @@ public class PaperReadingService {
         Map<String, String> models = new LinkedHashMap<>();
         for (String paperId : paperIds) {
             PaperReadingModel model = currentModels.get(paperId);
-            if (model == null
-                    || !paperSearchabilityService.isSearchable(model)) {
+            if (model == null) {
+                throw new PaperReadingException("READING_MODEL_NOT_READY", "The current reading model is not ready");
+            }
+            if (!paperSearchabilityService.isSearchable(model)) {
                 throw new PaperReadingException("RETRIEVAL_UNAVAILABLE", "Paper retrieval is temporarily unavailable");
             }
             models.put(paperId, model.getModelVersion());
@@ -592,7 +588,7 @@ public class PaperReadingService {
                 .map(value -> value.trim().toLowerCase(Locale.ROOT))
                 .distinct()
                 .toList();
-        if (normalized.stream().anyMatch(value -> !Set.of("passage", "table", "figure").contains(value))) {
+        if (normalized.stream().anyMatch(value -> !EVIDENCE_ELEMENT_TYPES.contains(value))) {
             throw invalidArguments("element_types must contain only passage, table, or figure");
         }
         return normalized;
@@ -638,6 +634,89 @@ public class PaperReadingService {
 
     private String safe(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private void validatePaperSearch(PaperSearchQuery query) {
+        validateExecutionContext(query.userId(), query.scopePaperIds());
+        validateStringList(query.paperIds(), "paper_ids", MAX_PAPER_LIMIT, false);
+        validateStringList(query.authors(), "authors", MAX_PAPER_LIMIT, false);
+        validateStringList(query.venues(), "venues", MAX_PAPER_LIMIT, false);
+        if (query.offset() < 0 || query.limit() < 1 || query.limit() > MAX_PAPER_LIMIT
+                || query.yearFrom() != null && query.yearFrom() < 0
+                || query.yearTo() != null && query.yearTo() < 0
+                || query.yearFrom() != null && query.yearTo() != null && query.yearFrom() > query.yearTo()) {
+            throw invalidArguments("Paper search range is invalid");
+        }
+    }
+
+    private void validateIdentitySearch(IdentitySearchQuery query) {
+        validateExecutionContext(query.userId(), query.scopePaperIds());
+        if (query.hints().isEmpty() || query.hints().keySet().stream().anyMatch(
+                key -> !Set.of("paper_id", "title", "filename", "doi", "arxiv_id", "authors", "year").contains(key))) {
+            throw invalidArguments("Identity hints are invalid");
+        }
+        for (Map.Entry<String, Object> entry : query.hints().entrySet()) {
+            Object value = entry.getValue();
+            if ("authors".equals(entry.getKey())) {
+                if (!(value instanceof List<?> authors)
+                        || authors.stream().anyMatch(author -> !(author instanceof String))) {
+                    throw invalidArguments("authors is invalid");
+                }
+                validateStringList(authors.stream().map(String.class::cast).toList(),
+                        "authors", MAX_PAPER_LIMIT, true);
+            } else if ("year".equals(entry.getKey())) {
+                if (!(value instanceof Number year) || year.longValue() < 0
+                        || year.doubleValue() != year.longValue()) {
+                    throw invalidArguments("year is invalid");
+                }
+            } else if (!(value instanceof String text) || text.isBlank()) {
+                throw invalidArguments(entry.getKey() + " is invalid");
+            }
+        }
+    }
+
+    private void validateContentSearch(ContentSearchQuery query) {
+        validateExecutionContext(query.userId(), query.scopePaperIds());
+        validateStringList(query.paperIds(), "paper_ids", MAX_PAPER_LIMIT, true);
+        validateStringList(query.sectionRefs(), "section_refs", MAX_LOCATION_LIMIT, false);
+        validateStringList(query.elementTypes(), "element_types", EVIDENCE_ELEMENT_TYPES.size(), false);
+        if (query.topK() < 1 || query.topK() > MAX_LOCATION_LIMIT) {
+            throw invalidArguments("top_k is invalid");
+        }
+        validatePageRange(query.pageFrom(), query.pageTo());
+        normalizeElementTypes(query.elementTypes());
+    }
+
+    private void validateStructure(StructureQuery query) {
+        validateExecutionContext(query.userId(), query.scopePaperIds());
+        validateStringList(query.paperIds(), "paper_ids", MAX_PAPER_LIMIT, true);
+        validatePageRange(query.pageFrom(), query.pageTo());
+        if (!Set.of("SECTION", "PAGE").contains(safe(query.structureType()).toUpperCase(Locale.ROOT))) {
+            throw invalidArguments("structure_type must be SECTION or PAGE");
+        }
+    }
+
+    private void validateExecutionContext(Long userId, List<String> scopePaperIds) {
+        if (userId == null || userId <= 0) {
+            throw invalidArguments("user_id is required");
+        }
+        validateStringList(scopePaperIds, "scope_paper_ids", MAX_PAPER_LIMIT, false);
+    }
+
+    private void validatePageRange(Integer from, Integer to) {
+        if (from != null && from < 1 || to != null && to < 1
+                || from != null && to != null && from > to) {
+            throw invalidArguments("Page range is invalid");
+        }
+    }
+
+    private void validateStringList(List<String> values, String name, int maximum, boolean required) {
+        List<String> normalized = values.stream().map(value -> value == null ? "" : value.trim()).toList();
+        if (required && normalized.isEmpty() || normalized.size() > maximum
+                || normalized.stream().anyMatch(String::isBlank)
+                || new LinkedHashSet<>(normalized).size() != normalized.size()) {
+            throw invalidArguments(name + " is invalid");
+        }
     }
 
     private PaperReadingException invalidArguments(String message) {

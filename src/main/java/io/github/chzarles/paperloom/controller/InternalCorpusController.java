@@ -2,6 +2,7 @@ package io.github.chzarles.paperloom.controller;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.github.chzarles.paperloom.service.HarnessReadingService;
+import io.github.chzarles.paperloom.service.PaperReadingException;
 import io.github.chzarles.paperloom.service.PaperReadingService;
 import io.github.chzarles.paperloom.service.PaperSourceQuoteReadService;
 import io.github.chzarles.paperloom.service.ReadingModelQdrantIndexService;
@@ -10,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -51,7 +53,7 @@ public class InternalCorpusController {
             @RequestBody CandidateExportRequest request) {
         authorize(authorization);
         if (request.paperId() == null || request.paperId().isBlank()) {
-            throw new IllegalArgumentException("paper_id is required");
+            throw new PaperReadingException("READING_ARGUMENTS_INVALID", "paper_id is required");
         }
         ReadingModelQdrantIndexService.CandidateExport export =
                 indexService.exportCurrentModelLocations(request.paperId().trim());
@@ -71,7 +73,7 @@ public class InternalCorpusController {
     public Map<String, Object> searchPapers(@RequestHeader(value = "Authorization", required = false) String authorization,
                                             @RequestBody PaperSearchRequest request) {
         authorize(authorization);
-        if (request.identity() != null && !request.identity().isEmpty()) {
+        if (request.identity() != null) {
             PaperReadingService.IdentitySearchResult result = readingService.findPapersByIdentity(
                     new PaperReadingService.IdentitySearchQuery(
                             request.userId(), request.scopePaperIds(), request.identity())
@@ -165,11 +167,25 @@ public class InternalCorpusController {
         return response;
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> invalidRequest(IllegalArgumentException error) {
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> invalidRequest(Exception error) {
         return ResponseEntity.badRequest().body(Map.of(
-                "error", "invalid_corpus_request",
-                "message", safeMessage(error)
+                "error", "READING_ARGUMENTS_INVALID",
+                "message", "The corpus request arguments are invalid"
+        ));
+    }
+
+    @ExceptionHandler(PaperReadingException.class)
+    public ResponseEntity<Map<String, Object>> readingFailure(PaperReadingException error) {
+        HttpStatus status = switch (error.code()) {
+            case "READING_ARGUMENTS_INVALID" -> HttpStatus.BAD_REQUEST;
+            case "PAPER_NOT_AVAILABLE" -> HttpStatus.NOT_FOUND;
+            case "READING_MODEL_NOT_READY" -> HttpStatus.CONFLICT;
+            default -> HttpStatus.SERVICE_UNAVAILABLE;
+        };
+        return ResponseEntity.status(status).body(Map.of(
+                "error", error.code(),
+                "message", error.safeMessage()
         ));
     }
 
@@ -182,7 +198,7 @@ public class InternalCorpusController {
     public ResponseEntity<Map<String, Object>> corpusUnavailable(Exception error) {
         logger.error("Internal Corpus API failed", error);
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
-                "error", "corpus_unavailable",
+                "error", "RETRIEVAL_UNAVAILABLE",
                 "message", "The corpus retrieval plane is temporarily unavailable"
         ));
     }
@@ -311,12 +327,6 @@ public class InternalCorpusController {
         }
     }
 
-    private String safeMessage(Exception error) {
-        return error.getMessage() == null || error.getMessage().isBlank()
-                ? "The corpus request is invalid"
-                : error.getMessage();
-    }
-
     public record PaperSearchRequest(
             @JsonProperty("request_id") String requestId,
             @JsonProperty("conversation_id") String conversationId,
@@ -337,9 +347,7 @@ public class InternalCorpusController {
             paperIds = paperIds == null ? List.of() : List.copyOf(paperIds);
             authors = authors == null ? List.of() : List.copyOf(authors);
             venues = venues == null ? List.of() : List.copyOf(venues);
-            identity = identity == null
-                    ? Map.of()
-                    : Collections.unmodifiableMap(new LinkedHashMap<>(identity));
+            identity = identity == null ? null : Collections.unmodifiableMap(new LinkedHashMap<>(identity));
         }
     }
 
