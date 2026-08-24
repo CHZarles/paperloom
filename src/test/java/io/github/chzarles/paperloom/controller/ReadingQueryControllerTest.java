@@ -3,6 +3,7 @@ package io.github.chzarles.paperloom.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import io.github.chzarles.paperloom.config.ReadingQueryAudit;
 import io.github.chzarles.paperloom.exception.QuotaExceededException;
 import io.github.chzarles.paperloom.model.User;
 import io.github.chzarles.paperloom.repository.UserRepository;
@@ -39,7 +40,8 @@ class ReadingQueryControllerTest {
     private final UserRepository userRepository = mock(UserRepository.class);
     private final PaperAccessService paperAccessService = mock(PaperAccessService.class);
     private final ReadingQueryController controller =
-            new ReadingQueryController(readingService, userRepository, paperAccessService, new ObjectMapper());
+            new ReadingQueryController(readingService, userRepository, paperAccessService,
+                    new ObjectMapper(), new ReadingQueryAudit(userRepository));
     private final MockMvc mvc = MockMvcBuilders.standaloneSetup(controller).build();
     private final UsernamePasswordAuthenticationToken authentication =
             new UsernamePasswordAuthenticationToken("alice", "");
@@ -124,7 +126,7 @@ class ReadingQueryControllerTest {
 
     @Test
     void missingAuthenticatedDatabaseUserRemainsUnauthorized() throws Exception {
-        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(ReadingQueryController.class);
+        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(ReadingQueryAudit.class);
         ListAppender<ILoggingEvent> events = new ListAppender<>();
         events.start();
         logger.addAppender(events);
@@ -280,7 +282,7 @@ class ReadingQueryControllerTest {
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user(7L)));
         when(readingService.searchPaperCandidates(any())).thenReturn(
                 new PaperReadingService.PaperSearchResult("secret-query", List.of(), 0, 0, "complete", null));
-        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(ReadingQueryController.class);
+        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(ReadingQueryAudit.class);
         ListAppender<ILoggingEvent> events = new ListAppender<>();
         events.start();
         logger.addAppender(events);

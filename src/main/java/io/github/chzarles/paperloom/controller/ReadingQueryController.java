@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.chzarles.paperloom.config.ReadingQueryAudit;
 import io.github.chzarles.paperloom.exception.QuotaExceededException;
 import io.github.chzarles.paperloom.model.User;
 import io.github.chzarles.paperloom.repository.UserRepository;
@@ -19,8 +20,6 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -39,38 +38,30 @@ import java.util.LinkedHashSet;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.Function;
-import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api/v1/reading")
 public class ReadingQueryController {
 
-    private static final Logger logger = LoggerFactory.getLogger(ReadingQueryController.class);
     private static final int MAX_RESPONSE_BYTES = 16 * 1024;
-    private static final Pattern REQUEST_ID = Pattern.compile("[A-Za-z0-9._:-]{1,96}");
-    private static final Map<String, String> TOOLS_BY_PATH = Map.of(
-            "/api/v1/reading/papers/search", "search_papers",
-            "/api/v1/reading/papers/get", "get_paper",
-            "/api/v1/reading/structure", "get_paper_structure",
-            "/api/v1/reading/content/search", "search_paper_content",
-            "/api/v1/reading/content/read", "read_paper_content"
-    );
 
     private final PaperReadingService readingService;
     private final UserRepository userRepository;
     private final PaperAccessService paperAccessService;
     private final ObjectMapper objectMapper;
+    private final ReadingQueryAudit audit;
 
     public ReadingQueryController(PaperReadingService readingService,
                                   UserRepository userRepository,
                                   PaperAccessService paperAccessService,
-                                  ObjectMapper objectMapper) {
+                                  ObjectMapper objectMapper,
+                                  ReadingQueryAudit audit) {
         this.readingService = readingService;
         this.userRepository = userRepository;
         this.paperAccessService = paperAccessService;
         this.objectMapper = objectMapper;
+        this.audit = audit;
     }
 
     @PostMapping("/papers/search")
@@ -223,24 +214,17 @@ public class ReadingQueryController {
 
     private <T> T query(Authentication authentication, String rawRequestId,
                         String toolName, Function<Long, T> operation) {
-        String requestId = validRequestId(rawRequestId);
-        String principalId = "unknown";
+        Long principalId = null;
         try {
             User user = authenticatedUser(authentication);
-            principalId = String.valueOf(user.getId());
+            principalId = user.getId();
             T result = operation.apply(user.getId());
-            logger.info("Reading query completed: principal_id={}, tool_name={}, request_id={}, outcome=SUCCESS",
-                    principalId, toolName, requestId);
+            audit.success(principalId, toolName, rawRequestId);
             return result;
         } catch (RuntimeException error) {
-            logger.warn("Reading query failed: principal_id={}, tool_name={}, request_id={}, outcome={}",
-                    principalId, toolName, requestId, errorCode(error));
+            audit.failure(principalId, toolName, rawRequestId, errorCode(error));
             throw error;
         }
-    }
-
-    private String validRequestId(String value) {
-        return value != null && REQUEST_ID.matcher(value).matches() ? value : UUID.randomUUID().toString();
     }
 
     private void updatePage(Map<String, Object> response, int offset, int returned, int matched) {
@@ -348,20 +332,8 @@ public class ReadingQueryController {
     }
 
     private void auditRejected(HttpServletRequest request, String outcome) {
-        String principalId = "unknown";
-        if (request.getUserPrincipal() != null) {
-            try {
-                principalId = userRepository.findByUsername(request.getUserPrincipal().getName())
-                        .map(user -> String.valueOf(user.getId()))
-                        .orElse("unknown");
-            } catch (RuntimeException ignored) {
-                principalId = "unknown";
-            }
-        }
-        logger.warn("Reading query failed: principal_id={}, tool_name={}, request_id={}, outcome={}",
-                principalId,
-                TOOLS_BY_PATH.getOrDefault(request.getRequestURI(), "unknown"),
-                validRequestId(request.getHeader("X-Request-ID")),
+        audit.rejection(request,
+                request.getUserPrincipal() instanceof Authentication authentication ? authentication : null,
                 outcome);
     }
 

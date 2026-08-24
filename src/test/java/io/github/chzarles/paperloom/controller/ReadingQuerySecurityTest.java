@@ -4,6 +4,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.github.chzarles.paperloom.config.JwtAuthenticationFilter;
 import io.github.chzarles.paperloom.config.PaperAccessAuthorizationFilter;
+import io.github.chzarles.paperloom.config.ReadingQueryAudit;
 import io.github.chzarles.paperloom.config.SecurityConfig;
 import io.github.chzarles.paperloom.model.User;
 import io.github.chzarles.paperloom.repository.PaperPublicationRepository;
@@ -26,13 +27,14 @@ import java.util.Optional;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 @WebMvcTest(ReadingQueryController.class)
 @Import({SecurityConfig.class, JwtAuthenticationFilter.class, PaperAccessAuthorizationFilter.class,
-        PaperAccessService.class})
+        PaperAccessService.class, ReadingQueryAudit.class})
 class ReadingQuerySecurityTest {
 
     @jakarta.annotation.Resource
@@ -66,10 +68,15 @@ class ReadingQuerySecurityTest {
 
     @Test
     void onlyUserAndAdminRolesCanUsePublicReadingQueries() throws Exception {
-        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(SecurityConfig.class);
+        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(ReadingQueryAudit.class);
         ListAppender<ILoggingEvent> events = new ListAppender<>();
+        var businessLogger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(
+                "io.github.chzarles.paperloom.business");
+        ListAppender<ILoggingEvent> businessEvents = new ListAppender<>();
         events.start();
+        businessEvents.start();
         logger.addAppender(events);
+        businessLogger.addAppender(businessEvents);
         try {
             mvc.perform(post("/api/v1/reading/papers/search")
                             .header("X-Request-ID", "unsafe anonymous request id")
@@ -88,18 +95,26 @@ class ReadingQuerySecurityTest {
                             .contentType(MediaType.APPLICATION_JSON).content("{}")
                             .with(user("admin").roles("ADMIN")))
                     .andExpect(status().isOk());
+            mvc.perform(get("/api/v1/admin/system/status"))
+                    .andExpect(status().isForbidden());
         } finally {
             logger.detachAppender(events);
+            businessLogger.detachAppender(businessEvents);
         }
 
-        org.junit.jupiter.api.Assertions.assertEquals(2, events.list.size());
-        String anonymous = events.list.get(0).getFormattedMessage();
-        String guest = events.list.get(1).getFormattedMessage();
+        List<String> denials = events.list.stream()
+                .map(ILoggingEvent::getFormattedMessage)
+                .filter(message -> !message.contains("outcome=SUCCESS"))
+                .toList();
+        org.junit.jupiter.api.Assertions.assertEquals(2, denials.size());
+        String anonymous = denials.get(0);
+        String guest = denials.get(1);
         org.junit.jupiter.api.Assertions.assertTrue(
                 anonymous.contains("principal_id=unknown") && anonymous.contains("outcome=UNAUTHORIZED"));
         org.junit.jupiter.api.Assertions.assertTrue(
                 guest.contains("principal_id=7") && guest.contains("outcome=FORBIDDEN"));
         org.junit.jupiter.api.Assertions.assertFalse((anonymous + guest).contains("unsafe"));
+        org.junit.jupiter.api.Assertions.assertTrue(businessEvents.list.isEmpty());
     }
 
     @Test
@@ -112,6 +127,8 @@ class ReadingQuerySecurityTest {
                 "org.springframework.web.HttpLogging");
         var providerUrlLogger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(
                 "org.springframework.web.reactive.function.client.ExchangeFunctions");
+        var exceptionLogger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(
+                "org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver");
         org.junit.jupiter.api.Assertions.assertEquals(ch.qos.logback.classic.Level.INFO,
                 requestLogger.getEffectiveLevel());
         org.junit.jupiter.api.Assertions.assertEquals(ch.qos.logback.classic.Level.INFO,
@@ -120,6 +137,8 @@ class ReadingQuerySecurityTest {
                 providerPayloadLogger.getEffectiveLevel());
         org.junit.jupiter.api.Assertions.assertEquals(ch.qos.logback.classic.Level.INFO,
                 providerUrlLogger.getEffectiveLevel());
+        org.junit.jupiter.api.Assertions.assertEquals(ch.qos.logback.classic.Level.INFO,
+                exceptionLogger.getEffectiveLevel());
     }
 
     @Test

@@ -25,6 +25,9 @@ public class LoggingInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        if (request.getRequestURI().startsWith("/api/v1/reading/")) {
+            return true;
+        }
         // 记录请求开始时间
         long startTime = System.currentTimeMillis();
         request.setAttribute(START_TIME_ATTRIBUTE, startTime);
@@ -116,4 +119,4 @@ public class LoggingInterceptor implements HandlerInterceptor {
     private boolean isApiRequest(String path) {
         return path.startsWith("/api/") || path.startsWith("/chat/");
     }
-} 
+}

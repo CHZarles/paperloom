@@ -1,5 +1,7 @@
 package io.github.chzarles.paperloom.utils;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.github.chzarles.paperloom.model.User;
 import io.github.chzarles.paperloom.repository.UserRepository;
 import io.github.chzarles.paperloom.service.TokenCacheService;
@@ -131,5 +133,29 @@ public class JwtUtilsRefreshTest {
 
         String role = jwtUtils.extractRoleFromToken(token);
         assertEquals("USER", role);
+    }
+
+    @Test
+    void malformedTokensNeverEnterLogs() {
+        String token = "secret.malformed.jwt";
+        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(JwtUtils.class);
+        ListAppender<ILoggingEvent> events = new ListAppender<>();
+        events.start();
+        logger.addAppender(events);
+        try {
+            assertFalse(jwtUtils.validateToken(token));
+            assertNull(jwtUtils.extractUsernameFromToken(token));
+            assertNull(jwtUtils.extractUserIdFromToken(token));
+            assertNull(jwtUtils.extractRoleFromToken(token));
+            assertNull(jwtUtils.refreshToken(token));
+        } finally {
+            logger.detachAppender(events);
+        }
+
+        assertFalse(events.list.isEmpty());
+        for (ILoggingEvent event : events.list) {
+            assertFalse(event.getFormattedMessage().contains(token));
+            assertNull(event.getThrowableProxy());
+        }
     }
 }

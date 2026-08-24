@@ -1,6 +1,7 @@
 package io.github.chzarles.paperloom.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.chzarles.paperloom.config.ReadingQueryAudit;
 import io.github.chzarles.paperloom.model.User;
 import io.github.chzarles.paperloom.repository.PaperSourceQuoteRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
@@ -27,7 +28,7 @@ import static org.mockito.Mockito.when;
 
 @DataJpaTest
 @ActiveProfiles("test")
-@Import({ReadingQueryController.class, ReadingQueryPersistenceTest.TestConfig.class})
+@Import({ReadingQueryController.class, ReadingQueryAudit.class, ReadingQueryPersistenceTest.TestConfig.class})
 class ReadingQueryPersistenceTest {
 
     @Autowired

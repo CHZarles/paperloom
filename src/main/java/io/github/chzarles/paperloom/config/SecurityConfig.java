@@ -1,7 +1,5 @@
 package io.github.chzarles.paperloom.config;
 
-import io.github.chzarles.paperloom.repository.UserRepository;
-import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,14 +9,13 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.access.AccessDeniedHandlerImpl;
+import org.springframework.security.web.authentication.Http403ForbiddenEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
-import java.util.Map;
-import java.util.UUID;
-import java.util.regex.Pattern;
 
 /**
  * 配置Spring Security的类
@@ -30,14 +27,8 @@ public class SecurityConfig {
 
     // 日志记录器，用于记录安全配置的相关信息
     private static final Logger logger = LoggerFactory.getLogger(SecurityConfig.class);
-    private static final Pattern REQUEST_ID = Pattern.compile("[A-Za-z0-9._:-]{1,96}");
-    private static final Map<String, String> READING_TOOLS = Map.of(
-            "/api/v1/reading/papers/search", "search_papers",
-            "/api/v1/reading/papers/get", "get_paper",
-            "/api/v1/reading/structure", "get_paper_structure",
-            "/api/v1/reading/content/search", "search_paper_content",
-            "/api/v1/reading/content/read", "read_paper_content"
-    );
+    private static final AuthenticationEntryPoint DEFAULT_ENTRY_POINT = new Http403ForbiddenEntryPoint();
+    private static final AccessDeniedHandler DEFAULT_ACCESS_DENIED_HANDLER = new AccessDeniedHandlerImpl();
 
     @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -46,7 +37,7 @@ public class SecurityConfig {
     private PaperAccessAuthorizationFilter paperAccessAuthorizationFilter;
 
     @Autowired
-    private UserRepository userRepository;
+    private ReadingQueryAudit readingQueryAudit;
 
     /**
      * 配置SecurityFilterChain bean的方法
@@ -63,13 +54,21 @@ public class SecurityConfig {
             http.csrf(csrf -> csrf.disable())
                     .exceptionHandling(exceptions -> exceptions
                             .authenticationEntryPoint((request, response, error) -> {
-                                auditReadingDenial(request, null, "UNAUTHORIZED");
-                                response.sendError(401);
+                                if (readingQueryAudit.supports(request)) {
+                                    readingQueryAudit.rejection(request, null, "UNAUTHORIZED");
+                                    response.setStatus(401);
+                                } else {
+                                    DEFAULT_ENTRY_POINT.commence(request, response, error);
+                                }
                             })
                             .accessDeniedHandler((request, response, error) -> {
-                                auditReadingDenial(request,
-                                        SecurityContextHolder.getContext().getAuthentication(), "FORBIDDEN");
-                                response.sendError(403);
+                                if (readingQueryAudit.supports(request)) {
+                                    readingQueryAudit.rejection(request,
+                                            SecurityContextHolder.getContext().getAuthentication(), "FORBIDDEN");
+                                    response.setStatus(403);
+                                } else {
+                                    DEFAULT_ACCESS_DENIED_HANDLER.handle(request, response, error);
+                                }
                             }))
                     // 配置请求的授权规则
                     .authorizeHttpRequests(authorize -> authorize
@@ -137,26 +136,4 @@ public class SecurityConfig {
         }
     }
 
-    private void auditReadingDenial(HttpServletRequest request, Authentication authentication, String outcome) {
-        String toolName = READING_TOOLS.get(request.getRequestURI());
-        if (toolName == null) {
-            return;
-        }
-        String principalId = "unknown";
-        if (authentication != null && authentication.getName() != null) {
-            try {
-                principalId = userRepository.findByUsername(authentication.getName())
-                        .map(user -> String.valueOf(user.getId()))
-                        .orElse("unknown");
-            } catch (RuntimeException ignored) {
-                principalId = "unknown";
-            }
-        }
-        String rawRequestId = request.getHeader("X-Request-ID");
-        String requestId = rawRequestId != null && REQUEST_ID.matcher(rawRequestId).matches()
-                ? rawRequestId
-                : UUID.randomUUID().toString();
-        logger.warn("Reading query failed: principal_id={}, tool_name={}, request_id={}, outcome={}",
-                principalId, toolName, requestId, outcome);
-    }
 }

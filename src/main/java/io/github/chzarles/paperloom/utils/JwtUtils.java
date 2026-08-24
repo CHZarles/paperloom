@@ -110,7 +110,7 @@ public class JwtUtils {
         } catch (SignatureException e) {
             logger.warn("Invalid token signature");
         } catch (Exception e) {
-            logger.error("Error validating token", e);
+            logTokenError("validate_access_token", e);
         }
         return false;
     }
@@ -123,7 +123,7 @@ public class JwtUtils {
             Claims claims = extractClaimsIgnoreExpiration(token);
             return claims != null ? claims.getSubject() : null;
         } catch (Exception e) {
-            logger.error("Error extracting username from token: {}", token, e);
+            logTokenError("extract_username", e);
             return null;
         }
     }
@@ -136,7 +136,7 @@ public class JwtUtils {
             Claims claims = extractClaimsIgnoreExpiration(token);
             return claims != null ? claims.get("userId", String.class) : null;
         } catch (Exception e) {
-            logger.error("Error extracting userId from token: {}", token, e);
+            logTokenError("extract_user_id", e);
             return null;
         }
     }
@@ -149,7 +149,7 @@ public class JwtUtils {
             Claims claims = extractClaimsIgnoreExpiration(token);
             return claims != null ? claims.get("role", String.class) : null;
         } catch (Exception e) {
-            logger.error("Error extracting role from token: {}", token, e);
+            logTokenError("extract_role", e);
             return null;
         }
     }
@@ -168,7 +168,7 @@ public class JwtUtils {
             
             return remainingTime > 0 && remainingTime < REFRESH_THRESHOLD;
         } catch (Exception e) {
-            logger.debug("Cannot check if token should refresh: {}", e.getMessage());
+            logTokenError("check_access_refresh", e);
             return false;
         }
     }
@@ -187,7 +187,7 @@ public class JwtUtils {
             
             return expiredTime > 0 && expiredTime < REFRESH_WINDOW;
         } catch (Exception e) {
-            logger.debug("Cannot check if expired token can refresh: {}", e.getMessage());
+            logTokenError("check_expired_refresh", e);
             return false;
         }
     }
@@ -208,7 +208,7 @@ public class JwtUtils {
             logger.info("Token refreshed successfully for user: {}", username);
             return newToken;
         } catch (Exception e) {
-            logger.error("Error refreshing token: {}", e.getMessage());
+            logTokenError("refresh_access_token", e);
             return null;
         }
     }
@@ -227,7 +227,7 @@ public class JwtUtils {
             // 忽略过期异常，返回claims
             return e.getClaims();
         } catch (Exception e) {
-            logger.debug("Cannot extract claims from token: {}", e.getMessage());
+            logTokenError("extract_claims", e);
             return null;
         }
     }
@@ -320,7 +320,7 @@ public class JwtUtils {
         } catch (SignatureException e) {
             logger.warn("Invalid refresh token signature");
         } catch (Exception e) {
-            logger.error("Error validating refresh token", e);
+            logTokenError("validate_refresh_token", e);
         }
         return false;
     }
@@ -333,7 +333,7 @@ public class JwtUtils {
             Claims claims = extractClaimsIgnoreExpiration(refreshToken);
             return claims != null ? claims.get("refreshTokenId", String.class) : null;
         } catch (Exception e) {
-            logger.debug("Error extracting refreshTokenId from token", e);
+            logTokenError("extract_refresh_token_id", e);
             return null;
         }
     }
@@ -353,7 +353,7 @@ public class JwtUtils {
             Claims claims = extractClaimsIgnoreExpiration(token);
             return claims != null ? claims.get("tokenId", String.class) : null;
         } catch (Exception e) {
-            logger.debug("Error extracting tokenId from token", e);
+            logTokenError("extract_access_token_id", e);
             return null;
         }
     }
@@ -379,7 +379,7 @@ public class JwtUtils {
                 }
             }
         } catch (Exception e) {
-            logger.error("Error invalidating token", e);
+            logTokenError("invalidate_access_token", e);
         }
     }
     
@@ -393,5 +393,10 @@ public class JwtUtils {
         } catch (Exception e) {
             logger.error("Error invalidating all user tokens: {}", userId, e);
         }
+    }
+
+    private void logTokenError(String operation, Exception error) {
+        logger.warn("JWT operation failed: operation={}, error_type={}",
+                operation, error.getClass().getSimpleName());
     }
 }
