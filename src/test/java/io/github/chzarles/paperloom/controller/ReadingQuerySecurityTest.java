@@ -129,6 +129,10 @@ class ReadingQuerySecurityTest {
                 "org.springframework.web.reactive.function.client.ExchangeFunctions");
         var exceptionLogger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(
                 "org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver");
+        var routeLogger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(
+                "org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping");
+        var filterLogger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(
+                "org.springframework.security.web.FilterChainProxy");
         org.junit.jupiter.api.Assertions.assertEquals(ch.qos.logback.classic.Level.INFO,
                 requestLogger.getEffectiveLevel());
         org.junit.jupiter.api.Assertions.assertEquals(ch.qos.logback.classic.Level.INFO,
@@ -139,6 +143,10 @@ class ReadingQuerySecurityTest {
                 providerUrlLogger.getEffectiveLevel());
         org.junit.jupiter.api.Assertions.assertEquals(ch.qos.logback.classic.Level.INFO,
                 exceptionLogger.getEffectiveLevel());
+        org.junit.jupiter.api.Assertions.assertEquals(ch.qos.logback.classic.Level.INFO,
+                routeLogger.getEffectiveLevel());
+        org.junit.jupiter.api.Assertions.assertEquals(ch.qos.logback.classic.Level.INFO,
+                filterLogger.getEffectiveLevel());
     }
 
     @Test

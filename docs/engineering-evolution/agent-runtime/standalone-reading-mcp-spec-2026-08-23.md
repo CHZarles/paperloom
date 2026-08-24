@@ -323,7 +323,8 @@ Verified on 2026-08-24:
 - SecurityFilterChain tests recorded bounded anonymous/GUEST denial audits, and a live default-profile
   request confirmed query/response/provider payloads and provider URLs were absent from logs;
 - malformed-JWT tests confirmed tokens and exception payloads were absent from logs; generic API
-  logging skips Reading routes and non-Reading authentication behavior remains unchanged;
+  logging skips Reading routes, framework per-request loggers remain at INFO, and non-Reading
+  authentication behavior remains unchanged;
 - loopback smoke used a real USER JWT and a ready, published PDF through all five Tools;
 - observed top-level fields were `query_text/papers/counts/coverage`, Paper metadata,
   `structure_type/items/counts/coverage`, `query_text/locations/counts/coverage`, and
