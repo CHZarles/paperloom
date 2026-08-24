@@ -124,12 +124,22 @@ class ReadingQueryControllerTest {
 
     @Test
     void missingAuthenticatedDatabaseUserRemainsUnauthorized() throws Exception {
-        mvc.perform(post("/api/v1/reading/papers/search")
-                        .principal(authentication)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
+        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(ReadingQueryController.class);
+        ListAppender<ILoggingEvent> events = new ListAppender<>();
+        events.start();
+        logger.addAppender(events);
+        try {
+            mvc.perform(post("/api/v1/reading/papers/search")
+                            .principal(authentication)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
+        } finally {
+            logger.detachAppender(events);
+        }
+        assertEquals(1, events.list.size());
+        assertTrue(events.list.get(0).getFormattedMessage().contains("outcome=UNAUTHORIZED"));
     }
 
     @Test
@@ -215,7 +225,7 @@ class ReadingQueryControllerTest {
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user(7L)));
         when(paperAccessService.canAccess("7", "paper-a")).thenReturn(true);
         when(readingService.readPaperContent(any())).thenReturn(new PaperReadingService.ContentReadResult(
-                List.of(canonical("paper-a", "large-ref", "x".repeat(17_000))), List.of()));
+                List.of(canonical("paper-a", "large-ref", "汉".repeat(6_000))), List.of()));
 
         mvc.perform(post("/api/v1/reading/content/read")
                         .principal(authentication)
@@ -248,6 +258,21 @@ class ReadingQueryControllerTest {
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.error").value("READING_QUOTA_EXHAUSTED"))
                 .andExpect(jsonPath("$.message").value("Embedding quota is unavailable"));
+    }
+
+    @Test
+    void currentModelFailureHasOneStablePublicError() throws Exception {
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user(7L)));
+        when(readingService.getPaperStructure(any())).thenThrow(
+                new io.github.chzarles.paperloom.service.PaperReadingException(
+                        "READING_MODEL_NOT_READY", "The current reading model is not ready"));
+
+        mvc.perform(post("/api/v1/reading/structure")
+                        .principal(authentication)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paper_id\":\"paper-a\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("READING_MODEL_NOT_READY"));
     }
 
     @Test

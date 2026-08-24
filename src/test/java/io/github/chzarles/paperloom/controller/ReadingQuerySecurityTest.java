@@ -1,5 +1,7 @@
 package io.github.chzarles.paperloom.controller;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.github.chzarles.paperloom.config.JwtAuthenticationFilter;
 import io.github.chzarles.paperloom.config.PaperAccessAuthorizationFilter;
 import io.github.chzarles.paperloom.config.SecurityConfig;
@@ -64,14 +66,60 @@ class ReadingQuerySecurityTest {
 
     @Test
     void onlyUserAndAdminRolesCanUsePublicReadingQueries() throws Exception {
-        var request = post("/api/v1/reading/papers/search")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{}");
+        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(SecurityConfig.class);
+        ListAppender<ILoggingEvent> events = new ListAppender<>();
+        events.start();
+        logger.addAppender(events);
+        try {
+            mvc.perform(post("/api/v1/reading/papers/search")
+                            .header("X-Request-ID", "unsafe anonymous request id")
+                            .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                    .andExpect(status().isUnauthorized());
+            mvc.perform(post("/api/v1/reading/papers/search")
+                            .header("X-Request-ID", "unsafe guest request id")
+                            .contentType(MediaType.APPLICATION_JSON).content("{}")
+                            .with(user("guest").roles("GUEST")))
+                    .andExpect(status().isForbidden());
+            mvc.perform(post("/api/v1/reading/papers/search")
+                            .contentType(MediaType.APPLICATION_JSON).content("{}")
+                            .with(user("alice").roles("USER")))
+                    .andExpect(status().isOk());
+            mvc.perform(post("/api/v1/reading/papers/search")
+                            .contentType(MediaType.APPLICATION_JSON).content("{}")
+                            .with(user("admin").roles("ADMIN")))
+                    .andExpect(status().isOk());
+        } finally {
+            logger.detachAppender(events);
+        }
 
-        mvc.perform(request).andExpect(status().isForbidden());
-        mvc.perform(request.with(user("guest").roles("GUEST"))).andExpect(status().isForbidden());
-        mvc.perform(request.with(user("alice").roles("USER"))).andExpect(status().isOk());
-        mvc.perform(request.with(user("admin").roles("ADMIN"))).andExpect(status().isOk());
+        org.junit.jupiter.api.Assertions.assertEquals(2, events.list.size());
+        String anonymous = events.list.get(0).getFormattedMessage();
+        String guest = events.list.get(1).getFormattedMessage();
+        org.junit.jupiter.api.Assertions.assertTrue(
+                anonymous.contains("principal_id=unknown") && anonymous.contains("outcome=UNAUTHORIZED"));
+        org.junit.jupiter.api.Assertions.assertTrue(
+                guest.contains("principal_id=7") && guest.contains("outcome=FORBIDDEN"));
+        org.junit.jupiter.api.Assertions.assertFalse((anonymous + guest).contains("unsafe"));
+    }
+
+    @Test
+    void requestAndResponsePayloadLoggersStayAtInfo() {
+        var requestLogger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(
+                "org.springframework.web.servlet.mvc.method.annotation.RequestResponseBodyMethodProcessor");
+        var responseLogger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(
+                "org.springframework.web.servlet.mvc.method.annotation.HttpEntityMethodProcessor");
+        var providerPayloadLogger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(
+                "org.springframework.web.HttpLogging");
+        var providerUrlLogger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(
+                "org.springframework.web.reactive.function.client.ExchangeFunctions");
+        org.junit.jupiter.api.Assertions.assertEquals(ch.qos.logback.classic.Level.INFO,
+                requestLogger.getEffectiveLevel());
+        org.junit.jupiter.api.Assertions.assertEquals(ch.qos.logback.classic.Level.INFO,
+                responseLogger.getEffectiveLevel());
+        org.junit.jupiter.api.Assertions.assertEquals(ch.qos.logback.classic.Level.INFO,
+                providerPayloadLogger.getEffectiveLevel());
+        org.junit.jupiter.api.Assertions.assertEquals(ch.qos.logback.classic.Level.INFO,
+                providerUrlLogger.getEffectiveLevel());
     }
 
     @Test

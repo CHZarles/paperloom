@@ -94,6 +94,10 @@
     <!-- Spring框架日志级别 -->
     <logger name="org.springframework" level="WARN"/>
     <logger name="org.springframework.web" level="INFO"/>
+    <logger name="org.springframework.web.servlet.mvc.method.annotation.RequestResponseBodyMethodProcessor" level="INFO"/>
+    <logger name="org.springframework.web.servlet.mvc.method.annotation.HttpEntityMethodProcessor" level="INFO"/>
+    <logger name="org.springframework.web.HttpLogging" level="INFO"/>
+    <logger name="org.springframework.web.reactive.function.client.ExchangeFunctions" level="INFO"/>
     <logger name="org.springframework.security" level="INFO"/>
     <logger name="org.springframework.boot" level="INFO"/>
 

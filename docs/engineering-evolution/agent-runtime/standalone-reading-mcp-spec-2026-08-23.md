@@ -317,9 +317,11 @@ No commit or push is allowed until all verification above is green.
 
 Verified on 2026-08-24:
 
-- Java: 426 tests passed, 3 skipped;
-- Harness regression: 207 tests passed, 7 skipped;
-- standalone MCP clean locked install: 11 tests passed;
+- Java: 429 run, 3 skipped, 426 passed;
+- Harness regression: 207 run, 7 skipped, 200 passed;
+- standalone MCP clean locked install: 11 run and passed;
+- SecurityFilterChain tests recorded bounded anonymous/GUEST denial audits, and a live default-profile
+  request confirmed query/response/provider payloads and provider URLs were absent from logs;
 - loopback smoke used a real USER JWT and a ready, published PDF through all five Tools;
 - observed top-level fields were `query_text/papers/counts/coverage`, Paper metadata,
   `structure_type/items/counts/coverage`, `query_text/locations/counts/coverage`, and

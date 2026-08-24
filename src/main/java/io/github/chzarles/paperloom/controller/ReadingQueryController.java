@@ -287,6 +287,10 @@ public class ReadingQueryController {
         if (error instanceof PaperReadingException readingError) {
             return readingError.code();
         }
+        if (error instanceof ResponseStatusException statusError
+                && statusError.getStatusCode().value() == HttpStatus.UNAUTHORIZED.value()) {
+            return "UNAUTHORIZED";
+        }
         return error instanceof QuotaExceededException
                 ? "READING_QUOTA_EXHAUSTED"
                 : "INTERNAL_UNEXPECTED";

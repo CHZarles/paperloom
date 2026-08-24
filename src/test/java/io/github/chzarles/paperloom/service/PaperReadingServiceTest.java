@@ -43,6 +43,9 @@ class PaperReadingServiceTest {
                         7L, List.of(), "", List.of(), List.of(), List.of(), null, null, 0, 0)),
                 () -> fixture.service.searchPaperCandidates(new PaperReadingService.PaperSearchQuery(
                         7L, List.of(), "", List.of(), List.of(), List.of(), 2026, 2025, 0, 20)),
+                () -> fixture.service.searchPaperCandidates(new PaperReadingService.PaperSearchQuery(
+                        7L, List.of(), "", List.of("paper-a", "paper-a"), List.of(), List.of(),
+                        null, null, 0, 20)),
                 () -> fixture.service.findPapersByIdentity(new PaperReadingService.IdentitySearchQuery(
                         7L, List.of(), Map.of())),
                 () -> fixture.service.searchPaperContent(new PaperReadingService.ContentSearchQuery(
@@ -266,6 +269,20 @@ class PaperReadingServiceTest {
                         7L, scope, scope, "query", "", List.of(), null, null, 8)));
 
         assertEquals("RETRIEVAL_UNAVAILABLE", error.code());
+        verifyNoInteractions(fixture.retriever, fixture.locationRepository, fixture.readService);
+    }
+
+    @Test
+    void locationSearchRejectsMissingCurrentModelBeforeRetriever() {
+        Fixture fixture = new Fixture();
+        List<String> scope = List.of("paper-a");
+        fixture.authorize(scope);
+
+        PaperReadingException error = assertThrows(PaperReadingException.class, () ->
+                fixture.service.searchPaperContent(new PaperReadingService.ContentSearchQuery(
+                        7L, scope, scope, "query", "", List.of(), null, null, 8)));
+
+        assertEquals("READING_MODEL_NOT_READY", error.code());
         verifyNoInteractions(fixture.retriever, fixture.locationRepository, fixture.readService);
     }
 
