@@ -8,8 +8,8 @@ import uuid
 import httpx
 import jsonschema
 import uvicorn
-from mcp.server.fastmcp.exceptions import ToolError
 from mcp import types
+from mcp.server.fastmcp.exceptions import ToolError
 from mcp.server.lowlevel import Server
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from mcp.server.transport_security import TransportSecuritySettings
@@ -75,6 +75,10 @@ class ReadingMcpGateway:
             raise ToolError(_status_error(response.status_code))
         if not isinstance(result, dict):
             raise ToolError("INVALID_READING_RESPONSE")
+        try:
+            jsonschema.validate(result, _RESULT_SCHEMAS[path])
+        except (KeyError, jsonschema.ValidationError) as error:
+            raise ToolError("INVALID_READING_RESPONSE") from error
         return result
 
 
@@ -180,10 +184,89 @@ def _string_array(max_items: int, max_length: int) -> JsonMap:
     }
 
 
+_PAPER_RESULT = _object_schema({
+    "paper_id": {"type": "string"},
+    "title": {"type": "string"},
+    "authors": {"type": "array", "items": {"type": "string"}},
+    "year": {"type": "integer"},
+    "venue": {"type": "string"},
+    "doi": {"type": "string"},
+    "arxiv_id": {"type": "string"},
+    "filename": {"type": "string"},
+    "preview": {"type": "string"},
+}, ["paper_id"])
+_STRUCTURE_ITEM = _object_schema({
+    "paper_id": {"type": "string"},
+    "title": {"type": "string"},
+    "location_ref": {"type": "string"},
+    "structure_type": {"type": "string", "enum": ["SECTION", "PAGE"]},
+    "section_title": {"type": "string"},
+    "section_level": {"type": "integer"},
+    "section_path": {"type": "string"},
+    "display_order": {"type": "integer"},
+    "page_from": {"type": "integer"},
+    "page_to": {"type": "integer"},
+}, ["paper_id", "location_ref", "structure_type"])
+_LOCATION_ITEM = _object_schema({
+    "paper_id": {"type": "string"},
+    "title": {"type": "string"},
+    "location_ref": {"type": "string"},
+    "section": {"type": "string"},
+    "page": {"type": "integer"},
+    "element_type": {"type": "string"},
+    "preview": {"type": "string"},
+}, ["paper_id", "location_ref"])
+_CONTENT_ITEM = _object_schema({
+    "paper_id": {"type": "string"},
+    "location_ref": {"type": "string"},
+    "section": {"type": "string"},
+    "page": {"type": "integer"},
+    "page_end": {"type": "integer"},
+    "content_kind": {"type": "string"},
+    "content": {"type": "string"},
+}, ["paper_id", "location_ref", "content_kind", "content"])
+_PAGE_FIELDS = {
+    "matched_count": {"type": "integer"},
+    "returned_count": {"type": "integer"},
+    "coverage": {"type": "string", "enum": ["complete", "truncated"]},
+    "next_offset": {"type": "integer"},
+}
+_RESULT_SCHEMAS = {
+    "/api/v1/reading/papers/search": _object_schema({
+        "query_text": {"type": "string"},
+        "papers": {"type": "array", "items": _PAPER_RESULT},
+        **_PAGE_FIELDS,
+    }, ["query_text", "papers", "matched_count", "returned_count", "coverage"]),
+    "/api/v1/reading/papers/get": _PAPER_RESULT,
+    "/api/v1/reading/structure": _object_schema({
+        "structure_type": {"type": "string", "enum": ["SECTION", "PAGE"]},
+        "items": {"type": "array", "items": _STRUCTURE_ITEM},
+        **_PAGE_FIELDS,
+    }, ["structure_type", "items", "matched_count", "returned_count", "coverage"]),
+    "/api/v1/reading/content/search": _object_schema({
+        "query_text": {"type": "string"},
+        "locations": {"type": "array", "items": _LOCATION_ITEM},
+        **_PAGE_FIELDS,
+    }, ["query_text", "locations", "matched_count", "returned_count", "coverage"]),
+    "/api/v1/reading/content/read": _object_schema({
+        "items": {"type": "array", "items": _CONTENT_ITEM},
+        "missing_location_refs": {"type": "array", "items": {"type": "string"}},
+    }, ["items", "missing_location_refs"]),
+}
+
+
 def _tool_error(code: str) -> types.CallToolResult:
     return types.CallToolResult(
         content=[types.TextContent(type="text", text=code)],
         isError=True,
+    )
+
+
+def _tool_result(result: JsonMap):
+    return (
+        [types.TextContent(type="text", text=json.dumps(
+            result, ensure_ascii=False, separators=(",", ":")))],
+        result,
     )
 
 
@@ -212,7 +295,7 @@ def create_mcp_server(
         except jsonschema.ValidationError:
             return _tool_error("READING_ARGUMENTS_INVALID")
         if name == "search_papers":
-            return await gateway.query("/api/v1/reading/papers/search", {
+            return _tool_result(await gateway.query("/api/v1/reading/papers/search", {
                 "query_text": values.get("query_text", ""),
                 "paper_ids": values.get("paper_ids"),
                 "authors": values.get("authors"),
@@ -221,11 +304,11 @@ def create_mcp_server(
                 "year_to": values.get("year_to"),
                 "offset": values.get("offset", 0),
                 "limit": values.get("limit", 20),
-            })
+            }))
         if name == "get_paper":
-            return await gateway.query("/api/v1/reading/papers/get", values)
+            return _tool_result(await gateway.query("/api/v1/reading/papers/get", values))
         if name == "get_paper_structure":
-            return await gateway.query("/api/v1/reading/structure", {
+            return _tool_result(await gateway.query("/api/v1/reading/structure", {
                 "paper_id": values["paper_id"],
                 "structure_type": values.get("structure_type", "SECTION"),
                 "section_query": values.get("section_query", ""),
@@ -233,9 +316,9 @@ def create_mcp_server(
                 "page_to": values.get("page_to"),
                 "offset": values.get("offset", 0),
                 "limit": values.get("limit", 100),
-            })
+            }))
         if name == "search_paper_content":
-            return await gateway.query("/api/v1/reading/content/search", {
+            return _tool_result(await gateway.query("/api/v1/reading/content/search", {
                 "paper_id": values["paper_id"],
                 "query_text": values.get("query_text", ""),
                 "section_query": values.get("section_query", ""),
@@ -244,8 +327,8 @@ def create_mcp_server(
                 "page_from": values.get("page_from"),
                 "page_to": values.get("page_to"),
                 "top_k": values.get("top_k", 8),
-            })
-        return await gateway.query("/api/v1/reading/content/read", values)
+            }))
+        return _tool_result(await gateway.query("/api/v1/reading/content/read", values))
 
     return server
 

@@ -3,15 +3,17 @@ from __future__ import annotations
 import json
 import asyncio
 import re
+import socket
+import subprocess
+import sys
+import time
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 import httpx
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
-from paperloom_mcp.__main__ import main
 from paperloom_mcp.server import ReadingMcpGateway, create_mcp_app
 
 
@@ -42,6 +44,13 @@ class McpServerTest(unittest.IsolatedAsyncioTestCase):
                     return httpx.Response(503, content=b"upstream stack trace")
                 if body.get("query_text") == "network-error":
                     raise httpx.ConnectError("secret java.test", request=request)
+                if body.get("query_text") == "streamed-huge":
+                    raw = json.dumps({"papers": [{"preview": "x" * 17_000}]}).encode()
+                    return httpx.Response(200, stream=httpx.ByteStream(raw))
+                if body.get("query_text") == "unexpected-success":
+                    return httpx.Response(200, json={
+                        "source_quote_ref": "secret-ref", "model_version": "secret-model",
+                    })
                 return httpx.Response(200, json={
                     "query_text": body.get("query_text") or "",
                     "papers": [{"paper_id": "paper-a", "title": "Paper A"}],
@@ -49,6 +58,18 @@ class McpServerTest(unittest.IsolatedAsyncioTestCase):
                     "returned_count": 1,
                     "coverage": "complete",
                 }, headers={"New-Token": "must-not-leak"})
+            if request.url.path.endswith("/papers/get"):
+                return httpx.Response(200, json={"paper_id": "paper-a", "title": "Paper A"})
+            if request.url.path.endswith("/structure"):
+                return httpx.Response(200, json={
+                    "structure_type": "SECTION", "items": [], "matched_count": 0,
+                    "returned_count": 0, "coverage": "complete",
+                })
+            if request.url.path.endswith("/content/search"):
+                return httpx.Response(200, json={
+                    "query_text": body.get("query_text") or "", "locations": [],
+                    "matched_count": 0, "returned_count": 0, "coverage": "complete",
+                })
             if request.url.path.endswith("/content/read"):
                 return httpx.Response(200, json={
                     "items": [{
@@ -94,9 +115,9 @@ class McpServerTest(unittest.IsolatedAsyncioTestCase):
         async with self.app.router.lifespan_context(self.app):
             async with self.session("user-a") as (session, _):
                 search = await session.call_tool("search_papers", {"query_text": "Paper A", "limit": 5})
-                await session.call_tool("get_paper", {"paper_id": "paper-a"})
-                await session.call_tool("get_paper_structure", {"paper_id": "paper-a"})
-                await session.call_tool("search_paper_content", {
+                paper = await session.call_tool("get_paper", {"paper_id": "paper-a"})
+                structure = await session.call_tool("get_paper_structure", {"paper_id": "paper-a"})
+                content_search = await session.call_tool("search_paper_content", {
                     "paper_id": "paper-a", "query_text": "query",
                 })
                 read = await session.call_tool("read_paper_content", {
@@ -106,8 +127,12 @@ class McpServerTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertFalse(search.isError)
         self.assertFalse(read.isError)
-        for result in (search, read):
+        for result in (search, paper, structure, content_search, read):
             self.assertEqual(result.structuredContent, json.loads(result.content[0].text))
+            self.assertEqual(
+                json.dumps(result.structuredContent, ensure_ascii=False, separators=(",", ":")),
+                result.content[0].text,
+            )
         self.assertNotIn("source_quote_ref", json.dumps(read.structuredContent))
         self.assertEqual(
             [
@@ -162,11 +187,13 @@ class McpServerTest(unittest.IsolatedAsyncioTestCase):
     async def test_oversized_java_result_becomes_a_safe_tool_error(self) -> None:
         async with self.app.router.lifespan_context(self.app):
             async with self.session("user-a") as (session, _):
-                result = await session.call_tool("search_papers", {"query_text": "huge"})
+                declared = await session.call_tool("search_papers", {"query_text": "huge"})
+                streamed = await session.call_tool("search_papers", {"query_text": "streamed-huge"})
 
-        self.assertTrue(result.isError)
-        self.assertIn("READING_RESULT_TOO_LARGE", result.content[0].text)
-        self.assertNotIn("x" * 100, result.content[0].text)
+        for result in (declared, streamed):
+            self.assertTrue(result.isError)
+            self.assertEqual("READING_RESULT_TOO_LARGE", result.content[0].text)
+            self.assertNotIn("x" * 100, result.content[0].text)
 
     async def test_java_rejected_bearer_is_a_safe_tool_error(self) -> None:
         async with self.app.router.lifespan_context(self.app):
@@ -191,14 +218,18 @@ class McpServerTest(unittest.IsolatedAsyncioTestCase):
                     "search_papers", {"query_text": "non-json-error"})
                 network_error = await session.call_tool(
                     "search_papers", {"query_text": "network-error"})
+                unexpected = await session.call_tool(
+                    "search_papers", {"query_text": "unexpected-success"})
 
         self.assertTrue(invalid_length.isError)
         self.assertEqual("INVALID_READING_RESPONSE", invalid_length.content[0].text)
         self.assertEqual("RETRIEVAL_UNAVAILABLE", unsafe_error.content[0].text)
         self.assertEqual("INVALID_READING_RESPONSE", non_json.content[0].text)
         self.assertEqual("RETRIEVAL_UNAVAILABLE", network_error.content[0].text)
+        self.assertEqual("INVALID_READING_RESPONSE", unexpected.content[0].text)
         self.assertNotRegex(json.dumps([
-            unsafe_error.content[0].text, non_json.content[0].text, network_error.content[0].text,
+            unsafe_error.content[0].text, non_json.content[0].text,
+            network_error.content[0].text, unexpected.content[0].text,
         ]), r"secret|java\.test|stack trace")
 
     async def test_schema_failure_is_a_stable_tool_error_without_java_call(self) -> None:
@@ -212,14 +243,36 @@ class McpServerTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("READING_ARGUMENTS_INVALID", result.content[0].text)
         self.assertEqual([], self.java_calls)
 
-    async def test_cli_starts_loopback_mcp_server(self) -> None:
-        with patch("paperloom_mcp.__main__.run_mcp_server") as run:
-            result = main([
-                "--host", "127.0.0.1", "--port", "8090",
-                "--java-base-url", "http://127.0.0.1:8081",
-            ])
-        self.assertEqual(0, result)
-        run.assert_called_once_with("127.0.0.1", 8090, "http://127.0.0.1:8081")
+    def test_cli_starts_loopback_mcp_server(self) -> None:
+        with socket.socket() as listener:
+            listener.bind(("127.0.0.1", 0))
+            port = listener.getsockname()[1]
+        process = subprocess.Popen(
+            [sys.executable, "-m", "paperloom_mcp", "--host", "127.0.0.1",
+             "--port", str(port), "--java-base-url", "http://127.0.0.1:8081"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        try:
+            with httpx.Client(trust_env=False) as client:
+                for _ in range(50):
+                    if process.poll() is not None:
+                        self.fail("MCP CLI exited before accepting requests")
+                    try:
+                        response = client.get(
+                            f"http://127.0.0.1:{port}/mcp",
+                            headers={"Authorization": "Bearer smoke"},
+                            timeout=0.2,
+                        )
+                        break
+                    except httpx.ConnectError:
+                        time.sleep(0.1)
+                else:
+                    self.fail("MCP CLI did not start")
+            self.assertEqual(406, response.status_code)
+        finally:
+            process.terminate()
+            process.wait(timeout=5)
 
     def test_non_loopback_host_cannot_start_server(self) -> None:
         with self.assertRaisesRegex(ValueError, "loopback"):

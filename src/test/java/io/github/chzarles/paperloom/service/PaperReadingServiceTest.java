@@ -91,6 +91,7 @@ class PaperReadingServiceTest {
         ArgumentCaptor<LocationRetrievalRequest> request =
                 ArgumentCaptor.forClass(LocationRetrievalRequest.class);
         verify(fixture.retriever).retrieve(request.capture());
+        assertEquals("7", request.getValue().userId());
         assertEquals(Map.of("paper-a", "rm-a", "paper-b", "rm-b"), request.getValue().activeModels());
     }
 

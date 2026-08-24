@@ -12,6 +12,7 @@ import io.github.chzarles.paperloom.service.CanonicalReadingLocationService;
 import io.github.chzarles.paperloom.service.PaperAccessService;
 import io.github.chzarles.paperloom.service.PaperReadingException;
 import io.github.chzarles.paperloom.service.PaperReadingService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -49,6 +50,13 @@ public class ReadingQueryController {
     private static final Logger logger = LoggerFactory.getLogger(ReadingQueryController.class);
     private static final int MAX_RESPONSE_BYTES = 16 * 1024;
     private static final Pattern REQUEST_ID = Pattern.compile("[A-Za-z0-9._:-]{1,96}");
+    private static final Map<String, String> TOOLS_BY_PATH = Map.of(
+            "/api/v1/reading/papers/search", "search_papers",
+            "/api/v1/reading/papers/get", "get_paper",
+            "/api/v1/reading/structure", "get_paper_structure",
+            "/api/v1/reading/content/search", "search_paper_content",
+            "/api/v1/reading/content/read", "read_paper_content"
+    );
 
     private final PaperReadingService readingService;
     private final UserRepository userRepository;
@@ -215,16 +223,18 @@ public class ReadingQueryController {
 
     private <T> T query(Authentication authentication, String rawRequestId,
                         String toolName, Function<Long, T> operation) {
-        User user = authenticatedUser(authentication);
         String requestId = validRequestId(rawRequestId);
+        String principalId = "unknown";
         try {
+            User user = authenticatedUser(authentication);
+            principalId = String.valueOf(user.getId());
             T result = operation.apply(user.getId());
             logger.info("Reading query completed: principal_id={}, tool_name={}, request_id={}, outcome=SUCCESS",
-                    user.getId(), toolName, requestId);
+                    principalId, toolName, requestId);
             return result;
         } catch (RuntimeException error) {
             logger.warn("Reading query failed: principal_id={}, tool_name={}, request_id={}, outcome={}",
-                    user.getId(), toolName, requestId, errorCode(error));
+                    principalId, toolName, requestId, errorCode(error));
             throw error;
         }
     }
@@ -306,20 +316,49 @@ public class ReadingQueryController {
     }
 
     @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentNotValidException.class})
-    public ResponseEntity<Map<String, Object>> invalidRequest() {
+    public ResponseEntity<Map<String, Object>> invalidRequest(HttpServletRequest request) {
+        auditRejected(request, "READING_ARGUMENTS_INVALID");
         return ResponseEntity.badRequest().body(Map.of(
                 "error", "READING_ARGUMENTS_INVALID",
                 "message", "The reading query arguments are invalid"
         ));
     }
 
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> authenticationFailure(ResponseStatusException error) {
+        if (error.getStatusCode().value() == HttpStatus.UNAUTHORIZED.value()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                    "error", "UNAUTHORIZED",
+                    "message", "Authentication is required"
+            ));
+        }
+        return unavailable();
+    }
+
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> unavailable(Exception error) {
-        logger.error("Public reading query failed: error_type={}", error.getClass().getSimpleName());
+    public ResponseEntity<Map<String, Object>> unavailable() {
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(Map.of(
                 "error", "RETRIEVAL_UNAVAILABLE",
                 "message", "Paper reading is temporarily unavailable"
         ));
+    }
+
+    private void auditRejected(HttpServletRequest request, String outcome) {
+        String principalId = "unknown";
+        if (request.getUserPrincipal() != null) {
+            try {
+                principalId = userRepository.findByUsername(request.getUserPrincipal().getName())
+                        .map(user -> String.valueOf(user.getId()))
+                        .orElse("unknown");
+            } catch (RuntimeException ignored) {
+                principalId = "unknown";
+            }
+        }
+        logger.warn("Reading query failed: principal_id={}, tool_name={}, request_id={}, outcome={}",
+                principalId,
+                TOOLS_BY_PATH.getOrDefault(request.getRequestURI(), "unknown"),
+                validRequestId(request.getHeader("X-Request-ID")),
+                outcome);
     }
 
     private Map<String, Object> paperCard(PaperReadingService.PaperCard card) {

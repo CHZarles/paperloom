@@ -29,7 +29,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 @WebMvcTest(ReadingQueryController.class)
-@Import({SecurityConfig.class, JwtAuthenticationFilter.class, PaperAccessAuthorizationFilter.class})
+@Import({SecurityConfig.class, JwtAuthenticationFilter.class, PaperAccessAuthorizationFilter.class,
+        PaperAccessService.class})
 class ReadingQuerySecurityTest {
 
     @jakarta.annotation.Resource
@@ -37,9 +38,6 @@ class ReadingQuerySecurityTest {
 
     @MockBean
     private PaperReadingService readingService;
-
-    @MockBean
-    private PaperAccessService paperAccessService;
 
     @MockBean
     private UserRepository userRepository;

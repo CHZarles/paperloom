@@ -24,7 +24,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -120,12 +123,22 @@ class ReadingQueryControllerTest {
     }
 
     @Test
-    void paperSearchAdaptsItsPageToThePublicResponseBudget() throws Exception {
+    void missingAuthenticatedDatabaseUserRemainsUnauthorized() throws Exception {
+        mvc.perform(post("/api/v1/reading/papers/search")
+                        .principal(authentication)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void queryEndpointsAdaptTheirPagesToTheUtf8ResponseBudget() throws Exception {
         when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user(7L)));
         List<PaperReadingService.PaperCard> cards = IntStream.range(0, 100)
                 .mapToObj(index -> new PaperReadingService.PaperCard(
                         "paper-" + index, "Paper " + index, List.of("Ada"), 2026, "Conf", null, null,
-                        "paper.pdf", "x".repeat(500)))
+                        "paper.pdf", "汉".repeat(500)))
                 .toList();
         when(readingService.searchPaperCandidates(any())).thenReturn(
                 new PaperReadingService.PaperSearchResult("", cards, 100, 100, "complete", null));
@@ -145,6 +158,56 @@ class ReadingQueryControllerTest {
         assertEquals(returned, body.get("next_offset"));
         org.junit.jupiter.api.Assertions.assertTrue(returned > 0 && returned < 100);
         org.junit.jupiter.api.Assertions.assertTrue(response.getContentAsByteArray().length <= 16 * 1024);
+
+        when(readingService.getPaperStructure(any())).thenReturn(new PaperReadingService.StructureResult(
+                "SECTION", IntStream.range(0, 100).mapToObj(index ->
+                        new PaperReadingService.StructureItem(
+                                "paper-a", "Paper A", "section-" + index, "SECTION",
+                                "Section " + index, 1, "汉".repeat(500), index, 1, 1))
+                        .toList()));
+        var structure = mvc.perform(post("/api/v1/reading/structure")
+                        .principal(authentication)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paper_id\":\"paper-a\",\"limit\":100}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.coverage").value("truncated"))
+                .andReturn().getResponse();
+        assertTrue(structure.getContentAsByteArray().length <= 16 * 1024);
+
+        when(readingService.searchPaperContent(any())).thenReturn(new PaperReadingService.ContentSearchResult(
+                IntStream.range(0, 20).mapToObj(index -> new PaperReadingService.LocationCandidate(
+                        "paper-a", "Paper A", "rm-1", "location-" + index, "Methods", 1,
+                        "passage", "汉".repeat(500), 0.9, 0.8, 0.85)).toList(),
+                20, 20, "internal-index"));
+        var content = mvc.perform(post("/api/v1/reading/content/search")
+                        .principal(authentication)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paper_id\":\"paper-a\",\"query_text\":\"query\",\"top_k\":20}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.coverage").value("truncated"))
+                .andReturn().getResponse();
+        assertTrue(content.getContentAsByteArray().length <= 16 * 1024);
+    }
+
+    @Test
+    void unknownAndInaccessiblePapersHaveTheSamePublicFailure() throws Exception {
+        when(userRepository.findByUsername("alice")).thenReturn(Optional.of(user(7L)));
+        when(paperAccessService.canAccess(anyString(), anyString())).thenReturn(false);
+
+        var inaccessible = mvc.perform(post("/api/v1/reading/content/read")
+                        .principal(authentication)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paper_id\":\"private-paper\",\"location_refs\":[\"location-a\"]}"))
+                .andReturn().getResponse();
+        var unknown = mvc.perform(post("/api/v1/reading/content/read")
+                        .principal(authentication)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paper_id\":\"unknown-paper\",\"location_refs\":[\"location-a\"]}"))
+                .andReturn().getResponse();
+
+        assertEquals(inaccessible.getStatus(), unknown.getStatus());
+        assertEquals(inaccessible.getContentAsString(), unknown.getContentAsString());
+        verify(readingService, never()).readPaperContent(any());
     }
 
     @Test
@@ -203,14 +266,24 @@ class ReadingQueryControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"query_text\":\"secret-query\"}"))
                     .andExpect(status().isOk());
+            mvc.perform(post("/api/v1/reading/papers/search")
+                            .principal(authentication)
+                            .header("X-Request-ID", "unsafe rejected request id")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"query_text\":\"" + "secret".repeat(1000) + "\"}"))
+                    .andExpect(status().isBadRequest());
         } finally {
             logger.detachAppender(events);
         }
 
-        String audit = events.list.get(0).getFormattedMessage();
-        assertTrue(audit.contains("principal_id=7") && audit.contains("tool_name=search_papers"));
-        assertFalse(audit.contains("unsafe request id"));
-        assertFalse(audit.contains("secret-query"));
+        assertEquals(2, events.list.size());
+        for (ILoggingEvent event : events.list) {
+            String audit = event.getFormattedMessage();
+            assertTrue(audit.contains("principal_id=7") && audit.contains("tool_name=search_papers"));
+            assertFalse(audit.contains("unsafe request id"));
+            assertFalse(audit.contains("unsafe rejected request id"));
+            assertFalse(audit.contains("secret"));
+        }
     }
 
     private User user(Long id) {

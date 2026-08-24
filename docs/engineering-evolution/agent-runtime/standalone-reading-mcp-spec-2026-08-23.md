@@ -317,9 +317,13 @@ No commit or push is allowed until all verification above is green.
 
 Verified on 2026-08-24:
 
-- Java: 424 tests passed, 3 skipped;
+- Java: 426 tests passed, 3 skipped;
 - Harness regression: 207 tests passed, 7 skipped;
 - standalone MCP clean locked install: 11 tests passed;
 - loopback smoke used a real USER JWT and a ready, published PDF through all five Tools;
-- public results contained only the documented paper, structure, preview, and exact-read fields;
+- observed top-level fields were `query_text/papers/counts/coverage`, Paper metadata,
+  `structure_type/items/counts/coverage`, `query_text/locations/counts/coverage`, and
+  `items/missing_location_refs`; exact items contained only
+  `paper_id/location_ref/section/page/page_end/content_kind/content`;
+- every Tool returned compact JSON Text equivalent to `structuredContent`;
 - `paper_source_quotes` remained at 482 before and after the exact read.
