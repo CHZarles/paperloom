@@ -99,10 +99,14 @@ Java adds:
 - refresh-token indexing by user;
 - current-device refresh revocation;
 - logout-all revocation of access and refresh tokens;
-- stable safe errors that never contain credentials.
+- stable safe errors that never contain credentials;
+- `401 INVALID_REFRESH_TOKEN` for invalid, expired, revoked, or replayed refresh tokens;
+- `503 AUTH_STATE_UNAVAILABLE` for Redis timeout, connection, or atomic-operation failure.
 
 Use the existing Redis token store and one atomic Redis operation or Lua script. Do not add a second
-OAuth token database for the local design.
+OAuth token database for the local design. Auth-critical Redis reads and writes MUST propagate
+availability failures instead of returning `false` or swallowing exceptions. Java MUST NOT return a
+new access or refresh token until all corresponding token state is durably stored.
 
 ### D4. Store Only The Refresh Token In The OS Credential Store
 
@@ -116,10 +120,21 @@ Initial storage contract:
 | --- | --- |
 | keyring service | `paperloom-mcp` |
 | keyring account | `default` |
-| secret value | versioned JSON containing Java base URL, username, refresh token |
+| secret value | versioned JSON containing generation, state, Java base URL, username, refresh token |
+| state | `active` or `pending_revoke` |
 
 Only one local PaperLoom profile is supported initially. Multiple accounts and servers are deferred.
 Tests use an injected in-memory fake and never the developer's real keyring.
+
+Only native secure backends are accepted initially: macOS Keychain, Windows Credential Locker, and
+Linux Secret Service. Reject fail, null, plaintext, alternate-file, and chained backends unless the
+chain's selected backend is explicitly allowlisted and tested. Backend detection is part of the
+Phase 1 Gate, not a warning-only check.
+
+All keyring read/rotate/write/delete sequences also use one cross-process file lock. Use the
+maintained `filelock` package with a non-secret lock file under a per-user directory created with
+owner-only permissions where supported. After acquiring the lock, always re-read keyring before
+acting. The lock file never contains usernames or credentials.
 
 ### D5. Keep Access Tokens In Memory And Refresh On Authentication Failure
 
@@ -135,13 +150,16 @@ The local token manager:
    call once;
 8. never retries 403, 404, quota, model, validation, or retrieval failures.
 
-Use one `asyncio.Lock` so concurrent Tool calls cannot rotate the same refresh token twice. A caller
-that waited for another refresh reuses the new access token instead of refreshing again.
+Use one `asyncio.Lock` for tasks in a process and the cross-process file lock for multiple MCP child
+processes. A process acquires the file lock through `asyncio.to_thread`, re-reads the latest keyring
+generation, rotates that refresh token, and atomically replaces the stored generation. A caller that
+waited for another in-process refresh reuses the new access token instead of refreshing again.
 
 Python treats tokens as opaque and does not decode expiry or claims. A Java or network outage is not
-an authentication failure: timeout/5xx returns `RETRIEVAL_UNAVAILABLE` and MUST NOT delete keyring
+an authentication failure: timeout/5xx returns `AUTH_UNAVAILABLE` and MUST NOT delete keyring
 state or trigger a login loop. A confirmed invalid/replayed refresh token clears the stored credential
-and returns a stable `LOGIN_REQUIRED` startup error.
+only when its generation and token still match the failed value; otherwise another process already
+replaced it. The terminal error is `LOGIN_REQUIRED`.
 
 If Java rotates the token but the process crashes before keyring is updated, the user logs in again.
 Do not weaken one-time rotation to hide this rare recovery case.
@@ -186,6 +204,12 @@ not part of the local-auth implementation.
 
 Login failures use one fixed message and never reveal whether a username exists.
 
+Before prompting, briefly acquire the cross-process lock and inspect keyring. If any `active` or
+`pending_revoke` credential exists, refuse login and require `auth logout` to complete first. After
+reading credentials, reacquire the lock, recheck that keyring is still empty, and hold the lock
+through Java login, role verification, and keyring write. Do not overwrite an existing entry and do
+not add a force-replace path in the initial implementation.
+
 ### `auth status`
 
 Read keyring metadata and report the configured server and username. It does not print, validate, or
@@ -193,9 +217,11 @@ refresh credentials. Exit nonzero when no credential exists or the keyring backe
 
 ### `auth logout`
 
-Use the stored refresh token to call a new Java refresh-token revocation endpoint, then delete the
-local keyring entry. Local deletion still occurs if Java is unavailable, and the command reports that
-server-side revocation could not be confirmed.
+Under the cross-process lock, change the stored state to `pending_revoke` before calling the Java
+refresh-token revocation endpoint. `serve-stdio` refuses pending credentials. On successful
+revocation, or a confirmed already-invalid token, delete the keyring entry. If Java or Redis is
+unavailable, retain the pending credential, exit nonzero, and retry revocation on the next
+`auth logout`; never discard the only server-side revocation handle.
 
 ### `serve-stdio`
 
@@ -215,19 +241,23 @@ five Tools and schemas as the current HTTP implementation.
 5. Make logout-all delete both access-token and refresh-token sets.
 6. Recheck that the current database user still exists during refresh. Stdio performs the MCP-specific
    USER/ADMIN check through `/api/v1/users/me`, so ordinary product refresh behavior does not change.
-7. Preserve current legacy access-token behavior for product clients.
+7. Make auth-critical Redis failures propagate to login/refresh/revoke as stable 503 responses with
+   no partial token issuance or deletion.
+8. Preserve current legacy access-token behavior for product clients.
 
 ### Python
 
-1. Add `keyring` to `requirements.in` and regenerate the lock.
+1. Add `keyring` and `filelock` to `requirements.in` and regenerate the lock.
 2. Add `auth login/status/logout` and explicit `serve-stdio/serve-http` commands.
 3. Add one concrete local token manager with keyring read/write/delete, startup refresh, synchronized
-   401 refresh, and single retry.
+   401 refresh, cross-process coordination, generation checks, pending revocation, and single retry.
 4. Let `ReadingMcpGateway` receive one async token provider callable. Stdio uses the local token
    manager; HTTP uses the existing per-request bearer context.
 5. Reuse the existing five Tool definitions, output validation, size limits, error mapping, and Java
    paths. Do not create a second Tool dispatcher or schema registry.
 6. Add MCP SDK stdio transport using the existing low-level `Server`.
+7. Enforce a 1 MiB stdio JSON-RPC frame limit before JSON parsing. Oversized input terminates the
+   stdio session without echoing input or credentials.
 
 ## 5. Delivery Phases
 
@@ -235,15 +265,17 @@ five Tools and schemas as the current HTTP implementation.
 
 Implement and prove atomic refresh rotation and revocation before Python stores any refresh token.
 
-**Gate:** concurrent refresh permits exactly one winner; old-token replay fails; logout and logout-all
-revoke the intended refresh credentials; current product access-token tests remain green.
+**Gate:** concurrent refresh permits exactly one winner; old-token replay fails; Redis outage returns
+503 without consuming token state; login never returns unstored tokens; logout and logout-all revoke
+the intended refresh credentials; current product access-token tests remain green.
 
 ### Phase 1. Python Credential CLI
 
 Add keyring-backed login, status, and logout. No MCP transport changes yet.
 
 **Gate:** password/access token never persist or enter logs; insecure keyring backend fails closed;
-GUEST is rejected; rotated refresh token replaces the previous secret.
+GUEST is rejected; login cannot overwrite an existing credential; pending revocation survives Java
+outage; rotated refresh token replaces the previous generation under a cross-process lock.
 
 ### Phase 2. Stdio And Automatic Refresh
 
@@ -251,7 +283,9 @@ Add stdio transport and the local token manager. Make stdio the documented defau
 HTTP behavior unchanged.
 
 **Gate:** initialize/list/all five Tools work through an MCP stdio client; concurrent 401 responses
-cause one refresh; a refreshed call retries once; Java outage does not delete credentials.
+cause one in-process refresh; two independent stdio processes safely serialize rotation; a refreshed
+call retries once; Java outage does not delete credentials; an oversized stdio frame is rejected
+before JSON parsing.
 
 ### Phase 3. Regression And Cutover
 
@@ -266,6 +300,10 @@ Run:
 - real USER login, process restart, automatic refresh, five-Tool real-PDF smoke;
 - unchanged Source Quote count;
 - logout/replay and malformed-token checks;
+- Redis outage during login, refresh, rotation, and revoke;
+- two-process startup/refresh/keyring generation checks;
+- pending-revocation recovery;
+- 1 MiB stdio frame boundary;
 - log scan for username/password/access token/refresh token and Paper content.
 
 Only after the full gate passes may Quick Start switch from HTTP Bearer setup to stdio login setup.
