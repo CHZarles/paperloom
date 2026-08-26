@@ -1,65 +1,135 @@
 # Reading MCP Local Authentication Plan
 
-Date: 2026-08-25
+Date: 2026-08-26
 
-Status: Proposed. Java refresh-token hardening is required before MCP credential storage.
+Status: Proposed. This plan targets the current macOS developer and one local MCP client. There are
+no production users or external MCP consumers to migrate.
 
-This plan replaces the immediate OAuth/PKCE introduction plan. PaperLoom's current MCP is local,
-loopback-only, and normally used by one operating-system user. The smallest usable design is a local
-login command, secure refresh-token storage, automatic refresh, and stdio as the default MCP
-transport. OAuth/PKCE remains the required design for any future remote or shared MCP deployment.
+This plan replaces manual JWT handling with one local login command, macOS Keychain storage,
+automatic refresh, and stdio as the default MCP transport. It does not add OAuth, frontend work,
+remote serving, multi-user support, or cross-platform compatibility.
 
-The implemented `standalone-reading-mcp-spec-2026-08-23.md` remains authoritative until this plan's
-cutover gate passes. The five read-only Tools, Java Reading facade, ACL, Current Model, response
-bounds, audit, quota, and zero Source Quote behavior do not change.
+The existing five Reading Tools, Java Reading facade, ACL, Current Model, quota, response bounds,
+audit, and zero Source Quote behavior remain unchanged.
 
 ## 1. Goal
 
-A local user logs in once and then starts PaperLoom from an MCP client without copying or periodically
-replacing JWTs.
-
 ```text
 One-time setup
-  paperloom_mcp auth login
+  python -m paperloom_mcp auth login
     -> interactive username/password
-    -> existing Java /api/v1/users/login
-    -> verify USER or ADMIN
-    -> store refresh token in OS credential store
+    -> Java /api/v1/users/login
+    -> macOS Keychain stores refresh token
 
 Normal use
   MCP client
-    -> starts paperloom_mcp over stdio
-    -> local token manager loads refresh token
-    -> Java /api/v1/auth/refreshToken
-    -> access token remains in memory
-    -> five Reading Tools call /api/v1/reading/**
+    -> starts python -m paperloom_mcp over stdio
+    -> Python refreshes access token automatically
+    -> five Reading Tools call Java /api/v1/reading/**
 ```
 
-Success means:
+The user never copies a JWT or edits an Authorization Header.
 
-- no manual JWT copy or MCP Authorization Header maintenance;
-- username/password are entered interactively once and sent only to Java;
-- passwords and access tokens are never persisted;
-- refresh tokens are stored only in the OS credential store;
-- MCP stdout contains protocol messages only;
-- Java still derives User, role, ACL, Current Model, and quota;
-- remote and multi-user serving remain unsupported.
+## 2. Scope
 
-## 2. Decisions
+### In Scope
 
-### D1. Stdio Is The Default Local Transport
+- atomic Java refresh-token rotation;
+- refresh-token revoke and logout-all cleanup;
+- Redis outage mapped to stable 503;
+- macOS Keychain storage through `keyring`;
+- `auth login`, `auth status`, and `auth logout`;
+- MCP stdio transport;
+- access token in memory only;
+- one synchronized refresh and one retry after Java 401;
+- existing loopback HTTP mode retained for tests.
 
-The MCP client launches `paperloom_mcp` as a child process and communicates over stdin/stdout. There
-is no listening socket and no second local bearer credential.
+### Out Of Scope
+
+- migration of existing refresh tokens;
+- Windows or Linux credential stores;
+- multiple local accounts or PaperLoom servers;
+- multiple concurrent MCP stdio processes;
+- OAuth/PKCE, DCR, CIMD, consent, or introspection;
+- remote or shared MCP serving;
+- frontend, Field Extraction, Harness, Evidence, Source Quote, or Tool changes.
+
+## 3. Decisions
+
+### D1. Invalidate Existing Refresh Tokens
+
+There are no production users to preserve. The new implementation uses:
 
 ```text
-MCP client -> child process stdin/stdout -> paperloom_mcp -> Java Reading API
+jwt:refresh:v2:<refreshTokenId>
+jwt:user:<userId>:refresh_tokens:v2
 ```
 
-All diagnostics go to stderr. Authentication commands run as separate CLI invocations and never
-share stdout with an active MCP protocol process.
+Legacy `jwt:refresh:<refreshTokenId>` entries are ignored and expire naturally. After deployment,
+existing sessions perform one new login. Do not add legacy-token migration, dual reads, SCAN jobs,
+or rollback restoration.
 
-### D2. Login Is A CLI Command, Not An MCP Tool Or Python HTTP Endpoint
+### D2. Make Refresh Rotation Atomic
+
+`POST /api/v1/auth/refreshToken` keeps its current request and success response shape, but its state
+transition changes:
+
+1. validate refresh JWT signature, type, expiry, and current database user;
+2. generate the next refresh-token ID;
+3. run one Redis Lua operation that verifies the old v2 key, deletes it, removes it from the user set,
+   creates the new v2 key, adds it to the user set, and applies TTL;
+4. return the new access and refresh tokens only after required Redis writes succeed.
+
+Exactly one concurrent refresh may succeed. Reusing the previous token fails.
+
+Stable failures:
+
+| Condition | HTTP | Error |
+| --- | --- | --- |
+| invalid, expired, legacy, revoked, or replayed refresh token | 401 | `INVALID_REFRESH_TOKEN` |
+| Redis timeout, connection failure, or atomic-operation failure | 503 | `AUTH_STATE_UNAVAILABLE` |
+
+Auth-critical Redis methods must propagate availability failures instead of returning `false` or
+swallowing exceptions. No response or log may contain a token.
+
+### D3. Add Refresh Revocation
+
+Add:
+
+```text
+POST /api/v1/auth/revokeRefreshToken
+body: { "refreshToken": "..." }
+```
+
+The refresh token authorizes its own revocation.
+
+| Condition | HTTP | Error |
+| --- | --- | --- |
+| revoked or already invalid | 200 | none |
+| malformed request | 400 | `INVALID_REFRESH_REQUEST` |
+| Redis unavailable | 503 | `AUTH_STATE_UNAVAILABLE` |
+
+`logout-all` deletes both access-token and v2 refresh-token sets. Ordinary product access-token
+behavior otherwise remains unchanged.
+
+### D4. Use macOS Keychain Only
+
+Use the maintained Python `keyring` package and require the macOS Keychain backend. Reject missing,
+fail, null, chained, plaintext, or alternate-file backends. Do not fall back to `.env`, JSON, SQLite,
+home-directory files, or application-managed encryption.
+
+Store one versioned secret:
+
+| Field | Value |
+| --- | --- |
+| keyring service | `paperloom-mcp` |
+| keyring account | `default` |
+| value | Java base URL, username, refresh token |
+
+Only the refresh token persists. Passwords and access tokens remain in process memory and are never
+written to disk, stdout, traces, or logs.
+
+### D5. Login Is A CLI Command
 
 Provide:
 
@@ -67,325 +137,172 @@ Provide:
 python -m paperloom_mcp auth login
 python -m paperloom_mcp auth status
 python -m paperloom_mcp auth logout
-python -m paperloom_mcp
+```
+
+`auth login`:
+
+1. requires an interactive TTY;
+2. reads password with `getpass`;
+3. accepts no password flag, environment value, pipe, Tool argument, or config value;
+4. allows loopback HTTP or verified HTTPS Java URLs only;
+5. disables redirects and environment proxies;
+6. calls Java login and `/api/v1/users/me`;
+7. accepts USER or ADMIN; for GUEST, revoke the returned refresh token before rejecting login;
+8. refuses to overwrite an existing Keychain credential; the user runs logout first;
+9. stores only the refresh token and prints only server, username, role, and success.
+
+Login failures use one fixed message and do not reveal whether the username exists.
+
+`auth status` reports the locally configured server and username without refreshing or printing
+credentials.
+
+`auth logout` calls refresh-token revocation before deleting Keychain state. If Java or Redis is
+unavailable, it keeps the Keychain credential, exits nonzero, and asks the user to retry. A confirmed
+successful or already-invalid revocation deletes the credential.
+
+Python MUST NOT add a login HTTP endpoint or credential-collection MCP Tool.
+
+### D6. Stdio Is The Default MCP Transport
+
+```text
+MCP client -> child process stdin/stdout -> paperloom_mcp -> Java Reading API
+```
+
+Commands:
+
+```text
+python -m paperloom_mcp              # serve-stdio
 python -m paperloom_mcp serve-stdio
 python -m paperloom_mcp serve-http --host 127.0.0.1 --port 8090
 ```
 
-The bare command is an alias for `serve-stdio`. `auth login` requires an interactive TTY and reads
-the password with `getpass`. It MUST NOT accept password flags, environment
-variables, stdin pipes, Tool arguments, query parameters, or config-file values.
+MCP stdout contains protocol messages only; diagnostics use stderr. Stdio rejects JSON-RPC frames
+larger than 1 MiB before JSON parsing.
 
-For one migration release, the existing form
-`python -m paperloom_mcp --host ... --port ... --java-base-url ...` remains an alias for
-`serve-http` and emits one deprecation notice to stderr. It never writes the notice to MCP stdout.
-Removal requires a later explicit compatibility decision.
+HTTP mode keeps the current per-request Bearer contract and never reads Keychain credentials. It
+remains loopback-only and is retained for tests and advanced debugging, not as the default setup.
 
-Python MUST NOT add `/auth/login`, `/token`, or credential-collection MCP Tools. It calls the existing
-Java product endpoints directly with redirects disabled and `trust_env=false`.
+Because there are no external consumers, the current top-level `--host/--port` form is removed rather
+than maintained through a deprecation period.
 
-### D3. Reuse Java Login And Refresh, But Harden Refresh Tokens First
+### D7. Refresh Access Tokens In Memory
 
-Reuse:
+During stdio startup:
 
-```text
-POST /api/v1/users/login
-POST /api/v1/auth/refreshToken
-GET  /api/v1/users/me
-```
+1. read the Keychain refresh token;
+2. exchange it for a new access token and rotated refresh token;
+3. replace the Keychain refresh token;
+4. call `/api/v1/users/me` and require USER or ADMIN;
+5. keep the access token only in memory;
+6. begin MCP initialization.
 
-The current refresh endpoint generates a new refresh token without invalidating the previous token,
-and current logout does not revoke refresh tokens. MCP MUST NOT persist refresh credentials until
-Java adds:
+Within one process, an `asyncio.Lock` serializes refresh. On Java 401, the first caller refreshes and
+retries the read-only request once; waiting callers reuse the new access token. Never retry 403, 404,
+quota, Current Model, validation, or retrieval failures.
 
-- atomic refresh-token rotation;
-- one-time use of the previous refresh token;
-- replay rejection;
-- refresh-token indexing by user;
-- current-device refresh revocation;
-- logout-all revocation of access and refresh tokens;
-- stable safe errors that never contain credentials;
-- `401 INVALID_REFRESH_TOKEN` for invalid, expired, revoked, or replayed refresh tokens;
-- `503 AUTH_STATE_UNAVAILABLE` for Redis timeout, connection, or atomic-operation failure.
+Timeout or 5xx returns `AUTH_UNAVAILABLE` without deleting Keychain state. A confirmed invalid or
+replayed refresh token deletes the credential and returns `LOGIN_REQUIRED`.
 
-Use the existing Redis token store and one atomic Redis operation or Lua script. Do not add a second
-OAuth token database for the local design. Auth-critical Redis reads and writes MUST propagate
-availability failures instead of returning `false` or swallowing exceptions. Java MUST NOT return a
-new access or refresh token until all corresponding token state is durably stored.
+If Java rotates the token and the process crashes before Keychain update, the user logs in again. Do
+not weaken one-time rotation for this recovery case.
 
-The cutover deliberately invalidates all refresh tokens created by the old implementation. New
-tokens use `jwt:refresh:v2:<refreshTokenId>` and a per-user
-`jwt:user:<userId>:refresh_tokens:v2` set. A one-time, idempotent Redis migration uses `SCAN` plus
-`UNLINK` to remove `jwt:refresh:<id>` legacy keys while explicitly skipping
-`jwt:refresh:v2:<id>` keys, so reruns cannot delete v2 credentials. Existing access tokens remain
-valid until their normal one-hour expiry. Users perform one new login after cutover; rollback also
-requires login and does not restore deleted legacy refresh tokens. Do not attempt a dual-format
-refresh path or infer token generation from JWT shape.
-
-### D4. Store Only The Refresh Token In The OS Credential Store
-
-Use the maintained Python `keyring` package. The production code MUST fail closed when no secure
-backend is available; it MUST NOT fall back to plaintext `.env`, JSON, SQLite, home-directory files,
-or reversible application-managed encryption.
-
-Initial storage contract:
-
-| Field | Value |
-| --- | --- |
-| keyring service | `paperloom-mcp` |
-| keyring account | `default` |
-| secret value | versioned JSON containing generation, state, Java base URL, username, refresh token |
-| state | `active` or `pending_revoke` |
-
-Only one local PaperLoom profile is supported initially. Multiple accounts and servers are deferred.
-Tests use an injected in-memory fake and never the developer's real keyring.
-
-Only native secure backends are accepted initially: macOS Keychain, Windows Credential Locker, and
-Linux Secret Service. Reject fail, null, plaintext, alternate-file, and chained backends unless the
-chain's selected backend is explicitly allowlisted and tested. Backend detection is part of the
-Phase 1 Gate, not a warning-only check.
-
-All keyring read/rotate/write/delete sequences also use one cross-process file lock. Use the
-maintained `filelock` package with a non-secret lock file under a per-user directory created with
-owner-only permissions where supported. After acquiring the lock, always re-read keyring before
-acting. The lock file never contains usernames or credentials.
-
-### D5. Keep Access Tokens In Memory And Refresh On Authentication Failure
-
-The local token manager:
-
-1. loads the refresh token during stdio startup;
-2. exchanges it immediately for a new access token and rotated refresh token;
-3. writes the rotated refresh token to keyring before serving Tools;
-4. calls `/api/v1/users/me` and requires the stored account still be USER or ADMIN;
-5. keeps the access token only in memory;
-6. attaches it to Java Reading requests;
-7. on Java 401, performs one synchronized refresh, rechecks `/users/me`, and retries the read-only
-   call once;
-8. never retries 403, 404, quota, model, validation, or retrieval failures.
-
-Use one `asyncio.Lock` for tasks in a process and the cross-process file lock for multiple MCP child
-processes. A process acquires the file lock through `asyncio.to_thread`, re-reads the latest keyring
-generation, rotates that refresh token, and atomically replaces the stored generation. A caller that
-waited for another in-process refresh reuses the new access token instead of refreshing again.
-
-Python treats tokens as opaque and does not decode expiry or claims. A Java or network outage is not
-an authentication failure: timeout/5xx returns `AUTH_UNAVAILABLE` and MUST NOT delete keyring
-state or trigger a login loop. A confirmed invalid/replayed refresh token clears the stored credential
-only when its generation and token still match the failed value; otherwise another process already
-replaced it. The terminal error is `LOGIN_REQUIRED`.
-
-If Java rotates the token but the process crashes before keyring is updated, the user logs in again.
-Do not weaken one-time rotation to hide this rare recovery case.
-
-### D6. Keep HTTP Mode For Compatibility, Not As The Default UX
-
-The existing loopback Streamable HTTP server remains available for protocol tests and advanced
-integrations. Its authentication contract does not change:
-
-- every request carries the caller's current PaperLoom Bearer token;
-- Python forwards that token unchanged;
-- stored local credentials are never used by HTTP mode;
-- non-loopback serving remains rejected.
-
-This avoids creating an unauthenticated loopback HTTP service backed by the user's keyring token.
-
-### D7. OAuth/PKCE Is Deferred To Remote Or Shared Deployment
-
-OAuth 2.1 Authorization Code + PKCE becomes mandatory when any of these are approved:
-
-- MCP listens beyond loopback;
-- one MCP process serves multiple users;
-- a hosted MCP endpoint is exposed over HTTPS;
-- a target MCP client requires standard browser authorization.
-
-That future design uses Java as Authorization Server and MCP Protected Resource. Authorization
-Server persistence, consent, RFC 8707 resource binding, DCR/CIMD, introspection, and browser UI are
-not part of the local-auth implementation.
-
-## 3. CLI Contract
-
-### `auth login`
-
-1. Validate that the Java base URL is loopback HTTP or verified HTTPS.
-2. Prompt for username and password interactively.
-3. Call Java login without redirects or environment proxies.
-4. Call `/api/v1/users/me` with the returned access token.
-5. Accept USER or ADMIN only; reject GUEST and revoke/discard returned credentials.
-6. Store the refresh token in keyring.
-7. Remove password and access-token references before returning.
-8. Print only the username, server, role, and success status.
-
-Login failures use one fixed message and never reveal whether a username exists.
-
-Before prompting, briefly acquire the cross-process lock and inspect keyring. If any `active` or
-`pending_revoke` credential exists, refuse login and require `auth logout` to complete first. After
-reading credentials, reacquire the lock, recheck that keyring is still empty, and hold the lock
-through Java login, role verification, and keyring write. Do not overwrite an existing entry and do
-not add a force-replace path in the initial implementation.
-
-### `auth status`
-
-Read keyring metadata and report the configured server and username. It does not print, validate, or
-refresh credentials. Exit nonzero when no credential exists or the keyring backend is unavailable.
-
-### `auth logout`
-
-Under the cross-process lock, change the stored state to `pending_revoke` before calling the Java
-refresh-token revocation endpoint. `serve-stdio` refuses pending credentials. On successful
-revocation, or a confirmed already-invalid token, delete the keyring entry. If Java or Redis is
-unavailable, retain the pending credential, exit nonzero, and retry revocation on the next
-`auth logout`; never discard the only server-side revocation handle.
-
-### `serve-stdio`
-
-Fail before MCP initialization when login is required, keyring is unavailable, refresh fails, the
-stored Java URL is invalid, or the stored account is GUEST. Once initialized, expose exactly the same
-five Tools and schemas as the current HTTP implementation.
-
-## 4. Implementation Shape
+## 4. Implementation
 
 ### Java
 
-1. Add refresh-token IDs to a per-user Redis set.
-2. Add one atomic rotate operation: validate old ID, delete old key/set membership, create new token
-   state, and return success exactly once.
-3. Change `/api/v1/auth/refreshToken` to use the atomic operation.
-4. Add current-refresh-token revocation for CLI logout.
-5. Make logout-all delete both access-token and refresh-token sets.
-6. Recheck that the current database user still exists during refresh. Stdio performs the MCP-specific
-   USER/ADMIN check through `/api/v1/users/me`, so ordinary product refresh behavior does not change.
-7. Make auth-critical Redis failures propagate to login/refresh/revoke as stable 503 responses with
-   no partial token issuance or deletion.
-8. Preserve current legacy access-token behavior for product clients.
+1. Add v2 refresh-token Redis keys and per-user sets.
+2. Add one Lua-backed atomic rotate operation.
+3. Change refresh to use rotation and stable 401/503 errors.
+4. Add refresh-token revocation.
+5. Make logout-all remove access and v2 refresh tokens.
+6. Propagate auth-state Redis failures and prevent partial token issuance.
+7. Preserve non-auth product behavior.
 
 ### Python
 
-1. Add `keyring` and `filelock` to `requirements.in` and regenerate the lock.
-2. Add `auth login/status/logout` and explicit `serve-stdio/serve-http` commands.
-3. Add one concrete local token manager with keyring read/write/delete, startup refresh, synchronized
-   401 refresh, cross-process coordination, generation checks, pending revocation, and single retry.
-4. Let `ReadingMcpGateway` receive one async token provider callable. Stdio uses the local token
-   manager; HTTP uses the existing per-request bearer context.
-5. Reuse the existing five Tool definitions, output validation, size limits, error mapping, and Java
-   paths. Do not create a second Tool dispatcher or schema registry.
-6. Add MCP SDK stdio transport using the existing low-level `Server`.
-7. Enforce a 1 MiB stdio JSON-RPC frame limit before JSON parsing. Oversized input terminates the
-   stdio session without echoing input or credentials.
+1. Add `keyring` and regenerate the lock.
+2. Add `auth login/status/logout` and `serve-stdio/serve-http` commands.
+3. Add one macOS Keychain credential helper.
+4. Add one in-memory local token manager with startup refresh, `asyncio.Lock`, and single retry.
+5. Let `ReadingMcpGateway` accept one async token-provider callable; stdio uses the local token
+   manager and HTTP uses the current request bearer.
+6. Add MCP SDK stdio transport using the existing low-level `Server` and five Tool definitions.
+7. Add a 1 MiB pre-parse stdio frame bound.
 
-## 5. Delivery Phases
+Do not create another Tool dispatcher, schema registry, credential server, or generic auth framework.
 
-### Phase -1. Auth Contract And Compatibility Spike
-
-No production behavior changes in this phase.
-
-Write and review an authoritative local-auth Spec and ADR covering:
-
-- exact login, refresh, and refresh-revocation request/response schemas;
-- stable `INVALID_REFRESH_TOKEN`, `AUTH_STATE_UNAVAILABLE`, and `LOGIN_REQUIRED` mapping;
-- Redis v2 keys, hash fields, TTLs, per-user sets, and Lua return codes;
-- token generation/write/rotation ordering and partial-failure cleanup;
-- legacy refresh-token invalidation, one-time user re-login, and rollback behavior;
-- keyring record schema, generation comparison, pending revocation, and secure-backend allowlist;
-- cross-process lock location, permissions, timeout, and failure behavior;
-- stdio 1 MiB pre-parse frame enforcement and protocol-safe stderr errors;
-- legacy HTTP CLI alias and removal policy.
-
-Run disposable compatibility checks on macOS Keychain, Windows Credential Locker, Linux Secret
-Service, two independent processes using `filelock`, the MCP SDK stdio transport, and one named real
-MCP client. Record exact Python/MCP/keyring/filelock versions and the required stdio extension point.
-
-**Contract Gate:** the Spec, ADR, target client, platform evidence, Redis migration/rollback test, and
-stdio pre-parse size-limit spike are approved. If any supported platform lacks a secure keyring or
-the SDK cannot enforce the frame bound before JSON parsing, stop and revise the plan.
+## 5. Delivery
 
 ### Phase 0. Java Refresh Safety
 
-Implement and prove atomic refresh rotation and revocation before Python stores any refresh token.
+Implement Java rotation and revocation first.
 
-**Gate:** concurrent refresh permits exactly one winner; old-token replay fails; Redis outage returns
-503 without consuming token state; login never returns unstored tokens; logout and logout-all revoke
-the intended refresh credentials; current product access-token tests remain green.
+**Gate:** exactly one concurrent refresh succeeds; replay fails; legacy refresh tokens fail; Redis
+outage returns 503 without consuming state; logout and logout-all revoke v2 credentials; existing
+product and Reading tests pass.
 
-### Phase 1. Python Credential CLI
+### Phase 1. Local Login CLI
 
-Add keyring-backed login, status, and logout. No MCP transport changes yet.
+Add macOS Keychain login, status, and logout.
 
-**Gate:** password/access token never persist or enter logs; insecure keyring backend fails closed;
-GUEST is rejected; login cannot overwrite an existing credential; pending revocation survives Java
-outage; rotated refresh token replaces the previous generation under a cross-process lock.
+**Gate:** password/access token never persist or enter logs; insecure Keychain backend fails closed;
+GUEST is rejected; login cannot overwrite existing credentials; failed server revocation keeps the
+Keychain token.
 
 ### Phase 2. Stdio And Automatic Refresh
 
-Add stdio transport and the local token manager. Make stdio the documented default while keeping
-HTTP behavior unchanged.
+Add stdio and the in-memory token manager.
 
-**Gate:** initialize/list/all five Tools work through an MCP stdio client; concurrent 401 responses
-cause one in-process refresh; two independent stdio processes safely serialize rotation; a refreshed
-call retries once; Java outage does not delete credentials; an oversized stdio frame is rejected
-before JSON parsing.
+**Gate:** initialize/list/all five Tools pass through an MCP stdio client; concurrent 401 calls cause
+one refresh; retry occurs once; Java outage keeps credentials; oversized frames fail before parsing;
+HTTP tests remain unchanged.
 
-### Phase 3. Regression And Cutover
+### Phase 3. Full Gate And Cutover
 
 Run:
 
 - Java full regression;
 - Harness full regression;
-- standalone MCP HTTP tests;
-- standalone MCP stdio tests;
-- legacy HTTP CLI alias tests;
+- standalone MCP HTTP and stdio tests;
 - clean locked install;
 - PaperLoom Reading benchmark gate;
-- real USER login, process restart, automatic refresh, five-Tool real-PDF smoke;
+- real USER login, restart, refresh, and five-Tool real-PDF smoke;
 - unchanged Source Quote count;
-- logout/replay and malformed-token checks;
-- Redis outage during login, refresh, rotation, and revoke;
-- two-process startup/refresh/keyring generation checks;
-- pending-revocation recovery;
-- 1 MiB stdio frame boundary;
-- log scan for username/password/access token/refresh token and Paper content.
+- refresh replay, revoke, logout-all, Redis outage, malformed token, and 1 MiB stdio tests;
+- log scan for password, access token, refresh token, provider payload, and Paper content.
 
-Only after the full gate passes may Quick Start switch from HTTP Bearer setup to stdio login setup.
+Only after all gates pass may Quick Start switch to stdio login setup.
 
-## 6. Configuration And Security
+## 6. Configuration
 
-Supported production configuration:
+The only supported runtime setting is:
 
 ```text
 PAPERLOOM_PUBLIC_API_BASE_URL
 ```
 
-HTTP is allowed only for `127.0.0.1`, `localhost`, or `::1`. Every other Java URL requires HTTPS with
-certificate verification. Login and refresh requests do not follow redirects and do not honor proxy
-environment variables.
+HTTP is allowed only for loopback hosts; all other Java URLs require verified HTTPS. Login and refresh
+do not follow redirects or use proxy environment variables. No password or token environment variable
+is supported.
 
-No password, access token, or refresh token configuration variable is supported. CI and tests use
-fakes rather than environment credentials.
+## 7. Deferred
 
-## 7. Explicitly Deferred
-
-- OAuth/PKCE for local stdio;
-- remote or shared MCP serving;
-- Java Authorization Server;
-- OAuth consent and introspection;
-- Dynamic Client Registration and CIMD;
-- multiple local accounts or PaperLoom servers;
+- Windows and Linux credential stores;
+- multiple local profiles or concurrent stdio processes;
+- remote/shared MCP serving;
+- OAuth/PKCE, Authorization Server, DCR, CIMD, consent, and introspection;
 - plaintext credential fallback;
-- automatic refresh-token caching outside the OS credential store;
 - frontend, Field Extraction, Harness, Evidence, Source Quote, or Reading Tool changes.
 
 ## 8. Commit Sequence
 
 ```text
-1. docs(auth): specify local MCP authentication and refresh contracts
-2. test(auth): record platform, Redis migration, and stdio compatibility spike
-3. fix(auth): rotate and revoke refresh tokens atomically
-4. feat(mcp): add keyring-backed local authentication commands
-5. feat(mcp): add stdio transport and synchronized token refresh
-6. test(mcp): cover local auth, stdio, replay, and regression gates
-7. docs(mcp): document one-time login and stdio setup
+1. fix(auth): rotate and revoke refresh tokens atomically
+2. feat(mcp): add macOS Keychain login commands
+3. feat(mcp): add stdio transport and automatic refresh
+4. test(mcp): cover local auth, stdio, replay, and regression gates
+5. docs(mcp): document one-time login and stdio setup
 ```
 
-Each commit runs its changed-surface tests. No production code may merge before the Contract Gate,
-no Python credential-storage commit may merge before the Java Refresh Safety Gate, and no Quick Start
-cutover may merge before the full Phase 3 gate is green.
+Each commit runs changed-surface tests. No Python credential work starts before the Java gate, and no
+Quick Start cutover occurs before the full Phase 3 gate passes.
