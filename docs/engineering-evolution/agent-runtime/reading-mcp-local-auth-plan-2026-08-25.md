@@ -76,6 +76,11 @@ The bare command is an alias for `serve-stdio`. `auth login` requires an interac
 the password with `getpass`. It MUST NOT accept password flags, environment
 variables, stdin pipes, Tool arguments, query parameters, or config-file values.
 
+For one migration release, the existing form
+`python -m paperloom_mcp --host ... --port ... --java-base-url ...` remains an alias for
+`serve-http` and emits one deprecation notice to stderr. It never writes the notice to MCP stdout.
+Removal requires a later explicit compatibility decision.
+
 Python MUST NOT add `/auth/login`, `/token`, or credential-collection MCP Tools. It calls the existing
 Java product endpoints directly with redirects disabled and `trust_env=false`.
 
@@ -107,6 +112,15 @@ Use the existing Redis token store and one atomic Redis operation or Lua script.
 OAuth token database for the local design. Auth-critical Redis reads and writes MUST propagate
 availability failures instead of returning `false` or swallowing exceptions. Java MUST NOT return a
 new access or refresh token until all corresponding token state is durably stored.
+
+The cutover deliberately invalidates all refresh tokens created by the old implementation. New
+tokens use `jwt:refresh:v2:<refreshTokenId>` and a per-user
+`jwt:user:<userId>:refresh_tokens:v2` set. A one-time, idempotent Redis migration uses `SCAN` plus
+`UNLINK` to remove `jwt:refresh:<id>` legacy keys while explicitly skipping
+`jwt:refresh:v2:<id>` keys, so reruns cannot delete v2 credentials. Existing access tokens remain
+valid until their normal one-hour expiry. Users perform one new login after cutover; rollback also
+requires login and does not restore deleted legacy refresh tokens. Do not attempt a dual-format
+refresh path or infer token generation from JWT shape.
 
 ### D4. Store Only The Refresh Token In The OS Credential Store
 
@@ -261,6 +275,30 @@ five Tools and schemas as the current HTTP implementation.
 
 ## 5. Delivery Phases
 
+### Phase -1. Auth Contract And Compatibility Spike
+
+No production behavior changes in this phase.
+
+Write and review an authoritative local-auth Spec and ADR covering:
+
+- exact login, refresh, and refresh-revocation request/response schemas;
+- stable `INVALID_REFRESH_TOKEN`, `AUTH_STATE_UNAVAILABLE`, and `LOGIN_REQUIRED` mapping;
+- Redis v2 keys, hash fields, TTLs, per-user sets, and Lua return codes;
+- token generation/write/rotation ordering and partial-failure cleanup;
+- legacy refresh-token invalidation, one-time user re-login, and rollback behavior;
+- keyring record schema, generation comparison, pending revocation, and secure-backend allowlist;
+- cross-process lock location, permissions, timeout, and failure behavior;
+- stdio 1 MiB pre-parse frame enforcement and protocol-safe stderr errors;
+- legacy HTTP CLI alias and removal policy.
+
+Run disposable compatibility checks on macOS Keychain, Windows Credential Locker, Linux Secret
+Service, two independent processes using `filelock`, the MCP SDK stdio transport, and one named real
+MCP client. Record exact Python/MCP/keyring/filelock versions and the required stdio extension point.
+
+**Contract Gate:** the Spec, ADR, target client, platform evidence, Redis migration/rollback test, and
+stdio pre-parse size-limit spike are approved. If any supported platform lacks a secure keyring or
+the SDK cannot enforce the frame bound before JSON parsing, stop and revise the plan.
+
 ### Phase 0. Java Refresh Safety
 
 Implement and prove atomic refresh rotation and revocation before Python stores any refresh token.
@@ -295,6 +333,7 @@ Run:
 - Harness full regression;
 - standalone MCP HTTP tests;
 - standalone MCP stdio tests;
+- legacy HTTP CLI alias tests;
 - clean locked install;
 - PaperLoom Reading benchmark gate;
 - real USER login, process restart, automatic refresh, five-Tool real-PDF smoke;
@@ -338,13 +377,15 @@ fakes rather than environment credentials.
 ## 8. Commit Sequence
 
 ```text
-1. fix(auth): rotate and revoke refresh tokens atomically
-2. feat(mcp): add keyring-backed local authentication commands
-3. feat(mcp): add stdio transport and synchronized token refresh
-4. test(mcp): cover local auth, stdio, replay, and regression gates
-5. docs(mcp): document one-time login and stdio setup
+1. docs(auth): specify local MCP authentication and refresh contracts
+2. test(auth): record platform, Redis migration, and stdio compatibility spike
+3. fix(auth): rotate and revoke refresh tokens atomically
+4. feat(mcp): add keyring-backed local authentication commands
+5. feat(mcp): add stdio transport and synchronized token refresh
+6. test(mcp): cover local auth, stdio, replay, and regression gates
+7. docs(mcp): document one-time login and stdio setup
 ```
 
-Each commit runs its changed-surface tests. No Python credential-storage commit may merge before the
-Java Refresh Safety Gate passes, and no Quick Start cutover may merge before the full Phase 3 gate is
-green.
+Each commit runs its changed-surface tests. No production code may merge before the Contract Gate,
+no Python credential-storage commit may merge before the Java Refresh Safety Gate, and no Quick Start
+cutover may merge before the full Phase 3 gate is green.
