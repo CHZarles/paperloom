@@ -25,10 +25,10 @@ from harness_py.transport.provider_config import EnvProviderConfigStore, decrypt
 
 
 class PythonHarnessPrototypeTest(unittest.TestCase):
-    def test_all_twenty_two_paradigms_are_available_as_optional_skills(self) -> None:
+    def test_all_twenty_three_paradigms_are_available_as_optional_skills(self) -> None:
         skills = ResearchSkillRegistry().skills
 
-        self.assertEqual(22, len(skills))
+        self.assertEqual(23, len(skills))
         self.assertIn("precision_fact_extraction", skills)
         self.assertIn("complex_constraint_combination", skills)
 

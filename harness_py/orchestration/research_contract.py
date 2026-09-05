@@ -132,6 +132,7 @@ _CATALOG_TOOL_NAMES = frozenset({
     CATALOG_FINAL_TOOL_NAME,
 })
 _RESEARCH_TOOL_NAMES = frozenset({
+    "search_arxiv",
     "get_research_skill",
     "search_paper_candidates",
     "find_papers_by_identity",
@@ -609,6 +610,14 @@ def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
         "the paper_id values returned by those discovery tools. Filenames such as paper_2018.pdf are not paper_ids "
         "and will be rejected. Without that prerequisite call, every read attempt returns "
         "paper_not_authorized_for_reading, so the answer cannot cite any paper content.\n\n"
+        "Use search_arxiv only when the user explicitly asks for external or arXiv papers. It performs one bounded "
+        "metadata search per user turn and returns at most ten latest versioned candidates with abstract previews. "
+        "Those results are discovery metadata only: they are not paper evidence, must not be cited, and must not be "
+        "treated as a replacement for the authorized PaperLoom corpus. If arXiv is unavailable, report that plainly "
+        "instead of silently falling back to another source. Do not retry arXiv in the same turn, and do not "
+        "download or import a candidate in this phase. Present a metadata-only candidate list with "
+        "submit_direct_answer; do not use submit_catalog_answer because arXiv candidates are not PaperLoom corpus "
+        "records.\n\n"
         "If paper discovery returns no candidates, retry once using only the requested paper title as query_text and "
         "omit inferred author, venue, and year filters. Do not claim that a paper is absent from the corpus until this "
         "unconstrained title search also returns no candidates.\n\n"

@@ -91,6 +91,7 @@ class ResearchHarnessService:
             progress_listener=progress_listener,
             should_cancel=should_cancel,
             corpus_reader=corpus_reader,
+            arxiv_reader=corpus_reader,
             retry_context=child_map(request.get("retry")),
             run_limits=limits,
             run_control=control,

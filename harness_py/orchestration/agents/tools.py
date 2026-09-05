@@ -24,6 +24,7 @@ from ...utils.models import JsonMap, as_list, child_map, stable_id
 from ...utils.errors import ResearchSystemError, RunLimitExceeded
 from ...corpus.gateway import CorpusGatewayError
 from ...corpus.tools import model_facing_payload
+from ..arxiv_tools import MAX_CALLS_PER_TURN, redact_arguments, search_arxiv as run_arxiv_search, tool_definition as arxiv_tool_definition
 from ..research_contract import (
     ActionRequested,
     AnswerContract,
@@ -93,6 +94,8 @@ def build_agent_tools(context: ResearchRunContext) -> list[FunctionTool]:
             },
         },
     ]
+    if context.turn.arxiv_reader is not None:
+        definitions.insert(2, arxiv_tool_definition())
     return [_function_tool(definition) for definition in definitions]
 
 
@@ -279,6 +282,12 @@ def _invoke_domain(
     """执行 Research Skill 或 Corpus 工具，并同步维护轨迹与进度。"""
 
     started = perf_counter()
+    recorded_arguments = redact_arguments(arguments) if name == "search_arxiv" else arguments
+    recorded_raw_arguments = (
+        json.dumps(recorded_arguments, ensure_ascii=False)
+        if name == "search_arxiv"
+        else tool_context.tool_arguments
+    )
     # 保存调用前快照，便于观察这个工具到底授权了哪些论文、位置或证据。
     before = context.state_snapshot()
     recorder = context.turn.eval_recorder
@@ -289,14 +298,14 @@ def _invoke_domain(
             payload={
                 "tool_name": name,
                 "model_call_id": context.tool_call_models.get(tool_context.tool_call_id),
-                "raw_arguments": tool_context.tool_arguments,
-                "arguments": arguments,
+                "raw_arguments": recorded_raw_arguments,
+                "arguments": recorded_arguments,
             },
         )
     context.emit_progress({
         "type": "tool_started",
         "tool": name,
-        "input": progress_input(name, arguments),
+        "input": progress_input(name, recorded_arguments),
     })
     if name == "get_research_skill":
         # Skill 是提示指导，不修改 Corpus 授权状态，但需要记录本轮实际采用了哪些方法。
@@ -305,8 +314,19 @@ def _invoke_domain(
         if "error" not in internal and skill_id not in context.skills_used:
             context.skills_used.append(skill_id)
     else:
-        # 所有语料工具统一走 ReadingCorpusTools.call，授权链也在其中执行。
-        internal = context.corpus.call(name, arguments).payload
+        if name == "search_arxiv":
+            if context.arxiv_search_count >= MAX_CALLS_PER_TURN:
+                internal = {
+                    "error": "ARXIV_SEARCH_LIMIT_REACHED",
+                    "message": "Only one arXiv search is allowed per user turn.",
+                    "recoverable": True,
+                }
+            else:
+                context.arxiv_search_count += 1
+                internal = run_arxiv_search(context.turn.arxiv_reader, arguments)
+        else:
+            # 所有语料工具统一走 ReadingCorpusTools.call，授权链也在其中执行。
+            internal = context.corpus.call(name, arguments).payload
 
     # internal 可能包含仅供系统记录的字段；只把明确允许的部分返回给模型。
     model_payload = child_map(model_facing_payload(internal))
@@ -319,14 +339,14 @@ def _invoke_domain(
         _remember_catalog_result(context, name, internal, visible, paper_result_ref)
 
     # react_trace 保存“模型调用了什么、模型看到了什么”，不保存任意内部对象。
-    context.trace.append(tool_trace_item(tool_context.tool_call_id, name, arguments, visible))
-    _record_eval_tool(context, tool_context, name, arguments, internal, visible, before)
+    context.trace.append(tool_trace_item(tool_context.tool_call_id, name, recorded_arguments, visible))
+    _record_eval_tool(context, tool_context, name, recorded_arguments, internal, visible, before)
     context.emit_progress({
         "type": "tool_completed",
         "tool": name,
         "status": "recoverable_error" if "error" in visible else "success",
         "durationMs": round((perf_counter() - started) * 1000),
-        "input": progress_input(name, arguments),
+        "input": progress_input(name, recorded_arguments),
         "output": progress_output(name, visible),
         "evidenceIds": progress_evidence_ids(visible),
     })
@@ -342,7 +362,7 @@ def _bounded_model_payload(context: ResearchRunContext, name: str, payload: Json
         return payload
     if name == "read_paper_content":
         return _bounded_read_payload(context, payload, limit)
-    for key in ("candidates", "matches", "locations", "items", "papers", "allowed_source_quotes"):
+    for key in ("candidates", "matches", "locations", "items", "papers", "results", "allowed_source_quotes"):
         values = as_list(payload.get(key))
         if not values:
             continue

@@ -84,6 +84,8 @@ public class SecurityConfig {
                             ).permitAll()
                             // Python Harness 使用独立内部 Token 访问无模型副作用的 Corpus 数据面。
                             .requestMatchers("/internal/v1/corpus/**").permitAll()
+                            // arXiv 搜索同样只接受内部 Harness Token；控制器负责校验 Token。
+                            .requestMatchers("/internal/v1/arxiv/**").permitAll()
                             // 文件上传和下载相关接口 - 普通用户和管理员都可访问
                             .requestMatchers(
                                     "/api/v1/papers/upload/**",

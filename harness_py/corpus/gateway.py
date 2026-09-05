@@ -39,6 +39,11 @@ class CorpusReader(Protocol):
         ...
 
 
+class ArxivReader(Protocol):
+    def search_arxiv(self, arguments: JsonMap) -> JsonMap:
+        ...
+
+
 class CorpusGatewayError(RuntimeError):
     def __init__(self, status_code: int, error_code: str, safe_message: str) -> None:
         self.status_code = status_code
@@ -273,6 +278,18 @@ class JavaCorpusGatewayReader:
             "section_query": arguments.get("section_query"),
             "page_from": arguments.get("page_from"),
             "page_to": arguments.get("page_to"),
+        })
+
+    def search_arxiv(self, arguments: JsonMap) -> JsonMap:
+        return self._post("/internal/v1/arxiv/search", {
+            "request_id": self.request_id,
+            "conversation_id": self.conversation_id,
+            "user_id": self.user_id,
+            "query_text": arguments.get("query_text", ""),
+            "authors": arguments.get("authors"),
+            "categories": arguments.get("categories"),
+            "year_from": arguments.get("year_from"),
+            "year_to": arguments.get("year_to"),
         })
 
     def _context(self) -> JsonMap:

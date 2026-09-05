@@ -117,6 +117,17 @@ _SKILLS = (
         "State the supported boundary naturally and offer one useful next action.",
     ),
     _skill(
+        "arxiv_discovery_import",
+        "Find external arXiv paper candidates when the user explicitly asks for papers outside the current corpus.",
+        (
+            "Use search_arxiv at most once per user turn with bounded keywords or filters.",
+            "Treat versioned IDs, titles, dates, authors, and abstract previews as discovery metadata only.",
+            "Do not cite, download, or import a candidate without a later explicit user confirmation.",
+        ),
+        "arXiv metadata is not paper-content evidence; read an imported PaperLoom paper after it reaches READY.",
+        "Show a short candidate list with exact versioned IDs and state that importing requires confirmation.",
+    ),
+    _skill(
         "ambiguity_resolution",
         "Resolve a genuinely blocking identity, reference, relation, or constraint ambiguity.",
         ("Identify the single blocking ambiguity.", "Ask one clear question that lets research proceed."),
