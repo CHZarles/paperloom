@@ -1,8 +1,8 @@
-# Standalone Read-Only Reading MCP Spec
+# Standalone Reading MCP And Confirmed arXiv Import Spec
 
 Date: 2026-08-23
 
-Status: Implemented and verified on 2026-08-24.
+Status: Implemented and verified on 2026-08-24; confirmed arXiv import extension implemented locally on 2026-09-06.
 
 This document governs the standalone Reading MCP only. It supersedes every MCP-specific requirement
 in `evidence-field-extraction-mcp-spec-2026-08-22.md` and
@@ -11,8 +11,8 @@ Field Extraction.
 
 ## 1. Decision
 
-PaperLoom will expose five stateless, read-only MCP Tools through a standalone Python package named
-`paperloom_mcp` and an authenticated Java public query facade.
+PaperLoom will expose five stateless, read-only MCP Tools and one explicitly user-approved asynchronous
+arXiv import Tool through a standalone Python package named `paperloom_mcp` and authenticated Java endpoints.
 
 ```text
 MCP client
@@ -24,6 +24,15 @@ MCP client
   -> bounded public DTO
 ```
 
+The import path is separate from Reading Tool state:
+
+```text
+MCP client asks the user for approval
+  -> request_arxiv_import(arxiv_id)
+  -> /api/v1/arxiv/import with the same Bearer JWT
+  -> HTTP 202 queued
+```
+
 The MCP adapter MUST NOT import or depend on `harness_py`, `ReadingCorpusTools`, Paper/Location
 disclosure state, Evidence Ledger, Source Quotes, conversation state, Agent Runtime, or submission
 contracts.
@@ -32,8 +41,8 @@ contracts.
 
 ### 2.1 In Scope
 
-- five query-only MCP Tools;
-- five authenticated Java public query endpoints;
+- five query-only MCP Tools and one confirmed asynchronous arXiv import Tool;
+- five authenticated Java public query endpoints plus the authenticated import endpoint;
 - independent MCP schemas and public Java DTOs;
 - JWT forwarding without Python JWT decoding;
 - request/result size limits and safe error mapping;
@@ -44,7 +53,7 @@ contracts.
 ### 2.2 Out Of Scope
 
 - Field Extraction, answer generation, or Harness Runs;
-- MCP Prompts, Resources, sampling, elicitation, or write Tools;
+- MCP Prompts, Resources, sampling, elicitation, or arbitrary write Tools;
 - `PaperSourceQuote` creation, Evidence Ledger mutation, or conversation memory;
 - `/internal/v1/corpus/**` access;
 - frontend work, database migrations, Qdrant schema changes, Tool registry, dynamic dispatcher,
@@ -75,8 +84,10 @@ contracts.
 | `POST /api/v1/reading/structure` | PAGE or SECTION navigation for one Paper |
 | `POST /api/v1/reading/content/search` | bounded Location preview search in one Paper |
 | `POST /api/v1/reading/content/read` | durable exact content read for one Paper |
+| `POST /api/v1/arxiv/import` | queue one user-approved exact arXiv version |
 
-`POST` carries query bodies but does not imply write semantics.
+`POST` carries query bodies; the arXiv import endpoint is the sole write operation and returns `202`
+after enqueueing the existing asynchronous processing path.
 
 ### 4.2 Authentication And Inputs
 
@@ -197,6 +208,11 @@ MCP initialize MUST advertise Tools capability only. `tools/list` MUST return ex
 | `get_paper_structure` | `paper_id` | PAGE or SECTION; offset >= 0; limit 1-100 |
 | `search_paper_content` | `paper_id` | top_k 1-20; passage/table/figure only |
 | `read_paper_content` | `paper_id`, `location_refs` | 1-20 refs |
+| `request_arxiv_import` | `arxiv_id` | one exact versioned ID; client approval required |
+
+`request_arxiv_import` MUST be marked non-read-only and idempotent. The client MUST request explicit
+user approval before invoking it. The result reports queue state only; the imported Paper is not
+readable in the current Agent Run.
 
 `MCP-TOOL-001`: Tool schemas MUST contain no identity, role, scope, credential, service token,
 model-version, parser, Qdrant, Source Quote, Evidence, or Harness fields.
@@ -281,8 +297,8 @@ handler calls.
 
 | Test | Requirement |
 | --- | --- |
-| initialize advertises Tools only; exact five schemas | `MCP-TOOL-001/004` |
-| all Tools call only `/api/v1/reading/**` | package decision |
+| initialize advertises Tools only; exact six schemas | `MCP-TOOL-001/004` |
+| Reading Tools call `/api/v1/reading/**`; import calls `/api/v1/arxiv/import` | package decision |
 | Text and structured result equivalence | `MCP-TOOL-002` |
 | missing and Java-rejected auth, including empty/non-JSON 401/403 | `MCP-AUTH-003`, `MCP-ERR-001` |
 | concurrent user-A/user-B calls with forced interleaving | `MCP-ISO-001` |
@@ -290,6 +306,7 @@ handler calls.
 | exact read has no Source Quote and no persistence side effect | `MCP-TOOL-003` |
 | clean locked install and CLI start | `MCP-PKG-002` |
 | Java refresh header never enters an MCP result | `MCP-AUTH-004` |
+| approved exact-version import returns queued without credentials in results | arXiv import contract |
 
 ### 8.3 Regression Commands
 
@@ -325,7 +342,7 @@ Verified on 2026-08-24:
 - malformed-JWT tests confirmed tokens and exception payloads were absent from logs; generic API
   logging skips Reading routes, framework per-request loggers remain at INFO, and non-Reading
   authentication behavior remains unchanged;
-- loopback smoke used a real USER JWT and a ready, published PDF through all five Tools;
+- loopback smoke used a real USER JWT and a ready, published PDF through the five Reading Tools;
 - observed top-level fields were `query_text/papers/counts/coverage`, Paper metadata,
   `structure_type/items/counts/coverage`, `query_text/locations/counts/coverage`, and
   `items/missing_location_refs`; exact items contained only

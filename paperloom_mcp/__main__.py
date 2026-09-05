@@ -7,7 +7,7 @@ from .server import run_mcp_server
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Run the read-only PaperLoom MCP server.")
+    parser = argparse.ArgumentParser(description="Run the PaperLoom MCP server.")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8090)
     parser.add_argument(

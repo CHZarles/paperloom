@@ -72,7 +72,7 @@ class ReadingMcpGateway:
         except ValueError as error:
             raise ToolError("INVALID_READING_RESPONSE") from error
         if response.is_error:
-            raise ToolError(_status_error(response.status_code))
+            raise ToolError(_status_error(response.status_code, path))
         if not isinstance(result, dict):
             raise ToolError("INVALID_READING_RESPONSE")
         try:
@@ -82,7 +82,9 @@ class ReadingMcpGateway:
         return result
 
 
-def _status_error(status: int) -> str:
+def _status_error(status: int, path: str = "") -> str:
+    if status == 400 and path == "/api/v1/arxiv/import":
+        return "ARXIV_ARGUMENTS_INVALID"
     return {
         400: "READING_ARGUMENTS_INVALID",
         404: "PAPER_NOT_AVAILABLE",
@@ -94,6 +96,7 @@ def _status_error(status: int) -> str:
 
 def _tools() -> list[types.Tool]:
     read_only = types.ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True)
+    import_action = types.ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True)
     text = {"type": "string", "maxLength": 4000}
     paper_id = {"type": "string", "minLength": 1, "maxLength": 64, "pattern": r"\S"}
     location_refs = {
@@ -162,6 +165,23 @@ def _tools() -> list[types.Tool]:
                 "paper_id": paper_id,
                 "location_refs": location_refs,
             }, ["paper_id", "location_refs"]),
+        ),
+        types.Tool(
+            name="request_arxiv_import",
+            description=(
+                "Request import of one exact arXiv version after the MCP client has received explicit user "
+                "approval. This is an asynchronous write operation; it returns a queue state and does not make "
+                "the paper immediately readable."
+            ),
+            annotations=import_action,
+            inputSchema=_object_schema({
+                "arxiv_id": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 64,
+                    "pattern": r"(?:\d{4}\.\d{4,5}|[A-Za-z-]+(?:\.[A-Za-z-]+)?/\d{7})v\d+",
+                },
+            }, ["arxiv_id"]),
         ),
     ]
 
@@ -252,6 +272,11 @@ _RESULT_SCHEMAS = {
         "items": {"type": "array", "items": _CONTENT_ITEM},
         "missing_location_refs": {"type": "array", "items": {"type": "string"}},
     }, ["items", "missing_location_refs"]),
+    "/api/v1/arxiv/import": _object_schema({
+        "arxiv_id": {"type": "string"},
+        "status": {"type": "string", "enum": ["queued", "processing", "ready", "failed"]},
+        "paper_id": {"type": "string"},
+    }, ["arxiv_id", "status"]),
 }
 
 
@@ -276,7 +301,10 @@ def create_mcp_server(
     server = Server(
         "paperloom-reading",
         version="1.0.0",
-        instructions="Stateless, read-only queries over the authenticated user's PaperLoom library.",
+        instructions=(
+            "Stateless queries over the authenticated user's PaperLoom library and explicitly user-approved "
+            "asynchronous arXiv imports."
+        ),
     )
     tools = _tools()
 
@@ -327,6 +355,10 @@ def create_mcp_server(
                 "page_from": values.get("page_from"),
                 "page_to": values.get("page_to"),
                 "top_k": values.get("top_k", 8),
+            }))
+        if name == "request_arxiv_import":
+            return _tool_result(await gateway.query("/api/v1/arxiv/import", {
+                "arxiv_id": values["arxiv_id"],
             }))
         return _tool_result(await gateway.query("/api/v1/reading/content/read", values))
 

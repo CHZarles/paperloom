@@ -92,7 +92,7 @@ The Python service does not connect to MySQL or Qdrant. It calls the Java Corpus
 scope; Java owns the hybrid Qdrant retrieval (sparse BM25 + dense MiniMax embedding, RRF-fused),
 permission/current-model validation, and canonical reads.
 
-The optional read-only MCP server is stateless and listens on loopback by default:
+The optional MCP server is stateless and listens on loopback by default:
 
 ```bash
 .venv-mcp/bin/python -m paperloom_mcp --host 127.0.0.1 --port 8090
@@ -101,7 +101,9 @@ The optional read-only MCP server is stateless and listens on loopback by defaul
 Its Streamable HTTP endpoint is `http://127.0.0.1:8090/mcp`. Every MCP request must carry the current
 PaperLoom user JWT as `Authorization: Bearer ...`; the adapter forwards it to the authenticated Java
 `/api/v1/reading/**` facade and does not decode it or retain disclosure, Evidence, or conversation
-state. Remote exposure is unsupported in V1 and requires a separate HTTPS deployment spec.
+state. It also exposes the explicitly user-approved `request_arxiv_import` operation, which queues an
+asynchronous import and does not make the paper immediately readable. Remote exposure is unsupported
+in V1 and requires a separate HTTPS deployment spec.
 
 ## Secret Rules
 

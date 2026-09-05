@@ -80,6 +80,13 @@ class McpServerTest(unittest.IsolatedAsyncioTestCase):
                     }],
                     "missing_location_refs": [],
                 })
+            if request.url.path.endswith("/arxiv/import"):
+                if body.get("arxiv_id") == "2401.01234v2":
+                    return httpx.Response(202, json={
+                        "arxiv_id": "2401.01234v2",
+                        "status": "queued",
+                    })
+                return httpx.Response(400, json={"error": "ARXIV_ARGUMENTS_INVALID"})
             return httpx.Response(200, json={"items": []})
 
         self.java_client = httpx.AsyncClient(
@@ -91,7 +98,7 @@ class McpServerTest(unittest.IsolatedAsyncioTestCase):
     async def asyncTearDown(self) -> None:
         await self.java_client.aclose()
 
-    async def test_initialize_lists_only_five_independent_query_tools(self) -> None:
+    async def test_initialize_lists_five_query_tools_and_one_approved_write_tool(self) -> None:
         async with self.app.router.lifespan_context(self.app):
             async with self.session("user-a") as (session, initialized):
                 self.assertIsNotNone(initialized.capabilities.tools)
@@ -105,11 +112,42 @@ class McpServerTest(unittest.IsolatedAsyncioTestCase):
             "get_paper_structure",
             "search_paper_content",
             "read_paper_content",
+            "request_arxiv_import",
         }, {tool.name for tool in tools})
         forbidden = {"user_id", "role", "scope_paper_ids", "credential", "model_version", "evidence_payloads"}
         for tool in tools:
             properties = set(tool.inputSchema.get("properties", {}))
             self.assertTrue(forbidden.isdisjoint(properties), tool.name)
+        import_tool = next(tool for tool in tools if tool.name == "request_arxiv_import")
+        self.assertFalse(import_tool.annotations.readOnlyHint)
+        self.assertFalse(import_tool.annotations.destructiveHint)
+
+    async def test_request_arxiv_import_forwards_bearer_and_returns_queued(self) -> None:
+        async with self.app.router.lifespan_context(self.app):
+            async with self.session("user-a") as (session, _):
+                result = await session.call_tool("request_arxiv_import", {
+                    "arxiv_id": "2401.01234v2",
+                })
+
+        self.assertFalse(result.isError)
+        self.assertEqual({
+            "arxiv_id": "2401.01234v2",
+            "status": "queued",
+        }, result.structuredContent)
+        self.assertEqual("/api/v1/arxiv/import", self.java_calls[-1][0])
+        self.assertEqual("Bearer user-a", self.java_calls[-1][1])
+        self.assertEqual({"arxiv_id": "2401.01234v2"}, self.java_calls[-1][3])
+
+    async def test_import_schema_rejects_unversioned_ids_without_java_call(self) -> None:
+        async with self.app.router.lifespan_context(self.app):
+            async with self.session("user-a") as (session, _):
+                result = await session.call_tool("request_arxiv_import", {
+                    "arxiv_id": "2401.01234",
+                })
+
+        self.assertTrue(result.isError)
+        self.assertEqual("READING_ARGUMENTS_INVALID", result.content[0].text)
+        self.assertEqual([], self.java_calls)
 
     async def test_tools_forward_bearer_to_public_java_queries_and_return_equivalent_content(self) -> None:
         async with self.app.router.lifespan_context(self.app):

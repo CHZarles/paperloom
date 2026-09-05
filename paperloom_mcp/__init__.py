@@ -1,1 +1,1 @@
-"""Stateless read-only MCP adapter for PaperLoom."""
+"""Stateless PaperLoom MCP adapter with read-only Reading Tools and approved arXiv import."""
