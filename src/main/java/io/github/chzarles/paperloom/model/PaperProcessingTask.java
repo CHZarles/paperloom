@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 public class PaperProcessingTask {
     public static final String TASK_TYPE_UPLOAD_PROCESS = "UPLOAD_PROCESS";
     public static final String TASK_TYPE_RETRY_INITIAL = "RETRY_INITIAL";
+    public static final String TASK_TYPE_ARXIV_IMPORT = "ARXIV_IMPORT";
 
     private String paperId;
     private String paperObjectUrl;
@@ -20,4 +21,19 @@ public class PaperProcessingTask {
     private String userId;
     private String taskType; // 任务类型
     private String requesterId; // 发起重试的用户
+    private String arxivId; // ARXIV_IMPORT 的完整版本号
+
+    public PaperProcessingTask(String paperId,
+                               String paperObjectUrl,
+                               String paperTitle,
+                               String userId,
+                               String taskType,
+                               String requesterId) {
+        this.paperId = paperId;
+        this.paperObjectUrl = paperObjectUrl;
+        this.paperTitle = paperTitle;
+        this.userId = userId;
+        this.taskType = taskType;
+        this.requesterId = requesterId;
+    }
 }

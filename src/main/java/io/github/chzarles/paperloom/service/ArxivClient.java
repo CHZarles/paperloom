@@ -27,6 +27,7 @@ public class ArxivClient {
     public static final int MAX_RESULTS = 10;
     public static final int MAX_QUERY_CHARS = 200;
     public static final int MAX_ABSTRACT_CHARS = 1_000;
+    public static final int MAX_PDF_BYTES = 64 * 1024 * 1024;
 
     private static final String ATOM_NS = "http://www.w3.org/2005/Atom";
     private static final Pattern TERM = Pattern.compile("[^\\p{L}\\p{N}._-]+");
@@ -44,7 +45,7 @@ public class ArxivClient {
         this.baseUrl = normalizeBaseUrl(baseUrl);
         this.timeout = Duration.ofSeconds(Math.max(1, timeoutSeconds));
         this.client = factory.builder(this.baseUrl)
-                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(1_048_576))
+                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(MAX_PDF_BYTES))
                 .build();
     }
 
@@ -76,6 +77,78 @@ public class ArxivClient {
             return new SearchResult(papers, papers.size(), "bounded");
         } catch (Exception error) {
             throw new ArxivClientException("arXiv returned an invalid response", error);
+        }
+    }
+
+    public Paper fetchExact(String rawArxivId) {
+        String arxivId = normalizeVersionedId(rawArxivId);
+        if (arxivId == null || !arxivId.matches(".*v\\d+$")) {
+            throw new IllegalArgumentException("a versioned arXiv ID is required");
+        }
+        URI uri = UriComponentsBuilder.fromUriString(baseUrl)
+                .queryParam("id_list", arxivId)
+                .queryParam("max_results", 1)
+                .build()
+                .encode()
+                .toUri();
+        String body;
+        try {
+            body = client.get()
+                    .uri(uri)
+                    .header("User-Agent", "PaperLoom/0.1 (+https://github.com/CHZarles/paperloom)")
+                    .accept(MediaType.APPLICATION_XML)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block(timeout);
+        } catch (Exception error) {
+            throw new ArxivClientException("arXiv is temporarily unavailable", error);
+        }
+        try {
+            return parseFeed(body, 1).stream()
+                    .filter(paper -> arxivId.equals(paper.arxivId()))
+                    .findFirst()
+                    .orElseThrow(() -> new ArxivClientException("arXiv paper was not found", null));
+        } catch (ArxivClientException error) {
+            throw error;
+        } catch (Exception error) {
+            throw new ArxivClientException("arXiv returned an invalid response", error);
+        }
+    }
+
+    public byte[] downloadPdf(String rawArxivId) {
+        String arxivId = normalizeVersionedId(rawArxivId);
+        if (arxivId == null || !arxivId.matches(".*v\\d+$")) {
+            throw new IllegalArgumentException("a versioned arXiv ID is required");
+        }
+        URI pdfUri = URI.create("https://arxiv.org/pdf/" + arxivId);
+        try {
+            byte[] bytes = client.get()
+                    .uri(pdfUri)
+                    .header("User-Agent", "PaperLoom/0.1 (+https://github.com/CHZarles/paperloom)")
+                    .accept(MediaType.APPLICATION_PDF)
+                    .exchangeToMono(response -> {
+                        if (!response.statusCode().is2xxSuccessful()) {
+                            return response.createException().flatMap(reactor.core.publisher.Mono::error);
+                        }
+                        MediaType contentType = response.headers().contentType().orElse(null);
+                        if (contentType != null
+                                && !MediaType.APPLICATION_PDF.includes(contentType)
+                                && !MediaType.APPLICATION_OCTET_STREAM.includes(contentType)) {
+                            return reactor.core.publisher.Mono.error(
+                                    new IllegalArgumentException("arXiv response is not a PDF"));
+                        }
+                        return response.bodyToMono(byte[].class);
+                    })
+                    .block(timeout);
+            if (bytes == null || bytes.length == 0 || bytes.length > MAX_PDF_BYTES
+                    || !startsWithPdf(bytes)) {
+                throw new ArxivClientException("arXiv did not return a valid PDF", null);
+            }
+            return bytes;
+        } catch (ArxivClientException error) {
+            throw error;
+        } catch (Exception error) {
+            throw new ArxivClientException("arXiv PDF download is temporarily unavailable", error);
         }
     }
 
@@ -143,7 +216,7 @@ public class ArxivClient {
         return List.copyOf(papers);
     }
 
-    static String normalizeVersionedId(String raw) {
+    public static String normalizeVersionedId(String raw) {
         String value = raw == null ? "" : raw.trim();
         int absIndex = value.toLowerCase(Locale.ROOT).lastIndexOf("/abs/");
         if (absIndex >= 0) {
@@ -156,6 +229,15 @@ public class ArxivClient {
             value = value.substring(0, queryIndex);
         }
         return VERSIONED_ID.matcher(value).matches() ? value : null;
+    }
+
+    private static boolean startsWithPdf(byte[] bytes) {
+        return bytes.length >= 5
+                && bytes[0] == '%'
+                && bytes[1] == 'P'
+                && bytes[2] == 'D'
+                && bytes[3] == 'F'
+                && bytes[4] == '-';
     }
 
     private String buildQuery(SearchRequest request) {

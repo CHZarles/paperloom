@@ -7,6 +7,7 @@ import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.service.PaperService;
 import io.github.chzarles.paperloom.service.PaperSearchabilityService;
 import io.github.chzarles.paperloom.service.PaperPublicationService;
+import io.github.chzarles.paperloom.service.ArxivImportService;
 import io.github.chzarles.paperloom.service.ParseService;
 import io.github.chzarles.paperloom.service.UploadService;
 import io.github.chzarles.paperloom.service.RetrievalIndexingService;
@@ -28,6 +29,8 @@ public class PaperProcessingConsumer {
     private final PaperSearchabilityService searchabilityService;
     private final PaperReadingModelRepository readingModelRepository;
     private final PaperPublicationService publicationService;
+    @Autowired
+    private ArxivImportService arxivImportService;
     @Autowired
     private KafkaConfig kafkaConfig;
 
@@ -53,6 +56,10 @@ public class PaperProcessingConsumer {
     @KafkaListener(topics = "#{kafkaConfig.getPaperProcessingTopic()}", groupId = "#{kafkaConfig.getPaperProcessingGroupId()}")
     public void processTask(PaperProcessingTask task) {
         log.info("Received task: {}", task);
+        String originalTaskType = task.getTaskType();
+        if (PaperProcessingTask.TASK_TYPE_ARXIV_IMPORT.equals(originalTaskType)) {
+            task = arxivImportService.materialize(task);
+        }
 
         if (searchabilityService.isSearchable(task.getPaperId())) {
             var model = readingModelRepository.findFirstByPaperIdAndIsCurrentTrue(task.getPaperId()).orElseThrow();
@@ -96,7 +103,9 @@ public class PaperProcessingConsumer {
             publicationService.publishIfAdministrator(task.getPaperId(), task.getUserId());
             log.info("论文词法检索索引完成，paperId: {}", task.getPaperId());
         } catch (Exception e) {
-            paperService.markVectorizationFailed(task.getPaperId(), e);
+            if (!PaperProcessingTask.TASK_TYPE_ARXIV_IMPORT.equals(originalTaskType)) {
+                paperService.markVectorizationFailed(task.getPaperId(), e);
+            }
             log.error("Error processing task: {}", task, e);
             // 抛出异常让 Kafka 的 DefaultErrorHandler 捕获并触发重试 / 死信
             throw new RuntimeException("Error processing task", e);
