@@ -69,7 +69,7 @@
 ## 文件说明
 
 - [`project-evidence-map.md`](project-evidence-map.md)：项目事实边界，所有项目回答以此为准。
-- [`project-stories.md`](project-stories.md)：六个最值得背的项目难点。
+- [`project-stories.md`](project-stories.md)：十个最值得背的项目难点。
 - [`guides/`](guides)：按 PDF 一本一本整理的中文面经。
 
 ## 12 天冲刺安排
@@ -82,7 +82,7 @@
 | 第 2 天 | MySQL | 能讲索引、锁、MVCC、项目任务抢占 SQL |
 | 第 3 天 | Redis | 能讲项目四种 Redis 用法及一致性边界 |
 | 第 4 天 | 并发 | 能画出线程池、共享 Map、取消和队列 |
-| 第 5 天 | 六个项目故事 | 每个故事脱稿讲 90 秒 |
+| 第 5 天 | 十个项目故事 | 每个故事脱稿讲 90 秒 |
 | 第 6 天 | 分布式、消息队列 | 幂等、重试、DLT、双写一致性 |
 | 第 7 天 | 计算机网络 | WebSocket、HTTP 流、JWT、TCP |
 | 第 8 天 | JVM、操作系统 | 会按步骤排查 CPU、内存、FD 问题 |

@@ -1,13 +1,13 @@
 # Reading MCP Local Authentication Plan
 
-Date: 2026-08-26
+Date: 2026-08-27
 
-Status: Proposed. This plan targets the current macOS developer and one local MCP client. There are
-no production users or external MCP consumers to migrate.
+Status: Proposed. This plan targets one desktop account and one local MCP client. There are no
+production users or external MCP consumers to migrate.
 
-This plan replaces manual JWT handling with one local login command, macOS Keychain storage,
+This plan replaces manual JWT handling with one local login command, native OS credential storage,
 automatic refresh, and stdio as the default MCP transport. It does not add OAuth, frontend work,
-remote serving, multi-user support, or cross-platform compatibility.
+remote serving, multi-user support, or plaintext credential fallback.
 
 The existing five Reading Tools, Java Reading facade, ACL, Current Model, quota, response bounds,
 audit, and zero Source Quote behavior remain unchanged.
@@ -19,7 +19,7 @@ One-time setup
   python -m paperloom_mcp auth login
     -> interactive username/password
     -> Java /api/v1/users/login
-    -> macOS Keychain stores refresh token
+    -> OS credential store keeps refresh token
 
 Normal use
   MCP client
@@ -37,7 +37,7 @@ The user never copies a JWT or edits an Authorization Header.
 - atomic Java refresh-token rotation;
 - refresh-token revoke and logout-all cleanup;
 - Redis outage mapped to stable 503;
-- macOS Keychain storage through `keyring`;
+- native macOS, Windows, or Linux credential storage through `keyring`;
 - `auth login`, `auth status`, and `auth logout`;
 - MCP stdio transport;
 - access token in memory only;
@@ -47,9 +47,9 @@ The user never copies a JWT or edits an Authorization Header.
 ### Out Of Scope
 
 - migration of existing refresh tokens;
-- Windows or Linux credential stores;
+- headless Linux without an active Secret Service credential store;
 - multiple local accounts or PaperLoom servers;
-- multiple concurrent MCP stdio processes;
+- multiple concurrent MCP stdio processes sharing one local credential;
 - OAuth/PKCE, DCR, CIMD, consent, or introspection;
 - remote or shared MCP serving;
 - frontend, Field Extraction, Harness, Evidence, Source Quote, or Tool changes.
@@ -112,11 +112,12 @@ The refresh token authorizes its own revocation.
 `logout-all` deletes both access-token and v2 refresh-token sets. Ordinary product access-token
 behavior otherwise remains unchanged.
 
-### D4. Use macOS Keychain Only
+### D4. Use The Native OS Credential Store
 
-Use the maintained Python `keyring` package and require the macOS Keychain backend. Reject missing,
-fail, null, chained, plaintext, or alternate-file backends. Do not fall back to `.env`, JSON, SQLite,
-home-directory files, or application-managed encryption.
+Use the maintained Python `keyring` package and require the platform-native secure backend: macOS
+Keychain, Windows Credential Manager, or Linux Secret Service. Reject missing, fail, null, chained,
+plaintext, or alternate-file backends. Linux requires an active Secret Service session. Do not fall
+back to `.env`, JSON, SQLite, home-directory files, or application-managed encryption.
 
 Store one versioned secret:
 
@@ -148,7 +149,7 @@ python -m paperloom_mcp auth logout
 5. disables redirects and environment proxies;
 6. calls Java login and `/api/v1/users/me`;
 7. accepts USER or ADMIN; for GUEST, revoke the returned refresh token before rejecting login;
-8. refuses to overwrite an existing Keychain credential; the user runs logout first;
+8. refuses to overwrite an existing stored credential; the user runs logout first;
 9. stores only the refresh token and prints only server, username, role, and success.
 
 Login failures use one fixed message and do not reveal whether the username exists.
@@ -156,8 +157,8 @@ Login failures use one fixed message and do not reveal whether the username exis
 `auth status` reports the locally configured server and username without refreshing or printing
 credentials.
 
-`auth logout` calls refresh-token revocation before deleting Keychain state. If Java or Redis is
-unavailable, it keeps the Keychain credential, exits nonzero, and asks the user to retry. A confirmed
+`auth logout` calls refresh-token revocation before deleting credential-store state. If Java or Redis
+is unavailable, it keeps the credential, exits nonzero, and asks the user to retry. A confirmed
 successful or already-invalid revocation deletes the credential.
 
 Python MUST NOT add a login HTTP endpoint or credential-collection MCP Tool.
@@ -179,7 +180,7 @@ python -m paperloom_mcp serve-http --host 127.0.0.1 --port 8090
 MCP stdout contains protocol messages only; diagnostics use stderr. Stdio rejects JSON-RPC frames
 larger than 1 MiB before JSON parsing.
 
-HTTP mode keeps the current per-request Bearer contract and never reads Keychain credentials. It
+HTTP mode keeps the current per-request Bearer contract and never reads stored credentials. It
 remains loopback-only and is retained for tests and advanced debugging, not as the default setup.
 
 Because there are no external consumers, the current top-level `--host/--port` form is removed rather
@@ -189,9 +190,9 @@ than maintained through a deprecation period.
 
 During stdio startup:
 
-1. read the Keychain refresh token;
+1. read the stored refresh token;
 2. exchange it for a new access token and rotated refresh token;
-3. replace the Keychain refresh token;
+3. replace the stored refresh token;
 4. call `/api/v1/users/me` and require USER or ADMIN;
 5. keep the access token only in memory;
 6. begin MCP initialization.
@@ -200,11 +201,17 @@ Within one process, an `asyncio.Lock` serializes refresh. On Java 401, the first
 retries the read-only request once; waiting callers reuse the new access token. Never retry 403, 404,
 quota, Current Model, validation, or retrieval failures.
 
-Timeout or 5xx returns `AUTH_UNAVAILABLE` without deleting Keychain state. A confirmed invalid or
+The stored credential belongs to one local MCP client configuration and MUST NOT be shared by
+concurrent MCP processes. The Java server only enforces atomic rotation and replay rejection; it does
+not coordinate clients. Supporting another simultaneous MCP client requires an independent local
+profile and refresh-token session, which is deferred. Do not weaken rotation or add server-side
+client coordination.
+
+Timeout or 5xx returns `AUTH_UNAVAILABLE` without deleting credential-store state. A confirmed invalid or
 replayed refresh token deletes the credential and returns `LOGIN_REQUIRED`.
 
-If Java rotates the token and the process crashes before Keychain update, the user logs in again. Do
-not weaken one-time rotation for this recovery case.
+If Java rotates the token and the process crashes before the credential-store update, the user logs
+in again. Do not weaken one-time rotation for this recovery case.
 
 ## 4. Implementation
 
@@ -222,7 +229,7 @@ not weaken one-time rotation for this recovery case.
 
 1. Add `keyring` and regenerate the lock.
 2. Add `auth login/status/logout` and `serve-stdio/serve-http` commands.
-3. Add one macOS Keychain credential helper.
+3. Add one `keyring` credential helper that accepts only the supported native secure backends.
 4. Add one in-memory local token manager with startup refresh, `asyncio.Lock`, and single retry.
 5. Let `ReadingMcpGateway` accept one async token-provider callable; stdio uses the local token
    manager and HTTP uses the current request bearer.
@@ -243,11 +250,12 @@ product and Reading tests pass.
 
 ### Phase 1. Local Login CLI
 
-Add macOS Keychain login, status, and logout.
+Add native credential-store login, status, and logout.
 
-**Gate:** password/access token never persist or enter logs; insecure Keychain backend fails closed;
-GUEST is rejected; login cannot overwrite existing credentials; failed server revocation keeps the
-Keychain token.
+**Gate:** password/access token never persist or enter logs; unsupported or insecure credential
+backends fail closed; macOS Keychain, Windows Credential Manager, and Linux Secret Service contract
+tests pass; GUEST is rejected; login cannot overwrite existing credentials; failed server revocation
+keeps the stored token.
 
 ### Phase 2. Stdio And Automatic Refresh
 
@@ -287,7 +295,7 @@ is supported.
 
 ## 7. Deferred
 
-- Windows and Linux credential stores;
+- headless Linux without Secret Service;
 - multiple local profiles or concurrent stdio processes;
 - remote/shared MCP serving;
 - OAuth/PKCE, Authorization Server, DCR, CIMD, consent, and introspection;
@@ -298,7 +306,7 @@ is supported.
 
 ```text
 1. fix(auth): rotate and revoke refresh tokens atomically
-2. feat(mcp): add macOS Keychain login commands
+2. feat(mcp): add native credential-store login commands
 3. feat(mcp): add stdio transport and automatic refresh
 4. test(mcp): cover local auth, stdio, replay, and regression gates
 5. docs(mcp): document one-time login and stdio setup

@@ -1,4 +1,4 @@
-# PaperLoom 九个项目难点面试稿
+# PaperLoom 十个项目难点面试稿
 
 下面不是编故事，而是把仓库已有实现和实验记录压缩成可口述版本。
 
@@ -289,3 +289,151 @@ PDF 中位数 1632.3 ms，页面图 2210.7 ms，图片反而慢 578.4 ms。根�
 
 **必备追问：**为什么纯文本不能直接发布、Draft 和最终答案的区别、为什么拒绝提交不等于 Run 失败、
 Validator 为什么必须是确定性代码、Repair Budget 与总轮数上限分别防什么、为什么一次 Run 不能证明性能。
+
+## 10. Prompt 设计、调优和 Harness 是什么关系？
+
+**90 秒回答：**
+
+> 我把 Prompt 看成 Agent 的语义策略层，把 Harness 看成它的执行与治理层。Prompt 负责理解用户意图、
+> 选择 `DIRECT/CATALOG/RESEARCH` Contract、控制研究范围和回答深度；Harness 负责组装主 Prompt、会话
+> 历史、Evidence Card、Tool Schema 和 Retry Context，再运行连续的 ReAct Loop。
+>
+> Prompt 只提高模型遵守规则的概率，所以权限、证据和发布边界不能只写在 Prompt 里。Harness 会维护
+> 请求级的论文、位置和 Source Quote 授权状态；模型可以在一次响应中批量规划多个独立工具，但 Runtime
+> 按顺序执行。依赖前一步结果的调用必须进入下一轮，最终提交还必须独占一次模型响应。第一次有效提交会
+> 锁定 Answer Contract；Research 提交缺少引用时只能继续补证并重新提交 Research，不能降级成 Direct。
+> 只有确定性 Validator 接受的提交才会成为用户答案。
+>
+> Prompt 调优也依赖 Harness。每次 Run 会记录模型调用、Tool Group、Evidence Ledger、提交问题、Token
+> 和延迟。我先用 Trace 判断失败属于意图路由、检索、证据选择、回答范围、Provider 协议还是 Runtime，
+> 再只修改对应层。比如“什么事非对称量化”最初虽然通过引用校验，却用了 12 次模型调用、4 次提交和
+> 172262 Token，答案扩到 3492 字符。三轮 Prompt 调整依次处理回答深度、渐进式披露以及“短答案不等于
+> 降级证据 Contract”，最终单次回放变成 6 次模型调用、1 次提交、43478 Token 和 778 字符。这个结果
+> 只能证明机制按预期工作，不能宣称稳定节省 75%。
+>
+> 所以 Prompt 和 Harness 不是两套独立机制：Prompt 定义期望行为，Harness 负责执行、约束和记录实际
+> 行为，离线 Eval 再根据失败轨迹决定修改 Prompt、Tool Schema 还是 Runtime。
+
+**整体关系：**
+
+```mermaid
+flowchart TB
+    U["用户问题"] --> A["Harness 组装模型输入"]
+
+    subgraph Online["Online Research Harness"]
+        A --> P["主 Prompt<br/>目标、路由、回答范围"]
+        A --> C["动态上下文<br/>历史、Evidence Card、Retry Context"]
+        A --> D["Tool Schema<br/>Skill、检索、读取、提交"]
+
+        P --> M["LLM / ReAct Agent"]
+        C --> M
+        D --> M
+
+        M --> G["一个 Model Response<br/>产生一个 Tool Group"]
+        G --> PG["Protocol Guard<br/>状态、权限、批量调用检查"]
+        PG --> T["Skill / Corpus Tools<br/>按顺序执行"]
+        T --> R["结构化 Tool Results"]
+        R --> M
+
+        M --> S["独占调用一个 submit_* 工具"]
+        S --> V["Answer Contract 状态机<br/>确定性 Validator"]
+        V -- "缺证据或格式错误" --> M
+        V -- "accepted=true" --> O["规范化最终答案"]
+    end
+
+    O --> U
+
+    subgraph Eval["Observability & Offline Eval"]
+        TR["Trace、Tool Calls、Evidence Ledger<br/>Token、延迟、Submission Issues"]
+        EV["Golden Cases、Contract Accuracy<br/>Semantic Judge、人工复核"]
+        DIAG["失败分层定位"]
+    end
+
+    M -.-> TR
+    V -.-> TR
+    TR --> EV --> DIAG
+    DIAG --> X["修改 Prompt、Tool Schema 或 Harness"]
+    X --> A
+```
+
+**Harness 的五项职责：**
+
+1. **装配。** `AgentsSdkHarnessRuntime` 将主 Prompt、受限历史、旧证据卡、Retry Context 和当前问题组装成
+   本轮输入；复杂 Research Skill 只按需加载，不全部常驻 Prompt。
+2. **执行。** 模型可以一次规划多个 Function Call，Hook 将同一响应登记为 Tool Group；Runtime 使用
+   `max_function_tool_concurrency=1` 按顺序执行并把所有 Tool Result 回灌下一轮。
+3. **约束。** Corpus Tool 维护 `authorized_paper_ids -> disclosed_location_refs -> source_quote_refs` 授权链；
+   三个提交工具、Contract 状态机和逐块引用 Validator 决定答案能否发布。
+4. **恢复。** Provider 返回纯文本或损坏的 Tool Arguments 时，Harness 保留未发布 Draft 并执行有界修复，
+   不把异常输出直接当作最终答案，也不无限重试。
+5. **观测。** 每次模型调用、工具调用、协议转换、证据状态、Token 和耗时都会进入 Trace，供同题回放和
+   离线评测使用。
+
+**批量工具的组织原则：**
+
+```mermaid
+flowchart LR
+    Q["比较论文 A 和 B"] --> M1["Model Turn 1"]
+
+    subgraph G1["Tool Group 1：独立身份解析"]
+        A1["find_papers_by_identity(A)"]
+        B1["find_papers_by_identity(B)"]
+    end
+
+    M1 --> G1 --> R1["返回 paper_id_A / paper_id_B"]
+    R1 --> M2["Model Turn 2"]
+
+    subgraph G2["Tool Group 2：独立正文检索"]
+        A2["search_paper_content(A)"]
+        B2["search_paper_content(B)"]
+    end
+
+    M2 --> G2 --> R2["返回 location_ref_A / location_ref_B"]
+    R2 --> M3["Model Turn 3"]
+    M3 --> READ["read_paper_content<br/>location_refs = [A, B]"]
+    READ --> R3["返回 Source Quotes"]
+    R3 --> M4["Model Turn 4"]
+    M4 --> SUBMIT["submit_research_answer<br/>必须独占本轮"]
+    SUBMIT --> VALIDATE["Validator"] --> FINAL["最终答案"]
+```
+
+- 相互独立、生成参数时已经具备全部输入的调用可以放在同一 Tool Group。
+- 需要消费前一步 Tool Result 的调用必须跨 Model Turn，不能假装模型已经看到尚未返回的结果。
+- 模型可以批量规划，但 Runtime 串行执行；它主要减少模型往返，不代表 Corpus Tool 获得并行加速。
+- 一批普通研究工具分别返回结构化结果；只要同批包含提交工具，调用总数就必须恰好为 1。
+
+**问题应该修改哪一层：**
+
+| 失败现象 | 应修改的位置 |
+| --- | --- |
+| 技术定义回答过长 | 主 Prompt 的回答范围和停止条件 |
+| 推荐理由误走 Catalog | Prompt 与提交工具 Description |
+| 模型伪造引用 | Harness 授权链与 Validator |
+| `tool_choice=required` 仍返回纯文本 | Provider Adapter 与有界修复 |
+| 多次失败 Draft 导致上下文膨胀 | Harness Input Filter |
+| 引用存在但不蕴含结论 | 离线 Semantic Judge 和人工审核 |
+| 未授权论文读取 | Corpus Tool Guard，而不是 Prompt |
+| 最终提交和继续搜索出现在同一批 | Protocol Guard |
+
+**源码证据：**
+
+- Prompt 与 Agent 装配：`harness_py/orchestration/agents/runtime.py`、
+  `harness_py/orchestration/research_contract.py`。
+- 动态 Research Skill：`harness_py/orchestration/research_skills.py`。
+- Tool Group、串行执行和统一工具入口：`harness_py/orchestration/agents/runtime.py`、
+  `harness_py/orchestration/agents/context.py`、`harness_py/orchestration/agents/tools.py`。
+- 论文、位置和 Source Quote 授权链：`harness_py/corpus/tools.py`。
+- Prompt 调优生产回放：
+  `docs/engineering-evolution/agent-runtime/research-answer-scope-regression-2026-08-21.md`。
+
+**不能夸大的边界：**
+
+- Contract 状态机防止首次提交后的降级，但不保证模型第一次一定选择了语义正确的 Contract；首次路由仍由
+  Prompt、Tool Description 和冻结评测约束。
+- 在线 Validator 能证明引用来自已授权读取并与事实块绑定，不能独立证明引文一定蕴含结论。
+- 单次生产回放只能作为机制证据；项目没有据此证明稳定成功率、p95 延迟或 Token 降幅。
+- 主 Prompt 目前由 Git 和 SHA-256 回归测试保护，但没有独立的生产 `PROMPT_VERSION` 或大规模线上 A/B。
+
+**必备追问：**Prompt 与 Runtime 的职责边界、为什么不能只靠 Prompt、Tool Group 如何组织、为什么模型可
+批量规划但 Runtime 串行执行、Answer Contract 何时冻结、Validator 能保证什么、Trace 如何驱动调优、
+为什么单次回放不能证明稳定性能。
