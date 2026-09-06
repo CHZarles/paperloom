@@ -87,6 +87,21 @@ class McpServerTest(unittest.IsolatedAsyncioTestCase):
                         "status": "queued",
                     })
                 return httpx.Response(400, json={"error": "ARXIV_ARGUMENTS_INVALID"})
+            if request.url.path.endswith("/arxiv/search"):
+                return httpx.Response(200, json={
+                    "results": [{
+                        "arxiv_id": "2401.01234v2",
+                        "title": "Paper A",
+                        "authors": ["Ada"],
+                        "published": "2024-01-01T00:00:00Z",
+                        "updated": "2024-01-01T00:00:00Z",
+                        "abstract_preview": "Abstract.",
+                        "pdf_url": "https://arxiv.org/pdf/2401.01234v2",
+                        "metadata_only": True,
+                    }],
+                    "returned_count": 1,
+                    "coverage": "bounded",
+                })
             return httpx.Response(200, json={"items": []})
 
         self.java_client = httpx.AsyncClient(
@@ -113,6 +128,7 @@ class McpServerTest(unittest.IsolatedAsyncioTestCase):
             "search_paper_content",
             "read_paper_content",
             "request_arxiv_import",
+            "search_arxiv",
         }, {tool.name for tool in tools})
         forbidden = {"user_id", "role", "scope_paper_ids", "credential", "model_version", "evidence_payloads"}
         for tool in tools:
@@ -137,6 +153,20 @@ class McpServerTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("/api/v1/arxiv/import", self.java_calls[-1][0])
         self.assertEqual("Bearer user-a", self.java_calls[-1][1])
         self.assertEqual({"arxiv_id": "2401.01234v2"}, self.java_calls[-1][3])
+
+    async def test_search_arxiv_forwards_bearer_and_returns_metadata_only_candidates(self) -> None:
+        async with self.app.router.lifespan_context(self.app):
+            async with self.session("user-a") as (session, _):
+                result = await session.call_tool("search_arxiv", {
+                    "query_text": "transformer",
+                })
+
+        self.assertFalse(result.isError)
+        self.assertEqual("2401.01234v2", result.structuredContent["results"][0]["arxiv_id"])
+        self.assertTrue(result.structuredContent["results"][0]["metadata_only"])
+        self.assertEqual("/api/v1/arxiv/search", self.java_calls[-1][0])
+        self.assertEqual("Bearer user-a", self.java_calls[-1][1])
+        self.assertEqual("transformer", self.java_calls[-1][3]["query_text"])
 
     async def test_import_schema_rejects_unversioned_ids_without_java_call(self) -> None:
         async with self.app.router.lifespan_context(self.app):

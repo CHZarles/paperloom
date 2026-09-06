@@ -83,7 +83,7 @@ class ReadingMcpGateway:
 
 
 def _status_error(status: int, path: str = "") -> str:
-    if status == 400 and path == "/api/v1/arxiv/import":
+    if status == 400 and path in {"/api/v1/arxiv/import", "/api/v1/arxiv/search"}:
         return "ARXIV_ARGUMENTS_INVALID"
     return {
         400: "READING_ARGUMENTS_INVALID",
@@ -183,6 +183,18 @@ def _tools() -> list[types.Tool]:
                 },
             }, ["arxiv_id"]),
         ),
+        types.Tool(
+            name="search_arxiv",
+            description="Search arXiv metadata for external paper candidates without creating PaperLoom state.",
+            annotations=read_only,
+            inputSchema=_object_schema({
+                "query_text": {"type": "string", "maxLength": 200},
+                "authors": _string_array(5, 100),
+                "categories": _string_array(5, 32),
+                "year_from": {"type": "integer", "minimum": 1900, "maximum": 2100},
+                "year_to": {"type": "integer", "minimum": 1900, "maximum": 2100},
+            }),
+        ),
     ]
 
 
@@ -277,6 +289,20 @@ _RESULT_SCHEMAS = {
         "status": {"type": "string", "enum": ["queued", "processing", "ready", "failed"]},
         "paper_id": {"type": "string"},
     }, ["arxiv_id", "status"]),
+    "/api/v1/arxiv/search": _object_schema({
+        "results": {"type": "array", "items": _object_schema({
+            "arxiv_id": {"type": "string"},
+            "title": {"type": "string"},
+            "authors": {"type": "array", "items": {"type": "string"}},
+            "published": {"type": "string"},
+            "updated": {"type": "string"},
+            "abstract_preview": {"type": "string"},
+            "pdf_url": {"type": "string"},
+            "metadata_only": {"type": "boolean"},
+        }, ["arxiv_id", "title", "authors", "abstract_preview", "metadata_only"])},
+        "returned_count": {"type": "integer", "minimum": 0, "maximum": 10},
+        "coverage": {"type": "string", "enum": ["bounded"]},
+    }, ["results", "returned_count", "coverage"]),
 }
 
 
@@ -359,6 +385,14 @@ def create_mcp_server(
         if name == "request_arxiv_import":
             return _tool_result(await gateway.query("/api/v1/arxiv/import", {
                 "arxiv_id": values["arxiv_id"],
+            }))
+        if name == "search_arxiv":
+            return _tool_result(await gateway.query("/api/v1/arxiv/search", {
+                "query_text": values.get("query_text", ""),
+                "authors": values.get("authors"),
+                "categories": values.get("categories"),
+                "year_from": values.get("year_from"),
+                "year_to": values.get("year_to"),
             }))
         return _tool_result(await gateway.query("/api/v1/reading/content/read", values))
 
