@@ -66,7 +66,6 @@ class ResearchRunContext:
     final_draft: JsonMap | None = None
     protocol_state: ProtocolState = field(default_factory=ProtocolState)
     catalog_results_by_ref: dict[str, JsonMap] = field(default_factory=dict)
-    arxiv_search_count: int = 0
 
     def __post_init__(self) -> None:
         # 每轮创建独立的 Corpus 工具实例，因此授权集合不会泄漏到其他用户或其他请求。
@@ -203,7 +202,6 @@ class ResearchRunContext:
             "authorized_paper_ids": sorted(self.corpus.authorized_paper_ids),
             "disclosed_location_refs": sorted(self.corpus.disclosed_location_refs),
             "source_quote_refs": sorted(self.corpus.observations_by_evidence_id),
-            "arxiv_search_count": self.arxiv_search_count,
         }
 
     def apply_protocol(

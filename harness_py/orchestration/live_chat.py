@@ -20,7 +20,7 @@ from ..evaluation.eval_recorder import EvalRecorder, TraceRetention, prune_trace
 from .memory import ResearchMemory
 from .runtime import HarnessRuntime, TurnExecutionInput, new_run_id
 from .run_control import RunControl, RunLimits
-from ..corpus.gateway import ArxivReader, CorpusReader
+from ..corpus.gateway import CorpusReader
 
 
 class LiveResearchChatHarness:
@@ -50,7 +50,6 @@ class LiveResearchChatHarness:
         should_cancel: Callable[[], bool] | None = None,
         case_id_override: str = "",
         corpus_reader: CorpusReader | None = None,
-        arxiv_reader: ArxivReader | None = None,
         retry_context: JsonMap | None = None,
         run_limits: RunLimits | None = None,
         run_control: RunControl | None = None,
@@ -101,7 +100,6 @@ class LiveResearchChatHarness:
                     evidence_items_by_id=dict(state.evidence_items_by_id),
                 ),
                 corpus_reader=corpus_reader,
-                arxiv_reader=arxiv_reader,
                 progress_listener=progress_listener,
                 should_cancel=should_cancel,
                 eval_recorder=recorder,

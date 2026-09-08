@@ -11,7 +11,7 @@ Field Extraction.
 
 ## 1. Decision
 
-PaperLoom will expose six stateless, read-only MCP Tools and one explicitly user-approved asynchronous
+PaperLoom will expose five stateless, read-only Reading Tools and one explicitly user-approved asynchronous
 arXiv import Tool through a standalone Python package named `paperloom_mcp` and authenticated Java endpoints.
 
 ```text
@@ -41,8 +41,8 @@ contracts.
 
 ### 2.1 In Scope
 
-- six query-only MCP Tools and one confirmed asynchronous arXiv import Tool;
-- six authenticated Java public query endpoints plus the authenticated import endpoint;
+- five query-only MCP Tools and one confirmed asynchronous arXiv import Tool;
+- five authenticated Java public query endpoints plus the authenticated import endpoint;
 - independent MCP schemas and public Java DTOs;
 - JWT forwarding without Python JWT decoding;
 - request/result size limits and safe error mapping;
@@ -84,7 +84,6 @@ contracts.
 | `POST /api/v1/reading/structure` | PAGE or SECTION navigation for one Paper |
 | `POST /api/v1/reading/content/search` | bounded Location preview search in one Paper |
 | `POST /api/v1/reading/content/read` | durable exact content read for one Paper |
-| `POST /api/v1/arxiv/search` | bounded external arXiv metadata discovery |
 | `POST /api/v1/arxiv/import` | queue one user-approved exact arXiv version |
 
 `POST` carries query bodies; the arXiv import endpoint is the sole write operation and returns `202`
@@ -209,7 +208,6 @@ MCP initialize MUST advertise Tools capability only. `tools/list` MUST return ex
 | `get_paper_structure` | `paper_id` | PAGE or SECTION; offset >= 0; limit 1-100 |
 | `search_paper_content` | `paper_id` | top_k 1-20; passage/table/figure only |
 | `read_paper_content` | `paper_id`, `location_refs` | 1-20 refs |
-| `search_arxiv` | none | query <= 200 chars; at most 10 candidates |
 | `request_arxiv_import` | `arxiv_id` | one exact versioned ID; client approval required |
 
 `request_arxiv_import` MUST be marked non-read-only and idempotent. The client MUST request explicit
@@ -299,7 +297,7 @@ handler calls.
 
 | Test | Requirement |
 | --- | --- |
-| initialize advertises Tools only; exact seven schemas | `MCP-TOOL-001/004` |
+| initialize advertises Tools only; exact six schemas | `MCP-TOOL-001/004` |
 | Reading Tools call `/api/v1/reading/**`; import calls `/api/v1/arxiv/import` | package decision |
 | Text and structured result equivalence | `MCP-TOOL-002` |
 | missing and Java-rejected auth, including empty/non-JSON 401/403 | `MCP-AUTH-003`, `MCP-ERR-001` |

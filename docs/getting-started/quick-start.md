@@ -110,7 +110,7 @@ uv pip sync paperloom_mcp/requirements.lock --python .venv-mcp/bin/python
 ```
 
 MCP clients connect to `http://127.0.0.1:8090/mcp` with a PaperLoom user JWT in the Bearer header.
-The server exposes the six read-only Reading/ArXiv Tools plus `request_arxiv_import`. The import Tool is
+The server exposes the five read-only Reading Tools plus `request_arxiv_import`. The import Tool is
 asynchronous and should only be called after the MCP client receives explicit user approval.
 
 ## 5. Start the Backend

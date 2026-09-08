@@ -84,8 +84,6 @@ public class SecurityConfig {
                             ).permitAll()
                             // Python Harness 使用独立内部 Token 访问无模型副作用的 Corpus 数据面。
                             .requestMatchers("/internal/v1/corpus/**").permitAll()
-                            // arXiv 搜索同样只接受内部 Harness Token；控制器负责校验 Token。
-                            .requestMatchers("/internal/v1/arxiv/**").permitAll()
                             // 文件上传和下载相关接口 - 普通用户和管理员都可访问
                             .requestMatchers(
                                     "/api/v1/papers/upload/**",
@@ -109,7 +107,6 @@ public class SecurityConfig {
                             ).hasAnyRole("GUEST", "USER", "ADMIN")
                             .requestMatchers("/api/v1/reading/**").hasAnyRole("USER", "ADMIN")
                             .requestMatchers("/api/v1/arxiv/import").hasAnyRole("USER", "ADMIN")
-                            .requestMatchers("/api/v1/arxiv/search").hasAnyRole("USER", "ADMIN")
                             .requestMatchers("/api/v1/users/**").hasAnyRole("USER", "ADMIN")
                             // 游客聊天页会读取自己的集合列表；游客只能看到自己的空列表，不能创建或修改集合。
                             .requestMatchers(HttpMethod.GET, "/api/v1/paper-collections")

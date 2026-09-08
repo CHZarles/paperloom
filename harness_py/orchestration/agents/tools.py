@@ -24,7 +24,6 @@ from ...utils.models import JsonMap, as_list, child_map, stable_id
 from ...utils.errors import ResearchSystemError, RunLimitExceeded
 from ...corpus.gateway import CorpusGatewayError
 from ...corpus.tools import model_facing_payload
-from ..arxiv_tools import MAX_CALLS_PER_TURN, redact_arguments, search_arxiv as run_arxiv_search, tool_definition as arxiv_tool_definition
 from ..research_contract import (
     ActionRequested,
     AnswerContract,
@@ -94,8 +93,6 @@ def build_agent_tools(context: ResearchRunContext) -> list[FunctionTool]:
             },
         },
     ]
-    if context.turn.arxiv_reader is not None:
-        definitions.insert(2, arxiv_tool_definition())
     return [_function_tool(definition) for definition in definitions]
 
 
@@ -282,12 +279,8 @@ def _invoke_domain(
     """执行 Research Skill 或 Corpus 工具，并同步维护轨迹与进度。"""
 
     started = perf_counter()
-    recorded_arguments = redact_arguments(arguments) if name == "search_arxiv" else arguments
-    recorded_raw_arguments = (
-        json.dumps(recorded_arguments, ensure_ascii=False)
-        if name == "search_arxiv"
-        else tool_context.tool_arguments
-    )
+    recorded_arguments = arguments
+    recorded_raw_arguments = tool_context.tool_arguments
     # 保存调用前快照，便于观察这个工具到底授权了哪些论文、位置或证据。
     before = context.state_snapshot()
     recorder = context.turn.eval_recorder
@@ -314,19 +307,8 @@ def _invoke_domain(
         if "error" not in internal and skill_id not in context.skills_used:
             context.skills_used.append(skill_id)
     else:
-        if name == "search_arxiv":
-            if context.arxiv_search_count >= MAX_CALLS_PER_TURN:
-                internal = {
-                    "error": "ARXIV_SEARCH_LIMIT_REACHED",
-                    "message": "Only one arXiv search is allowed per user turn.",
-                    "recoverable": True,
-                }
-            else:
-                context.arxiv_search_count += 1
-                internal = run_arxiv_search(context.turn.arxiv_reader, arguments)
-        else:
-            # 所有语料工具统一走 ReadingCorpusTools.call，授权链也在其中执行。
-            internal = context.corpus.call(name, arguments).payload
+        # 所有语料工具统一走 ReadingCorpusTools.call，授权链也在其中执行。
+        internal = context.corpus.call(name, arguments).payload
 
     # internal 可能包含仅供系统记录的字段；只把明确允许的部分返回给模型。
     model_payload = child_map(model_facing_payload(internal))

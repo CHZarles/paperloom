@@ -58,21 +58,6 @@ class FakeGateway:
                 "coverage": "complete",
                 "index_version": "test-index",
             }
-        if path.endswith("/arxiv/search"):
-            return {
-                "results": [{
-                    "arxiv_id": "2401.01234v2",
-                    "title": "Paper A",
-                    "authors": ["Ada"],
-                    "published": "2024-01-01T00:00:00Z",
-                    "updated": "2024-01-01T00:00:00Z",
-                    "abstract_preview": "Abstract.",
-                    "pdf_url": "https://arxiv.org/pdf/2401.01234v2",
-                    "metadata_only": True,
-                }],
-                "returned_count": 1,
-                "coverage": "bounded",
-            }
         if path.endswith("/locations/read"):
             return {
                 "items": [{
@@ -210,23 +195,6 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         self.assertTrue(all(payload["user_id"] == 7 for _, payload in gateway.calls))
         self.assertTrue(all(payload["scope_paper_ids"] == ["paper-a"] for _, payload in gateway.calls))
 
-    def test_arxiv_search_forwards_only_request_context_not_corpus_scope(self) -> None:
-        gateway = FakeGateway()
-        reader = JavaCorpusGatewayReader(
-            gateway=gateway,
-            request_id="request-1",
-            conversation_id="conversation-1",
-            user_id=7,
-            scope_paper_ids=["paper-a"],
-        )
-
-        result = reader.search_arxiv({"query_text": "transformer"})
-
-        self.assertEqual("2401.01234v2", result["results"][0]["arxiv_id"])
-        path, payload = next(path_payload for path_payload in gateway.calls if path_payload[0].endswith("/arxiv/search"))
-        self.assertEqual("request-1", payload["request_id"])
-        self.assertEqual(7, payload["user_id"])
-        self.assertNotIn("scope_paper_ids", payload)
 
     def test_read_rejects_location_not_disclosed_by_search(self) -> None:
         gateway = FakeGateway()

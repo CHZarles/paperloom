@@ -15,7 +15,7 @@ from .memory import ResearchMemory
 from .run_control import RunControl, RunLimits
 
 if TYPE_CHECKING:
-    from ..corpus.gateway import ArxivReader, CorpusReader
+    from ..corpus.gateway import CorpusReader
     from ..evaluation.eval_recorder import EvalRecorder
     from ..transport.provider_config import ProviderConfig
 
@@ -42,7 +42,6 @@ class TurnExecutionInput:
     conversation_messages: list[JsonMap]
     research_memory: ResearchMemory
     corpus_reader: CorpusReader | None = None
-    arxiv_reader: ArxivReader | None = None
     progress_listener: ProgressListener | None = None
     should_cancel: CancellationCheck | None = None
     eval_recorder: EvalRecorder | None = None

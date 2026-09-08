@@ -30,8 +30,6 @@ public class ArxivClient {
     public static final int MAX_PDF_BYTES = 64 * 1024 * 1024;
 
     private static final String ATOM_NS = "http://www.w3.org/2005/Atom";
-    private static final Pattern TERM = Pattern.compile("[^\\p{L}\\p{N}._-]+");
-    private static final Pattern CATEGORY = Pattern.compile("[a-zA-Z]{2}(?:\\.[a-zA-Z]{2,4})(?:\\.[a-zA-Z]{2,4})?");
     private static final Pattern VERSIONED_ID = Pattern.compile(
             "(?:\\d{4}\\.\\d{4,5}|[a-zA-Z-]+(?:\\.[a-zA-Z-]+)?/\\d{7})(?:v\\d+)?");
 
@@ -47,37 +45,6 @@ public class ArxivClient {
         this.client = factory.builder(this.baseUrl)
                 .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(MAX_PDF_BYTES))
                 .build();
-    }
-
-    public SearchResult search(SearchRequest request) {
-        String query = buildQuery(request);
-        URI uri = UriComponentsBuilder.fromUriString(baseUrl)
-                .queryParam("search_query", query)
-                .queryParam("start", 0)
-                .queryParam("max_results", MAX_RESULTS)
-                .queryParam("sortBy", "relevance")
-                .queryParam("sortOrder", "descending")
-                .build()
-                .encode()
-                .toUri();
-        String body;
-        try {
-            body = client.get()
-                    .uri(uri)
-                    .header("User-Agent", "PaperLoom/0.1 (+https://github.com/CHZarles/paperloom)")
-                    .accept(MediaType.APPLICATION_XML)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block(timeout);
-        } catch (Exception error) {
-            throw new ArxivClientException("arXiv is temporarily unavailable", error);
-        }
-        try {
-            List<Paper> papers = parseFeed(body, MAX_RESULTS);
-            return new SearchResult(papers, papers.size(), "bounded");
-        } catch (Exception error) {
-            throw new ArxivClientException("arXiv returned an invalid response", error);
-        }
     }
 
     public Paper fetchExact(String rawArxivId) {
@@ -240,44 +207,6 @@ public class ArxivClient {
                 && bytes[4] == '-';
     }
 
-    private String buildQuery(SearchRequest request) {
-        List<String> clauses = new ArrayList<>();
-        String queryText = request.queryText() == null ? "" : request.queryText().trim();
-        if (queryText.length() > MAX_QUERY_CHARS) {
-            throw new IllegalArgumentException("query_text is too long");
-        }
-        for (String term : TERM.split(queryText)) {
-            if (!term.isBlank()) {
-                clauses.add("all:" + term);
-            }
-        }
-        for (String author : request.authors()) {
-            String normalized = compact(author, 100).replaceAll("[^\\p{L}\\p{N} .'-]", "").trim();
-            if (!normalized.isBlank()) {
-                clauses.add("au:\"" + normalized.replace("\"", "") + "\"");
-            }
-        }
-        for (String category : request.categories()) {
-            String normalized = category.trim();
-            if (!CATEGORY.matcher(normalized).matches()) {
-                throw new IllegalArgumentException("category is invalid");
-            }
-            clauses.add("cat:" + normalized);
-        }
-        if (request.yearFrom() != null || request.yearTo() != null) {
-            int from = request.yearFrom() == null ? 1900 : request.yearFrom();
-            int to = request.yearTo() == null ? 2100 : request.yearTo();
-            if (from > to) {
-                throw new IllegalArgumentException("year_from must not exceed year_to");
-            }
-            clauses.add("submittedDate:[" + from + "01010000 TO " + to + "12312359]");
-        }
-        if (clauses.isEmpty()) {
-            throw new IllegalArgumentException("at least one arXiv search condition is required");
-        }
-        return String.join(" AND ", clauses);
-    }
-
     private static String text(Element parent, String name) {
         NodeList nodes = parent.getElementsByTagNameNS(ATOM_NS, name);
         if (nodes.getLength() == 0) {
@@ -300,20 +229,6 @@ public class ArxivClient {
             normalized = normalized.substring(0, normalized.length() - 1);
         }
         return normalized;
-    }
-
-    public record SearchRequest(String queryText,
-                                List<String> authors,
-                                List<String> categories,
-                                Integer yearFrom,
-                                Integer yearTo) {
-        public SearchRequest {
-            authors = authors == null ? List.of() : List.copyOf(authors);
-            categories = categories == null ? List.of() : List.copyOf(categories);
-        }
-    }
-
-    public record SearchResult(List<Paper> papers, int returnedCount, String coverage) {
     }
 
     public record Paper(String arxivId,

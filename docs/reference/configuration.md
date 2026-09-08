@@ -101,8 +101,7 @@ The optional MCP server is stateless and listens on loopback by default:
 Its Streamable HTTP endpoint is `http://127.0.0.1:8090/mcp`. Every MCP request must carry the current
 PaperLoom user JWT as `Authorization: Bearer ...`; the adapter forwards it to the authenticated Java
 `/api/v1/reading/**` facade and does not decode it or retain disclosure, Evidence, or conversation
-state. It also exposes read-only `search_arxiv` metadata discovery and the explicitly user-approved
-`request_arxiv_import` operation, which queues an
+state. It also exposes the explicitly user-approved `request_arxiv_import` operation, which queues an
 asynchronous import and does not make the paper immediately readable. Remote exposure is unsupported
 in V1 and requires a separate HTTPS deployment spec.
 

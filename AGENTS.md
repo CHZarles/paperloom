@@ -4,7 +4,7 @@ DO NOT send optional commentary
 ## Product Direction
 
 - Iterate in small vertical slices; do not broaden the product while a slice is unfinished.
-- The current freeze target is the arXiv discovery/import path. MCP, Field Extraction, public OAuth,
+- The current freeze target is the confirmed arXiv import path. Field Extraction, public OAuth,
   citation graphs, and multimodal retrieval are deferred.
 - arXiv starts as an explicit Research Chat discovery tool, not an automatic fallback or a second search page.
 - Search returns at most 10 latest versioned candidates with bounded metadata and abstract previews only;
