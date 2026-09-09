@@ -74,7 +74,6 @@ fallback.
 | `RESEARCH_HARNESS_WORKER_MAX_CONCURRENT_RUNS` | Keep at `1` for V1; scale by running more worker processes |
 | `JAVA_CORPUS_BASE_URL` | Java Corpus API base URL used by Python; local default is `http://127.0.0.1:8081` |
 | `JAVA_CORPUS_MAX_RESPONSE_BYTES` | Maximum accepted Java Corpus API response body; default is 8 MiB |
-| `PAPERLOOM_PUBLIC_API_BASE_URL` | Java public API base URL used by `paperloom_mcp`; local default is `http://127.0.0.1:8081` |
 | `RESEARCH_HARNESS_PYTHON` | Python executable for local launcher |
 | `MINIMAX_API_BASE_URL`, `MINIMAX_API_KEY`, `MINIMAX_MODEL` | Default research model provider |
 | `QDRANT_CONTRACT` | `sparse-only-v1` (default) or `sparse-dense-v1`; picks which Qdrant collection schema to use |
@@ -91,19 +90,6 @@ development and emergency rollback, but it is not the scalable production path.
 The Python service does not connect to MySQL or Qdrant. It calls the Java Corpus API with the locked
 scope; Java owns the hybrid Qdrant retrieval (sparse BM25 + dense MiniMax embedding, RRF-fused),
 permission/current-model validation, and canonical reads.
-
-The optional MCP server is stateless and listens on loopback by default:
-
-```bash
-.venv-mcp/bin/python -m paperloom_mcp --host 127.0.0.1 --port 8090
-```
-
-Its Streamable HTTP endpoint is `http://127.0.0.1:8090/mcp`. Every MCP request must carry the current
-PaperLoom user JWT as `Authorization: Bearer ...`; the adapter forwards it to the authenticated Java
-`/api/v1/reading/**` facade and does not decode it or retain disclosure, Evidence, or conversation
-state. It also exposes the explicitly user-approved `request_arxiv_import` operation, which queues an
-asynchronous import and does not make the paper immediately readable. Remote exposure is unsupported
-in V1 and requires a separate HTTPS deployment spec.
 
 ## Secret Rules
 
