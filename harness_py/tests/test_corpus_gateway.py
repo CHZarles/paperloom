@@ -229,6 +229,26 @@ class JavaCorpusGatewayTest(unittest.TestCase):
 
         self.assertEqual(in_memory_definitions, java_definitions)
 
+    def test_content_search_description_covers_language_and_structure_routing(self) -> None:
+        gateway = FakeGateway()
+        reader = JavaCorpusGatewayReader(
+            gateway=gateway,
+            request_id="request-1",
+            conversation_id="conversation-1",
+            user_id=7,
+            scope_paper_ids=["paper-a"],
+        )
+        definition = next(
+            item for item in ReadingCorpusTools(reader.load_metadata_dataset(), reader=reader).definitions()
+            if item["function"]["name"] == "search_paper_content"
+        )
+        description = definition["function"]["description"]
+
+        self.assertIn("Use concise English keywords when the paper text is English", description)
+        self.assertIn("do not pass a full Chinese question unchanged as query_text", description)
+        self.assertIn("get_paper_structure first", description)
+        self.assertIn("rewrite the query once before expanding the search", description)
+
     def test_content_tools_reject_undisclosed_paper_ids_before_calling_java(self) -> None:
         gateway = FakeGateway()
         reader = JavaCorpusGatewayReader(

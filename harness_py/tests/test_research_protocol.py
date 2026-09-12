@@ -227,6 +227,14 @@ class ResearchProtocolTest(unittest.TestCase):
         self.assertIn("outcome=needs_clarification", instructions)
         self.assertIn("asks for a definition, details, mechanism, or comparison, use RESEARCH", instructions)
 
+    def test_agent_prompt_aligns_content_queries_and_navigates_structure(self) -> None:
+        instructions = research_agent_instructions(ResearchSkillRegistry())
+
+        self.assertIn("use concise English keywords when the paper text is English", instructions)
+        self.assertIn("do not pass a full Chinese question unchanged as query_text", instructions)
+        self.assertIn("For Appendix, Section, Table, Figure, page, or section-number questions, call get_paper_structure first", instructions)
+        self.assertIn("rewrite the query once before expanding the search", instructions)
+
     def test_research_validation_binds_every_content_block_to_known_quotes(self) -> None:
         facts = ProtocolFacts(known_source_quotes={
             "source_quote_1": {"source_quote_ref": "source_quote_1", "citeable": True},

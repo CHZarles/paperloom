@@ -151,8 +151,12 @@ class ReadingCorpusTools:
                 "search_paper_content",
                 (
                     "Search relevant passages, tables, and figures inside previously disclosed candidate papers. "
-                    "Returns non-citeable previews and location refs. Read selected refs before making "
-                    "paper-content claims."
+                    "Use concise English keywords when the paper text is English; do not pass a full Chinese "
+                    "question unchanged as query_text. For Appendix, Section, Table, Figure, page, or "
+                    "section-number questions, call get_paper_structure first and pass its returned section "
+                    "location refs as section_refs. If the first search is not useful, rewrite the query once "
+                    "before expanding the search. Returns non-citeable previews and location refs. Read selected "
+                    "refs before making paper-content claims."
                 ),
                 {
                     "type": "object",
