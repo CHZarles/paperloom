@@ -91,6 +91,7 @@ class ReadingCorpusTools:
     observations_by_evidence_id: dict[str, JsonMap] = field(default_factory=dict)
     authorized_paper_ids: set[str] = field(default_factory=set)
     disclosed_location_refs: set[str] = field(default_factory=set)
+    structure_location_refs: set[str] = field(default_factory=set)
 
     def __post_init__(self) -> None:
         if self.reader is None:
@@ -290,17 +291,34 @@ class ReadingCorpusTools:
             return error
         payload = self._forward(
             "get_paper_structure", "items", lambda: self.reader.get_structure(arguments))
-        self.disclosed_location_refs.update(
+        refs = {
             str(child_map(item).get("location_ref"))
             for item in as_list(payload.get("items"))
             if child_map(item).get("location_ref")
-        )
+        }
+        self.disclosed_location_refs.update(refs)
+        self.structure_location_refs.update(refs)
         return payload
 
     def read_paper_content(self, arguments: JsonMap) -> JsonMap:
         error = _location_disclosure_error(arguments, self.disclosed_location_refs, "items")
         if error:
             return error
+        refs = arguments.get("location_refs")
+        structure_refs = [
+            value.strip()
+            for value in refs or []
+            if isinstance(value, str) and value.strip() in self.structure_location_refs
+        ] if isinstance(refs, list) else []
+        if structure_refs:
+            return recoverable_error(
+                "structure_ref_not_evidence",
+                "STRUCTURE_REF_NOT_EVIDENCE",
+                "search_paper_content",
+                "items",
+                location_refs=structure_refs,
+                message="Use section_refs with search_paper_content, then read a passage, table, or figure ref.",
+            )
         payload = self._forward(
             "read_paper_content", "items", lambda: self.reader.read_locations(arguments))
         for raw in as_list(payload.get("items")):

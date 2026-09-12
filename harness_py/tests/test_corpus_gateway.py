@@ -255,6 +255,32 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         )
         self.assertIn("Do not cite or read the returned section ref as body evidence", structure_definition["function"]["description"])
 
+    def test_structure_refs_cannot_be_read_as_body_evidence(self) -> None:
+        class Reader:
+            def __init__(self) -> None:
+                self.read_calls = 0
+
+            def get_structure(self, _arguments):
+                return {"items": [{"location_ref": "section_ref_a"}]}
+
+            def read_locations(self, _arguments):
+                self.read_calls += 1
+                return {"items": []}
+
+        reader = Reader()
+        tools = ReadingCorpusTools(object(), reader=reader)
+        tools.authorized_paper_ids.add("paper-a")
+
+        structure = tools.get_paper_structure({"paper_ids": ["paper-a"]})
+        self.assertEqual(["section_ref_a"], [item["location_ref"] for item in structure["items"]])
+
+        result = tools.read_paper_content({"location_refs": ["section_ref_a"]})
+
+        self.assertEqual("structure_ref_not_evidence", result["error"])
+        self.assertEqual("STRUCTURE_REF_NOT_EVIDENCE", result["error_code"])
+        self.assertEqual("search_paper_content", result["next_action"])
+        self.assertEqual(0, reader.read_calls)
+
     def test_content_tools_reject_undisclosed_paper_ids_before_calling_java(self) -> None:
         gateway = FakeGateway()
         reader = JavaCorpusGatewayReader(
