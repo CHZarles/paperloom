@@ -181,7 +181,9 @@ class ReadingCorpusTools:
                 "get_paper_structure",
                 (
                     "Browse the section outline or page structure of previously disclosed papers. This returns "
-                    "only navigation metadata and location refs, never paper body text or citations."
+                    "only navigation metadata and location refs, never paper body text or citations. Do not cite "
+                    "or read the returned section ref as body evidence; pass it as section_refs to "
+                    "search_paper_content, then read a returned passage, table, or figure ref."
                 ),
                 {
                     "type": "object",

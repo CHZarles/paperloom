@@ -249,6 +249,12 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         self.assertIn("get_paper_structure first", description)
         self.assertIn("rewrite the query once before expanding the search", description)
 
+        structure_definition = next(
+            item for item in ReadingCorpusTools(reader.load_metadata_dataset(), reader=reader).definitions()
+            if item["function"]["name"] == "get_paper_structure"
+        )
+        self.assertIn("Do not cite or read the returned section ref as body evidence", structure_definition["function"]["description"])
+
     def test_content_tools_reject_undisclosed_paper_ids_before_calling_java(self) -> None:
         gateway = FakeGateway()
         reader = JavaCorpusGatewayReader(
