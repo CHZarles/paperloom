@@ -1,10 +1,18 @@
 from __future__ import annotations
 
 import base64
+import asyncio
 import contextvars
+import hashlib
 import json
 import os
+from pathlib import Path
+import secrets
+import time
+import urllib.parse
 import uuid
+import webbrowser
+from contextlib import asynccontextmanager
 
 import httpx
 import jsonschema
@@ -22,13 +30,339 @@ MAX_REQUEST_BYTES = 1024 * 1024
 MAX_RESULT_BYTES = 16 * 1024
 MAX_UPLOAD_CHUNK_BYTES = 512 * 1024
 MAX_UPLOAD_CHUNK_BASE64_LENGTH = ((MAX_UPLOAD_CHUNK_BYTES + 2) // 3) * 4
+OAUTH_CLIENT_ID = "paperloom-local-mcp"
+OAUTH_REDIRECT_URI = "http://127.0.0.1:8095/oauth/callback"
+OAUTH_DEFAULT_SCOPE = "paper.read"
 
 _bearer_token: contextvars.ContextVar[str] = contextvars.ContextVar("mcp_bearer_token", default="")
 JsonMap = dict[str, object]
 
 
+class OAuthLoginError(RuntimeError):
+    """Raised when the local browser OAuth flow cannot obtain an access token."""
+
+
+class OAuthTokenManager:
+    """Small local OAuth client for the loopback MCP process.
+
+    The browser handles the user's password. This process only receives the authorization code
+    on the loopback callback and exchanges it with the configured Authorization Server.
+    """
+
+    def __init__(
+        self,
+        issuer: str,
+        *,
+        http_client: httpx.AsyncClient,
+        client_id: str = OAUTH_CLIENT_ID,
+        redirect_uri: str = OAUTH_REDIRECT_URI,
+        token_path: str | None = None,
+        browser_opener=webbrowser.open,
+    ) -> None:
+        self.issuer = issuer.rstrip("/")
+        self.http_client = http_client
+        self.client_id = client_id
+        self.redirect_uri = redirect_uri
+        self.token_path = Path(token_path or os.getenv(
+            "PAPERLOOM_OAUTH_TOKEN_FILE",
+            str(Path.home() / ".paperloom" / "mcp-token.json"),
+        )).expanduser()
+        self.browser_opener = browser_opener
+        self._server: asyncio.AbstractServer | None = None
+        self._auth_lock = asyncio.Lock()
+        self._callback_event: asyncio.Event | None = None
+        self._callback_state = ""
+        self._callback_code = ""
+        self._callback_error = ""
+
+    async def close(self) -> None:
+        await self._stop_callback_server()
+
+    async def _stop_callback_server(self) -> None:
+        if self._server is None:
+            return
+        self._server.close()
+        await self._server.wait_closed()
+        self._server = None
+
+    async def get_access_token(self, required_scope: str) -> str:
+        requested_scopes = self._requested_scopes(required_scope)
+        async with self._auth_lock:
+            token = self._load_token()
+            if self._usable_token(token, requested_scopes):
+                return str(token["access_token"])
+
+            refreshed = await self._refresh_token(token, requested_scopes)
+            if refreshed is not None and self._usable_token(refreshed, requested_scopes):
+                self._save_token(refreshed)
+                return str(refreshed["access_token"])
+
+            token = await self._browser_authorization(requested_scopes)
+            self._save_token(token)
+            return str(token["access_token"])
+
+    def _requested_scopes(self, required_scope: str) -> list[str]:
+        scopes = [OAUTH_DEFAULT_SCOPE]
+        if required_scope not in scopes:
+            scopes.append(required_scope)
+        return scopes
+
+    def _load_token(self) -> JsonMap:
+        try:
+            value = json.loads(self.token_path.read_text(encoding="utf-8"))
+        except (FileNotFoundError, OSError, ValueError):
+            return {}
+        return value if isinstance(value, dict) else {}
+
+    def _usable_token(self, token: JsonMap, requested_scopes: list[str]) -> bool:
+        access_token = token.get("access_token")
+        expires_at = token.get("expires_at")
+        scopes = set(str(token.get("scope", "")).split())
+        return (
+            token.get("issuer") == self.issuer
+            and token.get("client_id") == self.client_id
+            and isinstance(access_token, str)
+            and bool(access_token)
+            and isinstance(expires_at, (int, float))
+            and float(expires_at) > time.time() + 60
+            and set(requested_scopes).issubset(scopes)
+        )
+
+    async def _authorization_server_metadata(self) -> JsonMap:
+        try:
+            response = await self.http_client.get(
+                f"{self.issuer}/.well-known/oauth-authorization-server"
+            )
+            response.raise_for_status()
+            metadata = response.json()
+        except (httpx.HTTPError, ValueError) as error:
+            raise OAuthLoginError("OAUTH_AUTHORIZATION_SERVER_UNAVAILABLE") from error
+        if not isinstance(metadata, dict):
+            raise OAuthLoginError("OAUTH_INVALID_AUTHORIZATION_SERVER_METADATA")
+        return metadata
+
+    async def _refresh_token(self, token: JsonMap, requested_scopes: list[str]) -> JsonMap | None:
+        if token.get("issuer") != self.issuer or token.get("client_id") != self.client_id:
+            return None
+        refresh_token = token.get("refresh_token")
+        token_endpoint = token.get("token_endpoint")
+        if not isinstance(refresh_token, str) or not refresh_token:
+            return None
+        if not isinstance(token_endpoint, str) or not token_endpoint:
+            metadata = await self._authorization_server_metadata()
+            token_endpoint = metadata.get("token_endpoint")
+        if not isinstance(token_endpoint, str) or not token_endpoint:
+            return None
+        try:
+            response = await self.http_client.post(token_endpoint, data={
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+                "client_id": self.client_id,
+            })
+        except httpx.HTTPError:
+            return None
+        if response.status_code >= 400:
+            return None
+        try:
+            payload = response.json()
+        except ValueError:
+            return None
+        refreshed = self._token_payload(
+            payload,
+            requested_scopes,
+            token_endpoint,
+            fallback_scope=token.get("scope") if isinstance(token.get("scope"), str) else None,
+            fallback_refresh_token=refresh_token,
+        )
+        if refreshed is None or not self._scope_covers(refreshed, requested_scopes):
+            return None
+        return refreshed
+
+    async def _browser_authorization(self, requested_scopes: list[str]) -> JsonMap:
+        metadata = await self._authorization_server_metadata()
+        authorization_endpoint = metadata.get("authorization_endpoint")
+        token_endpoint = metadata.get("token_endpoint")
+        if not isinstance(authorization_endpoint, str) or not isinstance(token_endpoint, str):
+            raise OAuthLoginError("OAUTH_INVALID_AUTHORIZATION_SERVER_METADATA")
+
+        try:
+            await self._start_callback_server()
+            verifier = secrets.token_urlsafe(48)
+            challenge = base64.urlsafe_b64encode(
+                hashlib.sha256(verifier.encode("ascii")).digest()
+            ).rstrip(b"=").decode("ascii")
+            self._callback_state = secrets.token_urlsafe(32)
+            self._callback_code = ""
+            self._callback_error = ""
+            self._callback_event = asyncio.Event()
+            query = urllib.parse.urlencode({
+                "response_type": "code",
+                "client_id": self.client_id,
+                "redirect_uri": self.redirect_uri,
+                "scope": " ".join(requested_scopes),
+                "state": self._callback_state,
+                "code_challenge": challenge,
+                "code_challenge_method": "S256",
+            })
+            try:
+                opened = self.browser_opener(f"{authorization_endpoint}?{query}")
+            except Exception as error:
+                raise OAuthLoginError("OAUTH_BROWSER_OPEN_FAILED") from error
+            if opened is False:
+                raise OAuthLoginError("OAUTH_BROWSER_OPEN_FAILED")
+            try:
+                await asyncio.wait_for(self._callback_event.wait(), timeout=300)
+            except asyncio.TimeoutError as error:
+                raise OAuthLoginError("OAUTH_LOGIN_TIMEOUT") from error
+            if self._callback_error:
+                raise OAuthLoginError(f"OAUTH_AUTHORIZATION_DENIED:{self._callback_error}")
+            if not self._callback_code:
+                raise OAuthLoginError("OAUTH_AUTHORIZATION_CODE_MISSING")
+            try:
+                response = await self.http_client.post(token_endpoint, data={
+                    "grant_type": "authorization_code",
+                    "client_id": self.client_id,
+                    "redirect_uri": self.redirect_uri,
+                    "code": self._callback_code,
+                    "code_verifier": verifier,
+                })
+                response.raise_for_status()
+                payload = response.json()
+            except (httpx.HTTPError, ValueError) as error:
+                raise OAuthLoginError("OAUTH_TOKEN_EXCHANGE_FAILED") from error
+            token = self._token_payload(
+                payload,
+                requested_scopes,
+                token_endpoint,
+                fallback_scope=" ".join(requested_scopes),
+            )
+            if token is None or not self._scope_covers(token, requested_scopes):
+                raise OAuthLoginError("OAUTH_INVALID_TOKEN_RESPONSE")
+            return token
+        finally:
+            await self._stop_callback_server()
+
+    @staticmethod
+    def _scope_covers(token: JsonMap, requested_scopes: list[str]) -> bool:
+        granted = set(str(token.get("scope", "")).split())
+        return set(requested_scopes).issubset(granted)
+
+    def _token_payload(
+        self,
+        payload: object,
+        requested_scopes: list[str],
+        token_endpoint: str,
+        *,
+        fallback_scope: str | None = None,
+        fallback_refresh_token: str | None = None,
+    ) -> JsonMap | None:
+        if not isinstance(payload, dict):
+            return None
+        access_token = payload.get("access_token")
+        if not isinstance(access_token, str) or not access_token:
+            return None
+        try:
+            expires_in = max(1, int(payload.get("expires_in", 600)))
+        except (TypeError, ValueError):
+            expires_in = 600
+        scope = payload.get("scope")
+        granted_scope = (
+            scope if isinstance(scope, str) and scope.strip()
+            else fallback_scope or " ".join(requested_scopes)
+        )
+        result: JsonMap = {
+            "access_token": access_token,
+            "token_type": str(payload.get("token_type", "Bearer")),
+            "expires_at": time.time() + expires_in,
+            "scope": granted_scope,
+            "token_endpoint": token_endpoint,
+            "issuer": self.issuer,
+            "client_id": self.client_id,
+        }
+        refreshed_token = payload.get("refresh_token")
+        if isinstance(refreshed_token, str) and refreshed_token:
+            result["refresh_token"] = refreshed_token
+        elif fallback_refresh_token:
+            result["refresh_token"] = fallback_refresh_token
+        return result
+
+    def _save_token(self, token: JsonMap) -> None:
+        self.token_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path = self.token_path.with_suffix(f"{self.token_path.suffix}.tmp-{secrets.token_hex(4)}")
+        temporary_path.write_text(json.dumps(token, separators=(",", ":")), encoding="utf-8")
+        os.chmod(temporary_path, 0o600)
+        temporary_path.replace(self.token_path)
+        os.chmod(self.token_path, 0o600)
+
+    async def _start_callback_server(self) -> None:
+        if self._server is not None:
+            return
+        parsed = urllib.parse.urlparse(self.redirect_uri)
+        host = parsed.hostname or "127.0.0.1"
+        port = parsed.port or 80
+        try:
+            self._server = await asyncio.start_server(self._handle_callback, host, port)
+        except OSError as error:
+            raise OAuthLoginError("OAUTH_CALLBACK_UNAVAILABLE") from error
+
+    async def _handle_callback(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        try:
+            request = await asyncio.wait_for(reader.read(8192), timeout=5)
+            first_line = request.split(b"\r\n", 1)[0].decode("latin-1")
+            target = first_line.split(" ", 2)[1]
+            parsed = urllib.parse.urlparse(target)
+            params = urllib.parse.parse_qs(parsed.query)
+            state = params.get("state", [""])[0]
+            if parsed.path != urllib.parse.urlparse(self.redirect_uri).path:
+                body = b"<h1>Not found</h1>"
+            elif state != self._callback_state:
+                self._callback_error = "state_mismatch"
+                body = b"<h1>Authorization state mismatch</h1>"
+                if self._callback_event is not None:
+                    self._callback_event.set()
+            elif params.get("error", [""])[0]:
+                self._callback_error = params["error"][0]
+                body = b"<h1>Authorization was denied</h1>"
+                if self._callback_event is not None:
+                    self._callback_event.set()
+            else:
+                self._callback_code = params.get("code", [""])[0]
+                body = b"<h1>PaperLoom authorization complete</h1><p>You can return to your agent.</p>"
+                if self._callback_event is not None:
+                    self._callback_event.set()
+            writer.write(
+                b"HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\n"
+                + f"Content-Length: {len(body)}\r\nConnection: close\r\n\r\n".encode("ascii")
+                + body
+            )
+            await writer.drain()
+        except (asyncio.TimeoutError, IndexError, UnicodeDecodeError, ValueError):
+            self._callback_error = "invalid_callback"
+            if self._callback_event is not None:
+                self._callback_event.set()
+            body = b"<h1>Invalid authorization callback</h1>"
+            try:
+                writer.write(
+                    b"HTTP/1.1 400 Bad Request\r\nContent-Type: text/html; charset=utf-8\r\n"
+                    + f"Content-Length: {len(body)}\r\nConnection: close\r\n\r\n".encode("ascii")
+                    + body
+                )
+                await writer.drain()
+            except (ConnectionError, OSError):
+                pass
+        finally:
+            writer.close()
+            await writer.wait_closed()
+
+
 class ReadingMcpGateway:
-    def __init__(self, base_url: str | None = None, *, client: httpx.AsyncClient | None = None) -> None:
+    def __init__(
+        self,
+        base_url: str | None = None,
+        *,
+        client: httpx.AsyncClient | None = None,
+        oauth_manager: OAuthTokenManager | None = None,
+    ) -> None:
         if base_url is None and client is not None:
             base_url = str(client.base_url)
         resolved_base_url = (base_url or os.getenv(
@@ -40,9 +374,13 @@ class ReadingMcpGateway:
             timeout=httpx.Timeout(20.0, connect=5.0),
             trust_env=False,
         )
+        self.oauth_manager = oauth_manager or OAuthTokenManager(
+            self.authorization_server_url,
+            http_client=self.client,
+        )
 
     async def query(self, path: str, payload: JsonMap) -> JsonMap:
-        return await self._request(path, "POST", json_payload=payload)
+        return await self._request(path, "POST", json_payload=payload, required_scope="paper.read")
 
     async def upload_chunk(
         self,
@@ -65,6 +403,7 @@ class ReadingMcpGateway:
                 "totalChunks": str(total_chunks),
             },
             files={"file": (paper_title, content, "application/pdf")},
+            required_scope="paper.upload",
         )
 
     async def upload_status(self, paper_id: str) -> JsonMap:
@@ -72,6 +411,7 @@ class ReadingMcpGateway:
             "/api/v1/papers/upload/status",
             "GET",
             params={"paperId": paper_id},
+            required_scope="paper.upload",
         )
 
     async def merge_upload(self, paper_id: str, paper_title: str) -> JsonMap:
@@ -79,6 +419,7 @@ class ReadingMcpGateway:
             "/api/v1/papers/upload/merge",
             "POST",
             json_payload={"paperId": paper_id, "paperTitle": paper_title},
+            required_scope="paper.upload",
         )
 
     async def _request(
@@ -90,10 +431,14 @@ class ReadingMcpGateway:
         params: JsonMap | None = None,
         form: dict[str, str] | None = None,
         files=None,
+        required_scope: str = "paper.read",
     ) -> JsonMap:
         token = _bearer_token.get()
         if not token:
-            raise ToolError("UNAUTHORIZED")
+            try:
+                token = await self.oauth_manager.get_access_token(required_scope)
+            except OAuthLoginError as error:
+                raise ToolError(str(error)) from error
 
         headers = {
             "Authorization": f"Bearer {token}",
@@ -408,10 +753,18 @@ def create_mcp_app(gateway: ReadingMcpGateway, *, host: str = "127.0.0.1", port:
     )
     metadata_host = f"[{host}]" if ":" in host and not host.startswith("[") else host
     resource_metadata_url = f"http://{metadata_host}:{port}/.well-known/oauth-protected-resource"
+    @asynccontextmanager
+    async def lifespan(_app):
+        async with manager.run():
+            try:
+                yield
+            finally:
+                await gateway.oauth_manager.close()
+
     app = Starlette(routes=[
         Route("/.well-known/oauth-protected-resource", endpoint=_protected_resource_metadata),
         Route("/mcp", endpoint=_StreamableApp(manager)),
-    ], lifespan=lambda _app: manager.run())
+    ], lifespan=lifespan)
     app.state.paperloom_gateway = gateway
     app.add_middleware(
         _BearerAndSizeMiddleware,
@@ -443,7 +796,9 @@ class _BearerAndSizeMiddleware:
         authorization_headers = [value.decode("latin-1") for key, value in scope.get("headers", []) if key.decode("latin-1").lower() == "authorization"]
         authorization = authorization_headers[0] if len(authorization_headers) == 1 else ""
         scheme, separator, token = authorization.partition(" ")
-        if scheme.lower() != "bearer" or not separator or not token or any(char.isspace() for char in token):
+        if not authorization_headers and scope.get("method") == "POST":
+            token = ""
+        elif scheme.lower() != "bearer" or not separator or not token or any(char.isspace() for char in token):
             await _response(
                 send,
                 401,

@@ -109,10 +109,11 @@ uv pip sync paperloom_mcp/requirements.lock --python .venv-mcp/bin/python
 .venv-mcp/bin/python -m paperloom_mcp --host 127.0.0.1 --port 8090
 ```
 
-MCP clients connect to `http://127.0.0.1:8090/mcp`. The MCP endpoint advertises OAuth protected
-resource metadata at `/.well-known/oauth-protected-resource`; a compatible client opens the browser
-authorization flow, so the user enters the PaperLoom password on the PaperLoom login page. The first
-local client is pre-registered as `paperloom-local-mcp` with the loopback callback
+MCP clients connect to `http://127.0.0.1:8090/mcp`. The local MCP adapter advertises OAuth protected
+resource metadata at `/.well-known/oauth-protected-resource` and starts the browser authorization
+flow on the first tool call that needs a token. The user enters the PaperLoom password on the
+PaperLoom login page; the adapter receives the code at its loopback callback and exchanges it with
+PKCE. The first local client is pre-registered as `paperloom-local-mcp` with the loopback callback
 `http://127.0.0.1:8095/oauth/callback`. Authorization Code + PKCE is required and the default issuer
 is `http://127.0.0.1:8081` (override it with `paperloom.oauth2.issuer` when the backend uses another
 URL).
@@ -121,7 +122,10 @@ The server exposes paper reading plus the normal PDF upload flow: `upload_paper_
 `get_paper_upload_status`. OAuth access tokens need `paper.read` for reading and `paper.upload` for
 uploading. Upload chunks are base64 encoded. When the uploaded chunk set is complete, the MCP server
 invokes the normal merge operation automatically. Authorization client and consent state is in memory
-in this first local slice; durable token state and client registration are subsequent work.
+in this first local slice; the local access and refresh token are stored in
+`~/.paperloom/mcp-token.json` with owner-only permissions (override it with
+`PAPERLOOM_OAUTH_TOKEN_FILE`). Durable server-side authorization state, key persistence, and client
+registration are subsequent work.
 
 ## 5. Start the Backend
 
