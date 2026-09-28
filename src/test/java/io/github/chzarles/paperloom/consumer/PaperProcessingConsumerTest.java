@@ -8,7 +8,6 @@ import io.github.chzarles.paperloom.service.PaperPublicationService;
 import io.github.chzarles.paperloom.service.ParseService;
 import io.github.chzarles.paperloom.service.UploadService;
 import io.github.chzarles.paperloom.service.RetrievalIndexingService;
-import io.github.chzarles.paperloom.service.ArxivImportService;
 import io.minio.GetObjectResponse;
 import okhttp3.Headers;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,13 +16,15 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
-import org.springframework.test.util.ReflectionTestUtils;
 
 class PaperProcessingConsumerTest {
 
@@ -48,9 +49,6 @@ class PaperProcessingConsumerTest {
     @Mock
     private PaperPublicationService publicationService;
 
-    @Mock
-    private ArxivImportService arxivImportService;
-
     private PaperProcessingConsumer consumer;
 
     @BeforeEach
@@ -59,7 +57,6 @@ class PaperProcessingConsumerTest {
         consumer = new PaperProcessingConsumer(
                 parseService, retrievalIndexingService, paperService, uploadService,
                 searchabilityService, readingModelRepository, publicationService);
-        ReflectionTestUtils.setField(consumer, "arxivImportService", arxivImportService);
     }
 
     @Test
@@ -97,27 +94,17 @@ class PaperProcessingConsumerTest {
     }
 
     @Test
-    void arxivImportTaskIsMaterializedBeforeTheExistingProcessingPath() throws Exception {
-        String arxivId = "2401.01234v2";
+    void uploadFailureIsRecordedAndRethrownForKafkaRetry() throws Exception {
         String paperId = "paper-1";
-        GetObjectResponse pdfStream = new GetObjectResponse(
-                Headers.of(), "uploads", "us-east-1", "merged/" + paperId,
-                new ByteArrayInputStream("%PDF-1.7".getBytes())
-        );
-        when(arxivImportService.materialize(any())).thenReturn(new PaperProcessingTask(
-                paperId, null, "A Paper", "1", PaperProcessingTask.TASK_TYPE_UPLOAD_PROCESS, "1"));
-        when(uploadService.getMergedFileStream(paperId)).thenReturn(pdfStream);
-        when(retrievalIndexingService.indexWithMetrics(paperId, "1"))
-                .thenReturn(new RetrievalIndexingService.IndexingResult(10, 2, "lexical-contract"));
-
+        IOException failure = new IOException("PDF unavailable");
+        when(uploadService.getMergedFileStream(paperId)).thenThrow(failure);
         PaperProcessingTask task = new PaperProcessingTask(
-                arxivId, null, arxivId, "1", PaperProcessingTask.TASK_TYPE_ARXIV_IMPORT, "1");
-        task.setArxivId(arxivId);
+                paperId, null, "paper.pdf", "1", PaperProcessingTask.TASK_TYPE_UPLOAD_PROCESS, "1");
 
-        consumer.processTask(task);
+        RuntimeException error = assertThrows(RuntimeException.class, () -> consumer.processTask(task));
 
-        verify(arxivImportService).materialize(task);
-        verify(parseService).parseAndSave(eq(paperId), any(), eq("A Paper"), eq("1"));
-        verify(paperService).markVectorizationCompleted(eq(paperId), any());
+        assertSame(failure, error.getCause());
+        verify(paperService).markVectorizationFailed(paperId, failure);
+        verifyNoInteractions(parseService, retrievalIndexingService, publicationService);
     }
 }

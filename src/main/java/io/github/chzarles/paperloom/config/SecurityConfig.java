@@ -32,6 +32,9 @@ public class SecurityConfig {
 
     @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @Autowired
+    private OAuthBearerAuthenticationFilter oauthBearerAuthenticationFilter;
     
     @Autowired
     private PaperAccessAuthorizationFilter paperAccessAuthorizationFilter;
@@ -74,6 +77,7 @@ public class SecurityConfig {
                     .authorizeHttpRequests(authorize -> authorize
                             // 允许静态资源访问
                             .requestMatchers("/", "/*.js", "/*.css", "/*.ico").permitAll()
+                            .requestMatchers("/.well-known/oauth-protected-resource").permitAll()
                             // 允许 WebSocket 连接
                             .requestMatchers("/chat/**", "/ws/**").permitAll()
                             // 允许登录注册接口
@@ -106,7 +110,6 @@ public class SecurityConfig {
                                     "/api/v1/users/logout-all"
                             ).hasAnyRole("GUEST", "USER", "ADMIN")
                             .requestMatchers("/api/v1/reading/**").hasAnyRole("USER", "ADMIN")
-                            .requestMatchers("/api/v1/arxiv/import").hasAnyRole("USER", "ADMIN")
                             .requestMatchers("/api/v1/users/**").hasAnyRole("USER", "ADMIN")
                             // 游客聊天页会读取自己的集合列表；游客只能看到自己的空列表，不能创建或修改集合。
                             .requestMatchers(HttpMethod.GET, "/api/v1/paper-collections")
@@ -121,6 +124,7 @@ public class SecurityConfig {
                     .sessionManagement(session -> session
                             .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                     // 添加JWT认证过滤器
+                    .addFilterBefore(oauthBearerAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                     .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                     // 添加论文访问授权过滤器
                     .addFilterAfter(paperAccessAuthorizationFilter, JwtAuthenticationFilter.class);

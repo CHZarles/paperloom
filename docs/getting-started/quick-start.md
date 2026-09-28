@@ -101,6 +101,28 @@ scripts/paperloom-start-harness.sh status
 
 The harness health endpoint is `http://127.0.0.1:8091/health`.
 
+To expose the authenticated PaperLoom MCP tools on loopback:
+
+```bash
+uv venv .venv-mcp
+uv pip sync paperloom_mcp/requirements.lock --python .venv-mcp/bin/python
+.venv-mcp/bin/python -m paperloom_mcp --host 127.0.0.1 --port 8090
+```
+
+MCP clients connect to `http://127.0.0.1:8090/mcp`. The MCP endpoint advertises OAuth protected
+resource metadata at `/.well-known/oauth-protected-resource`; a compatible client opens the browser
+authorization flow, so the user enters the PaperLoom password on the PaperLoom login page. The first
+local client is pre-registered as `paperloom-local-mcp` with the loopback callback
+`http://127.0.0.1:8095/oauth/callback`. Authorization Code + PKCE is required and the default issuer
+is `http://127.0.0.1:8081` (override it with `paperloom.oauth2.issuer` when the backend uses another
+URL).
+
+The server exposes paper reading plus the normal PDF upload flow: `upload_paper_chunk` and
+`get_paper_upload_status`. OAuth access tokens need `paper.read` for reading and `paper.upload` for
+uploading. Upload chunks are base64 encoded. When the uploaded chunk set is complete, the MCP server
+invokes the normal merge operation automatically. Authorization client and consent state is in memory
+in this first local slice; durable token state and client registration are subsequent work.
+
 ## 5. Start the Backend
 
 For normal development:

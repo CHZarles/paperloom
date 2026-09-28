@@ -13,6 +13,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -105,7 +108,7 @@ public class PaperAccessAuthorizationFilter extends OncePerRequestFilter {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     return;
                 }
-                String role = jwtUtils.extractRoleFromToken(requestToken);
+                String role = requestRole(requestToken);
                 if ("ADMIN".equals(role) && path.startsWith("/api/v1/admin/")) {
                     filterChain.doFilter(request, response);
                     return;
@@ -133,8 +136,8 @@ public class PaperAccessAuthorizationFilter extends OncePerRequestFilter {
             return;
         }
 
-        String userId = jwtUtils.extractUserIdFromToken(token);
-        String role = jwtUtils.extractRoleFromToken(token);
+        String userId = requestUserId(token);
+        String role = requestRole(token);
         if (userId != null) {
             request.setAttribute("userId", userId);
             request.setAttribute("role", role);
@@ -142,6 +145,31 @@ public class PaperAccessAuthorizationFilter extends OncePerRequestFilter {
         } else {
             logger.warn("{}请求中无法从token提取userId", operation);
         }
+    }
+
+    private String requestUserId(String token) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication instanceof JwtAuthenticationToken oauthAuthentication) {
+            return oauthAuthentication.getToken().getClaimAsString("userId");
+        }
+        return jwtUtils.extractUserIdFromToken(token);
+    }
+
+    private String requestRole(String token) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication instanceof JwtAuthenticationToken oauthAuthentication) {
+            String role = oauthAuthentication.getToken().getClaimAsString("role");
+            if (role != null) {
+                return role;
+            }
+            return authentication.getAuthorities().stream()
+                    .map(authority -> authority.getAuthority())
+                    .filter(authority -> authority.startsWith("ROLE_"))
+                    .map(authority -> authority.substring("ROLE_".length()))
+                    .findFirst()
+                    .orElse(null);
+        }
+        return jwtUtils.extractRoleFromToken(token);
     }
 
     /**

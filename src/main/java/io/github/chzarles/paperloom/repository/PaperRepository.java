@@ -23,8 +23,6 @@ public interface PaperRepository extends JpaRepository<Paper, Long> {
 
     Optional<Paper> findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(String paperId, String userId);
 
-    Optional<Paper> findFirstByArxivIdAndUserIdOrderByCreatedAtDesc(String arxivId, String userId);
-
     Optional<Paper> findFirstByOrderByMergedAtDesc();
 
     long countByPaperId(String paperId);
