@@ -8,6 +8,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -39,7 +40,8 @@ class OAuthAuthorizationServerSmokeTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.issuer").value("http://127.0.0.1:8081"))
                 .andExpect(jsonPath("$.authorization_endpoint").value("http://127.0.0.1:8081/oauth2/authorize"))
-                .andExpect(jsonPath("$.code_challenge_methods_supported[0]").value("S256"));
+                .andExpect(jsonPath("$.code_challenge_methods_supported[0]").value("S256"))
+                .andExpect(jsonPath("$.registration_endpoint").value("http://127.0.0.1:8081/connect/register"));
     }
 
     @Test
@@ -54,5 +56,25 @@ class OAuthAuthorizationServerSmokeTest {
                         .with(SecurityMockMvcRequestPostProcessors.user("alice").roles("USER")))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("Consent required")));
+    }
+
+    @Test
+    void dynamicRegistrationAcceptsPublicPkceClient() throws Exception {
+        mvc.perform(post("/connect/register")
+                        .contentType("application/json")
+                        .content("""
+                                {
+                                  "client_name": "OpenCode",
+                                  "redirect_uris": ["http://127.0.0.1:19876/oauth/callback"],
+                                  "grant_types": ["authorization_code"],
+                                  "response_types": ["code"],
+                                  "token_endpoint_auth_method": "none",
+                                  "scope": "paper.read paper.upload"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.client_id").isNotEmpty())
+                .andExpect(jsonPath("$.token_endpoint_auth_method").value("none"))
+                .andExpect(jsonPath("$.redirect_uris[0]").value("http://127.0.0.1:19876/oauth/callback"));
     }
 }

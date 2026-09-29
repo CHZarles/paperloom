@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import base64
 import asyncio
+import os
 import socket
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -30,6 +33,34 @@ def _free_loopback_port() -> int:
 
 
 class McpUploadContractTest(unittest.IsolatedAsyncioTestCase):
+    async def test_stdio_cli_starts_and_lists_tools(self) -> None:
+        root = Path(__file__).resolve().parents[2]
+        python = os.environ.get("PAPERLOOM_TEST_PYTHON", sys.executable)
+        process = await asyncio.create_subprocess_exec(
+            python,
+            "-m",
+            "paperloom_mcp",
+            "--transport",
+            "stdio",
+            cwd=root,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        assert process.stdin is not None
+        assert process.stdout is not None
+        process.stdin.write(
+            b'{"jsonrpc":"2.0","id":1,"method":"initialize","params":{'
+            b'"protocolVersion":"2025-06-18","capabilities":{},'
+            b'"clientInfo":{"name":"test","version":"1"}}}\n'
+        )
+        await process.stdin.drain()
+        line = await asyncio.wait_for(process.stdout.readline(), timeout=5)
+        self.assertIn(b'"result"', line)
+        self.assertIn(b'"serverInfo"', line)
+        process.terminate()
+        await asyncio.wait_for(process.wait(), timeout=5)
+
     async def test_tool_surface_contains_upload_flow_without_arxiv_tools(self) -> None:
         names = {tool.name for tool in _tools()}
 
@@ -190,6 +221,38 @@ class McpUploadContractTest(unittest.IsolatedAsyncioTestCase):
             'resource_metadata="http://127.0.0.1:8090/.well-known/oauth-protected-resource"',
             missing.headers["www-authenticate"],
         )
+
+    async def test_remote_http_mode_requires_client_bearer_and_uses_public_metadata(self) -> None:
+        gateway = ReadingMcpGateway(
+            client=httpx.AsyncClient(
+                transport=httpx.MockTransport(lambda request: httpx.Response(500)),
+                base_url="http://java.test",
+            ),
+            local_oauth_enabled=False,
+        )
+        app = create_mcp_app(
+            gateway,
+            host="0.0.0.0",
+            port=8090,
+            public_url="https://mcp.example.test",
+        )
+        async with app.router.lifespan_context(app):
+            client = httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app),
+                base_url="https://mcp.example.test",
+                headers={"Host": "mcp.example.test"},
+            )
+            metadata = await client.get("/.well-known/oauth-protected-resource")
+            missing = await client.post("/mcp", json={})
+            await client.aclose()
+        await gateway.client.aclose()
+
+        self.assertEqual(200, metadata.status_code)
+        self.assertEqual(
+            "https://mcp.example.test/mcp",
+            metadata.json()["resource"],
+        )
+        self.assertEqual(401, missing.status_code)
 
     async def test_final_chunk_triggers_merge_inside_mcp_server(self) -> None:
         paths: list[str] = []

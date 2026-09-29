@@ -121,11 +121,68 @@ URL).
 The server exposes paper reading plus the normal PDF upload flow: `upload_paper_chunk` and
 `get_paper_upload_status`. OAuth access tokens need `paper.read` for reading and `paper.upload` for
 uploading. Upload chunks are base64 encoded. When the uploaded chunk set is complete, the MCP server
-invokes the normal merge operation automatically. Authorization client and consent state is in memory
-in this first local slice; the local access and refresh token are stored in
-`~/.paperloom/mcp-token.json` with owner-only permissions (override it with
-`PAPERLOOM_OAUTH_TOKEN_FILE`). Durable server-side authorization state, key persistence, and client
-registration are subsequent work.
+invokes the normal merge operation automatically. In stdio mode, the local access and refresh token
+are stored in `~/.paperloom/mcp-token.json` with owner-only permissions (override it with
+`PAPERLOOM_OAUTH_TOKEN_FILE`).
+
+For a desktop client such as OpenCode, use the stdio transport so the client starts the MCP adapter
+itself. Add this to the project's `opencode.json` (or merge it into the existing `mcp` object):
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "paperloom": {
+      "type": "local",
+      "command": [
+        "/absolute/path/to/paperloom/scripts/paperloom-mcp-stdio.sh"
+      ],
+      "enabled": true
+    }
+  }
+}
+```
+
+OpenCode then launches the stdio adapter when it starts. The launcher also starts the Java backend
+through the repository's existing backend script. Docker data services must already be running.
+The HTTP transport remains available for clients that connect to a shared endpoint.
+
+For a deployed server, run the HTTP MCP process on the server and put it behind the same reverse
+proxy or load balancer as the authorization server. The Python MCP process does not open a browser
+and does not need a local callback on the server; the remote client opens the user's browser and
+receives the authorization code on its own loopback callback.
+
+```bash
+uv venv .venv-mcp
+uv pip sync paperloom_mcp/requirements.lock --python .venv-mcp/bin/python
+export PAPERLOOM_MCP_PUBLIC_URL=https://mcp.example.com
+export PAPERLOOM_OAUTH_ISSUER=https://paperloom.example.com
+scripts/paperloom-start-mcp.sh start
+```
+
+The backend must use the same public issuer (`PAPERLOOM_OAUTH_ISSUER`). The proxy must forward
+`/mcp`, `/.well-known/oauth-protected-resource`, the authorization server discovery endpoints,
+`/oauth2/authorize`, `/oauth2/token`, `/oauth2/jwks`, `/login`, and `/oauth2/consent`. Remote
+OpenCode configuration is then only a URL:
+
+```json
+{
+  "mcp": {
+    "paperloom": {
+      "type": "remote",
+      "url": "https://mcp.example.com/mcp",
+      "enabled": true,
+      "oauth": {
+        "scope": "paper.read paper.upload"
+      }
+    }
+  }
+}
+```
+
+OpenCode discovers the protected resource metadata, dynamically registers a public PKCE client,
+opens the PaperLoom login page, and sends the resulting Bearer token to the deployed MCP process.
+No Python package or MCP process is required on the client machine in this mode.
 
 ## 5. Start the Backend
 

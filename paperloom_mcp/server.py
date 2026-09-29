@@ -6,6 +6,7 @@ import contextvars
 import hashlib
 import json
 import os
+import anyio
 from pathlib import Path
 import secrets
 import time
@@ -20,6 +21,7 @@ import uvicorn
 from mcp import types
 from mcp.server.fastmcp.exceptions import ToolError
 from mcp.server.lowlevel import Server
+from mcp.server.stdio import stdio_server
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from mcp.server.transport_security import TransportSecuritySettings
 from starlette.applications import Starlette
@@ -362,6 +364,7 @@ class ReadingMcpGateway:
         *,
         client: httpx.AsyncClient | None = None,
         oauth_manager: OAuthTokenManager | None = None,
+        local_oauth_enabled: bool = True,
     ) -> None:
         if base_url is None and client is not None:
             base_url = str(client.base_url)
@@ -378,6 +381,7 @@ class ReadingMcpGateway:
             self.authorization_server_url,
             http_client=self.client,
         )
+        self.local_oauth_enabled = local_oauth_enabled
 
     async def query(self, path: str, payload: JsonMap) -> JsonMap:
         return await self._request(path, "POST", json_payload=payload, required_scope="paper.read")
@@ -435,6 +439,8 @@ class ReadingMcpGateway:
     ) -> JsonMap:
         token = _bearer_token.get()
         if not token:
+            if not self.local_oauth_enabled:
+                raise ToolError("UNAUTHORIZED")
             try:
                 token = await self.oauth_manager.get_access_token(required_scope)
             except OAuthLoginError as error:
@@ -741,18 +747,40 @@ def create_mcp_server(gateway: ReadingMcpGateway) -> Server:
     return server
 
 
-def create_mcp_app(gateway: ReadingMcpGateway, *, host: str = "127.0.0.1", port: int = 8090):
-    if host not in {"127.0.0.1", "localhost", "::1"}:
-        raise ValueError("MCP V1 only supports loopback hosts")
+def create_mcp_app(
+    gateway: ReadingMcpGateway,
+    *,
+    host: str = "127.0.0.1",
+    port: int = 8090,
+    public_url: str | None = None,
+    allowed_hosts: list[str] | None = None,
+    allowed_origins: list[str] | None = None,
+):
+    if public_url is None:
+        public_url = os.getenv("PAPERLOOM_MCP_PUBLIC_URL")
+    if public_url is not None:
+        public_url = public_url.rstrip("/")
+        parsed_public_url = urllib.parse.urlparse(public_url)
+        if parsed_public_url.scheme not in {"http", "https"} or not parsed_public_url.netloc:
+            raise ValueError("PAPERLOOM_MCP_PUBLIC_URL must be an absolute HTTP(S) URL")
+    metadata_base_url = public_url or f"http://{host}:{port}"
+    metadata_host = urllib.parse.urlparse(metadata_base_url).netloc
+    if allowed_hosts is None:
+        allowed_hosts = [metadata_host]
+        if host in {"127.0.0.1", "localhost", "::1"}:
+            allowed_hosts.extend([f"127.0.0.1:{port}", f"localhost:{port}", f"[::1]:{port}"])
+    if allowed_origins is None:
+        allowed_origins = [metadata_base_url]
+        if host in {"127.0.0.1", "localhost", "::1"}:
+            allowed_origins.extend([f"http://127.0.0.1:{port}", f"http://localhost:{port}"])
     manager = StreamableHTTPSessionManager(
         create_mcp_server(gateway), json_response=True, stateless=True,
         security_settings=TransportSecuritySettings(
-            allowed_hosts=[f"127.0.0.1:{port}", f"localhost:{port}", f"[::1]:{port}"],
-            allowed_origins=[f"http://127.0.0.1:{port}", f"http://localhost:{port}"],
+            allowed_hosts=allowed_hosts,
+            allowed_origins=allowed_origins,
         ),
     )
-    metadata_host = f"[{host}]" if ":" in host and not host.startswith("[") else host
-    resource_metadata_url = f"http://{metadata_host}:{port}/.well-known/oauth-protected-resource"
+    resource_metadata_url = f"{metadata_base_url}/.well-known/oauth-protected-resource"
     @asynccontextmanager
     async def lifespan(_app):
         async with manager.run():
@@ -766,9 +794,11 @@ def create_mcp_app(gateway: ReadingMcpGateway, *, host: str = "127.0.0.1", port:
         Route("/mcp", endpoint=_StreamableApp(manager)),
     ], lifespan=lifespan)
     app.state.paperloom_gateway = gateway
+    app.state.paperloom_resource_url = f"{metadata_base_url}/mcp"
     app.add_middleware(
         _BearerAndSizeMiddleware,
         resource_metadata_url=resource_metadata_url,
+        require_bearer=not gateway.local_oauth_enabled,
     )
     return app
 
@@ -782,9 +812,10 @@ class _StreamableApp:
 
 
 class _BearerAndSizeMiddleware:
-    def __init__(self, app, resource_metadata_url: str) -> None:
+    def __init__(self, app, resource_metadata_url: str, require_bearer: bool = True) -> None:
         self.app = app
         self.resource_metadata_url = resource_metadata_url
+        self.require_bearer = require_bearer
 
     async def __call__(self, scope, receive, send) -> None:
         if scope.get("type") != "http":
@@ -796,7 +827,7 @@ class _BearerAndSizeMiddleware:
         authorization_headers = [value.decode("latin-1") for key, value in scope.get("headers", []) if key.decode("latin-1").lower() == "authorization"]
         authorization = authorization_headers[0] if len(authorization_headers) == 1 else ""
         scheme, separator, token = authorization.partition(" ")
-        if not authorization_headers and scope.get("method") == "POST":
+        if not authorization_headers and scope.get("method") == "POST" and not self.require_bearer:
             token = ""
         elif scheme.lower() != "bearer" or not separator or not token or any(char.isspace() for char in token):
             await _response(
@@ -836,8 +867,9 @@ class _BearerAndSizeMiddleware:
 
 async def _protected_resource_metadata(request) -> object:
     gateway = request.app.state.paperloom_gateway
+    resource_url = request.app.state.paperloom_resource_url
     return JSONResponse({
-        "resource": str(request.base_url).rstrip("/") + "/mcp",
+        "resource": resource_url,
         "authorization_servers": [gateway.authorization_server_url],
         "scopes_supported": ["paper.read", "paper.upload"],
         "bearer_methods_supported": ["header"],
@@ -853,5 +885,40 @@ async def _response(send, status: int, payload: JsonMap, *, headers: list[tuple[
     await send({"type": "http.response.body", "body": body})
 
 
-def run_mcp_server(host: str, port: int, java_base_url: str) -> None:
-    uvicorn.run(create_mcp_app(ReadingMcpGateway(java_base_url), host=host, port=port), host=host, port=port)
+def run_mcp_server(
+    host: str,
+    port: int,
+    java_base_url: str,
+    *,
+    public_url: str | None = None,
+) -> None:
+    gateway = ReadingMcpGateway(java_base_url, local_oauth_enabled=False)
+    uvicorn.run(
+        create_mcp_app(gateway, host=host, port=port, public_url=public_url),
+        host=host,
+        port=port,
+    )
+
+
+async def run_mcp_stdio(java_base_url: str) -> None:
+    """Run the MCP server as a client-managed stdio subprocess.
+
+    Diagnostics stay on stderr through the underlying libraries; stdout is reserved for MCP
+    JSON-RPC messages so desktop clients can launch this module directly.
+    """
+    gateway = ReadingMcpGateway(java_base_url)
+    server = create_mcp_server(gateway)
+    try:
+        async with stdio_server() as (read_stream, write_stream):
+            await server.run(
+                read_stream,
+                write_stream,
+                server.create_initialization_options(),
+            )
+    finally:
+        await gateway.oauth_manager.close()
+        await gateway.client.aclose()
+
+
+def run_mcp_stdio_server(java_base_url: str) -> None:
+    anyio.run(run_mcp_stdio, java_base_url)

@@ -132,6 +132,9 @@ paper:
     user-id: ${PAPER_BOOTSTRAP_USER_ID:system-bootstrap}
 
 paperloom:
+  oauth2:
+    # The URL that remote MCP clients use for authorization discovery and browser login.
+    issuer: ${PAPERLOOM_OAUTH_ISSUER:http://127.0.0.1:8081}
   trace:
     enabled: ${PAPERLOOM_TRACE_ENABLED:true}
     root: ${PAPERLOOM_TRACE_ROOT:data/traces/product-react}

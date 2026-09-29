@@ -67,11 +67,22 @@ public class OAuth2AuthorizationServerConfig {
 
     @Bean
     @Order(1)
-    SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
-        OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
-
-        http.getConfigurer(OAuth2AuthorizationServerConfigurer.class)
-                .oidc(Customizer.withDefaults());
+    SecurityFilterChain authorizationServerSecurityFilterChain(
+            HttpSecurity http,
+            AuthorizationServerSettings authorizationServerSettings) throws Exception {
+        OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
+                OAuth2AuthorizationServerConfigurer.authorizationServer();
+        authorizationServerConfigurer.authorizationServerMetadataEndpoint(metadata -> metadata
+                .authorizationServerMetadataCustomizer(metadataBuilder -> metadataBuilder
+                        .clientRegistrationEndpoint(
+                                authorizationServerSettings.getIssuer()
+                                        + authorizationServerSettings.getOidcClientRegistrationEndpoint())));
+        http
+                .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
+                .with(authorizationServerConfigurer, Customizer.withDefaults())
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers("/connect/register").permitAll()
+                        .anyRequest().authenticated());
 
         AuthenticationEntryPoint loginEntryPoint = new LoginUrlAuthenticationEntryPoint("/login");
         http.exceptionHandling(exceptions -> exceptions
@@ -143,7 +154,10 @@ public class OAuth2AuthorizationServerConfig {
     @Bean
     AuthorizationServerSettings authorizationServerSettings(
             @Value("${paperloom.oauth2.issuer:http://127.0.0.1:8081}") String issuer) {
-        return AuthorizationServerSettings.builder().issuer(issuer).build();
+        return AuthorizationServerSettings.builder()
+                .issuer(issuer)
+                .oidcClientRegistrationEndpoint("/connect/register")
+                .build();
     }
 
     @Bean

@@ -78,6 +78,7 @@ public class SecurityConfig {
                             // 允许静态资源访问
                             .requestMatchers("/", "/*.js", "/*.css", "/*.ico").permitAll()
                             .requestMatchers("/.well-known/oauth-protected-resource").permitAll()
+                            .requestMatchers("/connect/register").permitAll()
                             // 允许 WebSocket 连接
                             .requestMatchers("/chat/**", "/ws/**").permitAll()
                             // 允许登录注册接口
