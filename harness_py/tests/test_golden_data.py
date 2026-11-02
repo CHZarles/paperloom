@@ -181,7 +181,7 @@ class GoldenDataTest(unittest.TestCase):
         instructions = research_agent_instructions(ResearchSkillRegistry())
 
         self.assertEqual(
-            "ae5fefc038a0dcfdb7a1e9ae8496b1d01fd9d2637c9411f7d36b13ac03c04e7b",
+            "ebbd13946e28fbfc7a38c82f9e03f2f21d3f205c2a67bae9b8c22e8f4f5ebe94",
             hashlib.sha256(instructions.encode("utf-8")).hexdigest(),
             "expanded Golden Data must not change the established agent prompt",
         )

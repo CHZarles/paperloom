@@ -202,7 +202,8 @@ class ReadingCorpusTools:
             _tool_schema(
                 "read_paper_content",
                 (
-                    "Read exact content from location refs returned by search_paper_content or get_paper_structure. "
+                    "Read exact content from passage, table, or figure location refs returned by search_paper_content. "
+                    "For multi-part questions, include relevant refs for each requested part in one call when possible. "
                     "Returns source_quote_ref values; only those values can be cited in the final answer."
                 ),
                 {

@@ -260,6 +260,10 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
             if item["function"]["name"] == "search_paper_content"
         )
         parameters = definition["function"]["parameters"]["properties"]
+        read_definition = next(
+            item for item in tools.definitions()
+            if item["function"]["name"] == "read_paper_content"
+        )
 
         self.assertEqual(12, len(result["locations"]))
         self.assertLessEqual(len(result["locations"][0]["preview"]), 500)
@@ -277,6 +281,8 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         self.assertEqual(20, parameters["top_k"]["maximum"])
         self.assertIn("passage", parameters["element_types"]["items"]["enum"])
         self.assertIn("table", parameters["element_types"]["items"]["enum"])
+        self.assertIn("returned by search_paper_content", read_definition["function"]["description"])
+        self.assertNotIn("get_paper_structure", read_definition["function"]["description"])
 
     def test_location_search_deduplicates_identical_text_on_the_same_page(self) -> None:
         dataset = build_product_dataset(

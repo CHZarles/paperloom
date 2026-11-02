@@ -1413,11 +1413,17 @@ def _run_l3(
             out / "trace" / str(run.get("run_id") or "") / "events.jsonl"
         )
         assessment = _assess_agent_case(case, run, targets, set(scope), protocol)
+        errors.extend(
+            failure for failure in _records(assessment.get("hard_failures"))
+            if failure.get("technical")
+        )
         usage = _mapping(_mapping(run.get("control")).get("usage")) or {
             key: _mapping(run.get("diagnostics")).get(key)
             for key in ("model_calls", "prompt_tokens", "completion_tokens", "total_tokens", "elapsed_ms")
         }
-        if case.get("expected_contract") == "RESEARCH":
+        if run.get("status") in {"FAILED_TECHNICAL", "LIMITED", "CANCELLED"}:
+            judgment = {"status": "not_applicable", "reason": "agent_run_not_completed"}
+        elif case.get("expected_contract") == "RESEARCH":
             try:
                 judgment = _judge_agent_case(judge, case, run)
             except Exception as error:
@@ -1443,10 +1449,27 @@ def _run_l3(
         "executed": True,
         "case_count": len(rows),
         "hard_passed": sum(not _records(row.get("hard_failures")) for row in rows),
+        "target_funnel": _target_funnel_metrics(rows),
         "controlled_protocol_metrics": _controlled_protocol_metrics(rows),
         "by_harness_id": by_harness_id,
         "cases": rows,
         "technical_errors": errors,
+    }
+
+
+def _target_funnel_metrics(rows: list[dict[str, object]]) -> dict[str, int]:
+    excluded_statuses = {"FAILED_TECHNICAL", "LIMITED", "CANCELLED"}
+    eligible = [row for row in rows if row.get("status") not in excluded_statuses]
+    excluded = [row for row in rows if row.get("status") in excluded_statuses]
+    checks = [check for row in eligible for check in _records(row.get("target_checks"))]
+    return {
+        "eligible_cases": len(eligible),
+        "excluded_cases": len(excluded),
+        "eligible_targets": len(checks),
+        "excluded_targets": sum(len(_records(row.get("target_checks"))) for row in excluded),
+        "returned": sum(bool(check.get("returned")) for check in checks),
+        "read": sum(bool(check.get("read")) for check in checks),
+        "cited": sum(bool(check.get("cited")) for check in checks),
     }
 
 
@@ -1496,23 +1519,27 @@ def _assess_agent_case(
         if item.get("paper_id") and item.get("paper_id") not in scope
     })
     hard_failures: list[dict[str, object]] = []
-    if run.get("status") in {"FAILED_TECHNICAL", "LIMITED", "CANCELLED"}:
+    technical_run = run.get("status") == "FAILED_TECHNICAL"
+    if technical_run:
+        reason_code = str(_mapping(run.get("control")).get("reason_code") or run.get("status"))
+        hard_failures.append(_failure("L3", "AGENT_TECHNICAL_FAILURE", reason_code, technical=True))
+    elif run.get("status") in {"LIMITED", "CANCELLED"}:
         hard_failures.append(_failure("L3", "AGENT_TECHNICAL_FAILURE", str(run.get("status"))))
-    if expected_contract and not contract_match:
+    if not technical_run and expected_contract and not contract_match:
         hard_failures.append(_failure("L3", "CONTRACT_MISMATCH", f"expected={expected_contract}, actual={actual_contract}"))
-    if protocol is not None and not protocol.get("passed"):
+    if not technical_run and protocol is not None and not protocol.get("passed"):
         hard_failures.append(_failure("L3", "PROTOCOL_REPLAY_FAILED", str(protocol.get("failed_event_ids") or [])))
-    if provenance_applicable and not provenance_passed:
+    if not technical_run and provenance_applicable and not provenance_passed:
         hard_failures.append(_failure("L3", "PROVENANCE_FAILED", str(case.get("case_id"))))
     if leaked_ids:
         hard_failures.append(_failure("L3", "SCOPE_LEAK", str(leaked_ids)))
     if cited - set(read_by_quote):
         hard_failures.append(_failure("L3", "UNRESOLVABLE_CITATION", str(sorted(cited - set(read_by_quote)))))
-    if expected_contract == "RESEARCH" and expected_outcome == "answered" and not cited:
+    if not technical_run and expected_contract == "RESEARCH" and expected_outcome == "answered" and not cited:
         hard_failures.append(_failure("L3", "MISSING_CITATION", str(case.get("case_id"))))
     if case.get("citation_policy") == "no_citation_without_evidence" and cited:
         hard_failures.append(_failure("L3", "CITATION_WITHOUT_EVIDENCE", str(sorted(cited))))
-    if case.get("case_type") == "follow_up_ambiguity_control":
+    if not technical_run and case.get("case_type") == "follow_up_ambiguity_control":
         clarification = (
             answer.get("outcome") == "needs_clarification"
             and actual_contract == AnswerContract.DIRECT.value

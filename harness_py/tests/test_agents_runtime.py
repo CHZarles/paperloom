@@ -22,6 +22,7 @@ from harness_py.orchestration.agents.model import (
     TEXT_NUDGE_TOOL_NAME,
     TOOL_ARGUMENT_REPAIR_PREFIX,
 )
+from harness_py.corpus.product_db_dataset import build_product_dataset
 from harness_py.orchestration.conversation import ConversationState
 from harness_py.orchestration.live_chat import LiveResearchChatHarness
 from harness_py.utils.errors import HarnessCancelled, RunLimitExceeded
@@ -175,6 +176,50 @@ class AgentsRuntimeTest(unittest.TestCase):
         self.assertIn("protocol.transition", {event["kind"] for event in events})
         self.assertTrue(result["capture_ok"])
         self.assertEqual(run["run_id"], result["result"]["run_id"])
+
+    def test_sdk_runtime_reads_and_cites_both_parts_of_one_question(self) -> None:
+        dataset = build_product_dataset(
+            paper_rows=[{
+                "paper_id": "paper_multi",
+                "title": "Multi-Part Paper",
+                "model_version": "rm_multi",
+                "model_status": "READING_MODEL_READY",
+            }],
+            element_rows=[{
+                "paper_id": "paper_multi",
+                "model_version": "rm_multi",
+                "readingElementId": "element_alpha",
+                "locationRef": "loc_alpha",
+                "elementType": "paragraph",
+                "pageNumber": 1,
+                "searchableText": "The alpha parameter equals eleven.",
+            }, {
+                "paper_id": "paper_multi",
+                "model_version": "rm_multi",
+                "readingElementId": "element_beta",
+                "locationRef": "loc_beta",
+                "elementType": "paragraph",
+                "pageNumber": 2,
+                "searchableText": "The beta parameter equals twenty-two.",
+            }],
+        )
+        model = _MultiPartAgentsModel()
+        harness = LiveResearchChatHarness(AgentsSdkHarnessRuntime(model=model))
+
+        run, _ = harness.run_turn(
+            dataset,
+            ConversationState.new("multi_part_read"),
+            "What are the alpha and beta parameter values in Multi-Part Paper?",
+        )
+
+        self.assertEqual("COMPLETED", run["status"], run["diagnostics"])
+        self.assertEqual(2, len(run["evidence_ledger"]["items"]))
+        self.assertEqual(2, len(run["research_answer"]["cited_source_quote_refs"]))
+        self.assertEqual(1, sum(
+            item.get("tool_name") == "read_paper_content"
+            for item in run["react_trace"]
+        ))
+        self.assertEqual(4, model.call_count)
 
     def test_runtime_recovers_after_provider_truncates_tool_arguments(self) -> None:
         requests: list[dict] = []
@@ -591,6 +636,67 @@ class _ScriptedAgentsModel(Model):
             output=[ResponseFunctionToolCall(
                 arguments=json.dumps(arguments),
                 call_id=f"call_{self.call_count}",
+                name=name,
+                type="function_call",
+            )],
+            usage=Usage(requests=1, input_tokens=10, output_tokens=5, total_tokens=15),
+            response_id=None,
+        )
+
+    def stream_response(self, *args, **kwargs) -> AsyncIterator:
+        raise NotImplementedError
+
+
+class _MultiPartAgentsModel(Model):
+    def __init__(self) -> None:
+        self.call_count = 0
+
+    async def get_response(
+        self,
+        system_instructions,
+        input,
+        model_settings,
+        tools,
+        output_schema,
+        handoffs,
+        tracing: ModelTracing,
+        *,
+        previous_response_id,
+        conversation_id,
+        prompt,
+    ) -> ModelResponse:
+        self.call_count += 1
+        outputs = _tool_outputs(input)
+        if self.call_count == 1:
+            name, arguments = "find_papers_by_identity", {"paper_id": "paper_multi"}
+        elif self.call_count == 2:
+            name, arguments = "search_paper_content", {
+                "paper_ids": ["paper_multi"],
+                "query_text": "alpha beta parameter",
+                "top_k": 2,
+            }
+        elif self.call_count == 3:
+            locations = outputs["multi_2"]["locations"]
+            name, arguments = "read_paper_content", {
+                "location_refs": [location["location_ref"] for location in locations],
+            }
+        else:
+            quotes = [
+                item["source_quotes"][0]["source_quote_ref"]
+                for item in outputs["multi_3"]["items"]
+            ]
+            name, arguments = "submit_research_answer", {
+                "outcome": "answered",
+                "language": "EN",
+                "markdown": (
+                    f"Alpha equals eleven. [[{quotes[0]}]]\n\n"
+                    f"Beta equals twenty-two. [[{quotes[1]}]]"
+                ),
+            }
+        return ModelResponse(
+            output=[ResponseFunctionToolCall(
+                arguments=json.dumps(arguments),
+                call_id=f"multi_{self.call_count}",
                 name=name,
                 type="function_call",
             )],
