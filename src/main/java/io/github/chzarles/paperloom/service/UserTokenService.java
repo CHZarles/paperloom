@@ -24,6 +24,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -59,6 +60,36 @@ public class UserTokenService {
             Long.class
     );
 
+    /**
+     * 结束一次预留。写状态标记和调整余额在同一个脚本里完成，重复调用只生效一次。
+     *
+     * <p>KEYS[1] 余额键，KEYS[2] 状态标记键。
+     * <p>ARGV[1] 状态值，ARGV[2] 标记过期秒数，ARGV[3] 余额调整量。
+     * <p>返回 0 表示这次预留已经结束过。
+     */
+    private static final DefaultRedisScript<Long> RESERVATION_FINISH_SCRIPT = new DefaultRedisScript<>(
+            "if redis.call('EXISTS', KEYS[2]) == 1 then return 0 end; "
+                    + "local adjustment=tonumber(ARGV[3]); "
+                    + "if adjustment ~= 0 then redis.call('INCRBY', KEYS[1], adjustment) end; "
+                    + "redis.call('SET', KEYS[2], ARGV[1], 'EX', ARGV[2]); "
+                    + "return 1",
+            Long.class
+    );
+
+    /**
+     * Redis Key 前缀：quota:reservation:{reservationId}
+     */
+    private static final String RESERVATION_STATE_KEY_PREFIX = "quota:reservation:";
+
+    private static final String RESERVATION_SETTLED = "SETTLED";
+
+    private static final String RESERVATION_RELEASED = "RELEASED";
+
+    /**
+     * 状态标记的存活时间。必须大于最长重试窗口，否则过期后重复结算会再次生效。
+     */
+    private static final Duration RESERVATION_STATE_TTL = Duration.ofHours(24);
+
     private final StringRedisTemplate stringRedisTemplate;
 
     private final UsageQuotaProperties usageQuotaProperties;
@@ -69,16 +100,20 @@ public class UserTokenService {
 
     private final UserRepository userRepository;
 
+    private final UserTokenLedger userTokenLedger;
+
     public UserTokenService(StringRedisTemplate stringRedisTemplate,
                             UsageQuotaProperties usageQuotaProperties,
                             UserTokenRecordRepository userTokenRecordRepository,
                             UserDailyChatCountRepository userDailyChatCountRepository,
-                            UserRepository userRepository) {
+                            UserRepository userRepository,
+                            UserTokenLedger userTokenLedger) {
         this.stringRedisTemplate = stringRedisTemplate;
         this.usageQuotaProperties = usageQuotaProperties;
         this.userTokenRecordRepository = userTokenRecordRepository;
         this.userDailyChatCountRepository = userDailyChatCountRepository;
         this.userRepository = userRepository;
+        this.userTokenLedger = userTokenLedger;
     }
 
     /**
@@ -91,19 +126,9 @@ public class UserTokenService {
         String key = buildLlmTokenKey(userId);
         String value = stringRedisTemplate.opsForValue().get(key);
         if (StringUtils.isBlank(value)) {
-            long initToken = resolveInitToken(userId, usageQuotaProperties.getLlm());
-            if (Boolean.TRUE.equals(stringRedisTemplate.opsForValue().setIfAbsent(key, String.valueOf(initToken)))) {
-                recordTokenIncrease(userId, UserTokenRecord.TokenType.LLM, initToken, 0L, initToken, "注册赠送", null);
-                return initToken;
-            }
-            value = stringRedisTemplate.opsForValue().get(key);
+            value = initializeBalance(key, userId, usageQuotaProperties.getLlm(), UserTokenRecord.TokenType.LLM);
         }
-        try {
-            return Long.parseLong(value);
-        } catch (NumberFormatException e) {
-            logger.warn("无法解析 LLM Token 余额：userId={}, value={}", userId, value);
-            return 0L;
-        }
+        return parseBalance(userId, value, "LLM");
     }
 
     /**
@@ -116,17 +141,63 @@ public class UserTokenService {
         String key = buildEmbeddingTokenKey(userId);
         String value = stringRedisTemplate.opsForValue().get(key);
         if (StringUtils.isBlank(value)) {
-            long initToken = resolveInitToken(userId, usageQuotaProperties.getEmbedding());
-            if (Boolean.TRUE.equals(stringRedisTemplate.opsForValue().setIfAbsent(key, String.valueOf(initToken)))) {
-                recordTokenIncrease(userId, UserTokenRecord.TokenType.EMBEDDING, initToken, 0L, initToken, "注册赠送", null);
-                return initToken;
-            }
-            value = stringRedisTemplate.opsForValue().get(key);
+            value = initializeBalance(key, userId, usageQuotaProperties.getEmbedding(), UserTokenRecord.TokenType.EMBEDDING);
         }
+        return parseBalance(userId, value, "Embedding");
+    }
+
+    /**
+     * 余额键不存在时初始化。
+     *
+     * <p>先按记账表重建。记账表没有任何增加记录时，才按新用户发放初始额度。
+     * 这样「新用户」和「Redis 数据丢失」不会被当成同一种情况。
+     */
+    private String initializeBalance(String key,
+                                     String userId,
+                                     UsageQuotaProperties.TokenQuota quota,
+                                     UserTokenRecord.TokenType tokenType) {
+        Long rebuilt = rebuildBalanceFromLedger(userId, tokenType);
+        if (rebuilt != null) {
+            stringRedisTemplate.opsForValue().setIfAbsent(key, String.valueOf(rebuilt));
+            logger.warn("{} Token 余额键缺失，已按记账表重建：userId={}, balance={}", tokenType, userId, rebuilt);
+            return stringRedisTemplate.opsForValue().get(key);
+        }
+
+        long initToken = resolveInitToken(userId, quota);
+        if (Boolean.TRUE.equals(stringRedisTemplate.opsForValue().setIfAbsent(key, String.valueOf(initToken)))) {
+            recordTokenIncrease(userId, tokenType, initToken, 0L, initToken, "注册赠送", null);
+            return String.valueOf(initToken);
+        }
+        return stringRedisTemplate.opsForValue().get(key);
+    }
+
+    /**
+     * 用记账表算余额：增加总量减消耗总量。
+     *
+     * @return 余额；记账表没有增加记录时返回 {@code null}，表示这是新用户。
+     */
+    private Long rebuildBalanceFromLedger(String userId, UserTokenRecord.TokenType tokenType) {
+        long increased = userTokenRecordRepository.sumAmountByUserIdAndTokenTypeAndChangeType(
+                userId, tokenType, UserTokenRecord.ChangeType.INCREASE);
+        if (increased <= 0) {
+            return null;
+        }
+        long consumed = userTokenRecordRepository.sumAmountByUserIdAndTokenTypeAndChangeType(
+                userId, tokenType, UserTokenRecord.ChangeType.CONSUME);
+        long balance = increased - consumed;
+        if (balance < 0) {
+            logger.warn("{} Token 记账表算出的余额为负，按 0 处理：userId={}, increased={}, consumed={}",
+                    tokenType, userId, increased, consumed);
+            return 0L;
+        }
+        return balance;
+    }
+
+    private Long parseBalance(String userId, String value, String label) {
         try {
             return Long.parseLong(value);
         } catch (NumberFormatException e) {
-            logger.warn("无法解析 Embedding Token 余额：userId={}, value={}", userId, value);
+            logger.warn("无法解析 {} Token 余额：userId={}, value={}", label, userId, value);
             return 0L;
         }
     }
@@ -169,26 +240,47 @@ public class UserTokenService {
         return remaining != null && remaining >= 0;
     }
 
+    /**
+     * 结算 LLM 预留。同一次预留重复结算时只有第一次生效。
+     *
+     * @return {@code true} 表示本次结算生效；{@code false} 表示这次预留已经结束过。
+     */
     @Transactional(rollbackFor = Exception.class)
-    public void settleLlmTokenReservation(String userId, long reservedTokens, int actualTokens) {
+    public boolean settleLlmTokenReservation(String userId,
+                                             String reservationId,
+                                             long reservedTokens,
+                                             int actualTokens) {
         long reserved = Math.max(0, reservedTokens);
         int actual = Math.max(0, actualTokens);
-        String key = buildLlmTokenKey(userId);
-        long adjustment = reserved - actual;
-        if (adjustment != 0) {
-            stringRedisTemplate.opsForValue().increment(key, adjustment);
+        boolean applied = finishReservation(buildLlmTokenKey(userId), reservationId,
+                reserved - actual, RESERVATION_SETTLED);
+        if (!applied) {
+            logger.warn("重复结算已忽略：userId={}, reservationId={}", userId, reservationId);
+            return false;
         }
         if (actual > 0) {
             Long balanceAfter = getLlmTokenBalance(userId);
             recordTokenConsume(userId, UserTokenRecord.TokenType.LLM, actual,
                     balanceAfter + actual, balanceAfter);
         }
+        return true;
     }
 
-    public void releaseLlmTokenReservation(String userId, long tokens) {
-        if (tokens > 0) {
-            stringRedisTemplate.opsForValue().increment(buildLlmTokenKey(userId), tokens);
+    /**
+     * 退还 LLM 预留。同一次预留重复退还时只有第一次生效。
+     *
+     * @return {@code true} 表示本次退还有效；{@code false} 表示这次预留已经结束过。
+     */
+    public boolean releaseLlmTokenReservation(String userId, String reservationId, long tokens) {
+        if (tokens <= 0) {
+            return true;
         }
+        boolean applied = finishReservation(buildLlmTokenKey(userId), reservationId,
+                tokens, RESERVATION_RELEASED);
+        if (!applied) {
+            logger.warn("重复退还已忽略：userId={}, reservationId={}", userId, reservationId);
+        }
+        return applied;
     }
 
     public boolean reserveEmbeddingTokens(String userId, long tokens) {
@@ -202,26 +294,62 @@ public class UserTokenService {
         return remaining != null && remaining >= 0;
     }
 
+    /**
+     * 结算 Embedding 预留。同一次预留重复结算时只有第一次生效。
+     *
+     * @return {@code true} 表示本次结算生效；{@code false} 表示这次预留已经结束过。
+     */
     @Transactional(rollbackFor = Exception.class)
-    public void settleEmbeddingTokenReservation(String userId, long reservedTokens, int actualTokens) {
+    public boolean settleEmbeddingTokenReservation(String userId,
+                                                   String reservationId,
+                                                   long reservedTokens,
+                                                   int actualTokens) {
         long reserved = Math.max(0, reservedTokens);
         int actual = Math.max(0, actualTokens);
-        String key = buildEmbeddingTokenKey(userId);
-        long adjustment = reserved - actual;
-        if (adjustment != 0) {
-            stringRedisTemplate.opsForValue().increment(key, adjustment);
+        boolean applied = finishReservation(buildEmbeddingTokenKey(userId), reservationId,
+                reserved - actual, RESERVATION_SETTLED);
+        if (!applied) {
+            logger.warn("重复结算已忽略：userId={}, reservationId={}", userId, reservationId);
+            return false;
         }
         if (actual > 0) {
             Long balanceAfter = getEmbeddingTokenBalance(userId);
             recordTokenConsume(userId, UserTokenRecord.TokenType.EMBEDDING, actual,
                     balanceAfter + actual, balanceAfter);
         }
+        return true;
     }
 
-    public void releaseEmbeddingTokenReservation(String userId, long tokens) {
-        if (tokens > 0) {
-            stringRedisTemplate.opsForValue().increment(buildEmbeddingTokenKey(userId), tokens);
+    /**
+     * 退还 Embedding 预留。同一次预留重复退还时只有第一次生效。
+     *
+     * @return {@code true} 表示本次退还有效；{@code false} 表示这次预留已经结束过。
+     */
+    public boolean releaseEmbeddingTokenReservation(String userId, String reservationId, long tokens) {
+        if (tokens <= 0) {
+            return true;
         }
+        boolean applied = finishReservation(buildEmbeddingTokenKey(userId), reservationId,
+                tokens, RESERVATION_RELEASED);
+        if (!applied) {
+            logger.warn("重复退还已忽略：userId={}, reservationId={}", userId, reservationId);
+        }
+        return applied;
+    }
+
+    /**
+     * 原子结束一次预留：写状态标记和调整余额在同一个脚本里完成。
+     *
+     * @return {@code false} 表示标记已存在，这次调用不生效。
+     */
+    private boolean finishReservation(String balanceKey, String reservationId, long adjustment, String state) {
+        Long applied = stringRedisTemplate.execute(
+                RESERVATION_FINISH_SCRIPT,
+                List.of(balanceKey, RESERVATION_STATE_KEY_PREFIX + reservationId),
+                state,
+                String.valueOf(RESERVATION_STATE_TTL.toSeconds()),
+                String.valueOf(adjustment));
+        return applied != null && applied == 1L;
     }
 
     // 用于总的请求次数记录
@@ -418,47 +546,29 @@ public class UserTokenService {
     }
 
     /**
-     * 记录 Token 消耗（按天聚合）
+     * 记录 Token 消耗（按天聚合）。
+     *
+     * <p>写入走 {@link UserTokenLedger}，用「UPDATE 累加」替代「先查后写」。
      */
     private void recordTokenConsume(String userId,
                                     UserTokenRecord.TokenType tokenType,
                                     Integer amount,
                                     Long balanceBefore,
                                     Long balanceAfter) {
+        long tokens = amount == null ? 0L : amount;
         try {
-            LocalDate today = LocalDate.now();
-
-            // 查找当天已存在的消耗记录
-            userTokenRecordRepository.findByUserIdAndRecordDateAndTokenTypeAndChangeType(
-                    userId, today, tokenType, UserTokenRecord.ChangeType.CONSUME
-            ).ifPresentOrElse(
-                    // 如果存在，则累加数量和请求次数
-                    existingRecord -> {
-                        existingRecord.setAmount(existingRecord.getAmount() + amount);
-                        existingRecord.setBalanceAfter(balanceAfter);
-                        existingRecord.setRequestCount(existingRecord.getRequestCount() + 1);
-                        userTokenRecordRepository.save(existingRecord);
-                        logger.debug("更新 Token 消耗记录：userId={}, type={}, totalAmount={}, totalRequestCount={}",
-                                userId, tokenType, existingRecord.getAmount(), existingRecord.getRequestCount());
-                    },
-                    // 如果不存在，则创建新记录
-                    () -> {
-                        UserTokenRecord record = new UserTokenRecord();
-                        record.setUserId(userId);
-                        record.setRecordDate(today);
-                        record.setTokenType(tokenType);
-                        record.setChangeType(UserTokenRecord.ChangeType.CONSUME);
-                        record.setAmount((long) amount);
-                        record.setBalanceBefore(balanceBefore);
-                        record.setBalanceAfter(balanceAfter);
-                        record.setReason("对话使用");
-                        record.setRequestCount(1L);
-                        userTokenRecordRepository.save(record);
-                        logger.debug("新建 Token 消耗记录：userId={}, type={}, amount={}", userId, tokenType, amount);
-                    }
+            userTokenLedger.accumulateConsume(
+                    userId,
+                    LocalDate.now(),
+                    tokenType.name(),
+                    tokens,
+                    balanceBefore == null ? 0L : balanceBefore,
+                    balanceAfter == null ? 0L : balanceAfter,
+                    "对话使用"
             );
+            logger.debug("累加 Token 消耗记录：userId={}, type={}, amount={}", userId, tokenType, tokens);
         } catch (Exception e) {
-            logger.error("记录 Token 消耗失败：userId={}, type={}, amount={}", userId, tokenType, amount, e);
+            logger.error("记录 Token 消耗失败：userId={}, type={}, amount={}", userId, tokenType, tokens, e);
         }
     }
 
@@ -504,22 +614,13 @@ public class UserTokenService {
         return record.map(UserDailyChatCount::getChatRequestCount).orElse(0L);
     }
 
+    /**
+     * 累加当天的对话次数。
+     *
+     * <p>并发首写同一行时数据库只放行一个事务，其余事务重试后命中 UPDATE。
+     */
     public void updateUserDailyChatCount(String userId, LocalDate day) {
-        // 尝试更新或插入当日记录
-        userDailyChatCountRepository.findByUserIdAndRecordDate(userId, day)
-                .ifPresentOrElse(
-                        record -> {
-                            record.setChatRequestCount(record.getChatRequestCount() + 1);
-                            userDailyChatCountRepository.save(record);
-                        },
-                        () -> {
-                            UserDailyChatCount newRecord = new UserDailyChatCount();
-                            newRecord.setUserId(userId);
-                            newRecord.setRecordDate(day);
-                            newRecord.setChatRequestCount(1L);
-                            userDailyChatCountRepository.save(newRecord);
-                        }
-                );
+        userTokenLedger.incrementChatRequest(userId, day);
     }
 
 

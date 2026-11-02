@@ -355,6 +355,7 @@ CREATE TABLE IF NOT EXISTS `user_token_record` (
                                `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键 ID',
                                `user_id` VARCHAR(64) NOT NULL COMMENT '用户 ID',
                                `record_date` DATE NOT NULL COMMENT '记录日期（按天统计）',
+                               `consume_day` DATE DEFAULT NULL COMMENT '消耗行唯一桶，取值等于 record_date；增加行留空',
                                `token_type` VARCHAR(20) NOT NULL COMMENT 'Token 类型：LLM/EMBEDDING',
                                `change_type` VARCHAR(20) NOT NULL COMMENT '变动类型：INCREASE/CONSUME',
                                 `request_count` BIGINT NOT NULL DEFAULT 0 COMMENT '请求次数（一次对话可能包含多次 API 请求）',
@@ -365,6 +366,7 @@ CREATE TABLE IF NOT EXISTS `user_token_record` (
                                `remark` VARCHAR(500) DEFAULT NULL COMMENT '备注信息（操作来源、对话 ID 等）',
                                `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
                                PRIMARY KEY (`id`),
+                               UNIQUE KEY `uk_consume_day_type` (`user_id`, `consume_day`, `token_type`),
                                INDEX `idx_user_date` (`user_id`, `record_date`),
                                INDEX `idx_record_date` (`record_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户 Token 变动记录表';

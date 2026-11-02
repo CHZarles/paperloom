@@ -5,9 +5,11 @@ import io.github.chzarles.paperloom.model.UserTokenRecord;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -30,6 +32,57 @@ public interface UserTokenRecordRepository extends JpaRepository<UserTokenRecord
             UserTokenRecord.TokenType tokenType,
             UserTokenRecord.ChangeType changeType
     );
+
+    /**
+     * 累加当天已存在的消耗行。
+     *
+     * <p>一条 UPDATE 完成「读 + 加 + 写」，数据库对目标行加锁。并发结算不会互相覆盖。
+     *
+     * <p>条件用 {@code consume_day} 而不是 {@code record_date}：迁移前的历史行
+     * {@code consume_day} 为空，不会被这条语句命中，因此不会重复累加。
+     *
+     * @return 命中的行数。返回 0 表示当天还没有这一行。
+     */
+    @Modifying
+    @Transactional
+    @Query(value = """
+            UPDATE user_token_record
+            SET amount = amount + :amount,
+                request_count = request_count + 1,
+                balance_after = :balanceAfter
+            WHERE user_id = :userId
+              AND consume_day = :recordDate
+              AND token_type = :tokenType
+              AND change_type = 'CONSUME'
+            """, nativeQuery = true)
+    int addConsumeAmount(@Param("userId") String userId,
+                         @Param("recordDate") LocalDate recordDate,
+                         @Param("tokenType") String tokenType,
+                         @Param("amount") long amount,
+                         @Param("balanceAfter") long balanceAfter);
+
+    /**
+     * 创建当天第一条消耗行。
+     *
+     * <p>唯一键 {@code uk_consume_day_type} 保证并发时只有一个事务能插入成功。
+     * 其余事务会收到重复键异常，改为调用 {@link #addConsumeAmount}。
+     */
+    @Modifying
+    @Transactional
+    @Query(value = """
+            INSERT INTO user_token_record
+                (user_id, record_date, consume_day, token_type, change_type, amount,
+                 balance_before, balance_after, reason, request_count, created_at)
+            VALUES (:userId, :recordDate, :recordDate, :tokenType, 'CONSUME', :amount,
+                    :balanceBefore, :balanceAfter, :reason, 1, CURRENT_TIMESTAMP)
+            """, nativeQuery = true)
+    int insertConsume(@Param("userId") String userId,
+                      @Param("recordDate") LocalDate recordDate,
+                      @Param("tokenType") String tokenType,
+                      @Param("amount") long amount,
+                      @Param("balanceBefore") long balanceBefore,
+                      @Param("balanceAfter") long balanceAfter,
+                      @Param("reason") String reason);
 
 
     /**

@@ -115,20 +115,22 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
         }
         try {
             if ("llm".equals(reservation.scope())) {
-                userTokenService.settleLlmTokenReservation(
-                        reservation.userId(), reservation.reservedTokens(), actualTokens);
-                if (actualTokens > 0) {
+                boolean applied = userTokenService.settleLlmTokenReservation(
+                        reservation.userId(), reservation.reservationId(),
+                        reservation.reservedTokens(), actualTokens);
+                if (applied && actualTokens > 0) {
                     userTokenService.incrementUserTotalRequestCount(reservation.scope(), reservation.userId());
                 }
-                logger.info("用户 {} 结算 LLM Token: {}", reservation.userId(), actualTokens);
+                logger.info("用户 {} 结算 LLM Token: {}, 生效={}", reservation.userId(), actualTokens, applied);
             } else if ("embedding".equals(reservation.scope())) {
-                userTokenService.settleEmbeddingTokenReservation(
-                        reservation.userId(), reservation.reservedTokens(), actualTokens);
-                if (actualTokens > 0) {
+                boolean applied = userTokenService.settleEmbeddingTokenReservation(
+                        reservation.userId(), reservation.reservationId(),
+                        reservation.reservedTokens(), actualTokens);
+                if (applied && actualTokens > 0) {
                     userTokenService.incrementUserTotalRequestCount(reservation.scope(), reservation.userId());
                 }
-                logger.info("用户 {} 结算 Embedding Token: {}, 剩余额度从预留中扣减",
-                        reservation.userId(), actualTokens);
+                logger.info("用户 {} 结算 Embedding Token: {}, 生效={}",
+                        reservation.userId(), actualTokens, applied);
             }
         } catch (Exception e) {
             logger.error("结算用户 Token 失败：userId={}, scope={}, tokens={}",
@@ -143,9 +145,11 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
             return;
         }
         if ("llm".equals(reservation.scope())) {
-            userTokenService.releaseLlmTokenReservation(reservation.userId(), reservation.reservedTokens());
+            userTokenService.releaseLlmTokenReservation(
+                    reservation.userId(), reservation.reservationId(), reservation.reservedTokens());
         } else if ("embedding".equals(reservation.scope())) {
-            userTokenService.releaseEmbeddingTokenReservation(reservation.userId(), reservation.reservedTokens());
+            userTokenService.releaseEmbeddingTokenReservation(
+                    reservation.userId(), reservation.reservationId(), reservation.reservedTokens());
         }
     }
 

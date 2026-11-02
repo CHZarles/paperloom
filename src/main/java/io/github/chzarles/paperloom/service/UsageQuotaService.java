@@ -5,6 +5,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public abstract class UsageQuotaService {
 
@@ -112,8 +113,28 @@ public abstract class UsageQuotaService {
             long limit,
             long expiresInSeconds,
             boolean noop,
-            boolean retainHistory
+            boolean retainHistory,
+            String reservationId
     ) {
+        public TokenReservation {
+            if (reservationId == null || reservationId.isBlank()) {
+                reservationId = UUID.randomUUID().toString();
+            }
+        }
+
+        public TokenReservation(String scope,
+                                String userId,
+                                String quotaKey,
+                                String metricKey,
+                                long reservedTokens,
+                                long limit,
+                                long expiresInSeconds,
+                                boolean noop,
+                                boolean retainHistory) {
+            this(scope, userId, quotaKey, metricKey, reservedTokens, limit, expiresInSeconds,
+                    noop, retainHistory, "");
+        }
+
         public static TokenReservation noop(String scope, String userId) {
             return new TokenReservation(scope, userId, "", "", 0, 0, 0, true, false);
         }
