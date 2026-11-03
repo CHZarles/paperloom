@@ -65,14 +65,12 @@ its status says it was implemented and the current architecture agrees.
 - [`research/`](../research/README.md): research designs, benchmark data, exploratory notes, and Golden Data.
 - [`interview/`](../interview/README.md): learning guides, project evidence map, and defensible project stories.
 - [`site/`](../site/index.md): public project-site source and selected engineering narratives.
-- [`diagrams/`](../diagrams/README.md): legacy review-diagram sources; current runtime sources live in `site/diagrams/`.
 
 ## Repository-Level Documents
 
 - [`README.md`](../README.md) and [`README.zh-CN.md`](../README.zh-CN.md): concise public project entry points.
 - [`CONTRIBUTING.md`](../CONTRIBUTING.md): contribution workflow and required checks.
 - [`SECURITY.md`](../SECURITY.md): vulnerability reporting and operational security.
-- [`HANDOFF.md`](../HANDOFF.md): temporary maintainer handoff; update or replace it as work changes.
 - [`AGENTS.md`](../AGENTS.md) and [`CLAUDE.md`](../CLAUDE.md): instructions for coding agents, not product documentation.
 - [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md): third-party license notices.
 
