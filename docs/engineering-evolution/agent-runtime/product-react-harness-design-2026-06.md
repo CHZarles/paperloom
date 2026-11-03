@@ -3,7 +3,7 @@
 Date: 2026-06-29
 
 Status: Historical design context for the first Product ReAct phase. The current runtime is
-described by `harness_py/README.md`, `harness_py/ONBOARDING.md`, and the implementation itself.
+described by `harness_py/README.md` and the implementation itself.
 The product boundaries, persistence, citation, and trace concerns below remain useful when they do
 not conflict with current product requirements or accepted ADRs.
 

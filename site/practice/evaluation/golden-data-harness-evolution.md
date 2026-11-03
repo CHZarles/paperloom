@@ -335,7 +335,7 @@ Python tests：                  76/76
 
 相关资料：
 
-- `harness_py/ONBOARDING.md`
+- `harness_py/README.md`
 - `research/golden-data/README.md`
 - `docs/adr/0011-use-evidence-first-golden-cases-for-harness-eval.md`
 - `docs/adr/0012-build-golden-schema-runtime-as-offline-eval-first.md`

@@ -14,7 +14,6 @@ guides.
 | Develop or test the repository | [Development Guide](guides/development.md) |
 | Configure or deploy it | [Configuration](reference/configuration.md) and [Deployment Guide](guides/deployment.md) |
 | Understand why the design changed | [Engineering Evolution](engineering-evolution/README.md) |
-| Prepare to explain the project | [Interview Materials](../interview/README.md) |
 
 ## Current System
 
@@ -52,7 +51,6 @@ Deployment assets stay beside these guides: [`docker-compose.yaml`](docker-compo
 | Incidents and verification | [`engineering-evolution/`](engineering-evolution/) | Evidence, diagnosis, correction, and outcome |
 | Performance experiments | [`performance/`](performance/) | Reproduction steps and measured before/after data |
 | Evaluation design | [`evaluation/`](evaluation/) | Scoring, benchmark, and Golden Data contracts |
-| Historical implementation plans | [`superpowers/`](superpowers/) | Point-in-time work plans, not current truth |
 
 Start with the [Engineering Evolution Index](engineering-evolution/README.md) or its
 [Timeline](engineering-evolution/timeline.md). Do not use a dated proposal as current behavior unless
@@ -60,10 +58,9 @@ its status says it was implemented and the current architecture agrees.
 
 ## Specialized Collections
 
-- [`harness_py/`](../harness_py/README.md): Python Harness operation and Agents SDK onboarding.
+- [`harness_py/`](../harness_py/README.md): Python research harness, live request path, and evaluation capture.
 - [`research/golden-data/`](../research/golden-data/README.md): Golden cases, schemas, adjudication, and frozen runs.
 - [`research/`](../research/README.md): research designs, benchmark data, exploratory notes, and Golden Data.
-- [`interview/`](../interview/README.md): learning guides, project evidence map, and defensible project stories.
 - [`site/`](../site/index.md): public project-site source and selected engineering narratives.
 
 ## Repository-Level Documents

@@ -194,7 +194,6 @@ capacity at large scale, or perfect metadata extraction for every PDF.
 - [Runtime diagram catalog](docs/architecture/runtime-diagrams.md)
 - [Evaluation system](docs/evaluation/README.md)
 - [Engineering evolution](docs/engineering-evolution/README.md)
-- [Interview materials](interview/README.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
 

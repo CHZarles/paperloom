@@ -166,7 +166,6 @@ PaperLoom 仍在持续开发。目前的明确边界是研究论文 PDF 导入�
 - [Runtime 图目录](docs/architecture/runtime-diagrams.md)
 - [评估系统](docs/evaluation/README.md)
 - [工程演化记录](docs/engineering-evolution/README.md)
-- [中文面试材料](interview/README.md)
 - [项目实践网站](https://chzarles.github.io/paperloom/)
 
 PaperLoom 使用 [Apache License 2.0](LICENSE)。第三方组件继续遵循各自许可证，详见
