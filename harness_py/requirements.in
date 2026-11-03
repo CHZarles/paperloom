@@ -1,5 +1,5 @@
 cryptography>=41,<50
-httpx==0.28.1
+httpx[socks]==0.28.1
 openai-agents==0.18.2
 PyYAML>=6,<7
 redis>=5,<6
