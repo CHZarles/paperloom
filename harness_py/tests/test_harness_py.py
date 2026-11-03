@@ -4,7 +4,6 @@ import json
 import base64
 import tempfile
 import unittest
-from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
@@ -227,6 +226,19 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         self.assertEqual(1, summarize_product_corpus(dataset).reading_element_count)
         self.assertEqual("paper_live", result["locations"][0]["paper_id"])
         self.assertEqual("paper_live:p1:el1", result["locations"][0]["location_ref"])
+
+    def test_section_hint_ranks_lead_mention_above_section_name_above_absence(self) -> None:
+        from harness_py.corpus_test_fixtures.candidate_scoring import _section_hint_score
+
+        self.assertGreater(
+            _section_hint_score("Method", "Introduction", "we use a method here"),
+            _section_hint_score("Method", "3 Method", "unrelated body"),
+        )
+        self.assertGreater(
+            _section_hint_score("Method", "3 Method", "unrelated body"),
+            _section_hint_score("Method", "Introduction", "unrelated body"),
+        )
+        self.assertEqual(0.0, _section_hint_score("Method", "Introduction", "unrelated body"))
 
     def test_search_tool_caps_results_and_returns_compact_snippets(self) -> None:
         long_text = "evaluation " + ("supporting detail " * 100)

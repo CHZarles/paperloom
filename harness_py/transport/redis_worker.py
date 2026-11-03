@@ -11,7 +11,7 @@ from typing import Any
 
 from ..utils.errors import HarnessCancelled
 from ..utils.models import JsonMap, child_map
-from .service import ResearchHarnessService
+from .service import ResearchHarnessService, terminal_event
 
 
 DEFAULT_JOBS_KEY = "paperloom:research:harness:jobs"
@@ -368,7 +368,7 @@ class RedisResearchWorker:
                 })
 
             response = self.service.run_job(payload, sink.progress, cancel_check)
-            terminal = _terminal_payload(response)
+            terminal = terminal_event(response)
             response_status = str(response.get("status") or "")
             if response_status == "LIMITED":
                 terminal_events.extend([sink.event_fields("run_limited", terminal), sink.event_fields("job_completed", terminal)])
@@ -632,17 +632,6 @@ def _text(value: Any) -> str:
     if isinstance(value, bytes):
         return value.decode("utf-8")
     return "" if value is None else str(value)
-
-
-def _terminal_payload(response: JsonMap) -> JsonMap:
-    control = child_map(response.get("control"))
-    usage = child_map(control.get("usage"))
-    return {
-        "status": response.get("status"),
-        "reasonCode": control.get("reason_code"),
-        "usage": usage,
-        "elapsedMs": usage.get("elapsed_ms"),
-    }
 
 
 def _cancelled_terminal_payload(started_at_ms: int) -> JsonMap:

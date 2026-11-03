@@ -41,15 +41,11 @@ from .evaluation.product_runner import (
     product_reader_for_case,
     validate_product_scope,
 )
-from .evaluation.paperloom31 import (
-    PreparationError,
-    create_snapshot,
-    ensure_benchmark_config,
-    file_sha256 as benchmark_file_sha256,
-    prepare_papers,
-    run_benchmark,
-    scan_papers,
-)
+from .evaluation.paperloom_benchmark import run_benchmark
+from .evaluation.paperloom_common import PreparationError
+from .evaluation.paperloom_prepare import ensure_benchmark_config, prepare_papers, scan_papers
+from .evaluation.paperloom_snapshot import create_snapshot
+from .utils.digest import file_sha256 as benchmark_file_sha256
 from .evaluation.retrieval import evaluate_product_retrieval
 from .evaluation.scoring import BehaviorScorer
 from .orchestration.live_chat import LiveResearchChatHarness

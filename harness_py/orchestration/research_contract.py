@@ -79,6 +79,14 @@ class ProtocolState:
     submission_attempt: int = 0
     validation_issues: tuple[str, ...] = ()
 
+    def to_dict(self) -> JsonMap:
+        return {
+            "phase": self.phase.value,
+            "contract": self.contract.value if self.contract else None,
+            "submission_attempt": self.submission_attempt,
+            "validation_issues": list(self.validation_issues),
+        }
+
 
 @dataclass(frozen=True)
 class ProtocolFacts:

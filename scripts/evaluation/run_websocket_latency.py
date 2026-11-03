@@ -12,7 +12,7 @@ from uuid import uuid4
 import httpx
 import websockets
 
-from harness_py.evaluation.paperloom31 import _credentials
+from harness_py.evaluation.paperloom_product_api import _credentials
 
 
 def percentile(values: list[float], percentile_value: float) -> float | None:

@@ -9,7 +9,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from agents import Model, ModelResponse, ModelSettings, ModelTracing, Usage
+from agents import Model, ModelResponse, ModelTracing, Usage
 from agents.run_config import CallModelData, ModelInputData
 from openai.types.responses import ResponseFunctionToolCall
 

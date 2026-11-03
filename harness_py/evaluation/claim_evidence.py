@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 from pathlib import Path
 from typing import Any
 
 from ..utils.answer_blocks import answer_blocks
+from ..utils.digest import canonical_sha256, file_sha256
 from ..utils.models import GoldenDataset, JsonMap, as_list, child_map
 from .claim_judge import (
     CLAIM_JUDGE_CONTRACT_VERSION,
@@ -27,24 +27,6 @@ def dataset_content_sha256(dataset: GoldenDataset) -> str:
         "paper_packs": dataset.paper_packs,
         "cases": dataset.cases,
     })
-
-
-def canonical_sha256(value: object) -> str:
-    encoded = json.dumps(
-        value,
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
-
-
-def file_sha256(path: str | Path) -> str:
-    digest = hashlib.sha256()
-    with Path(path).open("rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def load_semantic_judgments(

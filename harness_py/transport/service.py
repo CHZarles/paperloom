@@ -196,7 +196,7 @@ def _stream_job(service: ResearchHarnessService, payload: JsonMap):
             emit({"type": "job_started"})
             response = service.run_job(payload, emit, disconnected.is_set)
             status = str(response.get("status") or "")
-            terminal = _terminal_event(response)
+            terminal = terminal_event(response)
             if status == "LIMITED":
                 emit({"type": "run_limited", **terminal})
                 emit({"type": "job_completed", **terminal})
@@ -340,7 +340,7 @@ def _turn_response(
     return response
 
 
-def _terminal_event(response: JsonMap) -> JsonMap:
+def terminal_event(response: JsonMap) -> JsonMap:
     control = child_map(response.get("control"))
     usage = child_map(control.get("usage"))
     return {

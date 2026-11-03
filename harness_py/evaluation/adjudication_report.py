@@ -16,7 +16,7 @@ from pathlib import Path
 
 import yaml
 
-from .fact_assertions import contract_sha256
+from ..utils.digest import canonical_sha256
 from ..utils.models import (
     JsonMap,
     child_map,
@@ -438,7 +438,7 @@ def _validate_score_reports(
         if schema_version == "harness-score-report/v3":
             contract_payload = dict(scorer_contract)
             claimed_hash = str(contract_payload.pop("sha256"))
-            if contract_sha256(contract_payload) != claimed_hash:
+            if canonical_sha256(contract_payload) != claimed_hash:
                 raise ValueError(f"invalid scorer_contract hash for {model_id}")
         report_contracts.add(json.dumps(
             {

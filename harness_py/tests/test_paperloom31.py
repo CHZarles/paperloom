@@ -10,24 +10,26 @@ from unittest.mock import MagicMock, patch
 import yaml
 
 from harness_py.cli import main
-from harness_py.evaluation.paperloom31 import (
-    PreparationError,
+from harness_py.evaluation.paperloom_assessment import (
+    _assess_agent_case,
+    _assess_protocol_trace,
+    _controlled_protocol_metrics,
+    _retrieval_metrics,
+    _source_quotes_cover,
+    _target_funnel_metrics,
+)
+from harness_py.evaluation.paperloom_benchmark import _run_l2, _run_l3, run_benchmark
+from harness_py.evaluation.paperloom_common import PreparationError
+from harness_py.evaluation.paperloom_prepare import (
     build_agent_cases,
     build_targets,
     ensure_benchmark_config,
     scan_papers,
-    validate_snapshot,
-    _assess_agent_case,
-    _assess_protocol_trace,
-    _controlled_protocol_metrics,
-    _looks_like_bibliography,
+)
+from harness_py.evaluation.paperloom_snapshot import (
     _load_source_aligned_queries,
-    _retrieval_metrics,
-    _run_l2,
-    _run_l3,
-    _target_funnel_metrics,
-    run_benchmark,
-    _source_quotes_cover,
+    _looks_like_bibliography,
+    validate_snapshot,
 )
 
 
@@ -130,7 +132,7 @@ class Paperloom31PreparationTest(unittest.TestCase):
                     }],
                 }]}
 
-        with patch("harness_py.evaluation.paperloom31.ReadingCorpusTools", Tools):
+        with patch("harness_py.evaluation.paperloom_benchmark.ReadingCorpusTools", Tools):
             result = _run_l2(
                 snapshot,
                 Gateway(),
@@ -159,14 +161,14 @@ class Paperloom31PreparationTest(unittest.TestCase):
 
         calls.clear()
         calls["fail"] = False
-        with patch("harness_py.evaluation.paperloom31.ReadingCorpusTools", Tools):
+        with patch("harness_py.evaluation.paperloom_benchmark.ReadingCorpusTools", Tools):
             _run_l2(snapshot, Gateway(), 7)
 
         self.assertEqual("原始问题", calls["search"]["query_text"])
         self.assertEqual("paperloom31-l2-target_1", calls["reader"]["request_id"])
 
         calls["fail"] = True
-        with patch("harness_py.evaluation.paperloom31.ReadingCorpusTools", Tools):
+        with patch("harness_py.evaluation.paperloom_benchmark.ReadingCorpusTools", Tools):
             failed = _run_l2(
                 snapshot,
                 Gateway(),
@@ -270,19 +272,19 @@ class Paperloom31PreparationTest(unittest.TestCase):
                 query_path.unlink()
                 return {"executed": True, "cases": [], "technical_errors": []}
 
-            with patch("harness_py.evaluation.paperloom31.validate_snapshot"), \
-                    patch("harness_py.evaluation.paperloom31._canonical_sha256", return_value="snapshot"), \
-                    patch("harness_py.evaluation.paperloom31._credentials", return_value=("admin", "password")), \
-                    patch("harness_py.evaluation.paperloom31._ProductApi", return_value=api), \
-                    patch("harness_py.evaluation.paperloom31.JavaCorpusGateway", return_value=gateway), \
-                    patch("harness_py.evaluation.paperloom31._run_l0", return_value=empty_stage), \
-                    patch("harness_py.evaluation.paperloom31._run_g0", return_value=empty_stage), \
-                    patch("harness_py.evaluation.paperloom31._run_l1", return_value=empty_stage), \
-                    patch("harness_py.evaluation.paperloom31._run_l2", side_effect=run_l2), \
-                    patch("harness_py.evaluation.paperloom31.build_harness_runtime"), \
-                    patch("harness_py.evaluation.paperloom31.LiveResearchChatHarness"), \
-                    patch("harness_py.evaluation.paperloom31.MiniMaxJudgeModel"), \
-                    patch("harness_py.evaluation.paperloom31._run_l3", side_effect=run_l3):
+            with patch("harness_py.evaluation.paperloom_benchmark.validate_snapshot"), \
+                    patch("harness_py.evaluation.paperloom_benchmark._canonical_sha256", return_value="snapshot"), \
+                    patch("harness_py.evaluation.paperloom_benchmark._credentials", return_value=("admin", "password")), \
+                    patch("harness_py.evaluation.paperloom_benchmark._ProductApi", return_value=api), \
+                    patch("harness_py.evaluation.paperloom_benchmark.JavaCorpusGateway", return_value=gateway), \
+                    patch("harness_py.evaluation.paperloom_benchmark._run_l0", return_value=empty_stage), \
+                    patch("harness_py.evaluation.paperloom_benchmark._run_g0", return_value=empty_stage), \
+                    patch("harness_py.evaluation.paperloom_benchmark._run_l1", return_value=empty_stage), \
+                    patch("harness_py.evaluation.paperloom_benchmark._run_l2", side_effect=run_l2), \
+                    patch("harness_py.evaluation.paperloom_benchmark.build_harness_runtime"), \
+                    patch("harness_py.evaluation.paperloom_benchmark.LiveResearchChatHarness"), \
+                    patch("harness_py.evaluation.paperloom_benchmark.MiniMaxJudgeModel"), \
+                    patch("harness_py.evaluation.paperloom_benchmark._run_l3", side_effect=run_l3):
                 with self.assertRaisesRegex(PreparationError, "BASELINE_IDENTITY_MISMATCH"):
                     run_benchmark(
                         snapshot_path,
@@ -586,8 +588,8 @@ class Paperloom31PreparationTest(unittest.TestCase):
             out = Path(directory)
             (out / "agent").mkdir()
             (out / "judge").mkdir()
-            with patch("harness_py.evaluation.paperloom31._assess_protocol_trace", return_value={"passed": False}), \
-                    patch("harness_py.evaluation.paperloom31._judge_agent_case") as judge_case:
+            with patch("harness_py.evaluation.paperloom_benchmark._assess_protocol_trace", return_value={"passed": False}), \
+                    patch("harness_py.evaluation.paperloom_benchmark._judge_agent_case") as judge_case:
                 stage = _run_l3(snapshot, dataset, gateway, 1, harness, judge, out)
 
         judge_case.assert_not_called()

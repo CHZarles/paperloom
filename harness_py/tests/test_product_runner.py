@@ -30,7 +30,6 @@ from harness_py.evaluation.product_runner import (
     product_reader_for_case,
     validate_product_scope,
 )
-from harness_py.evaluation.scoring import BehaviorScorer
 from harness_py.orchestration.live_chat import LiveResearchChatHarness
 from harness_py.orchestration.runtime import TurnExecutionResult
 

@@ -9,7 +9,7 @@ from harness_py.evaluation.adjudication_report import (
     load_adjudication_report,
     render_adjudication_markdown,
 )
-from harness_py.evaluation.fact_assertions import contract_sha256
+from harness_py.utils.digest import canonical_sha256
 
 
 class AdjudicationReportTest(unittest.TestCase):
@@ -129,7 +129,7 @@ class AdjudicationReportTest(unittest.TestCase):
             "schema_version": "harness-score-report/v3",
             "scorer_contract": {
                 **contract,
-                "sha256": contract_sha256(contract),
+                "sha256": canonical_sha256(contract),
             },
         }
 

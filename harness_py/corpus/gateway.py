@@ -8,7 +8,6 @@ from __future__ import annotations
 # CorReader Protocol 是上面两条路径的最小交集（4 个 tool 方法），方便上层只对接协议。
 # 任何 prod 改动都应当：先调 Java 接口，再走 in-memory 回归，最后才在协议上加字段。
 
-import hashlib
 import json
 import os
 from dataclasses import dataclass, field
@@ -330,11 +329,6 @@ def _paper_record(card: JsonMap) -> JsonMap:
 
 def _is_loopback_url(url: str) -> bool:
     return urlparse(url).hostname in {"127.0.0.1", "::1", "localhost"}
-
-
-def _evidence_id(paper_id: str, location_ref: str, element_type: str, page: object) -> str:
-    raw = f"{paper_id}:{location_ref}:{element_type}:{page}"
-    return "ev_" + hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
 
 
 def _positive_int(value: object, fallback: int) -> int:

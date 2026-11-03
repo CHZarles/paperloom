@@ -14,7 +14,7 @@ from uuid import uuid4
 
 import httpx
 
-from harness_py.evaluation.paperloom31 import _credentials
+from harness_py.evaluation.paperloom_product_api import _credentials
 
 
 CHUNK_BYTES = 5 * 1024 * 1024
