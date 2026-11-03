@@ -60,7 +60,7 @@ class ResearchProtocolTest(unittest.TestCase):
                     SubmissionIssueClass.MISSING_CONTRACT_INPUT,
                     ("UNCITED_CONTENT_BLOCK",),
                 ),
-                Phase.ACTIVE,
+                Phase.REPAIR,
                 AnswerContract.RESEARCH,
             ),
             (
@@ -85,6 +85,25 @@ class ResearchProtocolTest(unittest.TestCase):
                 self.assertEqual(phase, decision.next_state.phase)
                 self.assertEqual(contract, decision.next_state.contract)
                 self.assertEqual(1, decision.next_state.submission_attempt)
+
+    def test_citation_rejection_allows_only_resubmission(self) -> None:
+        decision = decide(
+            ProtocolState(),
+            SubmissionRequested(
+                AnswerContract.RESEARCH,
+                {"markdown": "Unsupported."},
+                False,
+                SubmissionIssueClass.MISSING_CONTRACT_INPUT,
+                ("UNCITED_CONTENT_BLOCK",),
+            ),
+            ProtocolFacts(),
+        )
+
+        self.assertEqual(Phase.REPAIR, decision.next_state.phase)
+        self.assertEqual(
+            frozenset({"submit_research_answer"}),
+            frozenset(decision.model_result["allowed_next_actions"]),
+        )
 
     def test_action_guards_reject_illegal_or_mixed_calls_without_changing_contract(self) -> None:
         research_repair = ProtocolState(
