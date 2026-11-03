@@ -65,17 +65,6 @@ class UsageBalanceQuotaServiceTest {
     }
 
     @Test
-    void shouldRejectLegacyDailyQuotaReservations() {
-        UsageBalanceQuotaService service = new UsageBalanceQuotaService(
-                new UsageQuotaProperties(), mock(UserTokenService.class), mock(UserRepository.class));
-        UsageQuotaService.TokenReservation legacyReservation = new UsageQuotaService.TokenReservation(
-                "llm", "42", "quota:llm:2026-07-27:user:42", "", 300, 300, 0, false, true);
-
-        assertThrows(IllegalArgumentException.class,
-                () -> service.settleReservation(legacyReservation, 180));
-    }
-
-    @Test
     void shouldFailFastWhenBalanceIsInsufficient() {
         UserTokenService userTokenService = mock(UserTokenService.class);
         UsageBalanceQuotaService service = service(new UsageQuotaProperties(), userTokenService);

@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * 用户 Token 记录 Repository
@@ -23,16 +22,6 @@ import java.util.Optional;
  */
 @Repository
 public interface UserTokenRecordRepository extends JpaRepository<UserTokenRecord, Long> {
-    /**
-     * 查找用户指定日期、指定 Token 类型和变动类型的记录
-     */
-    Optional<UserTokenRecord> findByUserIdAndRecordDateAndTokenTypeAndChangeType(
-            String userId,
-            LocalDate recordDate,
-            UserTokenRecord.TokenType tokenType,
-            UserTokenRecord.ChangeType changeType
-    );
-
     /**
      * 累加当天已存在的消耗行。
      *

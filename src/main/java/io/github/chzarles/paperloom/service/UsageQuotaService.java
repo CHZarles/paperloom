@@ -22,9 +22,7 @@ public abstract class UsageQuotaService {
 
     public abstract void settleReservation(TokenReservation reservation, int actualTokens);
 
-    public void abortReservation(TokenReservation reservation) {
-        // Balance mode does not mutate state during reserve, so there is nothing to roll back.
-    }
+    public abstract void abortReservation(TokenReservation reservation);
 
     public UserUsageSnapshot getSnapshot(String userId) {
         Map<String, UserUsageSnapshot> snapshots = getSnapshots(List.of(userId));
@@ -34,20 +32,6 @@ public abstract class UsageQuotaService {
     public abstract Map<String, UserUsageSnapshot> getSnapshots(List<String> userIds);
 
     public abstract List<DailyUsageAggregate> getDailyAggregates(List<String> userIds, int days);
-
-    public int estimateChatTokens(List<Map<String, String>> messages) {
-        if (messages == null || messages.isEmpty()) {
-            return 0;
-        }
-
-        int total = 0;
-        for (Map<String, String> message : messages) {
-            total += 8;
-            total += estimateTextTokens(message.get("role"));
-            total += estimateTextTokens(message.get("content"));
-        }
-        return total;
-    }
 
     public int estimateEmbeddingTokens(List<String> texts) {
         if (texts == null || texts.isEmpty()) {
@@ -107,13 +91,8 @@ public abstract class UsageQuotaService {
     public record TokenReservation(
             String scope,
             String userId,
-            String quotaKey,
-            String metricKey,
             long reservedTokens,
-            long limit,
-            long expiresInSeconds,
             boolean noop,
-            boolean retainHistory,
             String reservationId
     ) {
         public TokenReservation {
@@ -122,21 +101,8 @@ public abstract class UsageQuotaService {
             }
         }
 
-        public TokenReservation(String scope,
-                                String userId,
-                                String quotaKey,
-                                String metricKey,
-                                long reservedTokens,
-                                long limit,
-                                long expiresInSeconds,
-                                boolean noop,
-                                boolean retainHistory) {
-            this(scope, userId, quotaKey, metricKey, reservedTokens, limit, expiresInSeconds,
-                    noop, retainHistory, "");
-        }
-
         public static TokenReservation noop(String scope, String userId) {
-            return new TokenReservation(scope, userId, "", "", 0, 0, 0, true, false);
+            return new TokenReservation(scope, userId, 0, true, "");
         }
     }
 

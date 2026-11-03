@@ -11,7 +11,6 @@ import io.github.chzarles.paperloom.repository.UserDailyChatCountRepository;
 import io.github.chzarles.paperloom.repository.UserTokenRecordRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
 import io.micrometer.common.util.StringUtils;
-import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -36,7 +35,6 @@ import java.util.Optional;
  * @author YiHui
  * @date 2026/3/18
  */
-@Slf4j
 @Service
 public class UserTokenService {
 
@@ -123,12 +121,8 @@ public class UserTokenService {
      * @return LLM Token 余额
      */
     public Long getLlmTokenBalance(String userId) {
-        String key = buildLlmTokenKey(userId);
-        String value = stringRedisTemplate.opsForValue().get(key);
-        if (StringUtils.isBlank(value)) {
-            value = initializeBalance(key, userId, usageQuotaProperties.getLlm(), UserTokenRecord.TokenType.LLM);
-        }
-        return parseBalance(userId, value, "LLM");
+        return readBalance(buildLlmTokenKey(userId), userId,
+                usageQuotaProperties.getLlm(), UserTokenRecord.TokenType.LLM);
     }
 
     /**
@@ -138,12 +132,19 @@ public class UserTokenService {
      * @return Embedding Token 余额
      */
     public Long getEmbeddingTokenBalance(String userId) {
-        String key = buildEmbeddingTokenKey(userId);
+        return readBalance(buildEmbeddingTokenKey(userId), userId,
+                usageQuotaProperties.getEmbedding(), UserTokenRecord.TokenType.EMBEDDING);
+    }
+
+    private Long readBalance(String key,
+                             String userId,
+                             UsageQuotaProperties.TokenQuota quota,
+                             UserTokenRecord.TokenType tokenType) {
         String value = stringRedisTemplate.opsForValue().get(key);
         if (StringUtils.isBlank(value)) {
-            value = initializeBalance(key, userId, usageQuotaProperties.getEmbedding(), UserTokenRecord.TokenType.EMBEDDING);
+            value = initializeBalance(key, userId, quota, tokenType);
         }
-        return parseBalance(userId, value, "Embedding");
+        return parseBalance(userId, value, tokenType.name());
     }
 
     /**
@@ -202,33 +203,6 @@ public class UserTokenService {
         }
     }
 
-    /**
-     * 消耗用户的 LLM Token
-     *
-     * @param userId 用户 ID
-     * @param tokens 消耗的 token 数量
-     * @throws CustomException 如果余额不足或用户不存在
-     */
-    @Transactional(rollbackFor = Exception.class)
-    public void consumeLlmTokens(String userId, int tokens) {
-        if (tokens <= 0) {
-            throw new CustomException("消耗的 Token 数量必须大于 0", HttpStatus.BAD_REQUEST);
-        }
-
-        String key = buildLlmTokenKey(userId);
-        Long currentBalance = getLlmTokenBalance(userId);
-
-        if (currentBalance < tokens) {
-            logger.warn("用户 {} 的 LLM token 实际用量超过剩余额度：remain={}, consumer={}", userId, currentBalance, tokens);
-        }
-
-        stringRedisTemplate.opsForValue().increment(key, -tokens);
-        logger.info("用户 {} 消耗 LLM Token: {}, 剩余：{}", userId, tokens, currentBalance - tokens);
-
-        // 记录 Token 消耗（按天聚合）
-        recordTokenConsume(userId, UserTokenRecord.TokenType.LLM, tokens, currentBalance, currentBalance - tokens);
-    }
-
     public boolean reserveLlmTokens(String userId, long tokens) {
         if (tokens <= 0) {
             return true;
@@ -250,37 +224,15 @@ public class UserTokenService {
                                              String reservationId,
                                              long reservedTokens,
                                              int actualTokens) {
-        long reserved = Math.max(0, reservedTokens);
-        int actual = Math.max(0, actualTokens);
-        boolean applied = finishReservation(buildLlmTokenKey(userId), reservationId,
-                reserved - actual, RESERVATION_SETTLED);
-        if (!applied) {
-            logger.warn("重复结算已忽略：userId={}, reservationId={}", userId, reservationId);
-            return false;
-        }
-        if (actual > 0) {
-            Long balanceAfter = getLlmTokenBalance(userId);
-            recordTokenConsume(userId, UserTokenRecord.TokenType.LLM, actual,
-                    balanceAfter + actual, balanceAfter);
-        }
-        return true;
+        return settle(userId, reservationId, reservedTokens, actualTokens,
+                buildLlmTokenKey(userId), UserTokenRecord.TokenType.LLM);
     }
 
     /**
      * 退还 LLM 预留。同一次预留重复退还时只有第一次生效。
-     *
-     * @return {@code true} 表示本次退还有效；{@code false} 表示这次预留已经结束过。
      */
     public boolean releaseLlmTokenReservation(String userId, String reservationId, long tokens) {
-        if (tokens <= 0) {
-            return true;
-        }
-        boolean applied = finishReservation(buildLlmTokenKey(userId), reservationId,
-                tokens, RESERVATION_RELEASED);
-        if (!applied) {
-            logger.warn("重复退还已忽略：userId={}, reservationId={}", userId, reservationId);
-        }
-        return applied;
+        return release(userId, reservationId, tokens, buildLlmTokenKey(userId));
     }
 
     public boolean reserveEmbeddingTokens(String userId, long tokens) {
@@ -304,33 +256,44 @@ public class UserTokenService {
                                                    String reservationId,
                                                    long reservedTokens,
                                                    int actualTokens) {
+        return settle(userId, reservationId, reservedTokens, actualTokens,
+                buildEmbeddingTokenKey(userId), UserTokenRecord.TokenType.EMBEDDING);
+    }
+
+    /**
+     * 退还 Embedding 预留。同一次预留重复退还时只有第一次生效。
+     */
+    public boolean releaseEmbeddingTokenReservation(String userId, String reservationId, long tokens) {
+        return release(userId, reservationId, tokens, buildEmbeddingTokenKey(userId));
+    }
+
+    private boolean settle(String userId,
+                           String reservationId,
+                           long reservedTokens,
+                           int actualTokens,
+                           String balanceKey,
+                           UserTokenRecord.TokenType tokenType) {
         long reserved = Math.max(0, reservedTokens);
         int actual = Math.max(0, actualTokens);
-        boolean applied = finishReservation(buildEmbeddingTokenKey(userId), reservationId,
+        boolean applied = finishReservation(balanceKey, reservationId,
                 reserved - actual, RESERVATION_SETTLED);
         if (!applied) {
             logger.warn("重复结算已忽略：userId={}, reservationId={}", userId, reservationId);
             return false;
         }
         if (actual > 0) {
-            Long balanceAfter = getEmbeddingTokenBalance(userId);
-            recordTokenConsume(userId, UserTokenRecord.TokenType.EMBEDDING, actual,
-                    balanceAfter + actual, balanceAfter);
+            Long balanceAfter = parseBalance(userId,
+                    stringRedisTemplate.opsForValue().get(balanceKey), tokenType.name());
+            recordTokenConsume(userId, tokenType, actual, balanceAfter + actual, balanceAfter);
         }
         return true;
     }
 
-    /**
-     * 退还 Embedding 预留。同一次预留重复退还时只有第一次生效。
-     *
-     * @return {@code true} 表示本次退还有效；{@code false} 表示这次预留已经结束过。
-     */
-    public boolean releaseEmbeddingTokenReservation(String userId, String reservationId, long tokens) {
+    private boolean release(String userId, String reservationId, long tokens, String balanceKey) {
         if (tokens <= 0) {
             return true;
         }
-        boolean applied = finishReservation(buildEmbeddingTokenKey(userId), reservationId,
-                tokens, RESERVATION_RELEASED);
+        boolean applied = finishReservation(balanceKey, reservationId, tokens, RESERVATION_RELEASED);
         if (!applied) {
             logger.warn("重复退还已忽略：userId={}, reservationId={}", userId, reservationId);
         }
@@ -464,18 +427,6 @@ public class UserTokenService {
         } catch (ArithmeticException e) {
             throw new CustomException("Token 余额超过系统上限", HttpStatus.BAD_REQUEST);
         }
-    }
-
-    /**
-     * 检查用户是否有足够的 LLM Token
-     *
-     * @param userId 用户 ID
-     * @param tokens 需要的 token 数量
-     * @return true-余额充足，false-余额不足
-     */
-    public boolean hasEnoughLlmTokens(String userId, int tokens) {
-        Long balance = getLlmTokenBalance(userId);
-        return balance >= tokens;
     }
 
     /**

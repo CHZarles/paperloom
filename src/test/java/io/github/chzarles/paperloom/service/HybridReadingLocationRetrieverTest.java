@@ -32,7 +32,7 @@ class HybridReadingLocationRetrieverTest {
         UsageQuotaService quota = mock(UsageQuotaService.class);
         RetrievalCandidates sparseResult = new RetrievalCandidates(List.of(), 0, "index-v1");
         UsageQuotaService.TokenReservation reservation = new UsageQuotaService.TokenReservation(
-                "embedding", "user-1", "", "", 8, 8, 0, false, true);
+                "embedding", "user-1", 8, false, "");
         LocationRetrievalRequest request = new LocationRetrievalRequest(
                 "user-1", Map.of("paper-a", "rm-1"), "中文问题", "", Set.of(), null, null, 10);
 
