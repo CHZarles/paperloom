@@ -27,6 +27,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import static io.github.chzarles.paperloom.utils.TextUtils.firstNonBlank;
+import static io.github.chzarles.paperloom.utils.TextUtils.stringValue;
+import static io.github.chzarles.paperloom.utils.TextUtils.intValue;
 
 @Service
 @ConditionalOnProperty(name = "research-harness.transport", havingValue = "redis")
@@ -293,30 +296,6 @@ public class RedisResearchHarnessTransport implements ResearchHarnessTransport {
         return cancelKeyPrefix + generationId;
     }
 
-    private String firstNonBlank(Object... values) {
-        for (Object value : values) {
-            String text = stringValue(value);
-            if (!text.isBlank()) {
-                return text;
-            }
-        }
-        return "";
-    }
-
-    private int intValue(Object value, int fallback) {
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        try {
-            return Integer.parseInt(stringValue(value));
-        } catch (NumberFormatException ignored) {
-            return fallback;
-        }
-    }
-
-    private String stringValue(Object value) {
-        return value == null ? "" : String.valueOf(value).trim();
-    }
 
     private record ActiveRequest(CompletableFuture<ProductTurnResult> future) {
     }

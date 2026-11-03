@@ -6,7 +6,6 @@ import io.github.chzarles.paperloom.repository.PaperPublicationRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
-import io.github.chzarles.paperloom.service.ChatHandler;
 import io.github.chzarles.paperloom.service.ConversationService;
 import io.github.chzarles.paperloom.service.PaperAccessService;
 import io.github.chzarles.paperloom.service.PaperParserArtifactService;
@@ -87,9 +86,6 @@ class PaperControllerContractTest {
     private JwtUtils jwtUtils;
 
     @Mock
-    private ChatHandler chatHandler;
-
-    @Mock
     private ConversationService conversationService;
 
     @Mock
@@ -119,7 +115,6 @@ class PaperControllerContractTest {
         ReflectionTestUtils.setField(paperController, "paperRepository", paperRepository);
         ReflectionTestUtils.setField(paperController, "paperPublicationRepository", paperPublicationRepository);
         ReflectionTestUtils.setField(paperController, "jwtUtils", jwtUtils);
-        ReflectionTestUtils.setField(paperController, "chatHandler", chatHandler);
         ReflectionTestUtils.setField(paperController, "conversationService", conversationService);
         ReflectionTestUtils.setField(paperController, "paperParserArtifactService", paperParserArtifactService);
         ReflectionTestUtils.setField(paperController, "paperReadingModelRepository", paperReadingModelRepository);

@@ -18,7 +18,6 @@ import io.github.chzarles.paperloom.repository.PaperSectionRepository;
 import io.github.chzarles.paperloom.repository.PaperSourceQuoteRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
-import io.minio.GetObjectArgs;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.RemoveObjectArgs;
@@ -36,10 +35,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 /**
  * 论文管理服务。
@@ -97,9 +94,6 @@ public class PaperService {
 
     @Autowired
     private UploadService uploadService;
-
-    @Autowired
-    private ParseService parseService;
 
     @Autowired
     private PaperParserArtifactService paperParserArtifactService;

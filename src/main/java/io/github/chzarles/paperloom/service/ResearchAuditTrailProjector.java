@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import static io.github.chzarles.paperloom.utils.TextUtils.firstNonBlank;
+import static io.github.chzarles.paperloom.utils.TextUtils.stringValue;
 
 public class ResearchAuditTrailProjector {
 
@@ -374,16 +376,6 @@ public class ResearchAuditTrailProjector {
         return "true".equalsIgnoreCase(text) || "1".equals(text);
     }
 
-    private String firstNonBlank(Object... values) {
-        for (Object value : values) {
-            String text = stringValue(value);
-            if (!text.isBlank()) {
-                return text;
-            }
-        }
-        return "";
-    }
-
     private Object firstPresent(Object... values) {
         for (Object value : values) {
             if (value == null) {
@@ -409,10 +401,6 @@ public class ResearchAuditTrailProjector {
             return "FORMULA";
         }
         return "TEXT";
-    }
-
-    private String stringValue(Object value) {
-        return value == null ? "" : String.valueOf(value).trim();
     }
 
     private String clean(String value) {

@@ -19,6 +19,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 
 import java.io.IOException;
 import java.util.Optional;
+import static io.github.chzarles.paperloom.utils.BearerToken.extractToken;
 
 /**
  * 提取请求身份，并对带 paper_id 的读取请求执行个人空间或全局发布授权。
@@ -201,12 +202,5 @@ public class PaperAccessAuthorizationFilter extends OncePerRequestFilter {
     /**
      * 从请求头中提取 JWT Token
      */
-    private String extractToken(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
-    }
 
 }

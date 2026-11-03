@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import static io.github.chzarles.paperloom.utils.BearerToken.extractToken;
 
 /**
  * 自定义的过滤器，用于解析请求头中的 JWT Token，并验证用户身份。
@@ -88,11 +89,4 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     /**
      * 从请求头中提取 JWT Token。
      */
-    private String extractToken(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7); // 去掉 "Bearer " 前缀
-        }
-        return null;
-    }
 }

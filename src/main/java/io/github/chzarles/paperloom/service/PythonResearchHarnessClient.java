@@ -32,6 +32,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import static io.github.chzarles.paperloom.utils.TextUtils.firstNonBlank;
+import static io.github.chzarles.paperloom.utils.TextUtils.stringValue;
+import static io.github.chzarles.paperloom.utils.TextUtils.intValue;
 
 @Service
 @ConditionalOnProperty(name = "research-harness.transport", havingValue = "http", matchIfMissing = true)
@@ -256,30 +259,6 @@ public class PythonResearchHarnessClient implements ResearchHarnessTransport {
         active.task().cancel(true);
     }
 
-    private String firstNonBlank(Object... values) {
-        for (Object value : values) {
-            String text = stringValue(value);
-            if (!text.isBlank()) {
-                return text;
-            }
-        }
-        return "";
-    }
-
-    private int intValue(Object value, int fallback) {
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        try {
-            return Integer.parseInt(stringValue(value));
-        } catch (NumberFormatException ignored) {
-            return fallback;
-        }
-    }
-
-    private String stringValue(Object value) {
-        return value == null ? "" : String.valueOf(value).trim();
-    }
 
     private record ActiveRequest(FutureTask<Void> task,
                                  CompletableFuture<ProductTurnResult> future,

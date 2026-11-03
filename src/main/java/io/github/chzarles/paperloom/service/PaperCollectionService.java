@@ -17,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -26,6 +25,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import static io.github.chzarles.paperloom.utils.TextUtils.trimToNull;
+import io.github.chzarles.paperloom.utils.TextUtils;
 
 @Service
 public class PaperCollectionService {
@@ -220,7 +221,7 @@ public class PaperCollectionService {
             return List.of();
         }
         return paperIds.stream()
-                .map(this::trimToNull)
+                .map(TextUtils::trimToNull)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toCollection(LinkedHashSet::new))
                 .stream()
@@ -329,11 +330,4 @@ public class PaperCollectionService {
     private record MemberPaperAccess(List<String> accessiblePaperIds, long searchablePaperCount) {
     }
 
-    private String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
 }

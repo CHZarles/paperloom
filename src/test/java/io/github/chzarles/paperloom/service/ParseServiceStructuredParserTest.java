@@ -3,7 +3,6 @@ package io.github.chzarles.paperloom.service;
 import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.model.PaperReadingModel;
 import io.github.chzarles.paperloom.model.PaperReadingModelStatus;
-import io.github.chzarles.paperloom.model.PaperVisualAsset;
 import io.github.chzarles.paperloom.paper.parser.BoundingBox;
 import io.github.chzarles.paperloom.paper.parser.PaperPdfParser;
 import io.github.chzarles.paperloom.paper.parser.ParsedPaper;

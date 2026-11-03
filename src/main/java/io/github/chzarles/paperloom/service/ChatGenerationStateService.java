@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import static io.github.chzarles.paperloom.utils.TextUtils.trimToNull;
 
 @Service
 public class ChatGenerationStateService {
@@ -595,13 +596,6 @@ public class ChatGenerationStateService {
         return "chat:user:" + userId + ":conversation:" + conversationId + ":active_generation";
     }
 
-    private String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
 
     public enum GenerationStatus {
         STREAMING,

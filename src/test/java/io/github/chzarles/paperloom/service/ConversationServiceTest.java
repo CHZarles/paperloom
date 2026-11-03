@@ -14,7 +14,6 @@ import io.github.chzarles.paperloom.repository.ConversationSourceQuoteRepository
 import io.github.chzarles.paperloom.repository.ConversationRepository;
 import io.github.chzarles.paperloom.repository.ConversationSessionRepository;
 import io.github.chzarles.paperloom.repository.PaperRepository;
-import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
 import io.github.chzarles.paperloom.repository.PaperSourceQuoteRepository;
 import io.github.chzarles.paperloom.repository.UserRepository;
