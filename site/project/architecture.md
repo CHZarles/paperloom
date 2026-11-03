@@ -22,7 +22,7 @@ PaperLoom 同时运行两条生命周期完全不同的链路。一条把 PDF �
 
 | 代码范围 | 持有的状态和职责 | 不负责什么 |
 | --- | --- | --- |
-| Folio | 论文选择、结构化点击锚点、研究进度、答案与引用重开 | 不从回答文本反推权限或来源身份 |
+| Citewise | 论文选择、结构化点击锚点、研究进度、答案与引用重开 | 不从回答文本反推权限或来源身份 |
 | Java / Spring Services | 用户权限、`SourceScope`、配额、会话、Corpus API、Qdrant 索引合同与维护状态、MySQL 准确读取、Reference Mapping | 不替模型选择搜索词和阅读位置 |
 | `harness_py` | 授权范围内的 Agent Loop、Corpus Gateway、工具状态、Evidence 与提交校验 | 不保存全文索引，不扩大用户论文范围，也不持久化产品权限 |
 

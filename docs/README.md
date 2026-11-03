@@ -25,7 +25,7 @@ These documents describe behavior that maintainers should keep synchronized with
 - [Reading Model and Agent Tools](architecture/reading-model-and-agent-tools.md): durable paper model, retrieval, and tool authorization.
 - [Evidence and Citations](architecture/evidence-and-citations.md): parser output through exact reads to reopened references.
 - [Governed Research Run](architecture/governed-research-run-spec.md): implemented limits, failure classes, and promotion gate.
-- [Naming Contract](architecture/naming.md): Folio and PaperLoom names used across product and code.
+- [Naming Contract](architecture/naming.md): Citewise and PaperLoom names used across product and code.
 - [Domain Language](reference/domain-language.md): canonical product and architecture vocabulary.
 - [Product Requirements](reference/product-requirements.md): maintained product contract.
 

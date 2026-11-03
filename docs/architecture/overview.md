@@ -32,7 +32,7 @@ selects `RedisResearchHarnessTransport` with `RESEARCH_HARNESS_TRANSPORT=redis`.
 
 ## Responsibility Split
 
-### Folio
+### Citewise
 
 The Vue application presents the paper library, source selection, streamed research progress,
 conversations, and evidence reopening. Product state such as a paper choice or a reference target is

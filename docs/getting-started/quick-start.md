@@ -1,7 +1,7 @@
 # Quick Start
 
 This guide starts a local PaperLoom development environment. It separates infrastructure, the PDF
-parser, the research harness, the Spring Boot backend, and the Folio frontend so failures remain
+parser, the research harness, the Spring Boot backend, and the Citewise frontend so failures remain
 visible instead of being hidden behind a single launcher.
 
 ## Requirements
@@ -213,7 +213,7 @@ curl -X POST http://localhost:8081/api/v1/admin/retrieval/rebuild-all \
 This is a destructive, synchronous lexical rebuild and does not call an embedding provider. Newly
 processed papers are indexed into Qdrant automatically.
 
-## 6. Start Folio
+## 6. Start Citewise
 
 ```bash
 cd frontend

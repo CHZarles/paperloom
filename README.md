@@ -2,7 +2,7 @@
 
 **PaperLoom is an evidence-bounded agentic RAG workbench for reading research-paper PDFs.**
 
-The user-facing application is called **Folio**. It turns a paper into a page-aware Reading Model,
+The user-facing application is called **Citewise**. It turns a paper into a page-aware Reading Model,
 lets a tool-using research agent navigate only the papers authorized for the conversation, and keeps
 the resulting citations reopenable after the model run has ended.
 
@@ -103,7 +103,7 @@ Java-authorized paper scope
 
 | Area | Current responsibility |
 | --- | --- |
-| Folio | Vue 3 research workbench, paper selection, progress, conversations, and evidence reopening |
+| Citewise | Vue 3 research workbench, paper selection, progress, conversations, and evidence reopening |
 | Java product boundary | Authentication, authorization, locked source scope, quota, cancellation, durable conversations, and reference mappings |
 | Python research boundary | Agents SDK loop, tool execution, disclosure state, evidence ledger, citation checks, and final submission |
 | Java Corpus plane | Paper authorization, configured Qdrant retrieval, Current Model validation, and exact reads |
@@ -157,7 +157,7 @@ corepack pnpm install
 corepack pnpm dev
 ```
 
-Folio is normally available at `http://localhost:9527`; the backend listens on
+Citewise is normally available at `http://localhost:9527`; the backend listens on
 `http://localhost:8081`. The complete setup and first-paper check are in the
 [Quick Start](docs/getting-started/quick-start.md).
 

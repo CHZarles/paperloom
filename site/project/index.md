@@ -5,7 +5,7 @@ description: PaperLoom 是什么，它如何成为一个证据有界的 Agentic 
 
 # PaperLoom
 
-PaperLoom 是面向研究论文 PDF 的 **evidence-bounded agentic RAG** 工作台，用户界面叫 Folio。
+PaperLoom 是面向研究论文 PDF 的 **evidence-bounded agentic RAG** 工作台，用户界面叫 Citewise。
 
 一次回答开始前，Java 会锁定当前用户有权访问的论文。Agent 随后决定搜索词、阅读位置和工具顺序。
 `read_locations` 读到的原文才会获得 Evidence ID，最终答案还要通过引用与 Coverage 校验。会话保存

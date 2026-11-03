@@ -2,7 +2,7 @@
 
 PaperLoom uses two deliberate identities:
 
-- **Folio** is the user-facing research-paper reading application.
+- **Citewise** is the user-facing research-paper reading application.
 - **PaperLoom** is the repository, backend platform, runtime, and engineering project.
 
 Canonical technical names:

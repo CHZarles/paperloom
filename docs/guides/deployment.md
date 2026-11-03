@@ -10,7 +10,7 @@ Wuyun 上通过 Cloudflare Tunnel 完成私有源站和公网域名部署的完�
 
 Current assistant and evidence path:
 
-- Folio static frontend
+- Citewise static frontend
 - Spring Boot backend
 - Python research harness workers
 - MinerU cloud parsing API
