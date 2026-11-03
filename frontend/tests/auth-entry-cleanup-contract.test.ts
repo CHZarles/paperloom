@@ -7,10 +7,12 @@ const currentDir = dirname(fileURLToPath(import.meta.url));
 const loginSource = readFileSync(resolve(currentDir, '../src/views/_builtin/login/index.vue'), 'utf8');
 const registerSource = readFileSync(resolve(currentDir, '../src/views/_builtin/login/modules/register.vue'), 'utf8');
 
-assert.match(
+assert.match(loginSource, /class="landing__story"/, 'the entry page should keep the brand story column');
+assert.match(loginSource, /class="auth-card"/, 'the entry page should render the authentication card');
+assert.doesNotMatch(
   loginSource,
-  /:deep\(\.card-wrapper\)\s*\{[\s\S]*border:\s*0;[\s\S]*box-shadow:\s*none;/,
-  'the authentication panel should not draw an outer frame'
+  /<NCard/,
+  'the authentication card is the only framed surface on the entry page'
 );
 assert.doesNotMatch(registerSource, /invite-side-panel/, 'registration should not render the promotional side panel');
 assert.doesNotMatch(registerSource, /公众号|二维码|正在内测/, 'registration should not contain promotional copy');

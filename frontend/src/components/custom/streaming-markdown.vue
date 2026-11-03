@@ -3,7 +3,24 @@ import { onBeforeUnmount, shallowRef, watch } from 'vue';
 import MarkdownIt from 'markdown-it';
 import { configureResearchMarkdown, normalizeLegacyDisplayMathCitations } from '@/utils/research-markdown';
 
-const STREAMING_MARKDOWN_RENDER_INTERVAL_MS = 140;
+const STREAMING_MARKDOWN_RENDER_INTERVAL_MS = 60;
+const STREAM_CARET_HTML = '<span class="stream-caret" aria-hidden="true"></span>';
+const CLOSING_BLOCK_TAGS = [
+  '</p>',
+  '</li>',
+  '</h1>',
+  '</h2>',
+  '</h3>',
+  '</h4>',
+  '</h5>',
+  '</h6>',
+  '</td>',
+  '</th>',
+  '</dd>',
+  '</dt>',
+  '</blockquote>',
+  '</pre>'
+];
 
 const markdown = new MarkdownIt({
   breaks: true,
@@ -29,6 +46,7 @@ defineOptions({ name: 'StreamingMarkdown' });
 
 const props = defineProps<{
   content: string;
+  streaming?: boolean;
 }>();
 
 const renderedContent = shallowRef('');
@@ -42,8 +60,25 @@ function clearRenderTimer() {
   renderTimer = null;
 }
 
+// The caret sits inside the last block element so it trails the final
+// character instead of dropping onto its own line.
+function appendStreamCaret(html: string) {
+  if (!props.streaming) return html;
+  const trimmed = html.replace(/\s+$/, '');
+  if (!trimmed) return STREAM_CARET_HTML;
+  // The last closing block tag is the end of the visible text, even when the
+  // block sits inside a list or a table wrapper.
+  let insertAt = -1;
+  for (const tag of CLOSING_BLOCK_TAGS) {
+    const index = trimmed.lastIndexOf(tag);
+    if (index > insertAt) insertAt = index;
+  }
+  if (insertAt < 0) return `${trimmed}${STREAM_CARET_HTML}`;
+  return `${trimmed.slice(0, insertAt)}${STREAM_CARET_HTML}${trimmed.slice(insertAt)}`;
+}
+
 function renderContent(value: string) {
-  renderedContent.value = markdown.render(normalizeLegacyDisplayMathCitations(value || ''));
+  renderedContent.value = appendStreamCaret(markdown.render(normalizeLegacyDisplayMathCitations(value || '')));
   lastRenderedAt = Date.now();
 }
 
@@ -66,6 +101,14 @@ function scheduleRender(value: string) {
 }
 
 watch(() => props.content, scheduleRender, { immediate: true });
+
+watch(
+  () => props.streaming,
+  () => {
+    clearRenderTimer();
+    renderContent(pendingContent || props.content);
+  }
+);
 
 onBeforeUnmount(clearRenderTimer);
 </script>

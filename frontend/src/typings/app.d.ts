@@ -414,6 +414,12 @@ declare namespace App {
       };
       route: Record<I18nRouteKey, string>;
       page: {
+        landing: {
+          headline: string;
+          lede: string;
+          authHint: string;
+        };
+        exception: Record<'403' | '404' | '500', string>;
         login: {
           common: {
             loginOrRegister: string;

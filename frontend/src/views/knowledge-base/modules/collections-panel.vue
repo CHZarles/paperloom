@@ -864,7 +864,7 @@ watch(
   gap: 10px;
   min-width: 0;
   border: 1px solid var(--color-border-soft);
-  border-radius: 7px;
+  border-radius: var(--radius-md);
   background: var(--color-card-band);
   padding: 8px 10px;
 }

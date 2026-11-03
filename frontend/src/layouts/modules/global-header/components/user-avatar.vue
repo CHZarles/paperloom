@@ -55,7 +55,7 @@ const options = computed(() => {
   return opts;
 });
 
-const accountName = computed(() => authStore.userInfo.username || 'Folio User');
+const accountName = computed(() => authStore.userInfo.username || 'Citewise User');
 const avatarCells = computed(() => buildAvatarCells(accountName.value));
 const avatarStyle = computed(() => ({
   '--avatar-fill': buildAvatarFill(accountName.value)
@@ -83,7 +83,7 @@ function handleDropdown(key: DropdownKey) {
 
 function buildAvatarCells(seed: string) {
   let hash = 0;
-  const normalized = seed || 'Folio';
+  const normalized = seed || 'Citewise';
 
   for (let index = 0; index < normalized.length; index += 1) {
     hash = Math.imul(31, hash) + normalized.charCodeAt(index);
@@ -100,7 +100,7 @@ function buildAvatarCells(seed: string) {
 
 function buildAvatarFill(seed: string) {
   let hash = 0;
-  const normalized = seed || 'Folio';
+  const normalized = seed || 'Citewise';
 
   for (let index = 0; index < normalized.length; index += 1) {
     hash = Math.imul(33, hash) + normalized.charCodeAt(index);

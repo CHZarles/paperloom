@@ -211,90 +211,92 @@ onBeforeUnmount(() => {
           <InputBox v-if="showDockInput" />
         </div>
 
-        <aside
-          v-if="referencePanelVisible"
-          ref="referencePanelRef"
-          class="reference-panel"
-          :class="{ 'reference-panel--expanded': pdfViewerOpen }"
-          :role="reviewOverlayMode ? 'dialog' : 'complementary'"
-          :aria-modal="reviewOverlayMode ? 'true' : undefined"
-          aria-label="Research review"
-          tabindex="-1"
-          @keydown="handleReviewPanelKeydown"
-        >
-          <div class="reference-panel__header">
-            <div>
-              <div class="reference-panel__title">Research Review</div>
-              <div class="reference-panel__subtitle">Review retrieval activity and cited paper evidence</div>
+        <Transition name="review-panel">
+          <aside
+            v-if="referencePanelVisible"
+            ref="referencePanelRef"
+            class="reference-panel"
+            :class="{ 'reference-panel--expanded': pdfViewerOpen }"
+            :role="reviewOverlayMode ? 'dialog' : 'complementary'"
+            :aria-modal="reviewOverlayMode ? 'true' : undefined"
+            aria-label="Research review"
+            tabindex="-1"
+            @keydown="handleReviewPanelKeydown"
+          >
+            <div class="reference-panel__header">
+              <div>
+                <div class="reference-panel__title">Research Review</div>
+                <div class="reference-panel__subtitle">Review retrieval activity and cited paper evidence</div>
+              </div>
+              <NButton quaternary circle size="small" aria-label="Close research review" @click="closeReferencePanel">
+                <template #icon>
+                  <icon-lucide:x />
+                </template>
+              </NButton>
             </div>
-            <NButton quaternary circle size="small" aria-label="Close research review" @click="closeReferencePanel">
-              <template #icon>
-                <icon-lucide:x />
-              </template>
-            </NButton>
-          </div>
-          <div class="review-mode-switch" role="tablist" aria-label="Research review mode">
-            <button
-              type="button"
-              role="tab"
-              :aria-selected="activeReviewTab === 'process'"
-              :class="{ 'is-active': activeReviewTab === 'process' }"
-              @click="activeReviewTab = 'process'"
-            >
-              <icon-lucide:list-tree />
-              Process
-            </button>
-            <button
-              type="button"
-              role="tab"
-              :aria-selected="activeReviewTab === 'evidence'"
-              :class="{ 'is-active': activeReviewTab === 'evidence' }"
-              @click="activeReviewTab = 'evidence'"
-            >
-              <icon-lucide:file-text />
-              Source Evidence
-            </button>
-          </div>
-          <ResearchProcessPanel
-            v-if="activeReviewTab === 'process'"
-            :message="processMessage"
-            @open-reference="handleOpenReference"
-          />
-          <SourceEvidencePanel
-            v-else-if="referencePayload"
-            :key="referenceEvidenceKey"
-            :reference-number="referencePayload.referenceNumber"
-            :paper-title="referencePayload.paperTitle"
-            :paper-id="referencePayload.paperId || undefined"
-            :original-filename="referencePayload.originalFilename || undefined"
-            :page-number="referencePayload.pageNumber || undefined"
-            :evidence-snippet="referencePayload.evidenceSnippet || undefined"
-            :matched-chunk-text="referencePayload.matchedChunkText || undefined"
-            :chunk-id="referencePayload.chunkId || undefined"
-            :bbox-json="referencePayload.bboxJson || undefined"
-            :source-kind="referencePayload.sourceKind || undefined"
-            :table-id="referencePayload.tableId || undefined"
-            :figure-id="referencePayload.figureId || undefined"
-            :formula-id="referencePayload.formulaId || undefined"
-            :table-text="referencePayload.tableText || undefined"
-            :table-markdown="referencePayload.tableMarkdown || undefined"
-            :table-screenshot-available="referencePayload.tableScreenshotAvailable"
-            :source-type="referencePayload.sourceType"
-            :evidence-asset-level="referencePayload.evidenceAssetLevel"
-            :pdf-evidence-available="referencePayload.pdfEvidenceAvailable"
-            :page-screenshot-available="referencePayload.pageScreenshotAvailable"
-            :figure-screenshot-available="referencePayload.figureScreenshotAvailable"
-            :asset-warnings="referencePayload.assetWarnings"
-            :conversation-record-id="referencePayload.conversationRecordId"
-            :source-quote-ref="referencePayload.sourceQuoteRef || undefined"
-            :visual-regions="referencePayload.visualRegions"
-            @pdf-viewer-toggle="handlePdfViewerToggle"
-          />
-          <div v-else class="reference-panel__empty">
-            <icon-lucide:file-text class="text-34px" />
-            <span>点击回答中的 source 引用后，会在这里显示证据来源。</span>
-          </div>
-        </aside>
+            <div class="review-mode-switch" role="tablist" aria-label="Research review mode">
+              <button
+                type="button"
+                role="tab"
+                :aria-selected="activeReviewTab === 'process'"
+                :class="{ 'is-active': activeReviewTab === 'process' }"
+                @click="activeReviewTab = 'process'"
+              >
+                <icon-lucide:list-tree />
+                Process
+              </button>
+              <button
+                type="button"
+                role="tab"
+                :aria-selected="activeReviewTab === 'evidence'"
+                :class="{ 'is-active': activeReviewTab === 'evidence' }"
+                @click="activeReviewTab = 'evidence'"
+              >
+                <icon-lucide:file-text />
+                Source Evidence
+              </button>
+            </div>
+            <ResearchProcessPanel
+              v-if="activeReviewTab === 'process'"
+              :message="processMessage"
+              @open-reference="handleOpenReference"
+            />
+            <SourceEvidencePanel
+              v-else-if="referencePayload"
+              :key="referenceEvidenceKey"
+              :reference-number="referencePayload.referenceNumber"
+              :paper-title="referencePayload.paperTitle"
+              :paper-id="referencePayload.paperId || undefined"
+              :original-filename="referencePayload.originalFilename || undefined"
+              :page-number="referencePayload.pageNumber || undefined"
+              :evidence-snippet="referencePayload.evidenceSnippet || undefined"
+              :matched-chunk-text="referencePayload.matchedChunkText || undefined"
+              :chunk-id="referencePayload.chunkId || undefined"
+              :bbox-json="referencePayload.bboxJson || undefined"
+              :source-kind="referencePayload.sourceKind || undefined"
+              :table-id="referencePayload.tableId || undefined"
+              :figure-id="referencePayload.figureId || undefined"
+              :formula-id="referencePayload.formulaId || undefined"
+              :table-text="referencePayload.tableText || undefined"
+              :table-markdown="referencePayload.tableMarkdown || undefined"
+              :table-screenshot-available="referencePayload.tableScreenshotAvailable"
+              :source-type="referencePayload.sourceType"
+              :evidence-asset-level="referencePayload.evidenceAssetLevel"
+              :pdf-evidence-available="referencePayload.pdfEvidenceAvailable"
+              :page-screenshot-available="referencePayload.pageScreenshotAvailable"
+              :figure-screenshot-available="referencePayload.figureScreenshotAvailable"
+              :asset-warnings="referencePayload.assetWarnings"
+              :conversation-record-id="referencePayload.conversationRecordId"
+              :source-quote-ref="referencePayload.sourceQuoteRef || undefined"
+              :visual-regions="referencePayload.visualRegions"
+              @pdf-viewer-toggle="handlePdfViewerToggle"
+            />
+            <div v-else class="reference-panel__empty">
+              <icon-lucide:file-text class="text-34px" />
+              <span>点击回答中的 source 引用后，会在这里显示证据来源。</span>
+            </div>
+          </aside>
+        </Transition>
       </section>
     </main>
 
@@ -324,14 +326,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   background: var(--color-bg);
   color: var(--chat-text);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
+  font-family: var(--font-interface);
 }
 
 .settings-modal-host {
@@ -348,60 +343,59 @@ onBeforeUnmount(() => {
 
 .chat-topbar {
   display: flex;
-  height: 58px;
+  height: 60px;
   flex-shrink: 0;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   border-bottom: 1px solid var(--chat-line);
   background: var(--color-surface);
-  padding: 0 16px;
+  padding: 0 var(--space-4);
 }
 
 .topbar-icon-button {
   display: inline-flex;
-  height: 36px;
-  width: 36px;
+  height: var(--control-icon-size);
+  width: var(--control-icon-size);
   align-items: center;
   justify-content: center;
   border: 1px solid var(--chat-line);
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--chat-text-muted);
   cursor: pointer;
   transition:
-    background 0.16s ease,
-    border-color 0.16s ease,
-    color 0.16s ease;
+    background var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
 
-.topbar-icon-button:hover,
-.topbar-icon-button--active {
-  border-color: var(--color-primary);
-  background: var(--chat-accent-soft);
+.topbar-icon-button:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-hover-tint);
   color: var(--chat-accent);
+}
+
+.topbar-icon-button--active {
+  border-color: color-mix(in srgb, var(--color-research) 38%, var(--chat-line));
+  background: var(--color-active-tint);
+  color: var(--color-research);
 }
 
 .topbar-title {
   color: var(--chat-accent);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.05;
+  font-family: var(--font-interface);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: var(--leading-tight);
 }
 
 .topbar-subtitle {
   overflow: hidden;
-  margin-top: 3px;
+  margin-top: 2px;
   color: var(--chat-text-muted);
-  font-size: 11px;
-  line-height: 1.1;
+  font-size: var(--text-xs);
+  line-height: var(--leading-snug);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -409,27 +403,21 @@ onBeforeUnmount(() => {
 .connection-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1-5);
   border: 1px solid var(--chat-line);
-  border-radius: 4px;
+  border-radius: var(--radius-pill);
   background: var(--color-surface);
   color: var(--chat-text-muted);
-  padding: 5px 10px;
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
-  font-size: 12px;
+  padding: var(--space-1) var(--space-2-5);
+  font-family: var(--font-interface);
+  font-size: var(--text-xs);
+  line-height: var(--leading-tight);
 }
 
 .connection-pill span {
-  height: 7px;
-  width: 7px;
-  border-radius: 999px;
+  height: 6px;
+  width: 6px;
+  border-radius: var(--radius-pill);
   background: var(--color-text-muted);
 }
 
@@ -474,6 +462,21 @@ onBeforeUnmount(() => {
   min-width: min(50vw, 560px);
 }
 
+/* The panel appears and disappears in place. Its width is layout for the whole
+   workspace, so only opacity and offset animate. */
+.review-panel-enter-active,
+.review-panel-leave-active {
+  transition:
+    opacity var(--duration-fast) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard);
+}
+
+.review-panel-enter-from,
+.review-panel-leave-to {
+  opacity: 0;
+  transform: translateX(16px);
+}
+
 .review-panel-mask {
   display: none;
 }
@@ -488,14 +491,7 @@ onBeforeUnmount(() => {
 
 .reference-panel__title {
   color: var(--chat-accent);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
+  font-family: var(--font-interface);
   font-size: 17px;
   font-weight: 700;
 }
@@ -503,14 +499,7 @@ onBeforeUnmount(() => {
 .reference-panel__subtitle {
   margin-top: 2px;
   color: var(--chat-text-muted);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
+  font-family: var(--font-interface);
   font-size: 12px;
 }
 

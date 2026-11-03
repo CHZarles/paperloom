@@ -88,8 +88,8 @@ assert.doesNotMatch(
 );
 assert.match(
   messageSource,
-  /<StreamingMarkdown v-if="assistantIsStreaming"/,
-  'active assistant streams should keep the lightweight markdown renderer until websocket completion'
+  /<StreamingMarkdown\s+v-if="assistantIsStreaming \|\| revealing"/,
+  'active assistant streams and their reveal should keep the lightweight markdown renderer until the answer settles'
 );
 assert.match(
   inputSource,
@@ -108,7 +108,7 @@ assert.match(
 );
 assert.match(
   streamingMarkdownSource,
-  /const STREAMING_MARKDOWN_RENDER_INTERVAL_MS = 140;/,
-  'streaming markdown renders should be throttled'
+  /const STREAMING_MARKDOWN_RENDER_INTERVAL_MS = 60;/,
+  'streaming markdown renders should be throttled while the answer reveals'
 );
 assert.doesNotMatch(indexSource, /transition:\s*width\b/, 'PDF review panel resizing should not animate layout width');
