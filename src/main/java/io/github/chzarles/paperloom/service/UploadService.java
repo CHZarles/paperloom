@@ -21,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDateTime;
@@ -558,6 +559,29 @@ public class UploadService {
                       paperId, originalFilename, fileType, e.getClass().getName(), e.getMessage(), e);
             throw new RuntimeException("文件合并失败: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 直接写入合并后的 PDF 对象，供服务端导入使用（例如从 arXiv 下载的 PDF）。
+     *
+     * <p>对象路径与 {@link #mergeChunks} 保持一致：{@code uploads/merged/{paperId}}，
+     * 因此解析、预览和下载链路无需改动。
+     */
+    public void storeMergedPdf(String paperId, byte[] content) throws Exception {
+        if (content == null || content.length == 0) {
+            throw new IllegalArgumentException("合并后的 PDF 内容为空: " + paperId);
+        }
+        try (InputStream stream = new ByteArrayInputStream(content)) {
+            minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket("uploads")
+                            .object("merged/" + paperId)
+                            .stream(stream, content.length, -1)
+                            .contentType("application/pdf")
+                            .build()
+            );
+        }
+        logger.info("已写入合并 PDF 对象 => paperId: {}, size: {}", paperId, content.length);
     }
 
     public GetObjectResponse getMergedFileStream(String paperId) throws Exception {

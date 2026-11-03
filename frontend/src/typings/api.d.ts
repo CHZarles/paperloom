@@ -851,6 +851,37 @@ declare namespace Api {
     }
   }
 
+  namespace Discovery {
+    interface ArxivItem {
+      arxivId: string;
+      title: string;
+      summary: string;
+      authors: string[];
+      categories: string[];
+      publishedYear: number | null;
+      absUrl: string;
+      pdfUrl: string;
+      /** NONE 未入库、PROCESSING 解析中、READY 已可检索、FAILED 解析失败可重试 */
+      libraryStatus: 'NONE' | 'PROCESSING' | 'READY' | 'FAILED';
+    }
+
+    interface ArxivSearchResponse {
+      /** arXiv 报告的命中总数，未知时为 -1 */
+      total: number;
+      hasNext: boolean;
+      items: ArxivItem[];
+    }
+
+    interface ArxivImportResult {
+      paperId: string;
+      arxivId: string;
+      paperTitle: string;
+      /** IMPORTED 本次已入库并排队解析、PROCESSING 解析中、READY 已可检索 */
+      status: 'IMPORTED' | 'PROCESSING' | 'READY';
+      message: string;
+    }
+  }
+
   namespace KnowledgeBase {
     type UploadState = Paper.UploadState;
     type Form = Paper.Form;

@@ -168,6 +168,7 @@ const routeMap: RouteMap = {
   "500": "/500",
   "chat": "/chat",
   "chat-history": "/chat-history",
+  "discover": "/discover",
   "iframe-page": "/iframe-page/:url",
   "invite-code": "/invite-code",
   "knowledge-base": "/knowledge-base",

@@ -164,6 +164,7 @@ const local: App.I18n.Schema = {
     'iframe-page': '外链页面',
     chat: '论文问答',
     'chat-history': '问答记录',
+    discover: '探索论文',
     'invite-code': '邀请码管理',
     'knowledge-base': '文献库',
     'personal-center': '个人档案'

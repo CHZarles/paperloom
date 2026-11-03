@@ -164,6 +164,7 @@ const local: App.I18n.Schema = {
     'iframe-page': 'Iframe',
     chat: 'Paper Q&A',
     'chat-history': 'Q&A History',
+    discover: 'Discover Papers',
     'invite-code': 'Invite Codes',
     'knowledge-base': 'Paper Library',
     'personal-center': 'Research Profile'

@@ -92,8 +92,18 @@ const isWorkbenchActive = computed(() => {
   return route.name === 'knowledge-base';
 });
 
+const isExploreActive = computed(() => {
+  return route.name === 'discover';
+});
+
+const canDiscover = computed(() => authStore.userInfo.role !== 'GUEST');
+
 async function handleWorkbenchClick() {
   await router.push({ name: 'knowledge-base' });
+}
+
+async function handleExploreClick() {
+  await router.push({ name: 'discover' });
 }
 
 async function handleAccountClick() {
@@ -182,6 +192,17 @@ function formatDate(dateStr?: string) {
         >
           <icon-lucide:library class="library-button__icon" />
           <span>Paper Library</span>
+        </button>
+        <button
+          v-if="canDiscover"
+          type="button"
+          class="library-button"
+          :class="{ 'library-button--active': isExploreActive }"
+          aria-label="进入论文探索"
+          @click="handleExploreClick"
+        >
+          <icon-lucide:compass class="library-button__icon" />
+          <span>探索论文</span>
         </button>
         <NButton type="primary" block class="new-chat-button" @click="handleNewChat">
           <template #icon>

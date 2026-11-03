@@ -89,6 +89,8 @@ public class SecurityConfig {
                             ).permitAll()
                             // Python Harness 使用独立内部 Token 访问无模型副作用的 Corpus 数据面。
                             .requestMatchers("/internal/v1/corpus/**").permitAll()
+                            // arXiv 发现会写入个人文献库并占用解析资源，与上传保持同样的角色边界
+                            .requestMatchers("/api/v1/discovery/**").hasAnyRole("USER", "ADMIN")
                             // 文件上传和下载相关接口 - 普通用户和管理员都可访问
                             .requestMatchers(
                                     "/api/v1/papers/upload/**",

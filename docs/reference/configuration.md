@@ -12,6 +12,18 @@ should inject the same variables through their secret and configuration system.
 | `APP_TIMEZONE` | Application timezone |
 | `SECURITY_ALLOWED_ORIGINS` | Explicit browser-origin allowlist |
 
+## Paper Discovery
+
+Optional overrides for the arXiv discovery surface. Defaults apply when the variables are unset.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PAPER_DISCOVERY_ARXIV_API_BASE_URL` | `https://export.arxiv.org` | arXiv Atom API base URL |
+| `PAPER_DISCOVERY_ARXIV_PDF_BASE_URL` | `https://arxiv.org` | PDF download base URL |
+| `PAPER_DISCOVERY_ARXIV_TIMEOUT_SECONDS` | `25` | Per-request timeout |
+| `PAPER_DISCOVERY_ARXIV_MAX_PDF_BYTES` | `52428800` | Maximum accepted PDF size |
+| `PAPER_DISCOVERY_ARXIV_IMPORTS_PER_HOUR` | `20` | Per-user hourly import budget; `0` disables the check |
+
 ## Data Services
 
 | Group | Representative variables | Current role |
