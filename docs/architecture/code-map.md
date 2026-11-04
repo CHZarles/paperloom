@@ -161,6 +161,7 @@ cd frontend && pnpm typecheck && pnpm build
   `markVectorizationFailed`，不是静默降级。
 - **Python 测试在本机需要修正 `NO_PROXY`**。环境里带方括号的 IPv6 地址会让 httpx 报
   `Invalid port: ':1]'`，先 `export NO_PROXY=localhost,127.0.0.1,::1 no_proxy=...` 再跑。
+- **`pnpm install` 之后必须重启前端 dev server 并清 `node_modules/.vite`**。依赖树的 peer 后缀会变，旧缓存仍指向已删除的 `node_modules/.pnpm/...` 路径，表现是页面正常但消息渲染不出来（`vue-markdown-shiki` 的 CSS 404，动态导入失败）。
 - **harness 进程挂了会快速失败**。回合标记失败、配额回滚、会话保留，用户重试即可；后端启动时会探
   一次 `/health` 并打警告日志。没有自动重试，也没有队列缓冲。
 - **研究回合是一条 HTTP 流**。事件类型在 Python 侧发射、Java 侧只认 `result` 与 `error`，其余原样
