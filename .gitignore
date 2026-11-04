@@ -82,6 +82,9 @@ src/main/resources/cert
 # Worktrees
 .worktrees/
 
+# Local package-manager cache
+.pnpm-store/
+
 .code*
 .understand-anything/
 .claude/
