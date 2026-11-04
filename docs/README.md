@@ -20,6 +20,7 @@ guides.
 These documents describe behavior that maintainers should keep synchronized with code.
 
 - [Architecture Overview](architecture/overview.md): service boundaries, storage roles, and the live request path.
+- [Code Map](architecture/code-map.md): where to change what — processes, request paths, and file index for new maintainers.
 - [Runtime Diagram Catalog](architecture/runtime-diagrams.md): sequence diagrams grouped by business workflow.
 - [Reading Model and Agent Tools](architecture/reading-model-and-agent-tools.md): durable paper model, retrieval, and tool authorization.
 - [Evidence and Citations](architecture/evidence-and-citations.md): parser output through exact reads to reopened references.
