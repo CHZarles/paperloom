@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PreDestroy;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,8 +36,7 @@ import static io.github.chzarles.paperloom.utils.TextUtils.stringValue;
 import static io.github.chzarles.paperloom.utils.TextUtils.intValue;
 
 @Service
-@ConditionalOnProperty(name = "research-harness.transport", havingValue = "http", matchIfMissing = true)
-public class PythonResearchHarnessClient implements ResearchHarnessTransport {
+public class PythonResearchHarnessClient {
 
     private static final Logger logger = LoggerFactory.getLogger(PythonResearchHarnessClient.class);
 
@@ -75,12 +73,10 @@ public class PythonResearchHarnessClient implements ResearchHarnessTransport {
                 .build();
     }
 
-    @Override
     public ProductTurnResult run(ProductTurnRequest request) {
         return submit(request, event -> {}).join();
     }
 
-    @Override
     public CompletableFuture<ProductTurnResult> submit(ProductTurnRequest request,
                                                        Consumer<Map<String, Object>> progressListener) {
         if (request.lockedScope().paperIds().isEmpty()) {
@@ -165,7 +161,6 @@ public class PythonResearchHarnessClient implements ResearchHarnessTransport {
         return future;
     }
 
-    @Override
     public void cancel(String generationId) {
         if (generationId == null || generationId.isBlank()) {
             return;

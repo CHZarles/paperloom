@@ -19,7 +19,7 @@ class ProductReadingConversationServiceTest {
 
     @Test
     void submitRetryTurnBuildsTransportRequestWithRetryContext() {
-        ResearchHarnessTransport transport = mock(ResearchHarnessTransport.class);
+        PythonResearchHarnessClient transport = mock(PythonResearchHarnessClient.class);
         ConversationService conversationService = mock(ConversationService.class);
         ProductTurnResult result = completedTurn();
         when(transport.submit(any(ProductTurnRequest.class), any())).thenReturn(CompletableFuture.completedFuture(result));

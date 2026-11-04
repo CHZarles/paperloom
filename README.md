@@ -36,10 +36,8 @@ The live research path is:
 ```text
 ChatHandler
 -> ProductReadingConversationService
--> ResearchHarnessTransport
--> RedisResearchHarnessTransport
--> Redis Streams
--> RedisResearchWorker
+-> PythonResearchHarnessClient
+-> HTTP POST /v1/research/stream
 -> ResearchHarnessService
 -> OpenAI Agents SDK Runner
 -> Java Corpus API

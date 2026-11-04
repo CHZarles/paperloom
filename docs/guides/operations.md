@@ -16,7 +16,7 @@ cd "$PAPERLOOM_HOME"
 ## 先记住这四件事
 
 1. 公网入口是 `https://$PAPERLOOM_DOMAIN`，不是服务器 IP，也不是 `18880` 端口。
-2. 服务由 systemd 管理：`paperloom-backend`、4 个 `paperloom-harness-worker@` 实例、`cloudflared`。
+2. 服务由 systemd 管理：`paperloom-backend`、`paperloom-harness`、`cloudflared`。
 3. MySQL、MinIO、Redis、Kafka、Qdrant 由 Docker Compose 管理，数据在 Docker volume 中。
 4. `.env` 是运行配置的唯一来源。改完它后，必须重启读取该配置的服务。
 
@@ -36,7 +36,7 @@ docker volume rm <任何 paperloom volume>
 ```bash
 cd "$PAPERLOOM_HOME"
 systemctl is-active paperloom-backend.service
-systemctl is-active paperloom-harness-worker@{1..4}.service
+systemctl is-active paperloom-harness.service
 systemctl is-active cloudflared.service
 docker compose --env-file .env -f docs/docker-compose.yaml ps
 curl -o /dev/null -w 'frontend=%{http_code}\n' "https://$PAPERLOOM_DOMAIN/"
@@ -44,8 +44,7 @@ curl -o /dev/null -w 'anonymous-api=%{http_code}\n' \
   "https://$PAPERLOOM_DOMAIN/api/v1/users/me"
 ```
 
-预期结果：后端、4 个 Worker 和 Tunnel 都输出 `active`；Docker 中 MySQL、Redis、Kafka、Qdrant 为
-`healthy`；前端是 `200`；未登录 API 是 `403`。`403` 在这里是正常的，它表示 API 可达而且
+预期结果：后端、Harness 和 Tunnel 都输出 `active`；Docker 中 MySQL、Redis、Kafka、Qdrant 为 `healthy`；前端是 `200`；未登录 API 是 `403`。`403` 在这里是正常的，它表示 API 可达而且
 登录保护仍然有效。
 
 再检查磁盘，PDF、MinIO 和 Docker 最容易把磁盘用满：
@@ -62,7 +61,7 @@ docker system df
 | 症状 | 先执行 |
 | --- | --- |
 | 登录、论文列表、上传 API 异常 | `systemctl restart paperloom-backend.service` |
-| 研究问答不返回、Agent 报内部错误 | `systemctl restart paperloom-harness-worker@{1..4}.service` |
+| 研究问答不返回、Agent 报内部错误 | `systemctl restart paperloom-harness.service` |
 | 域名出现 Cloudflare 连接错误 | `systemctl restart cloudflared.service` |
 | 前端页面是旧版本 | 重新构建 `frontend`，Nginx 无需重启 |
 | 改了 Nginx 配置 | `nginx -t && nginx -s reload` |
@@ -70,19 +69,19 @@ docker system df
 重启后立即检查状态：
 
 ```bash
-systemctl status paperloom-backend paperloom-harness-worker@{1..4} cloudflared --no-pager
+systemctl status paperloom-backend paperloom-harness cloudflared --no-pager
 ```
 
 要正常停掉产品服务（例如服务器维护），只停应用进程即可：
 
 ```bash
-systemctl stop paperloom-backend.service paperloom-harness-worker@{1..4}.service cloudflared.service
+systemctl stop paperloom-backend.service paperloom-harness.service cloudflared.service
 ```
 
 这不会删除 Docker volume。恢复时使用：
 
 ```bash
-systemctl start paperloom-harness-worker@{1..4}.service paperloom-backend.service cloudflared.service
+systemctl start paperloom-harness.service paperloom-backend.service cloudflared.service
 ```
 
 ## 发布新代码
@@ -99,7 +98,7 @@ mvn -DskipTests package
 corepack pnpm --dir frontend install --frozen-lockfile
 corepack pnpm --dir frontend build
 
-systemctl restart paperloom-harness-worker@{1..4}.service paperloom-backend.service
+systemctl restart paperloom-harness.service paperloom-backend.service
 ```
 
 然后执行“日常健康检查”。`git status --short` 必须为空；如果有输出，先停下确认那些改动是不是
@@ -110,7 +109,7 @@ systemctl restart paperloom-harness-worker@{1..4}.service paperloom-backend.serv
 ```bash
 cd "$PAPERLOOM_HOME"
 .venv-harness/bin/pip install --disable-pip-version-check -r harness_py/requirements.lock
-systemctl restart paperloom-harness-worker@{1..4}.service
+systemctl restart paperloom-harness.service
 ```
 
 ## 修改配置时该重启什么
@@ -119,7 +118,7 @@ systemctl restart paperloom-harness-worker@{1..4}.service
 
 | 改动内容 | 必须执行 |
 | --- | --- |
-| `MINIMAX_*`、`RESEARCH_HARNESS_*`、Harness Python 配置 | `systemctl restart paperloom-harness-worker@{1..4}.service paperloom-backend.service` |
+| `MINIMAX_*`、`RESEARCH_HARNESS_*`、Harness Python 配置 | `systemctl restart paperloom-harness.service paperloom-backend.service` |
 | `SPRING_*`、JWT、MinerU、Qdrant、MinIO、CORS、端口 | `systemctl restart paperloom-backend.service` |
 | Docker 的端口、MySQL/Redis/MinIO/Qdrant 配置 | `docker compose --env-file .env -f docs/docker-compose.yaml up -d`，再重启后端和 Harness |
 | `/www/server/panel/vhost/nginx/*.conf` | `nginx -t && nginx -s reload` |
@@ -140,8 +139,7 @@ MINIO_PUBLIC_URL=https://<new-domain>/files
 
 ```bash
 journalctl -u paperloom-backend -f
-journalctl -u paperloom-harness-worker@1 -u paperloom-harness-worker@2 \
-  -u paperloom-harness-worker@3 -u paperloom-harness-worker@4 -f
+journalctl -u paperloom-harness -f
 journalctl -u cloudflared -f
 ```
 
@@ -151,7 +149,7 @@ journalctl -u cloudflared -f
 | --- | --- |
 | 域名打不开、Cloudflare 显示 502/1033 | `cloudflared` 日志，再检查 Nginx 本机 `18880` |
 | 页面能打开，但登录、论文列表报错 | `paperloom-backend` 日志 |
-| 聊天一直转圈、研究请求失败 | Worker 日志，再检查 Redis、MiniMax 额度和密钥 |
+| 聊天一直转圈、研究请求失败 | Harness 日志，再检查 Redis、MiniMax 额度和密钥 |
 | 上传或解析失败 | 后端日志、MinerU token、MinIO container 状态 |
 | PDF、表格截图、图像打不开 | `MINIO_PUBLIC_URL`、Nginx `/files/` 配置、MinIO 状态 |
 | 重启服务器后服务没起来 | `systemctl status` 和 `docker compose ps` |
@@ -164,21 +162,52 @@ curl -o /dev/null -w 'backend=%{http_code}\n' \
   http://127.0.0.1:18082/api/v1/users/me
 ```
 
-这里后端返回 `403` 同样正常。Redis 模式不提供 Harness HTTP health；4 个 Worker 必须为
-`active`，且任务结束后 `XPENDING` 应为 `0`。
-
-### 回滚到 HTTP Harness
-
-Redis 链路异常且无法立即恢复时，恢复切换前备份的 `.env` 和 backend unit，然后执行：
+这里后端返回 `403` 同样正常。Harness 也提供 HTTP health：
 
 ```bash
-systemctl disable --now paperloom-harness-worker@{1..4}.service
-systemctl daemon-reload
-systemctl enable --now paperloom-harness.service
-systemctl restart paperloom-backend.service
+curl -fsS http://127.0.0.1:8091/health
 ```
 
-旧 `paperloom-harness.service` 平时保持 `disabled`，只作为回滚入口保留。
+### Harness 挂掉之后
+
+研究回合只有一条传输：后端通过 HTTP 调本机 `harness_py serve`。进程挂掉时后端会**快速失败**：
+该回合标记为失败、配额回滚、会话内容保留，用户重试即可；不会一直挂到超时。
+
+判断：
+
+```bash
+systemctl is-active paperloom-harness.service
+curl -fsS http://127.0.0.1:8091/health
+journalctl -u paperloom-harness -n 80 --no-pager
+```
+
+后端启动时也会探一次 `/health`：不可达时日志里有一行
+`Research harness is unreachable at ...; research turns will fail until it starts`，
+不用等用户来报错。
+
+守护用的单元文件：
+
+```ini
+[Unit]
+Description=PaperLoom research harness
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=paperloom
+WorkingDirectory=/srv/paperloom
+EnvironmentFile=/srv/paperloom/.env
+ExecStart=/srv/paperloom/.venv-harness/bin/python -m harness_py serve \
+  --host 127.0.0.1 --port 8091 --internal-token ${RESEARCH_HARNESS_INTERNAL_TOKEN}
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+```
+
+`Restart=always` 是关键：崩溃或误杀后 2 秒自动拉起，用户重试一次就能继续。
 
 ### 查看 Agent Action Trace
 

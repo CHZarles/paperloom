@@ -35,13 +35,13 @@ public class ProductReadingConversationService {
     private static final Pattern LOCATION_REF_PATTERN =
             Pattern.compile("^(page_ref|section_ref|table_ref|figure_ref|location_ref)_[A-Za-z0-9_-]+$");
 
-    private final ResearchHarnessTransport researchHarnessTransport;
+    private final PythonResearchHarnessClient researchHarness;
     private final ConversationService conversationService;
 
     @Autowired
-    public ProductReadingConversationService(ResearchHarnessTransport researchHarnessTransport,
+    public ProductReadingConversationService(PythonResearchHarnessClient researchHarness,
                                              ConversationService conversationService) {
-        this.researchHarnessTransport = researchHarnessTransport;
+        this.researchHarness = researchHarness;
         this.conversationService = conversationService;
     }
 
@@ -107,7 +107,7 @@ public class ProductReadingConversationService {
                 modelContext,
                 progressListener
         );
-        return researchHarnessTransport.run(request);
+        return researchHarness.run(request);
     }
 
     public CompletableFuture<ProductTurnResult> submitTurn(Long userId,
@@ -140,7 +140,7 @@ public class ProductReadingConversationService {
                 modelContext,
                 null
         );
-        return researchHarnessTransport.submit(request, progressListener);
+        return researchHarness.submit(request, progressListener);
     }
 
     public CompletableFuture<ProductTurnResult> submitRetryTurn(Long userId,
@@ -175,11 +175,11 @@ public class ProductReadingConversationService {
                 modelContext,
                 null
         );
-        return researchHarnessTransport.submit(request, progressListener);
+        return researchHarness.submit(request, progressListener);
     }
 
     public void cancelTurn(String generationId) {
-        researchHarnessTransport.cancel(generationId);
+        researchHarness.cancel(generationId);
     }
 
     private Map<String, Object> readingMemory(List<String> clickedSourceQuoteRefs,

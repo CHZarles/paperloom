@@ -1429,10 +1429,7 @@ public class ChatHandler {
             sendJsonToGenerationOrClient(userId, clientId, generationId, errorResponse);
             return;
         }
-        errorResponse.put(
-                "error",
-                "The research run stopped because of an internal service error. Your conversation is preserved; retry this turn."
-        );
+        errorResponse.put("error", ResearchHarnessFailureMessages.message(error));
         sendJsonToGenerationOrClient(userId, clientId, generationId, errorResponse);
     }
 

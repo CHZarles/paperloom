@@ -19,16 +19,15 @@ The production-selected research path is:
 ```text
 ChatHandler
 -> ProductReadingConversationService
--> ResearchHarnessTransport
--> RedisResearchHarnessTransport
--> Redis Streams
--> Python RedisResearchWorker
+-> PythonResearchHarnessClient
+-> HTTP POST /v1/research/stream
 -> ResearchHarnessService
 -> OpenAI Agents SDK Runner
 ```
 
-`ProductReadingConversationService` depends on the `ResearchHarnessTransport` interface. Production
-selects `RedisResearchHarnessTransport` with `RESEARCH_HARNESS_TRANSPORT=redis`.
+`ProductReadingConversationService` calls `PythonResearchHarnessClient` directly. One HTTP stream per
+research turn carries NDJSON progress events and the terminal result; there is no broker, worker pool,
+or second transport.
 
 ## Responsibility Split
 
@@ -152,8 +151,8 @@ do not replace the product-owned Reading Model.
 | Qdrant | Rebuildable hybrid (sparse BM25 + dense MiniMax embedding) candidate index over Current Reading Model locations; never a source of citeable content |
 | MinIO | Original PDFs, parser artifacts, page screenshots, and visual evidence crops |
 
-Kafka remains upload-processing infrastructure. Redis carries transient Generation state and, in the
-production transport, Research jobs and events. Neither is an evidence source.
+Kafka remains upload-processing infrastructure. Redis carries transient Generation state. Neither is
+an evidence source.
 
 ## Evaluation Boundary
 

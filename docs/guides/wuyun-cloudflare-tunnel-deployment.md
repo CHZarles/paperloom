@@ -1,5 +1,7 @@
 # Wuyun + Cloudflare Tunnel 部署实录
 
+> **2026-11 变更**：研究回合改为单进程 `harness_py serve` + HTTP 传输，4 个 `paperloom-harness-worker@` 单元已退役；下文关于 worker 与 `RESEARCH_HARNESS_TRANSPORT=redis` 的描述保留为当时的部署实录。
+
 本文记录 PaperLoom 第一次公网部署的实际步骤，并把它整理成可在另一台服务器复现的流程。
 
 - 完成时间：2026-08-10

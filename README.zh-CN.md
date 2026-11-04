@@ -32,10 +32,8 @@ Agent 只在当前会话明确授权的论文中使用工具检索和阅读，�
 ```text
 ChatHandler
 -> ProductReadingConversationService
--> ResearchHarnessTransport
--> RedisResearchHarnessTransport
--> Redis Streams
--> RedisResearchWorker
+-> PythonResearchHarnessClient
+-> HTTP POST /v1/research/stream
 -> ResearchHarnessService
 -> OpenAI Agents SDK Runner
 -> Java Corpus API
