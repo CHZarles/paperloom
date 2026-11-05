@@ -25,6 +25,7 @@ An evolution record is worth keeping when it documents at least one of the follo
 - [PaperLoom Harness Draft Finalization Hardening Spec](agent-runtime/paperloom-harness-draft-finalization-hardening-spec-2026-08-18.md)
 - [Online Provider Diagnosis Repair Spec](agent-runtime/online-provider-diagnosis-repair-spec-2026-08-22.md)
 - [Research Answer Scope Regression](agent-runtime/research-answer-scope-regression-2026-08-21.md)
+- [Research Harness Runtime Management PRD](agent-runtime/harness-runtime-management-prd-2026-11-05.md)
 - [PaperLoom-31 Product-aligned Retrieval Benchmark Proposal](verification/paperloom-31-product-aligned-retrieval-benchmark-proposal-2026-08-23.md)
 - [PaperLoom-31 Product-aligned Retrieval Benchmark Spec](verification/paperloom-31-product-aligned-retrieval-benchmark-spec-2026-08-23.md)
 - [Pi Agent TypeScript Runtime Migration Design (historical)](agent-runtime/pi-agent-typescript-runtime-migration-design-2026-08-17.md)
