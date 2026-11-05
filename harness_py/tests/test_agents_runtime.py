@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import tempfile
 import threading
@@ -21,6 +22,7 @@ from harness_py.orchestration.agents.model import (
     DIAGNOSTIC_FALLBACK_HINT,
     TEXT_NUDGE_TOOL_NAME,
     TOOL_ARGUMENT_REPAIR_PREFIX,
+    completed_event_from_response,
 )
 from harness_py.corpus.product_db_dataset import build_product_dataset
 from harness_py.orchestration.conversation import ConversationState
@@ -584,6 +586,66 @@ class AgentsRuntimeTest(unittest.TestCase):
         self.assertEqual("RUN_MODEL_CALL_LIMIT_EXCEEDED", run["control"]["reason_code"])
         self.assertEqual(16, model.call_count)
 
+    def test_disconnect_cancel_interrupts_an_inflight_model_call(self) -> None:
+        import time as _time
+        from harness_py.orchestration.agents.model import completed_event_from_response
+
+        dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()
+
+        class _SlowBlockingModel(Model):
+            """第一次模型调用阻塞很久；只有取消打断才能让回合快速返回 CANCELLED。"""
+
+            def __init__(self) -> None:
+                self.call_count = 0
+                self.block_seconds = 60.0
+
+            async def get_response(self, *args, **kwargs) -> ModelResponse:
+                self.call_count += 1
+                await asyncio.sleep(self.block_seconds)
+                return ModelResponse(
+                    output=[ResponseFunctionToolCall(
+                        arguments=json.dumps({"skill_id": "precision_fact_extraction"}),
+                        call_id="call_1",
+                        name="get_research_skill",
+                        type="function_call",
+                    )],
+                    usage=Usage(requests=1, input_tokens=1, output_tokens=1, total_tokens=2),
+                    response_id=None,
+                )
+
+            async def stream_response(self, *args, **kwargs):
+                response = await self.get_response(*args, **kwargs)
+                yield completed_event_from_response(response, "")
+
+        model = _SlowBlockingModel()
+        harness = LiveResearchChatHarness(AgentsSdkHarnessRuntime(model=model))
+
+        started = _time.monotonic()
+        should_cancel = [False]
+
+        # 0.15s 后置位取消信号，模拟客户端断流。
+        def flipper():
+            _time.sleep(0.15)
+            should_cancel[0] = True
+
+        flipper_thread = threading.Thread(target=flipper, daemon=True)
+        flipper_thread.start()
+
+        run, _ = harness.run_turn(
+            dataset,
+            ConversationState.new("disconnect_cancel"),
+            "What is the synthetic answer?",
+            should_cancel=lambda: should_cancel[0],
+        )
+        elapsed = _time.monotonic() - started
+        flipper_thread.join(timeout=1)
+
+        self.assertEqual("CANCELLED", run["status"])
+        self.assertEqual("RUN_CANCELLED", run["control"]["reason_code"])
+        self.assertEqual(1, model.call_count)
+        # 必须远快于 60s 的模型阻塞；即便加上轮询间隔也应在几秒内停下。
+        self.assertLess(elapsed, 5.0, f"cancel took {elapsed:.2f}s to stop a 60s model call")
+
 class _ScriptedAgentsModel(Model):
     def __init__(self) -> None:
         self.call_count = 0
@@ -643,8 +705,9 @@ class _ScriptedAgentsModel(Model):
             response_id=None,
         )
 
-    def stream_response(self, *args, **kwargs) -> AsyncIterator:
-        raise NotImplementedError
+    async def stream_response(self, *args, **kwargs) -> AsyncIterator:
+        response: ModelResponse = await self.get_response(*args, **kwargs)
+        yield completed_event_from_response(response, getattr(self, "model", ""))
 
 
 class _MultiPartAgentsModel(Model):
@@ -704,8 +767,9 @@ class _MultiPartAgentsModel(Model):
             response_id=None,
         )
 
-    def stream_response(self, *args, **kwargs) -> AsyncIterator:
-        raise NotImplementedError
+    async def stream_response(self, *args, **kwargs) -> AsyncIterator:
+        response: ModelResponse = await self.get_response(*args, **kwargs)
+        yield completed_event_from_response(response, getattr(self, "model", ""))
 
 
 class _LoopingAgentsModel(Model):
@@ -740,8 +804,9 @@ class _LoopingAgentsModel(Model):
             response_id=None,
         )
 
-    def stream_response(self, *args, **kwargs) -> AsyncIterator:
-        raise NotImplementedError
+    async def stream_response(self, *args, **kwargs) -> AsyncIterator:
+        response: ModelResponse = await self.get_response(*args, **kwargs)
+        yield completed_event_from_response(response, getattr(self, "model", ""))
 
 
 def _run_plain_text_diagnosis_case(

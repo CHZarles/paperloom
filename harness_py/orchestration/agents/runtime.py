@@ -239,16 +239,17 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
             # 又不会把项目参数硬塞进 SDK Model 的公共方法签名。
             with bind_research_context(context):
                 try:
+                    streamed = Runner.run_streamed(
+                        agent,
+                        input_items,
+                        context=context,
+                        max_turns=MAX_AGENT_TURNS,
+                        hooks=ResearchRunHooks(),
+                        run_config=run_config,
+                        session=session,
+                    )
                     result = await asyncio.wait_for(
-                        Runner.run(
-                            agent,
-                            input_items,
-                            context=context,
-                            max_turns=MAX_AGENT_TURNS,
-                            hooks=ResearchRunHooks(),
-                            run_config=run_config,
-                            session=session,
-                        ),
+                        _consume_stream(streamed, context),
                         timeout=context.control.remaining_seconds(),
                     )
                 except asyncio.TimeoutError as error:
@@ -268,6 +269,62 @@ class AgentsSdkHarnessRuntime(HarnessRuntime):
         if not isinstance(final, dict):
             raise RuntimeError("Agents SDK run ended without an accepted answer submission")
         return final
+
+
+async def _consume_stream(streamed, context) -> Any:
+    """消费流式 Run 直到完成，返回可读 ``final_output`` 的结果对象。
+
+    ``run_streamed`` 在后台跑，``stream_events()`` 驱动其推进并回传事件。这里不把事件转发
+    给产品（进度事件由 Model 的 ``get_response`` 路径通过 ``emit_progress`` 单独发出），
+    只负责把整个 run 跑完。遍历结束后 ``streamed.final_output`` 即最终答案。
+
+    取消：``should_cancel`` 由上游（断流）在另一线程置位。一个并行的 watcher 轮询它，一旦
+    置位就 ``cancel("immediate")`` 打断后台 task，使正在 ``await`` 模型 HTTP 调用的
+    ``get_response`` 被 ``CancelledError`` 中断，而不是等到下一个模型/工具边界。watcher 抛出
+    的 ``HarnessCancelled`` 向上传播，由 ``live_chat`` 收口成 ``CANCELLED`` Run。
+    """
+
+    async def drive_stream() -> None:
+        async for _event in streamed.stream_events():
+            pass
+
+    stream_task = asyncio.create_task(drive_stream())
+    watcher = asyncio.create_task(_cancel_watcher(streamed, context))
+    done, _pending = await asyncio.wait(
+        {stream_task, watcher},
+        return_when=asyncio.FIRST_COMPLETED,
+    )
+    if watcher in done:
+        # 取消被检测到：watcher 已调用 cancel("immediate") 并抛出，把它的异常向上传播。
+        exception = watcher.exception()
+        stream_task.cancel()
+        raise exception
+    # 正常完成：stream_task 已结束；若它带异常（如 MaxTurnsExceeded）则向上传播。
+    stream_exception = stream_task.exception()
+    watcher.cancel()
+    try:
+        await watcher
+    except (asyncio.CancelledError, Exception):
+        pass
+    if stream_exception is not None:
+        raise stream_exception
+    return streamed
+
+
+async def _cancel_watcher(streamed, context, interval: float = 0.05):
+    """并行轮询上游取消信号，置位时立即打断后台 run。
+
+    ``context.check_cancelled()`` 会抛 ``HarnessCancelled``；在它抛出前先 ``cancel("immediate")``
+    确保后台 task 被取消，再让该异常向上传播。
+    """
+
+    while True:
+        try:
+            context.check_cancelled()
+        except Exception:
+            streamed.cancel("immediate")
+            raise
+        await asyncio.sleep(interval)
 
 
 def _latest_final_submission_only(
