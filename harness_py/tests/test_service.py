@@ -210,3 +210,31 @@ class ServiceTest(unittest.TestCase):
         # 执行结束后注销，注册表归零。
         self.assertEqual(0, service.in_flight.count())
         self.assertEqual("COMPLETED", result["response"]["status"])
+
+    def test_draining_returns_503_with_retry_after(self) -> None:
+        class Provider:
+            def public_diagnostics(self):
+                return {"provider": "test"}
+
+        service = ResearchHarnessService(
+            provider=Provider(),
+            harness=object(),
+            corpus_gateway=object(),
+        )
+        service.shutting_down.set()
+
+        with TestClient(_service_app(service, "")) as client:
+            turn_response = client.post(
+                "/v1/research/turn",
+                json={"user_message": "hi"},
+            )
+            stream_response = client.post(
+                "/v1/research/stream",
+                json={"user_message": "hi"},
+            )
+
+        self.assertEqual(503, turn_response.status_code)
+        self.assertEqual("draining", turn_response.json()["error"])
+        self.assertEqual("30", turn_response.headers["Retry-After"])
+        self.assertEqual(503, stream_response.status_code)
+        self.assertEqual("draining", stream_response.json()["error"])

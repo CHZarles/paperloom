@@ -7,11 +7,14 @@ from __future__ import annotations
 # OpenAI 兼容接口。Python 端不接 MySQL / Qdrant，所有数据通过 corpus/ 委派给 Java。
 # 启动用 uvicorn（走 pyproject 的 [start] 入口），单进程多线程；每个研究 run 串行处理。
 
+import asyncio
 import json
+import logging
 import os
 import queue
 import threading
 import time
+from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass, fields
 import uvicorn
 from starlette.applications import Starlette
@@ -74,7 +77,10 @@ class InFlightRegistry:
 
     def snapshot(self) -> list[JsonMap]:
         with self._lock:
-            return [asdict(entry) for entry in self._entries.values()]
+            return [
+                {"request_id": request_id, **asdict(entry)}
+                for request_id, entry in self._entries.items()
+            ]
 
 
 @dataclass
@@ -103,6 +109,8 @@ class ResearchHarnessService:
         )
         self.corpus_gateway = corpus_gateway or JavaCorpusGateway()
         self.in_flight = InFlightRegistry()
+        self.shutting_down = threading.Event()
+        self.drain_seconds = _positive_env_float("RESEARCH_HARNESS_DRAIN_SECONDS", 30.0)
 
     def run_turn(self, request: JsonMap) -> JsonMap:
         return self.run_job(request, lambda _event: None, lambda: False)
@@ -189,6 +197,13 @@ def _service_app(service: ResearchHarnessService, token: str) -> Starlette:
     def authorized(request: Request) -> bool:
         return not token or request.headers.get("Authorization") == f"Bearer {token}"
 
+    def draining_response() -> JSONResponse:
+        return JSONResponse(
+            {"error": "draining", "message": "the research service is shutting down"},
+            status_code=503,
+            headers={"Retry-After": str(max(1, int(service.drain_seconds)))},
+        )
+
     async def health(_request: Request) -> JSONResponse:
         return JSONResponse({
             "status": "ok",
@@ -200,6 +215,8 @@ def _service_app(service: ResearchHarnessService, token: str) -> Starlette:
         })
 
     async def turn(request: Request) -> JSONResponse:
+        if service.shutting_down.is_set():
+            return draining_response()
         if not authorized(request):
             return JSONResponse({"error": "unauthorized"}, status_code=401)
         try:
@@ -216,6 +233,8 @@ def _service_app(service: ResearchHarnessService, token: str) -> Starlette:
             }, status_code=500)
 
     async def stream(request: Request) -> JSONResponse | StreamingResponse:
+        if service.shutting_down.is_set():
+            return draining_response()
         if not authorized(request):
             return JSONResponse({"error": "unauthorized"}, status_code=401)
         try:
@@ -228,11 +247,30 @@ def _service_app(service: ResearchHarnessService, token: str) -> Starlette:
             headers={"Cache-Control": "no-cache"},
         )
 
-    return Starlette(routes=[
-        Route("/health", health, methods=["GET"]),
-        Route("/v1/research/turn", turn, methods=["POST"]),
-        Route("/v1/research/stream", stream, methods=["POST"]),
-    ])
+    @asynccontextmanager
+    async def lifespan(_app: Starlette):
+        yield
+        # 进入停机：标记 draining，等待在途回合在限时内发出终态后退出。
+        service.shutting_down.set()
+        deadline = time.monotonic() + service.drain_seconds
+        while service.in_flight.count() > 0 and time.monotonic() < deadline:
+            await asyncio.sleep(0.05)
+        remaining = service.in_flight.snapshot()
+        if remaining:
+            logging.getLogger(__name__).warning(
+                "drain timed out with %d in-flight turn(s): %s",
+                len(remaining),
+                [entry["request_id"] for entry in remaining],
+            )
+
+    return Starlette(
+        lifespan=lifespan,
+        routes=[
+            Route("/health", health, methods=["GET"]),
+            Route("/v1/research/turn", turn, methods=["POST"]),
+            Route("/v1/research/stream", stream, methods=["POST"]),
+        ],
+    )
 
 
 async def _request_payload(request: Request) -> JsonMap:
@@ -259,10 +297,14 @@ def _stream_job(service: ResearchHarnessService, payload: JsonMap):
             **event,
         })
 
+    def should_cancel() -> bool:
+        # 客户端断流，或进程进入优雅停机，都会触发取消。
+        return disconnected.is_set() or service.shutting_down.is_set()
+
     def run() -> None:
         try:
             emit({"type": "job_started"})
-            response = service.run_job(payload, emit, disconnected.is_set)
+            response = service.run_job(payload, emit, should_cancel)
             status = str(response.get("status") or "")
             terminal = terminal_event(response)
             if status == "LIMITED":
@@ -327,6 +369,19 @@ def _conversation_state(request: JsonMap, conversation_id: str, paper_ids: list[
         "message_history": history,
         "evidence_items_by_id": previous_evidence,
     })
+
+
+def _positive_env_float(name: str, default: float) -> float:
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = float(raw)
+    except ValueError as error:
+        raise ValueError(f"{name} must be a positive number") from error
+    if value <= 0:
+        raise ValueError(f"{name} must be a positive number")
+    return value
 
 
 def _run_limits(options: JsonMap) -> RunLimits:
