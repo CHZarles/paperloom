@@ -2,16 +2,17 @@
   color-scheme: light;
 
   /* ---- Surfaces & text -------------------------------------------------
-     Academic paper palette: cool paper neutrals, ink text, one scholarly
-     blue accent. Muted text is tuned to clear 4.5:1 on every tinted
-     surface below (white 6.9, #f5f5f1 6.5, #efefea 6.2, #f1f2ee 6.3). */
-  --color-bg: #f5f5f1;
+     Academic palette, modern cut: clean paper-white neutrals, ink text,
+     one brighter scholarly blue accent. Muted text clears 4.5:1 on every
+     tinted surface below (white 5.9, #f6f7f8 5.5, #eef0f2 5.1, #f1f2f4
+     5.3). */
+  --color-bg: #f6f7f8;
   --color-surface: #ffffff;
-  --color-surface-alt: #efefea;
+  --color-surface-alt: #eef0f2;
   --color-surface-elevated: #ffffff;
-  --color-text: #191b1f;
-  --color-text-muted: #565a57;
-  --color-text-placeholder: #666b68;
+  --color-text: #17181c;
+  --color-text-muted: #5f656e;
+  --color-text-placeholder: #666c73;
 
   /* ---- Brand surfaces (auth / marketing) -------------------------------
      Dark ink layer with a scholarly blue accent. The product workspace
@@ -21,34 +22,34 @@
   --brand-ink-raised: #10161d;
   --brand-on-ink: #ecf0f3;
   --brand-on-ink-muted: #9aa8b5;
-  --brand-accent: #7ea6dd;
-  --brand-accent-bright: #a9c7ef;
-  --brand-accent-soft: rgba(126, 166, 221, 0.18);
+  --brand-accent: #5b8def;
+  --brand-accent-bright: #8fb0f5;
+  --brand-accent-soft: rgba(91, 141, 239, 0.2);
 
   /* ---- Accents ---------------------------------------------------------
      Primary is ink (actions, headings); research is the single chromatic
-     accent (links, citations, focus, active states) — a scholarly
-     ink blue. */
-  --color-primary: #17191e;
-  --color-primary-hover: #24272d;
-  --color-primary-soft-bg: #e8e9e6;
-  --color-accent: #5a5f5c;
-  --color-accent-hover: #17191e;
-  --color-accent-soft-bg: #e9eae7;
-  --color-research: #22508f;
-  --color-research-hover: #1a4077;
-  --color-research-soft-bg: #e6edf7;
+     accent (links, citations, focus, active states) — a brighter
+     scholarly blue. */
+  --color-primary: #16181d;
+  --color-primary-hover: #262a33;
+  --color-primary-soft-bg: #e9eaec;
+  --color-accent: #5d636c;
+  --color-accent-hover: #16181d;
+  --color-accent-soft-bg: #eceef0;
+  --color-research: #2065d3;
+  --color-research-hover: #1a55b4;
+  --color-research-soft-bg: #e9f1fc;
 
   /* ---- Lines ----------------------------------------------------------- */
-  --color-border: #e1e2de;
-  --color-border-soft: #e9eae6;
-  --color-border-strong: #c6c9c3;
+  --color-border: #e4e6e9;
+  --color-border-soft: #eceef0;
+  --color-border-strong: #c7cbd1;
 
   /* ---- States ---------------------------------------------------------- */
-  --color-focus-ring: rgba(34, 80, 143, 0.32);
-  --color-selection: rgba(34, 80, 143, 0.18);
-  --color-hover-tint: rgba(25, 27, 31, 0.04);
-  --color-active-tint: rgba(34, 80, 143, 0.1);
+  --color-focus-ring: rgba(32, 101, 211, 0.34);
+  --color-selection: rgba(32, 101, 211, 0.18);
+  --color-hover-tint: rgba(23, 24, 28, 0.04);
+  --color-active-tint: rgba(32, 101, 211, 0.1);
 
   /* ---- Evidence --------------------------------------------------------
      Citation amber is a *content* accent: it must stay readable on its own
@@ -56,8 +57,8 @@
   --color-citation: #8a4f0c;
   --color-citation-hover: #6f3f09;
   --color-citation-soft-bg: #fff4de;
-  --color-card-band: #f1f2ee;
-  --color-card-band-pressed: #e7eae5;
+  --color-card-band: #f1f2f4;
+  --color-card-band-pressed: #e6e8eb;
 
   /* ---- Semantic -------------------------------------------------------- */
   --color-success: #168039;
@@ -140,35 +141,35 @@
 
 .dark {
   color-scheme: dark;
-  /* Ink-blue dark mode: cool blackboard surfaces, not warm. */
-  --color-bg: #101318;
-  --color-surface: #171d24;
-  --color-surface-alt: #1f2630;
-  --color-surface-elevated: #242c37;
-  --color-text: #e6e8e3;
-  --color-text-muted: #9aa1ab;
-  --color-text-placeholder: #878e98;
-  --color-primary: #e6e8e3;
+  /* Neutral blackboard dark mode: cool dark surfaces, brighter blue accent. */
+  --color-bg: #11131a;
+  --color-surface: #171a22;
+  --color-surface-alt: #1f232d;
+  --color-surface-elevated: #242936;
+  --color-text: #e7e9ee;
+  --color-text-muted: #9ba2ae;
+  --color-text-placeholder: #878e9a;
+  --color-primary: #e7e9ee;
   --color-primary-hover: #ffffff;
-  --color-primary-soft-bg: #2b333d;
-  --color-accent: #a8b4c0;
-  --color-accent-hover: #e6e8e3;
-  --color-accent-soft-bg: #232b34;
-  --color-research: #7fa3d1;
-  --color-research-hover: #a3c4e6;
-  --color-research-soft-bg: #1b2c42;
-  --color-border: #2c3540;
-  --color-border-soft: #222932;
-  --color-border-strong: #3f4a57;
-  --color-focus-ring: rgba(127, 163, 209, 0.38);
-  --color-selection: rgba(127, 163, 209, 0.3);
+  --color-primary-soft-bg: #2b303c;
+  --color-accent: #a9b1bd;
+  --color-accent-hover: #e7e9ee;
+  --color-accent-soft-bg: #242933;
+  --color-research: #74a3f2;
+  --color-research-hover: #97bcf6;
+  --color-research-soft-bg: #1c2a44;
+  --color-border: #2d3340;
+  --color-border-soft: #232834;
+  --color-border-strong: #40495a;
+  --color-focus-ring: rgba(116, 163, 242, 0.38);
+  --color-selection: rgba(116, 163, 242, 0.3);
   --color-hover-tint: rgba(255, 255, 255, 0.05);
-  --color-active-tint: rgba(127, 163, 209, 0.16);
+  --color-active-tint: rgba(116, 163, 242, 0.16);
   --color-citation: #e4b765;
   --color-citation-hover: #f1cd89;
   --color-citation-soft-bg: #3a3020;
-  --color-card-band: #1c242e;
-  --color-card-band-pressed: #232c38;
+  --color-card-band: #1d222d;
+  --color-card-band-pressed: #252b38;
   --color-success: #55c58b;
   --color-warning: #e6b85c;
   --color-warning-text: #e6b85c;
