@@ -15,7 +15,7 @@ const chatStore = useChatStore();
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
-const { conversationId, sessions, sessionsLoading } = storeToRefs(chatStore);
+const { conversationId, generatingConversationIds, sessions, sessionsLoading } = storeToRefs(chatStore);
 const keyword = ref('');
 const showArchived = ref(false);
 
@@ -58,13 +58,11 @@ function handleCollapse() {
   collapsed.value = true;
 }
 
-async function handleNewChat() {
-  const createdConversationId = await chatStore.createNewSession();
-  if (!createdConversationId) return;
-  await chatStore.loadSessionIndex({ silent: true });
+function handleNewChat() {
+  chatStore.startDraftSession();
 
   if (route.name !== 'chat') {
-    await router.push({ name: 'chat' });
+    void router.push({ name: 'chat' });
   }
 }
 
@@ -255,6 +253,11 @@ function formatDate(dateStr?: string) {
                 @keydown.enter.prevent="handleSelect(session.conversationId)"
                 @keydown.space.prevent="handleSelect(session.conversationId)"
               >
+                <icon-lucide:sparkles
+                  v-if="generatingConversationIds.has(session.conversationId)"
+                  class="session-item__generating shrink-0"
+                  aria-hidden="true"
+                />
                 <div class="min-w-0 flex-1">
                   <div class="session-title">
                     {{ session.title }}
@@ -604,6 +607,16 @@ function formatDate(dateStr?: string) {
   font-weight: 600;
 }
 
+/* Same breathing language as the message-flow sparkle: this conversation
+   has a turn streaming right now. */
+.session-item__generating {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  color: var(--color-research);
+  animation: session-generating-sparkle 1.5s ease-in-out infinite;
+}
+
 .session-title {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -815,5 +828,36 @@ function formatDate(dateStr?: string) {
 .dark .avatar-identicon {
   background: var(--color-surface-elevated);
   box-shadow: var(--shadow-card);
+}
+
+
+@keyframes session-generating-sparkle {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.86);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .session-item__generating {
+    animation: session-generating-breath 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes session-generating-breath {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 </style>

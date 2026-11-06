@@ -598,6 +598,9 @@ const handleSend = async (messageOverride?: string) => {
       window.$message?.error('无法创建对话，请稍后再试');
       return;
     }
+    // The draft just became a real conversation — surface it in the sidebar
+    // right away (with its generating badge), before the first answer lands.
+    chatStore.loadSessionIndex({ silent: true }).catch(() => {});
   }
 
   const outgoingReferenceFocusPayload = outgoingReferenceFocus(referenceFocus.value);

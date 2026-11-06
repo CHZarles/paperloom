@@ -38,7 +38,10 @@ const MAX_CACHED_CONVERSATIONS = 8;
 
 function trimEvents<T>(events: T[] | undefined | null): T[] {
   if (!events || events.length <= MAX_RETAINED_RESEARCH_EVENTS) return events || [];
-  return [...events.slice(0, PRESERVED_HEAD_EVENTS), ...events.slice(-MAX_RETAINED_RESEARCH_EVENTS + PRESERVED_HEAD_EVENTS)];
+  return [
+    ...events.slice(0, PRESERVED_HEAD_EVENTS),
+    ...events.slice(-MAX_RETAINED_RESEARCH_EVENTS + PRESERVED_HEAD_EVENTS)
+  ];
 }
 
 function boundResearchEvents(message: Api.Chat.Message) {
@@ -237,7 +240,8 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
         typeof snapshot.retryOfConversationRecordId === 'number'
           ? snapshot.retryOfConversationRecordId
           : assistant.retryOfConversationRecordId;
-      assistant.answerSlotId = typeof snapshot.answerSlotId === 'number' ? snapshot.answerSlotId : assistant.answerSlotId;
+      assistant.answerSlotId =
+        typeof snapshot.answerSlotId === 'number' ? snapshot.answerSlotId : assistant.answerSlotId;
       assistant.answerRevision =
         typeof snapshot.answerRevision === 'number' ? snapshot.answerRevision : assistant.answerRevision;
       assistant.replaceMessage = Boolean(snapshot.replaceMessage || assistant.replaceMessage);
@@ -545,6 +549,32 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     referenceFocus.value = scope;
   }
 
+  // A "New Query" click must not create a server-side session until the user
+  // actually asks something — otherwise every idle click leaves a zombie
+  // conversation in the list. The draft clears the selection; the first send
+  // (or an explicit scope commit) creates the session through the existing paths.
+  function startDraftSession() {
+    conversationSelectionVersion += 1;
+    conversationId.value = '';
+    list.value = [];
+    hasOlderMessages.value = false;
+    loadedConversationDetailsId = '';
+    referenceFocus.value = null;
+    currentScope.value = null;
+  }
+
+  // Sidebar badges: which conversations currently have a turn streaming.
+  const generatingConversationIds = computed(
+    () =>
+      new Set(
+        list.value
+          .filter(
+            item => item.role === 'assistant' && ['pending', 'loading'].includes(item.status || '') && item.conversationId
+          )
+          .map(item => item.conversationId as string)
+      )
+  );
+
   async function createNewSession() {
     const { error, data } = await request<Api.Chat.ConversationSession>({
       url: 'users/conversations',
@@ -797,7 +827,7 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     }
   });
 
-function resetConnectionState() {
+  function resetConnectionState() {
     handshakeConfirmed.value = false;
     sessionId.value = '';
     authFailureNotified.value = false;
@@ -904,6 +934,8 @@ function resetConnectionState() {
     loadConversationScope,
     updateConversationScope,
     createSessionFromScope,
+    startDraftSession,
+    generatingConversationIds,
     setReferenceFocus,
     createNewSession,
     switchSession,
