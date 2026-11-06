@@ -12,7 +12,7 @@ import os
 import queue
 import threading
 import time
-from dataclasses import fields
+from dataclasses import asdict, dataclass, fields
 import uvicorn
 from starlette.applications import Starlette
 from starlette.concurrency import run_in_threadpool
@@ -31,6 +31,61 @@ from ..orchestration.run_control import RunControl
 from .provider_config import EnvProviderConfigStore
 
 
+class InFlightRegistry:
+    """进程内可枚举的在途研究回合索引。
+
+    只做运行时记账（停机和观测用），不是权威业务状态：权威仍归 Java / MySQL。登记在开始执行
+    前、注销在终态事件发出后。线程安全。
+    """
+
+    def __init__(self) -> None:
+        self._entries: dict[str, InFlightEntry] = {}
+        self._lock = threading.Lock()
+
+    def register(self, *, request_id: str, conversation_id: str, user_id: int) -> None:
+        with self._lock:
+            self._entries[request_id] = InFlightEntry(
+                run_id="",
+                conversation_id=conversation_id,
+                user_id=user_id,
+                started_at=time.monotonic(),
+                state="running",
+            )
+
+    def set_run_id(self, request_id: str, run_id: str) -> None:
+        with self._lock:
+            entry = self._entries.get(request_id)
+            if entry is not None:
+                entry.run_id = run_id
+
+    def set_state(self, request_id: str, state: str) -> None:
+        with self._lock:
+            entry = self._entries.get(request_id)
+            if entry is not None:
+                entry.state = state
+
+    def unregister(self, request_id: str) -> None:
+        with self._lock:
+            self._entries.pop(request_id, None)
+
+    def count(self) -> int:
+        with self._lock:
+            return len(self._entries)
+
+    def snapshot(self) -> list[JsonMap]:
+        with self._lock:
+            return [asdict(entry) for entry in self._entries.values()]
+
+
+@dataclass
+class InFlightEntry:
+    run_id: str
+    conversation_id: str
+    user_id: int
+    started_at: float
+    state: str
+
+
 class ResearchHarnessService:
     """Internal HTTP-facing adapter around the accepted live harness runtime."""
 
@@ -47,6 +102,7 @@ class ResearchHarnessService:
             build_harness_runtime(self.provider),
         )
         self.corpus_gateway = corpus_gateway or JavaCorpusGateway()
+        self.in_flight = InFlightRegistry()
 
     def run_turn(self, request: JsonMap) -> JsonMap:
         return self.run_job(request, lambda _event: None, lambda: False)
@@ -84,19 +140,29 @@ class ResearchHarnessService:
         )
         dataset = corpus_reader.load_metadata_dataset()
         state = _conversation_state(request, conversation_id, paper_ids)
-        run, next_state = self.harness.run_turn(
-            dataset,
-            state,
-            user_message,
-            progress_listener=progress_listener,
-            should_cancel=should_cancel,
-            corpus_reader=corpus_reader,
-            retry_context=child_map(request.get("retry")),
-            run_limits=limits,
-            run_control=control,
-            request_id=str(request.get("request_id") or ""),
+        request_id = str(request.get("request_id") or "")
+        self.in_flight.register(
+            request_id=request_id,
+            conversation_id=conversation_id,
+            user_id=int(raw_user_id),
         )
-        return _turn_response(request, run, next_state, dataset)
+        try:
+            run, next_state = self.harness.run_turn(
+                dataset,
+                state,
+                user_message,
+                progress_listener=progress_listener,
+                should_cancel=should_cancel,
+                corpus_reader=corpus_reader,
+                retry_context=child_map(request.get("retry")),
+                run_limits=limits,
+                run_control=control,
+                request_id=request_id,
+            )
+            self.in_flight.set_run_id(request_id, str(run.get("run_id") or ""))
+            return _turn_response(request, run, next_state, dataset)
+        finally:
+            self.in_flight.unregister(request_id)
 
 
 def serve(
@@ -129,6 +195,8 @@ def _service_app(service: ResearchHarnessService, token: str) -> Starlette:
             "harness": service.runtime_name,
             "provider": service.provider.public_diagnostics(),
             "transport": "ndjson-stream",
+            "in_flight": service.in_flight.count(),
+            "eval_capture_failures": getattr(service.harness, "eval_capture_failures", 0),
         })
 
     async def turn(request: Request) -> JSONResponse:
