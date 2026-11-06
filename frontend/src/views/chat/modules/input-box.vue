@@ -698,7 +698,7 @@ onUnmounted(() => {
           ref="inputRef"
           v-model="input.message"
           placeholder="Ask about a paper, method, claim, table, or citation"
-          class="chat-input-textarea max-h-32 min-h-6 w-full resize-none border-none bg-transparent py-1 text-14px caret-[rgb(var(--primary-color))] outline-none"
+          class="chat-input-textarea max-h-32 min-h-6 w-full resize-none border-none bg-transparent py-0.5 text-14px caret-[rgb(var(--primary-color))] outline-none"
           aria-describedby="chat-input-shortcut-hint"
           @input="autoResize"
           @keydown="handShortcut"
@@ -722,7 +722,7 @@ onUnmounted(() => {
         <NButton
           :disabled="sendDisabled"
           class="chat-input-send"
-          size="medium"
+          size="small"
           circle
           :type="isSending ? 'warning' : 'primary'"
           :aria-label="isSending ? '停止生成' : '发送'"
@@ -730,8 +730,8 @@ onUnmounted(() => {
           @click="() => handleSend()"
         >
           <template #icon>
-            <icon-lucide:square v-if="isSending" class="text-16px" />
-            <icon-lucide:arrow-up v-else class="text-16px" />
+            <icon-lucide:square v-if="isSending" class="text-14px" />
+            <icon-lucide:arrow-up v-else class="text-14px" />
           </template>
         </NButton>
       </div>
@@ -858,7 +858,7 @@ onUnmounted(() => {
 }
 
 .chat-input-wrap--hero .chat-input-shell {
-  min-height: 128px;
+  min-height: 116px;
   padding: var(--space-4) var(--space-4) var(--space-3);
 }
 
@@ -868,42 +868,34 @@ onUnmounted(() => {
   line-height: var(--leading-relaxed);
 }
 
-/* The composer is the Vibe-Chat-style card: a white surface with a
-   hairline frame; focus narrows the frame to the academic blue instead
-   of swapping fills. Tools and meta live inside the card — nothing
-   dangles below it. */
+/* The composer floats over the chat: a borderless white card lifted by
+   the dedicated composer shadow. Focus narrows to the research-blue
+   ring instead of swapping fills. All tools and meta live inside. */
 .chat-input-shell {
   display: flex;
   max-width: 960px !important;
-  min-height: 72px;
+  min-height: 60px;
   flex-direction: column;
-  gap: var(--space-2);
-  border: 1px solid var(--color-border);
+  gap: var(--space-1-5);
+  border: none;
   border-radius: var(--radius-composer);
   background: var(--color-surface) !important;
-  box-shadow: var(--shadow-card);
-  padding: var(--space-3) var(--space-4) var(--space-2-5);
-  transition:
-    border-color var(--duration-base) var(--ease-standard),
-    box-shadow var(--duration-base) var(--ease-standard);
-}
-
-.chat-input-shell:hover {
-  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-composer);
+  padding: var(--space-2-5) var(--space-3-5) var(--space-2);
+  transition: box-shadow var(--duration-base) var(--ease-standard);
 }
 
 .chat-input-shell:focus-within {
-  border-color: color-mix(in srgb, var(--color-research) 55%, var(--color-border));
   box-shadow:
     0 0 0 3px var(--color-focus-ring),
-    var(--shadow-card);
+    var(--shadow-composer);
 }
 
 .chat-input-tools {
   display: flex;
-  min-height: 34px;
+  min-height: 30px;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2-5);
 }
 
 .chat-input-meta {

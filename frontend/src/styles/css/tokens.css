@@ -122,10 +122,12 @@
   --radius-pill: 999px;
 
   /* ---- Elevation -------------------------------------------------------
-     Two levels only: a hairline lift for resting cards, and one soft
-     shadow for floating layers. Ink-based, not green-tinted. */
+     Three levels: a hairline lift for resting cards; one soft shadow for
+     floating layers; and the lifted shadow for the floating composer
+     card (the only element that floats over scrolling content). */
   --shadow-card: 0 1px 2px rgba(23, 25, 29, 0.05), 0 1px 1px rgba(23, 25, 29, 0.03);
   --shadow-card-soft: 0 16px 42px rgba(23, 25, 29, 0.08);
+  --shadow-composer: 0 4px 18px rgba(23, 25, 29, 0.09), 0 1px 2px rgba(23, 25, 29, 0.05);
   --shadow-float: 0 8px 24px rgba(23, 25, 29, 0.1), 0 1px 2px rgba(23, 25, 29, 0.06);
 
   /* ---- Motion ---------------------------------------------------------- */
@@ -176,5 +178,6 @@
   --color-error: #ff7a70;
   --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.025), 0 10px 28px rgba(0, 0, 0, 0.18);
   --shadow-card-soft: 0 18px 54px rgba(0, 0, 0, 0.32);
+  --shadow-composer: 0 4px 18px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 255, 255, 0.04);
   --shadow-float: 0 10px 30px rgba(0, 0, 0, 0.42), 0 1px 0 rgba(255, 255, 255, 0.04);
 }
