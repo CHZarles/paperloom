@@ -172,7 +172,7 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
     def test_openai_env_provider_source_uses_openai_environment_names(self) -> None:
         from harness_py.cli import _provider
 
-        with patch("harness_py.cli.EnvProviderConfigStore") as store_class:
+        with patch("harness_py.transport.provider_config.EnvProviderConfigStore") as store_class:
             store_class.return_value.load_active_provider.return_value = "provider"
 
             provider = _provider("openai-env")

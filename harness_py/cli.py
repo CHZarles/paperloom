@@ -50,11 +50,8 @@ from .evaluation.retrieval import evaluate_product_retrieval
 from .evaluation.scoring import BehaviorScorer
 from .orchestration.live_chat import LiveResearchChatHarness
 from .orchestration.runtime import build_harness_runtime
-from .transport.provider_config import DockerMySqlProviderConfigStore, EnvProviderConfigStore
+from .transport.provider_config import PROVIDER_SOURCE_CHOICES, provider_config_store
 from .transport.service import serve
-
-
-PROVIDER_SOURCE_CHOICES = ("db", "env", "openai-env")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -178,6 +175,7 @@ def main(argv: list[str] | None = None) -> int:
     serve_parser.add_argument("--host", default="127.0.0.1")
     serve_parser.add_argument("--port", type=int, default=8091)
     serve_parser.add_argument("--internal-token", default="")
+    serve_parser.add_argument("--provider-source", choices=PROVIDER_SOURCE_CHOICES, default="db")
     judge_parser = subcommands.add_parser(
         "judge-calibrate",
         help="Compare one LLM judge with fixed human-labelled harness runs.",
@@ -576,6 +574,7 @@ def main(argv: list[str] | None = None) -> int:
             host=args.host,
             port=args.port,
             internal_token=args.internal_token,
+            provider_source=args.provider_source,
         )
         return 0
     if args.command == "judge-calibrate":
@@ -656,19 +655,7 @@ def _judge_model(provider_source: str):
 
 
 def _provider(provider_source: str):
-    if provider_source == "db":
-        store = DockerMySqlProviderConfigStore()
-    elif provider_source == "openai-env":
-        store = EnvProviderConfigStore(
-            api_base_url_env="OPENAI_BASE_URL",
-            api_key_env="OPENAI_API_KEY",
-            model_env="OPENAI_MODEL",
-            provider="openai",
-            api_style="openai-compatible",
-        )
-    else:
-        store = EnvProviderConfigStore()
-    return store.load_active_provider("llm")
+    return provider_config_store(provider_source).load_active_provider("llm")
 
 
 def _dataset_with_cases(dataset, cases):

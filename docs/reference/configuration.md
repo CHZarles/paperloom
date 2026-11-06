@@ -77,7 +77,7 @@ fallback.
 | `JAVA_CORPUS_BASE_URL` | Java Corpus API base URL used by Python; local default is `http://127.0.0.1:8081` |
 | `JAVA_CORPUS_MAX_RESPONSE_BYTES` | Maximum accepted Java Corpus API response body; default is 8 MiB |
 | `RESEARCH_HARNESS_PYTHON` | Python executable for local launcher |
-| `MINIMAX_API_BASE_URL`, `MINIMAX_API_KEY`, `MINIMAX_MODEL` | Default research model provider |
+| `MINIMAX_API_BASE_URL`, `MINIMAX_API_KEY`, `MINIMAX_MODEL` | Bootstrap values for the default research model provider; the admin page persists provider rows in MySQL `model_provider_configs` and those rows take precedence |
 | `QDRANT_CONTRACT` | `sparse-only-v1` (default) or `sparse-dense-v1`; picks which Qdrant collection schema to use |
 | `AGENT_TRACE_DIR` | Private production directory for complete per-Run model, tool, validation, and result JSON |
 | `AGENT_TRACE_RETENTION_DAYS` | Delete completed Agent traces older than this many days; default `7` |

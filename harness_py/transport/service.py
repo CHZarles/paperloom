@@ -32,7 +32,7 @@ from ..orchestration.live_chat import LiveResearchChatHarness
 from ..orchestration.runtime import build_harness_runtime
 from ..orchestration.run_control import RunLimits
 from ..orchestration.run_control import RunControl
-from .provider_config import EnvProviderConfigStore
+from .provider_config import EnvProviderConfigStore, provider_config_store
 
 
 class InFlightRegistry:
@@ -179,19 +179,55 @@ class ResearchHarnessService:
         self,
         *,
         provider=None,
+        provider_store=None,
         harness=None,
         corpus_gateway=None,
     ):
-        self.provider = provider or EnvProviderConfigStore().load_active_provider("llm")
+        self.provider_store = provider_store
         self.runtime_name = "agents_sdk"
-        self.harness = harness or LiveResearchChatHarness(
-            build_harness_runtime(self.provider),
-        )
+        self._harness_lock = threading.Lock()
+        self._harness_provider = provider
+        if provider_store is None:
+            self.provider = provider or EnvProviderConfigStore().load_active_provider("llm")
+            self.harness = harness or LiveResearchChatHarness(
+                build_harness_runtime(self.provider),
+            )
+        else:
+            # store 模式：provider 延迟到每个回合加载，配置变化时才重建 harness。
+            # 管理页保存 provider 后无需重启 harness 进程即可生效。
+            self.provider = None
+            self.harness = harness
         self.corpus_gateway = corpus_gateway or JavaCorpusGateway()
         self.in_flight = InFlightRegistry()
         self.shutting_down = threading.Event()
         self.drain_seconds = _positive_env_float("RESEARCH_HARNESS_DRAIN_SECONDS", 30.0)
         self.readiness = ReadinessProbe(self)
+
+    def provider_diagnostics(self) -> JsonMap:
+        """provider 诊断；store 模式尚未成功加载时为空 dict，不暴露密钥。"""
+
+        if self.provider is None:
+            return {}
+        return self.provider.public_diagnostics()
+
+    def _harness_for_run(self):
+        """返回本回合使用的 harness。
+
+        store 模式下每个回合重新加载 provider，只有配置变化时才重建 harness；
+        加载失败向上抛出，由调用方 fail-closed，绝不静默回退。
+        """
+
+        if self.provider_store is None:
+            return self.harness
+        provider = self.provider_store.load_active_provider("llm")
+        with self._harness_lock:
+            if self.harness is None or provider != self._harness_provider:
+                self._harness_provider = provider
+                self.provider = provider
+                self.harness = LiveResearchChatHarness(
+                    build_harness_runtime(provider),
+                )
+            return self.harness
 
     def run_turn(self, request: JsonMap) -> JsonMap:
         return self.run_job(request, lambda _event: None, lambda: False)
@@ -222,6 +258,8 @@ class ResearchHarnessService:
         request_id = str(request.get("request_id") or "").strip()
         limits = _run_limits(child_map(request.get("options")))
         control = RunControl(limits, should_cancel=should_cancel)
+        # provider 在注册在途回合之前加载，配置缺失时注册表不留痕。
+        harness = self._harness_for_run()
         corpus_reader = self.corpus_gateway.reader(
             request_id=request_id,
             conversation_id=conversation_id,
@@ -238,7 +276,7 @@ class ResearchHarnessService:
             user_id=int(raw_user_id),
         )
         try:
-            run, next_state = self.harness.run_turn(
+            run, next_state = harness.run_turn(
                 dataset,
                 state,
                 user_message,
@@ -263,15 +301,29 @@ def serve(
     host: str = "127.0.0.1",
     port: int = 8091,
     internal_token: str = "",
+    provider_source: str = "db",
 ) -> None:
-    service = ResearchHarnessService()
+    # 默认 db：与 Java 控制平面共用 model_provider_configs 表，管理页保存后
+    # 下一个回合即生效。env / openai-env 保留为本地逃生通道。
+    service = ResearchHarnessService(
+        provider_store=provider_config_store(provider_source),
+    )
     token = internal_token or os.getenv("RESEARCH_HARNESS_INTERNAL_TOKEN", "")
     app = _service_app(service, token)
+    try:
+        service._harness_for_run()
+    except Exception as error:
+        # 不在启动期硬失败：DB 行可能稍后才由 Java 侧播种；readiness 会报告
+        # provider_unconfigured，回合路径 fail-closed。
+        logging.getLogger(__name__).warning(
+            "provider config not loadable yet (turns will fail until configured): %s", error
+        )
     print(json.dumps({
         "status": "ready",
         "host": host,
         "port": port,
-        "provider": service.provider.public_diagnostics(),
+        "provider_source": provider_source,
+        "provider": service.provider_diagnostics(),
         "runtime": service.runtime_name,
         "transport": "ndjson-stream",
     }, indent=2, sort_keys=True))
@@ -293,7 +345,7 @@ def _service_app(service: ResearchHarnessService, token: str) -> Starlette:
         return JSONResponse({
             "status": "ok",
             "harness": service.runtime_name,
-            "provider": service.provider.public_diagnostics(),
+            "provider": service.provider_diagnostics(),
             "transport": "ndjson-stream",
             "in_flight": service.in_flight.count(),
             "eval_capture_failures": getattr(service.harness, "eval_capture_failures", 0),

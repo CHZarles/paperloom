@@ -45,6 +45,27 @@ class ProviderConfigStore:
         raise NotImplementedError
 
 
+PROVIDER_SOURCE_CHOICES = ("db", "env", "openai-env")
+
+
+def provider_config_store(provider_source: str = "db") -> ProviderConfigStore:
+    """按来源构造 provider 配置 store，不做加载；加载失败留给调用方 fail-closed。"""
+
+    if provider_source == "db":
+        return DockerMySqlProviderConfigStore()
+    if provider_source == "openai-env":
+        return EnvProviderConfigStore(
+            api_base_url_env="OPENAI_BASE_URL",
+            api_key_env="OPENAI_API_KEY",
+            model_env="OPENAI_MODEL",
+            provider="openai",
+            api_style="openai-compatible",
+        )
+    if provider_source == "env":
+        return EnvProviderConfigStore()
+    raise ValueError(f"unknown provider source: {provider_source}")
+
+
 class EnvProviderConfigStore(ProviderConfigStore):
     def __init__(
         self,

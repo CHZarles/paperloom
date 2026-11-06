@@ -162,6 +162,35 @@ declare namespace Api {
       embeddingRankings: UsageRankingItem[];
       alerts: UsageAlert[];
     }
+
+    interface ModelProviderItem {
+      provider: string;
+      displayName: string;
+      apiStyle: string;
+      apiBaseUrl: string;
+      model: string;
+      enabled: boolean;
+      active: boolean;
+      dimension: number | null;
+      hasApiKey: boolean;
+    }
+
+    interface ModelProviderOverview {
+      scope: 'llm' | 'embedding';
+      activeProvider: string;
+      providers: ModelProviderItem[];
+    }
+
+    interface ModelProviderSaveRequest {
+      displayName?: string | null;
+      apiStyle?: string | null;
+      apiBaseUrl: string;
+      modelName: string;
+      apiKey?: string | null;
+      enabled: boolean;
+      active: boolean;
+      dimension?: number | null;
+    }
   }
 
   namespace Paper {

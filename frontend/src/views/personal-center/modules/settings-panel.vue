@@ -4,6 +4,8 @@ import { NTag } from 'naive-ui';
 
 const InviteCodePage = defineAsyncComponent(() => import('@/views/invite-code/index.vue'));
 const UserPage = defineAsyncComponent(() => import('@/views/user/index.vue'));
+const ModelProviderPage = defineAsyncComponent(() => import('@/views/model-provider/index.vue'));
+const UsageDashboardPage = defineAsyncComponent(() => import('@/views/usage-dashboard/index.vue'));
 
 const settingsPanelCacheKey = Symbol.for('paperloom.settingsPanelCache');
 
@@ -16,15 +18,9 @@ type SettingsPanelGlobal = typeof globalThis & {
   [settingsPanelCacheKey]?: SettingsPanelCache | null;
 };
 
-type SettingsSection =
-  | 'general'
-  | 'userAdmin'
-  | 'inviteCode';
+type SettingsSection = 'general' | 'userAdmin' | 'inviteCode' | 'modelProvider' | 'usage';
 
-const adminSections = new Set<SettingsSection>([
-  'userAdmin',
-  'inviteCode'
-]);
+const adminSections = new Set<SettingsSection>(['userAdmin', 'inviteCode', 'modelProvider', 'usage']);
 
 const emit = defineEmits<{
   close: [];
@@ -163,6 +159,24 @@ function buildAvatarFill(seed: string) {
             <icon-lucide:ticket />
             <span>Invite Codes</span>
           </button>
+          <button
+            type="button"
+            class="settings-nav__item"
+            :class="{ 'settings-nav__item--active': activeSection === 'modelProvider' }"
+            @click="activeSection = 'modelProvider'"
+          >
+            <icon-lucide:boxes />
+            <span>AI Providers</span>
+          </button>
+          <button
+            type="button"
+            class="settings-nav__item"
+            :class="{ 'settings-nav__item--active': activeSection === 'usage' }"
+            @click="activeSection = 'usage'"
+          >
+            <icon-lucide:chart-column />
+            <span>Token Usage</span>
+          </button>
         </template>
       </aside>
 
@@ -197,10 +211,21 @@ function buildAvatarFill(seed: string) {
         >
           <InviteCodePage />
         </section>
+        <section
+          v-if="authStore.isAdmin && activeSection === 'modelProvider'"
+          class="settings-section settings-section--embedded"
+        >
+          <ModelProviderPage />
+        </section>
+        <section
+          v-if="authStore.isAdmin && activeSection === 'usage'"
+          class="settings-section settings-section--embedded"
+        >
+          <UsageDashboardPage />
+        </section>
       </main>
     </div>
-
-      </div>
+  </div>
 </template>
 
 <style scoped lang="scss">
