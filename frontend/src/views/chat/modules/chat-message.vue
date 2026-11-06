@@ -309,7 +309,9 @@ const researchFinished = computed(() =>
 const thoughtSeconds = computed(() => {
   const terminal = [...researchEvents.value]
     .reverse()
-    .find(e => ['job_completed', 'run_limited', 'job_failed'].includes(e.eventType || e.type) && Number(e.elapsedMs) > 0);
+    .find(
+      e => ['job_completed', 'run_limited', 'job_failed'].includes(e.eventType || e.type) && Number(e.elapsedMs) > 0
+    );
   if (terminal) return Math.round(Number(terminal.elapsedMs) / 1000);
   const modelMs = researchEvents.value
     .filter(e => (e.eventType || e.type) === 'model_call_completed')
@@ -984,10 +986,6 @@ async function handleSourceFileClick(fileInfo: {
 <template>
   <div class="message-block" :class="msg.role === 'user' ? 'message-block--user' : 'message-block--assistant'">
     <div class="message-row">
-      <span v-if="msg.role === 'assistant'" class="message-avatar message-avatar--assistant" aria-hidden="true">
-        <SystemLogo />
-      </span>
-
       <div class="message-body">
         <button
           v-if="assistantIsGenerating && showResearchDetails"
@@ -1243,31 +1241,6 @@ async function handleSourceFileClick(fileInfo: {
   justify-content: flex-end;
 }
 
-.message-avatar {
-  display: inline-flex;
-  width: 30px;
-  height: 30px;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-elevated);
-  box-shadow: var(--shadow-card);
-  color: var(--color-text-muted);
-}
-
-.message-avatar :deep(svg) {
-  width: 17px;
-  height: 17px;
-}
-
-.message-avatar--assistant {
-  background: var(--color-surface);
-  color: var(--color-primary);
-}
-
 .message-body {
   display: flex;
   min-width: 0;
@@ -1430,12 +1403,6 @@ async function handleSourceFileClick(fileInfo: {
 .dark .user-content {
   border-color: var(--color-border);
   background: var(--color-surface-alt);
-}
-
-.dark .message-avatar {
-  border-color: var(--color-border);
-  background: var(--color-surface-elevated);
-  box-shadow: var(--shadow-card);
 }
 
 /* Override VuePress-style markdown theme variables inside chat responses
@@ -1801,16 +1768,6 @@ async function handleSourceFileClick(fileInfo: {
   .message-block--assistant .message-row {
     width: 100%;
     max-width: 100%;
-  }
-
-  .message-avatar {
-    width: 28px;
-    height: 28px;
-  }
-
-  .message-avatar :deep(svg) {
-    width: 16px;
-    height: 16px;
   }
 
   .message-body,
