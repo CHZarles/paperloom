@@ -120,6 +120,8 @@ class ResearchHarnessService:
         request: JsonMap,
         progress_listener,
         should_cancel,
+        *,
+        defer_unregister: bool = False,
     ) -> JsonMap:
         user_message = str(request.get("user_message") or "").strip()
         if not user_message:
@@ -136,10 +138,11 @@ class ResearchHarnessService:
         raw_user_id = request.get("user_id")
         if raw_user_id in (None, ""):
             raise ValueError("user_id is required for the Java Corpus API")
+        request_id = str(request.get("request_id") or "").strip()
         limits = _run_limits(child_map(request.get("options")))
         control = RunControl(limits, should_cancel=should_cancel)
         corpus_reader = self.corpus_gateway.reader(
-            request_id=str(request.get("request_id") or ""),
+            request_id=request_id,
             conversation_id=conversation_id,
             user_id=int(raw_user_id),
             scope_paper_ids=paper_ids,
@@ -148,7 +151,6 @@ class ResearchHarnessService:
         )
         dataset = corpus_reader.load_metadata_dataset()
         state = _conversation_state(request, conversation_id, paper_ids)
-        request_id = str(request.get("request_id") or "")
         self.in_flight.register(
             request_id=request_id,
             conversation_id=conversation_id,
@@ -170,7 +172,9 @@ class ResearchHarnessService:
             self.in_flight.set_run_id(request_id, str(run.get("run_id") or ""))
             return _turn_response(request, run, next_state, dataset)
         finally:
-            self.in_flight.unregister(request_id)
+            # 流式路径由调用方在终态事件发出后再注销，保证"注销在终态事件之后"。
+            if not defer_unregister:
+                self.in_flight.unregister(request_id)
 
 
 def serve(
@@ -304,7 +308,7 @@ def _stream_job(service: ResearchHarnessService, payload: JsonMap):
     def run() -> None:
         try:
             emit({"type": "job_started"})
-            response = service.run_job(payload, emit, should_cancel)
+            response = service.run_job(payload, emit, should_cancel, defer_unregister=True)
             status = str(response.get("status") or "")
             terminal = terminal_event(response)
             if status == "LIMITED":
@@ -326,6 +330,8 @@ def _stream_job(service: ResearchHarnessService, payload: JsonMap):
                 "message": str(error),
             })
         finally:
+            # 终态事件（job_cancelled/job_failed/result 等）已在上方发出，此时才注销。
+            service.in_flight.unregister(generation_id)
             events.put(None)
 
     threading.Thread(target=run, name=f"research-{generation_id or 'request'}", daemon=True).start()

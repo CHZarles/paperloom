@@ -238,3 +238,51 @@ class ServiceTest(unittest.TestCase):
         self.assertEqual("30", turn_response.headers["Retry-After"])
         self.assertEqual(503, stream_response.status_code)
         self.assertEqual("draining", stream_response.json()["error"])
+
+    def test_defer_unregister_keeps_entry_until_terminal_event_is_emitted(self) -> None:
+        dataset = _harness_tests.PythonHarnessPrototypeTest()._synthetic_dataset()
+
+        class CorpusReader:
+            def load_metadata_dataset(self):
+                return dataset
+
+        class CorpusGateway:
+            def reader(self, **kwargs):
+                return CorpusReader()
+
+        class Provider:
+            def public_diagnostics(self):
+                return {"provider": "test"}
+
+        class FixtureRuntime:
+            def run_turn(self, turn):
+                run = GoldenFixtureHarness().run_case(turn.dataset, turn.dataset.cases[0])
+                run["run_id"] = turn.run_id
+                return TurnExecutionResult(run=run)
+
+        service = ResearchHarnessService(
+            provider=Provider(),
+            harness=LiveResearchChatHarness(FixtureRuntime()),
+            corpus_gateway=CorpusGateway(),
+        )
+        payload = {
+            "request_id": "request_defer",
+            "conversation_id": "conversation_defer",
+            "user_id": 7,
+            "user_message": "What is the synthetic answer?",
+            "history": [],
+            "scope": {"paper_ids": ["synthetic_paper"]},
+            "research_memory": {},
+            "options": {"include_trace": False},
+        }
+
+        # 流式路径用 defer_unregister=True：run_job 返回后条目仍在，等待终态事件发出后再注销。
+        service.run_job(payload, lambda _event: None, lambda: False, defer_unregister=True)
+
+        self.assertEqual(1, service.in_flight.count())
+        snapshot = service.in_flight.snapshot()
+        self.assertEqual("request_defer", snapshot[0]["request_id"])
+        self.assertTrue(snapshot[0]["run_id"].startswith("run_"))
+
+        service.in_flight.unregister("request_defer")
+        self.assertEqual(0, service.in_flight.count())
