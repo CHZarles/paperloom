@@ -89,7 +89,6 @@ public class ChatGenerationStateService {
             deleteGeneration(generationId);
             throw new GenerationInProgressException(conversationId);
         }
-        redisTemplate.opsForValue().set(activeGenerationKey(userId), generationId, GENERATION_TTL);
         if (meta.clientId() != null) {
             redisTemplate.opsForValue().set(activeGenerationKey(userId, meta.clientId()), generationId, GENERATION_TTL);
         }
@@ -256,14 +255,6 @@ public class ChatGenerationStateService {
         return getGeneration(generationId).filter(snapshot -> snapshot.userId().equals(userId));
     }
 
-    public Optional<GenerationSnapshot> getActiveGenerationForUser(String userId) {
-        String generationId = redisTemplate.opsForValue().get(activeGenerationKey(userId));
-        if (generationId == null || generationId.isBlank()) {
-            return Optional.empty();
-        }
-        return getGenerationForUser(generationId, userId);
-    }
-
     public Optional<GenerationSnapshot> getActiveGenerationForUserAndClient(String userId, String clientId) {
         String normalizedClientId = trimToNull(clientId);
         if (normalizedClientId == null) {
@@ -295,7 +286,6 @@ public class ChatGenerationStateService {
         if (!Long.valueOf(1L).equals(renewed)) {
             return false;
         }
-        compareAndExpire(activeGenerationKey(meta.userId()), generationId);
         if (meta.clientId() != null) {
             compareAndExpire(activeGenerationKey(meta.userId(), meta.clientId()), generationId);
         }
@@ -370,7 +360,6 @@ public class ChatGenerationStateService {
     }
 
     private void clearActiveGeneration(String userId, String clientId, String conversationId, String generationId) {
-        compareAndDelete(activeGenerationKey(userId), generationId);
         compareAndDelete(conversationActiveGenerationKey(userId, conversationId), generationId);
         String normalizedClientId = trimToNull(clientId);
         if (normalizedClientId == null) {
@@ -582,10 +571,6 @@ public class ChatGenerationStateService {
 
     private String progressEventsKey(String generationId) {
         return "chat:generation:" + generationId + ":progress_events";
-    }
-
-    private String activeGenerationKey(String userId) {
-        return "chat:user:" + userId + ":active_generation";
     }
 
     private String activeGenerationKey(String userId, String clientId) {

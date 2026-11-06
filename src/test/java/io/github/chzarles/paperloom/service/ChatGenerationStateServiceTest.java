@@ -43,9 +43,9 @@ class ChatGenerationStateServiceTest {
                 eq(snapshot.generationId()),
                 any(Duration.class)
         );
-        verify(valueOperations).set(
+        verify(valueOperations, never()).set(
                 eq("chat:user:1:active_generation"),
-                eq(snapshot.generationId()),
+                any(String.class),
                 any(Duration.class)
         );
     }
@@ -112,7 +112,7 @@ class ChatGenerationStateServiceTest {
 
         service.markCancelled("generation-1");
 
-        verify(redisTemplate).execute(
+        verify(redisTemplate, never()).execute(
                 eq(ChatGenerationStateService.COMPARE_AND_DELETE_SCRIPT),
                 eq(List.of("chat:user:1:active_generation")),
                 eq("generation-1")

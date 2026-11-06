@@ -101,9 +101,7 @@ public class ChatController {
         return ResponseEntity.ok(responseBody(
                 200,
                 "获取当前活动生成状态成功",
-                normalizedClientId == null
-                        ? chatGenerationStateService.getActiveGenerationForUser(userId).orElse(null)
-                        : chatGenerationStateService.getActiveGenerationForUserAndClient(userId, normalizedClientId).orElse(null)
+                chatGenerationStateService.getActiveGenerationForUserAndClient(userId, normalizedClientId).orElse(null)
         ));
     }
 

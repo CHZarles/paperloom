@@ -1493,9 +1493,7 @@ public class ChatHandler {
         String requesterClientId = resolveClientId(requesterSession);
         String requestedGenerationId = trimToNull(generationId);
         Optional<ChatGenerationStateService.GenerationSnapshot> ownedGeneration = requestedGenerationId == null
-                ? requesterClientId == null || requesterClientId.isBlank()
-                        ? chatGenerationStateService.getActiveGenerationForUser(userId)
-                        : chatGenerationStateService.getActiveGenerationForUserAndClient(userId, requesterClientId)
+                ? chatGenerationStateService.getActiveGenerationForUserAndClient(userId, requesterClientId)
                 : chatGenerationStateService.getGenerationForUser(requestedGenerationId, userId);
         if (ownedGeneration.isEmpty()
                 || ownedGeneration.get().status() != ChatGenerationStateService.GenerationStatus.STREAMING) {

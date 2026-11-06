@@ -14,7 +14,6 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,7 +39,6 @@ class ChatControllerTest {
         ResponseEntity<?> response = controller.getActiveGeneration("Bearer token", "client-a");
 
         verify(generationStateService).getActiveGenerationForUserAndClient("1", "client-a");
-        verify(generationStateService, never()).getActiveGenerationForUser("1");
         assertEquals(200, response.getStatusCode().value());
         assertEquals(snapshot, body(response).get("data"));
     }
