@@ -663,7 +663,10 @@ class ConversationServiceTest {
     }
 
     @Test
-    void getConversationSessionsHidesEmptySessions() {
+    void getConversationSessionsShowsEmptySessions() {
+        // Contract change: a just-created session whose first turn is still streaming
+        // must stay visible in the sidebar, otherwise the user cannot return to the
+        // running turn. The list renders it with the default "新对话" title.
         ConversationSession empty = new ConversationSession();
         ReflectionTestUtils.setField(empty, "id", 11L);
         empty.setConversationId("empty-session");
@@ -675,12 +678,12 @@ class ConversationServiceTest {
         used.setTitle("Reading session");
         used.setStatus(ConversationSession.SessionStatus.ACTIVE);
         when(sessionRepository.findByUserIdOrderByUpdatedAtDesc(1L)).thenReturn(List.of(empty, used));
-        when(conversationRepository.findDistinctConversationIdsByUserId(1L)).thenReturn(List.of("used-session"));
 
         List<Map<String, Object>> result = conversationService.getConversationSessions(1L);
 
-        assertEquals(1, result.size());
-        assertEquals("used-session", result.get(0).get("conversationId"));
+        assertEquals(2, result.size());
+        assertEquals("empty-session", result.get(0).get("conversationId"));
+        assertEquals("used-session", result.get(1).get("conversationId"));
     }
 
     @Test
@@ -1063,4 +1066,23 @@ class ConversationServiceTest {
         assertTrue(detailOpt.isEmpty());
     }
 
+
+    @Test
+    void getConversationSessionsIncludesEmptySessions() {
+        ConversationSession session = new ConversationSession();
+        session.setConversationId("conversation-empty");
+        session.setStatus(ConversationSession.SessionStatus.ACTIVE);
+        session.setCreatedAt(LocalDateTime.now());
+        session.setUpdatedAt(LocalDateTime.now());
+        when(sessionRepository.findByUserIdOrderByUpdatedAtDesc(1L)).thenReturn(List.of(session));
+        when(conversationRepository.findDistinctConversationIdsByUserId(1L)).thenReturn(List.of());
+        when(valueOperations.get("user:1:current_conversation")).thenReturn("conversation-empty");
+
+        List<Map<String, Object>> sessions = conversationService.getConversationSessions(1L);
+
+        assertEquals(1, sessions.size());
+        assertEquals("conversation-empty", sessions.get(0).get("conversationId"));
+        assertEquals("新对话", sessions.get(0).get("title"));
+        assertEquals(Boolean.TRUE, sessions.get(0).get("current"));
+    }
 }
