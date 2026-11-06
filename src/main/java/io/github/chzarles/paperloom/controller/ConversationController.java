@@ -13,12 +13,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import static io.github.chzarles.paperloom.utils.DateTimeUtils.parseEndDate;
+import static io.github.chzarles.paperloom.utils.DateTimeUtils.parseStartDate;
 
 @RestController
 @RequestMapping("/api/v1/users/conversation")
@@ -87,61 +87,5 @@ public class ConversationController {
         }
     }
 
-    private LocalDateTime parseStartDate(String dateTimeStr) {
-        if (dateTimeStr == null || dateTimeStr.trim().isEmpty()) {
-            return null;
-        }
 
-        try {
-            return LocalDateTime.parse(dateTimeStr);
-        } catch (DateTimeParseException e1) {
-            try {
-                if (dateTimeStr.length() == 16) {
-                    return LocalDateTime.parse(dateTimeStr + ":00");
-                }
-
-                if (dateTimeStr.length() == 13) {
-                    return LocalDateTime.parse(dateTimeStr + ":00:00");
-                }
-
-                if (dateTimeStr.length() == 10) {
-                    return LocalDate.parse(dateTimeStr).atStartOfDay();
-                }
-            } catch (Exception e2) {
-                LogUtils.logBusinessError("PARSE_START_DATETIME", "system", "无法解析起始时间: %s", e2, dateTimeStr);
-                throw new CustomException("无效的起始时间格式: " + dateTimeStr, HttpStatus.BAD_REQUEST);
-            }
-        }
-
-        throw new CustomException("无效的起始时间格式: " + dateTimeStr, HttpStatus.BAD_REQUEST);
-    }
-
-    private LocalDateTime parseEndDate(String dateTimeStr) {
-        if (dateTimeStr == null || dateTimeStr.trim().isEmpty()) {
-            return null;
-        }
-
-        try {
-            return LocalDateTime.parse(dateTimeStr);
-        } catch (DateTimeParseException e1) {
-            try {
-                if (dateTimeStr.length() == 16) {
-                    return LocalDateTime.parse(dateTimeStr + ":59");
-                }
-
-                if (dateTimeStr.length() == 13) {
-                    return LocalDateTime.parse(dateTimeStr + ":59:59");
-                }
-
-                if (dateTimeStr.length() == 10) {
-                    return LocalDate.parse(dateTimeStr).plusDays(1).atStartOfDay().minusSeconds(1);
-                }
-            } catch (Exception e2) {
-                LogUtils.logBusinessError("PARSE_END_DATETIME", "system", "无法解析结束时间: %s", e2, dateTimeStr);
-                throw new CustomException("无效的结束时间格式: " + dateTimeStr, HttpStatus.BAD_REQUEST);
-            }
-        }
-
-        throw new CustomException("无效的结束时间格式: " + dateTimeStr, HttpStatus.BAD_REQUEST);
-    }
 }

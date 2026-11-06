@@ -60,7 +60,7 @@ class ResearchProtocolTest(unittest.TestCase):
                     SubmissionIssueClass.MISSING_CONTRACT_INPUT,
                     ("UNCITED_CONTENT_BLOCK",),
                 ),
-                Phase.ACTIVE,
+                Phase.REPAIR,
                 AnswerContract.RESEARCH,
             ),
             (
@@ -85,6 +85,25 @@ class ResearchProtocolTest(unittest.TestCase):
                 self.assertEqual(phase, decision.next_state.phase)
                 self.assertEqual(contract, decision.next_state.contract)
                 self.assertEqual(1, decision.next_state.submission_attempt)
+
+    def test_citation_rejection_allows_only_resubmission(self) -> None:
+        decision = decide(
+            ProtocolState(),
+            SubmissionRequested(
+                AnswerContract.RESEARCH,
+                {"markdown": "Unsupported."},
+                False,
+                SubmissionIssueClass.MISSING_CONTRACT_INPUT,
+                ("UNCITED_CONTENT_BLOCK",),
+            ),
+            ProtocolFacts(),
+        )
+
+        self.assertEqual(Phase.REPAIR, decision.next_state.phase)
+        self.assertEqual(
+            frozenset({"submit_research_answer"}),
+            frozenset(decision.model_result["allowed_next_actions"]),
+        )
 
     def test_action_guards_reject_illegal_or_mixed_calls_without_changing_contract(self) -> None:
         research_repair = ProtocolState(
@@ -226,6 +245,28 @@ class ResearchProtocolTest(unittest.TestCase):
         self.assertIn("briefly acknowledge X", instructions)
         self.assertIn("outcome=needs_clarification", instructions)
         self.assertIn("asks for a definition, details, mechanism, or comparison, use RESEARCH", instructions)
+
+    def test_agent_prompt_aligns_content_queries_and_navigates_structure(self) -> None:
+        instructions = research_agent_instructions(ResearchSkillRegistry())
+
+        self.assertIn("use concise English keywords when the paper text is English", instructions)
+        self.assertIn("do not pass a full Chinese question unchanged as query_text", instructions)
+        self.assertIn("For Appendix, Section, Table, Figure, page, or section-number questions, call get_paper_structure first", instructions)
+        self.assertIn("rewrite the query once before expanding the search", instructions)
+
+    def test_agent_prompt_keeps_recommendation_reasons_evidence_bounded(self) -> None:
+        instructions = research_agent_instructions(ResearchSkillRegistry())
+
+        self.assertIn("For paper recommendations, recommend only papers whose reasons are supported by exact read evidence", instructions)
+        self.assertIn("Put an inline source quote in every recommendation reason", instructions)
+        self.assertIn("do not make corpus-wide claims such as all modern models derive from one paper", instructions)
+
+    def test_agent_prompt_checks_each_requested_part_against_read_quotes(self) -> None:
+        instructions = research_agent_instructions(ResearchSkillRegistry())
+
+        self.assertIn("keep a short checklist of those requested parts", instructions)
+        self.assertIn("read the relevant exact locations returned for each part", instructions)
+        self.assertIn("compare every requested part with the source quotes actually read", instructions)
 
     def test_research_validation_binds_every_content_block_to_known_quotes(self) -> None:
         facts = ProtocolFacts(known_source_quotes={

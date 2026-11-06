@@ -14,12 +14,8 @@ from harness_py.cli import main
 from harness_py.utils.models import GoldenDataset
 from harness_py.corpus_test_fixtures.in_memory_tools import InMemoryTools
 from harness_py.evaluation.dataset import load_dataset
-from harness_py.evaluation.golden_case import paper_ids_for_case
 from harness_py.evaluation.golden_fixture import GoldenFixtureHarness
 from harness_py.evaluation.scoring import BehaviorScorer
-from harness_py.orchestration.live_chat import _dataset_for_scope
-from harness_py.orchestration.research_contract import research_agent_instructions
-from harness_py.orchestration.research_skills import ResearchSkillRegistry
 
 
 class GoldenV4Test(unittest.TestCase):
@@ -123,7 +119,7 @@ class GoldenV4Test(unittest.TestCase):
         self.assertTrue(contains_normalized_phrase(text, quote))
 
     def test_runtime_anchor_matcher_rejects_partial_overlap_unrelated_passage(self) -> None:
-        from harness_py.corpus_test_fixtures.in_memory_tools import ReadingDocument, _match_anchors
+        from harness_py.corpus_test_fixtures.reading_documents import ReadingDocument, _match_anchors
 
         anchor = self.dataset.anchors_by_id["transformer_adam_training_params_span"]
         document = ReadingDocument(
@@ -141,7 +137,7 @@ class GoldenV4Test(unittest.TestCase):
         self.assertEqual((), _match_anchors(document, [anchor]))
 
     def test_runtime_anchor_matcher_requires_exact_quote_on_the_authored_page(self) -> None:
-        from harness_py.corpus_test_fixtures.in_memory_tools import ReadingDocument, _match_anchors
+        from harness_py.corpus_test_fixtures.reading_documents import ReadingDocument, _match_anchors
 
         anchor = self.dataset.anchors_by_id["transformer_adam_training_params_span"]
         quote = anchor["selector"]["exact_text"]
@@ -167,7 +163,7 @@ class GoldenV4Test(unittest.TestCase):
         )
 
     def test_runtime_anchor_matcher_keeps_multiple_anchors_in_one_element(self) -> None:
-        from harness_py.corpus_test_fixtures.in_memory_tools import ReadingDocument, _match_anchors
+        from harness_py.corpus_test_fixtures.reading_documents import ReadingDocument, _match_anchors
 
         anchors = [{
             "anchor_id": anchor_id,
@@ -229,8 +225,7 @@ class GoldenV4Test(unittest.TestCase):
                     load_dataset(root / "manifest.yaml", repo_root=Path.cwd())
 
     def test_committed_runtime_anchor_tags_are_exact_and_page_constrained(self) -> None:
-        from harness_py.corpus_test_fixtures.in_memory_tools import InMemoryTools as ReadingCorpusTools
-        from harness_py.corpus_test_fixtures.in_memory_tools import _normalize
+        from harness_py.corpus.pages import normalize_text as _normalize
 
         tagged: dict[str, list[str]] = {}
         for document in InMemoryTools(self.dataset).documents:

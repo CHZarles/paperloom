@@ -41,15 +41,11 @@ from .evaluation.product_runner import (
     product_reader_for_case,
     validate_product_scope,
 )
-from .evaluation.paperloom31 import (
-    PreparationError,
-    create_snapshot,
-    ensure_benchmark_config,
-    file_sha256 as benchmark_file_sha256,
-    prepare_papers,
-    run_benchmark,
-    scan_papers,
-)
+from .evaluation.paperloom_benchmark import run_benchmark
+from .evaluation.paperloom_common import PreparationError
+from .evaluation.paperloom_prepare import ensure_benchmark_config, prepare_papers, scan_papers
+from .evaluation.paperloom_snapshot import create_snapshot
+from .utils.digest import file_sha256 as benchmark_file_sha256
 from .evaluation.retrieval import evaluate_product_retrieval
 from .evaluation.scoring import BehaviorScorer
 from .orchestration.live_chat import LiveResearchChatHarness
@@ -182,23 +178,6 @@ def main(argv: list[str] | None = None) -> int:
     serve_parser.add_argument("--host", default="127.0.0.1")
     serve_parser.add_argument("--port", type=int, default=8091)
     serve_parser.add_argument("--internal-token", default="")
-    worker_parser = subcommands.add_parser("worker", help="Run a Redis Streams research harness worker.")
-    worker_parser.add_argument("--redis-url", default=os.getenv("RESEARCH_HARNESS_REDIS_URL", "redis://127.0.0.1:6379/0"))
-    worker_parser.add_argument("--group", default=os.getenv("RESEARCH_HARNESS_REDIS_GROUP", "paperloom-research-harness"))
-    worker_parser.add_argument("--worker-id", default=os.getenv("RESEARCH_HARNESS_WORKER_ID", ""))
-    worker_parser.add_argument("--jobs-key", default=os.getenv("RESEARCH_HARNESS_REDIS_JOBS_STREAM", "paperloom:research:harness:jobs"))
-    worker_parser.add_argument("--events-prefix", default=os.getenv("RESEARCH_HARNESS_REDIS_EVENTS_PREFIX", "paperloom:research:harness:events:"))
-    worker_parser.add_argument("--status-prefix", default=os.getenv("RESEARCH_HARNESS_REDIS_STATUS_PREFIX", "paperloom:research:harness:status:"))
-    worker_parser.add_argument("--cancel-prefix", default=os.getenv("RESEARCH_HARNESS_REDIS_CANCEL_PREFIX", "paperloom:research:harness:cancel:"))
-    worker_parser.add_argument("--lock-prefix", default=os.getenv("RESEARCH_HARNESS_REDIS_LOCK_PREFIX", "paperloom:research:harness:lock:"))
-    worker_parser.add_argument("--block-ms", type=int, default=int(os.getenv("RESEARCH_HARNESS_WORKER_BLOCK_MS", "5000")))
-    worker_parser.add_argument("--max-concurrent-runs", type=int, default=int(os.getenv("RESEARCH_HARNESS_WORKER_MAX_CONCURRENT_RUNS", "1")))
-    worker_parser.add_argument("--job-timeout-seconds", type=int, default=int(os.getenv("RESEARCH_HARNESS_JOB_TIMEOUT_SECONDS", "900")))
-    worker_parser.add_argument("--event-ttl-seconds", type=int, default=int(os.getenv("RESEARCH_HARNESS_EVENT_TTL_SECONDS", "1800")))
-    worker_parser.add_argument("--event-trim-maxlen", type=int, default=int(os.getenv("RESEARCH_HARNESS_EVENT_TRIM_MAXLEN", "500")))
-    worker_parser.add_argument("--heartbeat-seconds", type=int, default=int(os.getenv("RESEARCH_HARNESS_WORKER_HEARTBEAT_SECONDS", "10")))
-    worker_parser.add_argument("--lease-ttl-seconds", type=int, default=int(os.getenv("RESEARCH_HARNESS_LEASE_TTL_SECONDS", "60")))
-    worker_parser.add_argument("--stale-pending-seconds", type=int, default=int(os.getenv("RESEARCH_HARNESS_STALE_PENDING_SECONDS", "120")))
     judge_parser = subcommands.add_parser(
         "judge-calibrate",
         help="Compare one LLM judge with fixed human-labelled harness runs.",
@@ -598,28 +577,6 @@ def main(argv: list[str] | None = None) -> int:
             port=args.port,
             internal_token=args.internal_token,
         )
-        return 0
-    if args.command == "worker":
-        from .transport.redis_worker import RedisWorkerConfig, run_worker, worker_id
-
-        run_worker(RedisWorkerConfig(
-            redis_url=args.redis_url,
-            worker_id=worker_id(args.worker_id),
-            group=args.group,
-            jobs_key=args.jobs_key,
-            events_prefix=args.events_prefix,
-            status_prefix=args.status_prefix,
-            cancel_prefix=args.cancel_prefix,
-            lock_prefix=args.lock_prefix,
-            block_ms=args.block_ms,
-            job_timeout_seconds=args.job_timeout_seconds,
-            event_ttl_seconds=args.event_ttl_seconds,
-            event_trim_maxlen=args.event_trim_maxlen,
-            heartbeat_seconds=args.heartbeat_seconds,
-            lease_ttl_seconds=args.lease_ttl_seconds,
-            stale_pending_seconds=args.stale_pending_seconds,
-            max_concurrent_runs=args.max_concurrent_runs,
-        ))
         return 0
     if args.command == "judge-calibrate":
         try:

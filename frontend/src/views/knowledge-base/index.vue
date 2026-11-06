@@ -242,7 +242,7 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, updateS
     {
       key: 'originalFilename',
       title: 'Paper',
-      width: 280,
+      width: 320,
       render: row => (
         <div class="library-file-cell">
           <button
@@ -254,7 +254,7 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, updateS
             {renderIcon(row.originalFilename)}
           </button>
           <div class="library-file-cell__copy">
-            <NEllipsis lineClamp={2} tooltip>
+            <NEllipsis lineClamp={1} tooltip>
               <button
                 type="button"
                 class="library-file-cell__name"
@@ -264,7 +264,7 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, updateS
                 {row.originalFilename}
               </button>
             </NEllipsis>
-            <div class="library-file-cell__meta library-file-cell__meta--stacked">
+            <div class="library-file-cell__meta">
               <button
                 type="button"
                 class="library-digest-chip"
@@ -276,7 +276,6 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, updateS
               >
                 {row.paperId.substring(0, 8)}
               </button>
-              <span>{dayjs(row.createdAt).format('YYYY-MM-DD')}</span>
             </div>
           </div>
         </div>
@@ -285,13 +284,13 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, updateS
     {
       key: 'totalSize',
       title: 'Size',
-      width: 82,
+      width: 76,
       render: row => <span class="library-size-cell">{formatFileSize(row.totalSize ?? row.sourceFileSizeBytes)}</span>
     },
     {
       key: 'retrievalIndexedTokenCount',
-      title: 'Lexical index',
-      width: 240,
+      title: 'Evidence',
+      width: 250,
       render: row => renderIndexUsage(row)
     },
     {
@@ -303,15 +302,11 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, updateS
     {
       key: 'libraryScope',
       title: 'Scope',
-      width: 100,
+      width: 88,
       render: row => (
-        <div class="library-scope-stack">
-          {isGlobalPaper(row) ? (
-            <span class="library-visibility library-visibility--public">Global</span>
-          ) : (
-            <span class="library-visibility library-visibility--private">Private</span>
-          )}
-        </div>
+        <span class={isGlobalPaper(row) ? 'library-scope library-scope--global' : 'library-scope'}>
+          {isGlobalPaper(row) ? 'Global' : 'Private'}
+        </span>
       )
     },
     {
@@ -319,29 +314,26 @@ const { columns, columnChecks, data, getData, loading, mobilePagination, updateS
       title: 'Updated',
       width: 96,
       render: row => (
-        <div class="library-date-cell">
-          <span>{dayjs(row.createdAt).format('YYYY-MM-DD')}</span>
-          <span>{dayjs(row.createdAt).format('HH:mm:ss')}</span>
-        </div>
+        <span class="library-date-cell" title={dayjs(row.createdAt).format('YYYY-MM-DD HH:mm:ss')}>
+          {dayjs(row.createdAt).format('YYYY-MM-DD')}
+        </span>
       )
     },
     {
       key: 'operate',
       title: 'Actions',
-      width: 170,
+      width: 84,
       render: row => (
         <div class="library-action-group">
           {canManageFile(row) ? renderResumeUploadButton(row) : null}
           <NButton
-            type="primary"
-            secondary
+            quaternary
+            circle
             size="small"
+            aria-label="Preview PDF"
             onClick={() => handleFilePreview(row.originalFilename, row.paperId)}
           >
-            {{
-              icon: () => <span class="icon-lucide-eye text-14px" />,
-              default: () => 'Preview'
-            }}
+            {{ icon: () => <span class="icon-lucide-eye text-15px" /> }}
           </NButton>
           <NDropdown
             trigger="click"
@@ -688,45 +680,10 @@ function renderUploadProgress(percentage: number) {
 
 function renderIndexUsage(row: Api.Paper.UploadTask) {
   return (
-    <div class="library-index-cell">
+    <div class="library-evidence-cell">
       {renderActualIndexLine(row)}
       {renderAssetStatus(row)}
     </div>
-  );
-}
-
-function renderAssetPillAction(
-  row: Api.Paper.UploadTask,
-  label: string,
-  count: number,
-  onClick: () => void,
-  variant: 'ok' | 'default' = 'default'
-) {
-  if (!count) {
-    return (
-      <span
-        class={
-          variant === 'ok'
-            ? 'library-asset-pill library-asset-pill--muted'
-            : 'library-asset-pill library-asset-pill--muted'
-        }
-      >
-        {label}: 0
-      </span>
-    );
-  }
-  return (
-    <button
-      type="button"
-      class={
-        variant === 'ok'
-          ? 'library-asset-pill library-asset-pill--ok library-asset-pill--action'
-          : 'library-asset-pill library-asset-pill--action'
-      }
-      onClick={onClick}
-    >
-      {label}: {count}
-    </button>
   );
 }
 
@@ -739,20 +696,24 @@ function renderAssetStatus(row: Api.Paper.UploadTask) {
   const totalAssets = tableCount + figureCount + formulaCount + pageCount;
   const assetTitle = `Tables ${tableCount} · Figures ${figureCount} · Formulas ${formulaCount} · Pages ${pageCount}`;
   const warningText = formatAssetWarnings(row.assetWarnings);
+
   return (
     <div class="library-asset-strip">
       {renderEvidenceReadiness(row, warningText)}
-      <span class={parserSaved ? 'library-asset-pill library-asset-pill--ok' : 'library-asset-pill'}>
-        Parser: {parserSaved ? 'saved' : 'missing'}
+      <span
+        class={parserSaved ? 'library-asset-dot library-asset-dot--ok' : 'library-asset-dot library-asset-dot--warn'}
+        title={parserSaved ? 'Parser artifact saved' : 'Parser artifact missing'}
+      >
+        Parser {parserSaved ? 'saved' : 'missing'}
       </span>
-      {renderAssetPillAction(row, 'Figures', figureCount, () => handleOpenFigures(row), 'ok')}
-      {renderAssetPillAction(row, 'Tables', tableCount, () => handleOpenTables(row))}
-      <span class="library-asset-pill" title={assetTitle}>
-        Assets: {totalAssets}
-      </span>
+      {totalAssets ? (
+        <span class="library-asset-count" title={assetTitle}>
+          {totalAssets} assets
+        </span>
+      ) : null}
       {warningText ? (
-        <span class="library-asset-pill library-asset-pill--warning" title={warningText}>
-          Warnings: {row.assetWarnings?.length || 0}
+        <span class="library-asset-dot library-asset-dot--warn" title={warningText}>
+          Warnings {row.assetWarnings?.length || 0}
         </span>
       ) : null}
     </div>
@@ -760,19 +721,14 @@ function renderAssetStatus(row: Api.Paper.UploadTask) {
 }
 
 function renderEvidenceReadiness(row: Api.Paper.UploadTask, warningText: string) {
-  const title = warningText || 'Evidence assets ready';
-
-  if (row.pdfEvidenceAvailable || row.evidenceAssetLevel === 'PDF_VISUAL') {
-    return (
-      <span class="library-asset-pill library-asset-pill--ok" title={title}>
-        PDF evidence: ready
-      </span>
-    );
-  }
+  const ready = Boolean(row.pdfEvidenceAvailable || row.evidenceAssetLevel === 'PDF_VISUAL');
 
   return (
-    <span class="library-asset-pill library-asset-pill--warning" title={title}>
-      PDF evidence: pending
+    <span
+      class={ready ? 'library-asset-dot library-asset-dot--ok' : 'library-asset-dot library-asset-dot--warn'}
+      title={warningText || (ready ? 'PDF evidence ready' : 'PDF evidence pending')}
+    >
+      PDF {ready ? 'ready' : 'pending'}
     </span>
   );
 }
@@ -781,26 +737,19 @@ function formatAssetWarnings(warnings?: string[]) {
   return (warnings || []).map(warning => assetWarningLabels[warning] || warning).join('; ');
 }
 
-function renderIndexLine(label: string, tokens?: number | null, locations?: number | null) {
+function renderIndexLine(_label: string, tokens?: number | null, locations?: number | null) {
   if (!locations) {
-    return (
-      <div class="library-index-line library-index-line--empty">
-        <span class="library-index-line__label">{label}</span>
-        <span>not indexed</span>
-      </div>
-    );
+    return <span class="library-index-line library-index-line--empty">not indexed</span>;
   }
 
   const tokenLabel = Number(tokens || 0).toLocaleString();
   const locationLabel = Number(locations).toLocaleString();
   return (
-    <div class="library-index-line">
-      <div class="library-index-line__top">
-        <span class="library-index-line__label">{label}</span>
-        <span>{tokenLabel} Tokens</span>
-      </div>
-      <div class="library-index-line__meta">{locationLabel} locations</div>
-    </div>
+    <span class="library-index-line" title={`${tokenLabel} tokens across ${locationLabel} locations`}>
+      {tokenLabel} tokens
+      <span class="library-index-line__sep">·</span>
+      {locationLabel} locs
+    </span>
   );
 }
 
@@ -869,56 +818,33 @@ function renderActualIndexLine(row: Api.Paper.UploadTask) {
   }
 
   if (isVectorizationProcessing(row)) {
-    return (
-      <div class="library-index-line library-index-line--processing">
-        <div class="library-index-line__top">
-          <span class="library-index-line__label">ACT</span>
-          <span>indexing</span>
-        </div>
-        <div class="library-index-line__meta">waiting for index writeback</div>
-      </div>
-    );
+    return <span class="library-index-line library-index-line--processing">indexing…</span>;
   }
 
   if (row.processingStatus === 'COMPLETED') {
     return (
-      <div class="library-index-line">
-        <div class="library-index-line__top">
-          <span class="library-index-line__label">ACT</span>
-          <span>completed</span>
-        </div>
-        <div class="library-index-line__meta">tokens unavailable</div>
-      </div>
+      <span class="library-index-line" title="Processing completed without a retrieval index">
+        tokens unavailable
+      </span>
     );
   }
 
   if (row.processingStatus === 'FAILED') {
     return (
       <div class="library-index-line library-index-line--failed">
-        <div class="library-index-line__top">
-          <span class="library-index-line__label">ACT</span>
-          <span>failed</span>
-        </div>
-        <NEllipsis tooltip lineClamp={2} style="color: var(--color-error)">
-          {row.processingErrorMessage || 'Check the processing failure and retry'}
-        </NEllipsis>
+        <span class="library-index-line__text" title={row.processingErrorMessage || undefined}>
+          {row.processingErrorMessage || 'Processing failed'}
+        </span>
         {canRetryVectorization(row) ? (
-          <div>
-            <NButton size="tiny" type="error" secondary onClick={() => handleRetryVectorization(row)}>
-              Retry processing
-            </NButton>
-          </div>
+          <button type="button" class="library-inline-action" onClick={() => handleRetryVectorization(row)}>
+            Retry
+          </button>
         ) : null}
       </div>
     );
   }
 
-  return (
-    <div class="library-index-line library-index-line--empty">
-      <span class="library-index-line__label">ACT</span>
-      <span>not started</span>
-    </div>
-  );
+  return <span class="library-index-line library-index-line--empty">not started</span>;
 }
 
 let vectorizationPollingTimer: number | null = null;
@@ -1069,67 +995,65 @@ async function onBeforeUpload(
               <p>Research PDFs, parser state, evidence assets, and reusable source sets.</p>
             </div>
           </div>
-          <div class="library-toolbar">
-            <NRadioGroup
-              :value="libraryView"
-              name="library-view"
+          <NRadioGroup
+            :value="libraryView"
+            name="library-view"
+            size="small"
+            class="library-view-switch"
+            @update:value="handleLibraryViewUpdate"
+          >
+            <NRadioButton v-for="option in libraryViewOptions" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </NRadioButton>
+          </NRadioGroup>
+        </div>
+
+        <div v-if="libraryView === 'papers'" class="library-toolbar">
+          <div class="library-search-control">
+            <NInput
+              v-model:value="paperLibraryQuery"
               size="small"
-              class="library-view-switch"
-              @update:value="handleLibraryViewUpdate"
-            >
-              <NRadioButton v-for="option in libraryViewOptions" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </NRadioButton>
-            </NRadioGroup>
-            <TableHeaderOperation
-              v-if="libraryView === 'papers'"
-              v-model:columns="columnChecks"
-              :addable="false"
-              :loading="loading"
-              compact
-              @refresh="getList"
+              clearable
+              placeholder="Filename, title, paper ID"
+              @keyup.enter="handlePaperLibrarySearch"
+              @clear="handlePaperLibrarySearchReset"
             >
               <template #prefix>
-                <div class="library-search-control">
-                  <NInput
-                    v-model:value="paperLibraryQuery"
-                    size="small"
-                    clearable
-                    placeholder="Filename, title, paper ID"
-                    @keyup.enter="handlePaperLibrarySearch"
-                    @clear="handlePaperLibrarySearchReset"
-                  >
-                    <template #prefix>
-                      <icon-lucide:file-search class="text-icon" />
-                    </template>
-                  </NInput>
-                  <NButton size="small" secondary :loading="loading" @click="handlePaperLibrarySearch">
-                    <template #icon>
-                      <icon-lucide:search class="text-icon" />
-                    </template>
-                    Search
-                  </NButton>
-                  <NButton
-                    v-if="activePaperLibraryQuery"
-                    size="small"
-                    quaternary
-                    :disabled="loading"
-                    @click="handlePaperLibrarySearchReset"
-                  >
-                    Reset
-                  </NButton>
-                </div>
+                <icon-lucide:file-search class="text-icon" />
               </template>
-              <template #default>
-                <NButton v-if="canUploadPapers" size="small" type="primary" @click="handleUpload">
-                  <template #icon>
-                    <icon-lucide:upload class="text-icon" />
-                  </template>
-                  Upload
-                </NButton>
+            </NInput>
+            <NButton size="small" secondary :loading="loading" @click="handlePaperLibrarySearch">
+              <template #icon>
+                <icon-lucide:search class="text-icon" />
               </template>
-            </TableHeaderOperation>
+              Search
+            </NButton>
+            <NButton
+              v-if="activePaperLibraryQuery"
+              size="small"
+              quaternary
+              :disabled="loading"
+              @click="handlePaperLibrarySearchReset"
+            >
+              Reset
+            </NButton>
           </div>
+          <TableHeaderOperation
+            v-model:columns="columnChecks"
+            :addable="false"
+            :loading="loading"
+            compact
+            @refresh="getList"
+          >
+            <template #default>
+              <NButton v-if="canUploadPapers" size="small" type="primary" @click="handleUpload">
+                <template #icon>
+                  <icon-lucide:upload class="text-icon" />
+                </template>
+                Upload
+              </NButton>
+            </template>
+          </TableHeaderOperation>
         </div>
 
         <template v-if="libraryView === 'papers'">
@@ -1169,13 +1093,31 @@ async function onBeforeUpload(
             :columns="columns"
             :data="tableTasks"
             size="small"
-            :scroll-x="1080"
+            :scroll-x="1040"
             :loading="loading"
             remote
             :row-key="row => row.id"
             :pagination="mobilePagination"
             class="library-table"
-          />
+          >
+            <template #empty>
+              <div class="library-empty">
+                <span class="library-empty__icon">
+                  <icon-lucide:file-search class="text-18px" />
+                </span>
+                <div class="library-empty__title">
+                  {{ activePaperLibraryQuery ? 'No paper matches this search' : 'No papers yet' }}
+                </div>
+                <p class="library-empty__hint">
+                  {{
+                    activePaperLibraryQuery
+                      ? 'Try a different filename, title, or paper ID.'
+                      : 'Upload a PDF to build your research library.'
+                  }}
+                </p>
+              </div>
+            </template>
+          </NDataTable>
         </template>
 
         <CollectionsPanel v-else />
@@ -1306,6 +1248,39 @@ async function onBeforeUpload(
   display: none;
 }
 
+.library-empty {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 34px 16px 40px;
+  text-align: center;
+}
+
+.library-empty__icon {
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 50%;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+.library-empty__title {
+  color: var(--color-text);
+  font-size: var(--text-md);
+  font-weight: 600;
+}
+
+.library-empty__hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
 .library-mobile-pagination {
   justify-content: center;
   margin-top: 16px;
@@ -1336,7 +1311,7 @@ async function onBeforeUpload(
 
 .paper-library-card > .n-card__content {
   background: var(--color-bg);
-  padding: 20px 24px 28px;
+  padding: 20px 24px 28px !important;
 }
 
 .library-topbar {
@@ -1345,8 +1320,7 @@ async function onBeforeUpload(
   justify-content: space-between;
   gap: 16px;
   min-width: 0;
-  margin-bottom: 24px;
-  background: var(--color-bg);
+  margin-bottom: 14px;
   padding: 0;
 }
 
@@ -1358,7 +1332,7 @@ async function onBeforeUpload(
   align-items: center;
   justify-content: center;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text-muted);
   cursor: pointer;
@@ -1410,11 +1384,13 @@ async function onBeforeUpload(
 
 .library-toolbar {
   display: flex;
+  width: 100%;
   min-width: 0;
   align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 12px;
   flex-wrap: wrap;
+  margin-bottom: 16px;
 }
 
 .library-search-control {
@@ -1426,11 +1402,15 @@ async function onBeforeUpload(
 }
 
 .library-search-control .n-input {
-  width: clamp(220px, 26vw, 360px);
+  width: clamp(220px, 26vw, 340px);
+}
+
+.library-view-switch {
+  flex: 0 0 auto;
 }
 
 .library-search-control .n-button {
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
 .library-summary {
@@ -1445,7 +1425,7 @@ async function onBeforeUpload(
 
 .library-summary__item {
   min-width: 0;
-  padding: 12px 14px;
+  padding: 13px 16px;
   border-right: 1px solid var(--color-border-soft);
 }
 
@@ -1457,70 +1437,61 @@ async function onBeforeUpload(
 .library-summary__item > span:last-child {
   display: block;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: var(--text-xs);
   line-height: 1.3;
 }
 
 .library-summary__label {
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
-  font-weight: 700;
+  font-family: var(--font-interface);
+  font-weight: 600;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .library-summary__item strong {
   display: block;
-  margin: 3px 0 2px;
+  margin: 4px 0 3px;
   color: var(--color-text);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
-  font-size: 20px;
+  font-family: var(--font-interface);
+  font-size: 21px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
   line-height: 1.05;
+  letter-spacing: -0.01em;
 }
 
 .paper-library-card .n-data-table {
-  --n-td-color: var(--color-bg) !important;
-  --n-th-color: var(--color-card-band) !important;
-  --n-border-color: var(--color-border) !important;
-  --n-th-text-color: var(--color-primary) !important;
+  --n-td-color: var(--color-surface) !important;
+  --n-th-color: var(--color-surface-alt) !important;
+  --n-border-color: var(--color-border-soft) !important;
+  --n-th-text-color: var(--color-text-muted) !important;
   --n-td-text-color: var(--color-text) !important;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-panel);
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
 .paper-library-card .n-data-table-th {
-  background: var(--color-card-band-pressed);
-  color: var(--color-text);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
-  font-size: 12px;
-  padding: 12px 12px;
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
+  font-family: var(--font-interface);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 9px 12px;
+  text-transform: uppercase;
 }
 
 .paper-library-card .n-data-table-td {
-  background: var(--color-bg);
+  background: var(--color-surface);
   vertical-align: middle;
-  padding: 12px 12px;
-  transition: background-color 120ms ease;
+  border-bottom: 1px solid var(--color-border-soft);
+  padding: 10px 12px;
+  transition: background-color var(--duration-fast) var(--ease-standard);
+}
+
+.paper-library-card .n-data-table-tr:last-child .n-data-table-td {
+  border-bottom: 0;
 }
 
 .paper-library-card .n-data-table-tr:hover .n-data-table-td {
@@ -1530,7 +1501,7 @@ async function onBeforeUpload(
 .library-file-cell {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -1539,18 +1510,21 @@ async function onBeforeUpload(
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 40px;
-  height: 48px;
-  border: 1px solid var(--color-border);
-  border-radius: 7px;
-  background: var(--color-card-band);
-  color: var(--color-accent);
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
   cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
 
 .library-file-cell__icon:hover {
-  border-color: var(--color-accent);
-  background: var(--color-card-band);
+  border-color: var(--color-border);
+  color: var(--color-text);
 }
 
 .library-file-cell__icon:disabled,
@@ -1560,228 +1534,189 @@ async function onBeforeUpload(
 }
 
 .library-file-cell__icon:disabled:hover {
-  border-color: var(--color-border);
+  border-color: var(--color-border-soft);
 }
 
 .library-file-icon {
-  font-size: 28px;
+  font-size: 18px;
 }
 
 .library-file-cell__copy {
+  display: grid;
   min-width: 0;
+  gap: 2px;
 }
 
 .library-file-cell__name {
-  display: inline;
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--color-text);
   cursor: pointer;
-  font-family: var(--font-reading);
-  font-size: 14px;
-  font-weight: 650;
-  line-height: 1.45;
+  font-family: var(--font-interface);
+  font-size: var(--text-md);
+  font-weight: 600;
+  line-height: 1.35;
   text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .library-file-cell__name:hover {
   color: var(--color-primary);
 }
 
-.library-file-cell__meta,
-.library-date-cell span:last-child,
-.library-index-line__meta {
-  color: var(--color-text-muted);
-  font-size: 11px;
-  line-height: 1.45;
-}
-
-.library-digest-chip,
-.library-size-cell,
-.library-index-line__top,
-.library-date-cell {
-  font-family: var(--font-utility);
-  font-variant-numeric: tabular-nums;
-}
-
-.library-file-cell__meta--stacked,
-.library-scope-stack {
+.library-file-cell__meta {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
-}
-
-.library-digest-chip,
-.library-scope-chip,
-.library-visibility,
-.library-pipeline-status {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 23px;
-  padding: 2px 9px;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: var(--color-card-band);
   color: var(--color-text-muted);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  white-space: nowrap;
+  font-size: var(--text-xs);
+  line-height: 1.3;
 }
 
 .library-digest-chip {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
   cursor: pointer;
+  font-family: var(--font-utility);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
 }
 
 .library-digest-chip:hover {
-  border-color: var(--color-accent);
-  color: var(--color-accent);
-}
-
-.library-size-cell,
-.library-date-cell span:first-child {
   color: var(--color-text);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
-  font-size: 12px;
-  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
-.library-index-cell {
-  display: grid;
-  gap: 6px;
-  min-width: 220px;
+.library-size-cell {
+  color: var(--color-text-muted);
+  font-family: var(--font-utility);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
 }
 
-.library-index-line {
+/* Evidence column: one line of index usage, one line of asset readiness.
+   Both are plain text with a leading dot so the row stays scannable. */
+.library-evidence-cell {
   display: grid;
+  min-width: 0;
   gap: 3px;
 }
 
-.library-index-line__top {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
+.library-index-line {
+  display: flex;
+  min-width: 0;
   align-items: center;
-  gap: 8px;
-  color: var(--color-text);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.library-index-line__top span:nth-child(2) {
+  gap: 6px;
   overflow: hidden;
-  text-align: right;
+  color: var(--color-text);
+  font-family: var(--font-utility);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.library-index-line__label {
-  color: var(--color-accent);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.4px;
+.library-index-line__sep {
+  color: var(--color-text-placeholder);
 }
 
-.library-index-line--processing .library-index-line__top,
-.library-index-line--pending .library-index-line__top {
-  color: var(--color-warning);
+.library-index-line__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.library-index-line--failed .library-index-line__top {
+.library-index-line--processing {
+  color: var(--color-warning-text);
+}
+
+.library-index-line--failed {
   color: var(--color-error);
 }
 
 .library-index-line--empty {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--color-text-muted);
-  font-size: 11px;
+  color: var(--color-text-placeholder);
+}
+
+.library-inline-action {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-error);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .library-asset-strip {
   display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  padding-top: 2px;
-}
-
-.library-asset-pill {
-  display: inline-flex;
-  min-height: 20px;
+  min-width: 0;
   align-items: center;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-card-band);
-  padding: 1px 6px;
+  gap: 10px;
+  overflow: hidden;
   color: var(--color-text-muted);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.2;
+  font-size: var(--text-xs);
+  line-height: 1.35;
   white-space: nowrap;
 }
 
-.library-asset-pill--ok {
-  border-color: var(--color-success);
-  color: var(--color-success);
+.library-asset-dot,
+.library-asset-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
-.library-asset-pill--warning {
-  border-color: var(--color-warning);
-  color: var(--color-warning);
+.library-asset-dot::before {
+  width: 5px;
+  height: 5px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--color-text-placeholder);
+  content: '';
 }
 
-.library-asset-pill--muted {
-  border-color: var(--color-border);
-  color: var(--color-text-muted);
+.library-asset-dot--ok::before {
+  background: var(--color-success);
 }
 
-.library-asset-pill--action {
-  cursor: pointer;
-  transition:
-    transform 80ms ease,
-    background-color 120ms ease;
+.library-asset-dot--warn::before {
+  background: var(--color-warning);
 }
 
-.library-asset-pill--action:hover {
-  background: var(--color-card-band-pressed);
-  transform: translateY(-1px);
+.library-asset-count {
+  color: var(--color-text-placeholder);
+  font-family: var(--font-utility);
+  font-variant-numeric: tabular-nums;
 }
 
 .library-pipeline-status {
-  gap: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 2px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-card-band);
+  color: var(--color-text-muted);
+  font-family: var(--font-interface);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .library-pipeline-status__dot {
@@ -1836,44 +1771,50 @@ async function onBeforeUpload(
   align-items: center;
   gap: 8px;
   color: var(--color-accent);
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
-  font-size: 11px;
+  font-family: var(--font-interface);
+  font-size: var(--text-xs);
   font-weight: 700;
 }
 
-.library-visibility--public {
-  border-color: var(--color-success);
-  background: var(--color-card-band);
-  color: var(--color-success);
-}
-
-.library-visibility--private {
-  border-color: var(--color-warning);
-  background: var(--color-card-band);
-  color: var(--color-warning);
-}
-
 .library-date-cell {
-  display: grid;
-  gap: 2px;
+  color: var(--color-text-muted);
+  font-family: var(--font-utility);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.library-scope {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.library-scope::before {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-text-placeholder);
+  content: '';
+}
+
+.library-scope--global::before {
+  background: var(--color-success);
 }
 
 .library-action-group {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 2px;
   flex-wrap: nowrap;
 }
 
 .library-action-group .n-button {
-  border-radius: 6px;
+  min-height: 26px;
+  border-radius: var(--radius-sm);
 }
 
 .n-progress-icon.n-progress-icon--as-text {
@@ -1973,7 +1914,7 @@ async function onBeforeUpload(
 .paper-table-modal__item-head span,
 .paper-table-modal__meta {
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 700;
 }
 
@@ -1987,7 +1928,7 @@ async function onBeforeUpload(
   overflow: auto;
   margin: 0;
   border: 1px solid var(--color-border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--color-bg);
   padding: 10px;
   color: var(--color-text);
@@ -2001,9 +1942,14 @@ async function onBeforeUpload(
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .library-search-control,
+  .library-search-control {
+    flex: 1 1 auto;
+  }
+
   .library-search-control .n-input {
-    width: 100%;
+    width: auto;
+    min-width: 160px;
+    flex: 1 1 200px;
   }
 
   .library-summary__item {
@@ -2131,7 +2077,7 @@ async function onBeforeUpload(
   flex-wrap: wrap;
   gap: 8px;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 600;
 }
 

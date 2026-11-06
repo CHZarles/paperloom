@@ -16,11 +16,14 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class PaperProcessingConsumerTest {
@@ -88,5 +91,20 @@ class PaperProcessingConsumerTest {
                 eq(new RetrievalIndexingService.IndexingResult(10, 2, "lexical-contract"))
         );
         verify(publicationService).publishIfAdministrator(paperId, "1");
+    }
+
+    @Test
+    void uploadFailureIsRecordedAndRethrownForKafkaRetry() throws Exception {
+        String paperId = "paper-1";
+        IOException failure = new IOException("PDF unavailable");
+        when(uploadService.getMergedFileStream(paperId)).thenThrow(failure);
+        PaperProcessingTask task = new PaperProcessingTask(
+                paperId, null, "paper.pdf", "1", PaperProcessingTask.TASK_TYPE_UPLOAD_PROCESS, "1");
+
+        RuntimeException error = assertThrows(RuntimeException.class, () -> consumer.processTask(task));
+
+        assertSame(failure, error.getCause());
+        verify(paperService).markVectorizationFailed(paperId, failure);
+        verifyNoInteractions(parseService, retrievalIndexingService, publicationService);
     }
 }

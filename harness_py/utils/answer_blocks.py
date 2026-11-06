@@ -57,7 +57,7 @@ def answer_blocks(answer: JsonMap) -> tuple[list[JsonMap], list[str]]:
 
 
 def _answer_body(markdown: str) -> str:
-    marker = re.search(r"(?:^|\n)Sources\s*\n", markdown)
+    marker = re.search(r"(?:^|\n)(?:#{1,6}[ \t]*)?Sources[ \t]*\n", markdown)
     return markdown[:marker.start()].rstrip() if marker else markdown
 
 

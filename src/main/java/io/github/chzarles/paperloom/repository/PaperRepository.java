@@ -23,6 +23,10 @@ public interface PaperRepository extends JpaRepository<Paper, Long> {
 
     Optional<Paper> findFirstByPaperIdAndUserIdOrderByCreatedAtDesc(String paperId, String userId);
 
+    Optional<Paper> findFirstByUserIdAndArxivIdOrderByCreatedAtDesc(String userId, String arxivId);
+
+    List<Paper> findByUserIdAndArxivIdIn(String userId, List<String> arxivIds);
+
     Optional<Paper> findFirstByOrderByMergedAtDesc();
 
     long countByPaperId(String paperId);
@@ -53,4 +57,13 @@ public interface PaperRepository extends JpaRepository<Paper, Long> {
     int updateStatusIfCurrent(@Param("id") Long id,
                               @Param("currentStatus") int currentStatus,
                               @Param("newStatus") int newStatus);
+
+    @Transactional
+    @Modifying
+    @Query("UPDATE Paper f SET f.arxivId = :arxivId "
+            + "WHERE f.paperId = :paperId AND f.userId = :userId "
+            + "AND (f.arxivId IS NULL OR f.arxivId = '')")
+    int backfillArxivIdIfAbsent(@Param("paperId") String paperId,
+                                @Param("userId") String userId,
+                                @Param("arxivId") String arxivId);
 }

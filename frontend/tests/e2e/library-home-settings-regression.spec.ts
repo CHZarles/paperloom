@@ -291,15 +291,14 @@ test('library uses the same sidebar shell as the chat home', async ({ page }) =>
   expect(Math.round(librarySidebar?.width || 0)).toBe(Math.round(chatSidebar?.width || 0));
 });
 
-test('app uses the Folio brand name and mark', async ({ page }) => {
+test('app uses the Citewise brand name and mark', async ({ page }) => {
   await installLoginState(page, await login());
 
   await page.goto('/#/chat', { waitUntil: 'domcontentloaded' });
 
-  await expect(page).toHaveTitle(/Folio$/);
-  await expect(page.locator('.chat-shell .brand-title')).toHaveText('Folio');
-  await expect(page.locator('.chat-shell .topbar-title')).toHaveText('Folio');
-  await expect(page.locator('.chat-shell svg[aria-label="Folio"]').first()).toBeVisible();
+  await expect(page).toHaveTitle(/Citewise$/);
+  await expect(page.locator('.chat-shell .brand-title')).toHaveText('Citewise');
+  await expect(page.locator('.chat-shell svg[aria-label="Citewise"]').first()).toBeVisible();
   await expect(page.locator('.chat-shell')).not.toContainText('PaperLoom');
   await expect.poll(() => page.locator('head link[rel="icon"]').getAttribute('href')).toBe('/favicon.svg');
 });

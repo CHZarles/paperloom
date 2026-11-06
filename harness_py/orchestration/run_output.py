@@ -282,7 +282,7 @@ def _render_citations(
             f"[{numbers[evidence_id]}] {item.get('title') or item.get('paper_id')}"
             + (f", {location}" if location else "")
         )
-    return rendered + "\n\nSources\n" + "\n".join(sources)
+    return rendered + "\n\n### Sources\n\n" + "\n".join(f"- {line}" for line in sources)
 
 
 def _paper_candidates(trace: list[JsonMap]) -> list[JsonMap]:

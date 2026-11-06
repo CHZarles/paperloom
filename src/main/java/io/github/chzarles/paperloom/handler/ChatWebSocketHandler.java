@@ -15,6 +15,7 @@ import io.github.chzarles.paperloom.service.ProductReferenceFocus;
 import io.github.chzarles.paperloom.utils.JwtUtils;
 import java.util.List;
 import java.util.Map;
+import static io.github.chzarles.paperloom.utils.TextUtils.trimToNull;
 
 @Component
 public class ChatWebSocketHandler extends TextWebSocketHandler {
@@ -252,13 +253,6 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         return value == null ? null : String.valueOf(value);
     }
 
-    private String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
 
     private Integer integerValue(Object value) {
         if (value instanceof Number number) {

@@ -39,7 +39,7 @@ The product answers only from research-paper PDFs in the current user's authoriz
 
 Confirmed non-goals:
 
-- no all-web paper search;
+- no all-web paper search as an answer surface;
 - no answer that presents unsupported paper-content claims as fact;
 - no hidden widening of a conversation's paper scope;
 - no benchmark corpus mixed into the product paper library;
@@ -49,6 +49,14 @@ Confirmed non-goals:
 Recommendations are limited to papers already present and readable in the authorized product
 corpus. Metadata can support inventory and filtering; claims about methods, results, or limitations
 require read evidence.
+
+One bounded exception exists for acquisition, not for answering: the product may search arXiv
+metadata and import a single paper on explicit user action
+([ADR 0016](../adr/0016-allow-arxiv-metadata-discovery-with-explicit-import.md)). Discovery results
+are navigation data. They are never evidence, never enter a conversation scope, and never change
+what the assistant may claim. An imported paper becomes an ordinary personal-library PDF, parsed and
+indexed through the same pipeline as an upload; the web client may add the imported paper to one of
+the user's existing paper sets after the import returns.
 
 ## Accepted Input And Parsing
 

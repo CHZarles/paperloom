@@ -4,7 +4,6 @@ import json
 import base64
 import tempfile
 import unittest
-from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
@@ -228,6 +227,19 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         self.assertEqual("paper_live", result["locations"][0]["paper_id"])
         self.assertEqual("paper_live:p1:el1", result["locations"][0]["location_ref"])
 
+    def test_section_hint_ranks_lead_mention_above_section_name_above_absence(self) -> None:
+        from harness_py.corpus_test_fixtures.candidate_scoring import _section_hint_score
+
+        self.assertGreater(
+            _section_hint_score("Method", "Introduction", "we use a method here"),
+            _section_hint_score("Method", "3 Method", "unrelated body"),
+        )
+        self.assertGreater(
+            _section_hint_score("Method", "3 Method", "unrelated body"),
+            _section_hint_score("Method", "Introduction", "unrelated body"),
+        )
+        self.assertEqual(0.0, _section_hint_score("Method", "Introduction", "unrelated body"))
+
     def test_search_tool_caps_results_and_returns_compact_snippets(self) -> None:
         long_text = "evaluation " + ("supporting detail " * 100)
         dataset = build_product_dataset(
@@ -260,6 +272,10 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
             if item["function"]["name"] == "search_paper_content"
         )
         parameters = definition["function"]["parameters"]["properties"]
+        read_definition = next(
+            item for item in tools.definitions()
+            if item["function"]["name"] == "read_paper_content"
+        )
 
         self.assertEqual(12, len(result["locations"]))
         self.assertLessEqual(len(result["locations"][0]["preview"]), 500)
@@ -277,6 +293,8 @@ class PythonHarnessPrototypeTest(unittest.TestCase):
         self.assertEqual(20, parameters["top_k"]["maximum"])
         self.assertIn("passage", parameters["element_types"]["items"]["enum"])
         self.assertIn("table", parameters["element_types"]["items"]["enum"])
+        self.assertIn("returned by search_paper_content", read_definition["function"]["description"])
+        self.assertNotIn("get_paper_structure", read_definition["function"]["description"])
 
     def test_location_search_deduplicates_identical_text_on_the_same_page(self) -> None:
         dataset = build_product_dataset(

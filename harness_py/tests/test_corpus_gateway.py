@@ -195,6 +195,7 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         self.assertTrue(all(payload["user_id"] == 7 for _, payload in gateway.calls))
         self.assertTrue(all(payload["scope_paper_ids"] == ["paper-a"] for _, payload in gateway.calls))
 
+
     def test_read_rejects_location_not_disclosed_by_search(self) -> None:
         gateway = FakeGateway()
         reader = JavaCorpusGatewayReader(
@@ -227,6 +228,58 @@ class JavaCorpusGatewayTest(unittest.TestCase):
         in_memory_definitions = InMemoryTools(dataset).definitions()
 
         self.assertEqual(in_memory_definitions, java_definitions)
+
+    def test_content_search_description_covers_language_and_structure_routing(self) -> None:
+        gateway = FakeGateway()
+        reader = JavaCorpusGatewayReader(
+            gateway=gateway,
+            request_id="request-1",
+            conversation_id="conversation-1",
+            user_id=7,
+            scope_paper_ids=["paper-a"],
+        )
+        definition = next(
+            item for item in ReadingCorpusTools(reader.load_metadata_dataset(), reader=reader).definitions()
+            if item["function"]["name"] == "search_paper_content"
+        )
+        description = definition["function"]["description"]
+
+        self.assertIn("Use concise English keywords when the paper text is English", description)
+        self.assertIn("do not pass a full Chinese question unchanged as query_text", description)
+        self.assertIn("get_paper_structure first", description)
+        self.assertIn("rewrite the query once before expanding the search", description)
+
+        structure_definition = next(
+            item for item in ReadingCorpusTools(reader.load_metadata_dataset(), reader=reader).definitions()
+            if item["function"]["name"] == "get_paper_structure"
+        )
+        self.assertIn("Do not cite or read the returned section ref as body evidence", structure_definition["function"]["description"])
+
+    def test_structure_refs_cannot_be_read_as_body_evidence(self) -> None:
+        class Reader:
+            def __init__(self) -> None:
+                self.read_calls = 0
+
+            def get_structure(self, _arguments):
+                return {"items": [{"location_ref": "section_ref_a"}]}
+
+            def read_locations(self, _arguments):
+                self.read_calls += 1
+                return {"items": []}
+
+        reader = Reader()
+        tools = ReadingCorpusTools(object(), reader=reader)
+        tools.authorized_paper_ids.add("paper-a")
+
+        structure = tools.get_paper_structure({"paper_ids": ["paper-a"]})
+        self.assertEqual(["section_ref_a"], [item["location_ref"] for item in structure["items"]])
+
+        result = tools.read_paper_content({"location_refs": ["section_ref_a"]})
+
+        self.assertEqual("structure_ref_not_evidence", result["error"])
+        self.assertEqual("STRUCTURE_REF_NOT_EVIDENCE", result["error_code"])
+        self.assertEqual("search_paper_content", result["next_action"])
+        self.assertEqual(0, reader.read_calls)
 
     def test_content_tools_reject_undisclosed_paper_ids_before_calling_java(self) -> None:
         gateway = FakeGateway()

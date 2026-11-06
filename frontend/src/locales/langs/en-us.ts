@@ -1,6 +1,6 @@
 const local: App.I18n.Schema = {
   system: {
-    title: 'Folio',
+    title: 'Citewise',
     updateTitle: 'System Version Update Notification',
     updateContent: 'A new version of the system has been detected. Do you want to refresh the page immediately?',
     updateConfirm: 'Refresh immediately',
@@ -164,11 +164,22 @@ const local: App.I18n.Schema = {
     'iframe-page': 'Iframe',
     chat: 'Paper Q&A',
     'chat-history': 'Q&A History',
+    discover: 'Discover Papers',
     'invite-code': 'Invite Codes',
     'knowledge-base': 'Paper Library',
     'personal-center': 'Research Profile'
   },
   page: {
+    landing: {
+      headline: 'Every answer has a source.',
+      lede: 'Ask your own paper library. Every answer comes with the page and the quote behind it — and stops where the evidence stops.',
+      authHint: 'Sign in to pick up where you left off.',
+    },
+    exception: {
+      403: 'You do not have permission to open this page.',
+      404: 'This page does not exist or has moved.',
+      500: 'Something went wrong on our side. Try again in a moment.'
+    },
     login: {
       common: {
         loginOrRegister: 'Login / Register',
@@ -213,7 +224,7 @@ const local: App.I18n.Schema = {
         and: 'and',
         policy: '《Privacy Policy》',
         inviteCodeTip:
-          'This site is invite-only. If you do not have an invite code yet, contact an administrator for a Folio invite code.'
+          'This site is invite-only. If you do not have an invite code yet, contact an administrator for a Citewise invite code.'
       },
       resetPwd: {
         title: 'Reset Password'

@@ -19,6 +19,10 @@ import java.time.LocalDateTime;
 @Table(name = "user_token_record", 
        indexes = {
            @Index(name = "idx_user_date", columnList = "userId, recordDate")
+       },
+       uniqueConstraints = {
+           @UniqueConstraint(name = "uk_consume_day_type",
+                   columnNames = {"userId", "consumeDay", "tokenType"})
        })
 public class UserTokenRecord {
 
@@ -37,6 +41,16 @@ public class UserTokenRecord {
      */
     @Column(nullable = false)
     private LocalDate recordDate;
+
+    /**
+     * 消耗行的一行唯一桶。
+     *
+     * <p>只有 CONSUME 行写这个字段，取值等于 {@link #recordDate}；INCREASE 行留空。
+     * 唯一键 {@code uk_consume_day_type} 因此只约束消耗行，管理员多次追加额度仍会
+     * 各写一行。数据库唯一索引允许多个 NULL，这个约定依赖这一点。
+     */
+    @Column(name = "consume_day")
+    private LocalDate consumeDay;
 
     /**
      * Token 类型：LLM 或 EMBEDDING

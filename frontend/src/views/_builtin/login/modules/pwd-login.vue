@@ -112,12 +112,12 @@ async function handleGuestLogin() {
         {{ $t('page.login.pwdLogin.rememberMe') }}
       </NCheckbox>
     </div>
-    <div class="flex-col gap-6">
+    <div class="login-actions">
       <NButton
         type="primary"
         size="large"
-        round
         block
+        class="login-submit"
         :loading="loginAction === 'account'"
         :disabled="loginAction === 'guest'"
         @click="handleSubmit"
@@ -127,99 +127,59 @@ async function handleGuestLogin() {
         </template>
         {{ $t('page.login.common.login') }}
       </NButton>
-      <NButton
-        size="large"
-        block
-        class="guest-login-button"
-        :class="{ 'is-loading': loginAction === 'guest' }"
-        :disabled="loginAction === 'account'"
-        :aria-busy="loginAction === 'guest'"
-        @click="handleGuestLogin"
-      >
-        <template #icon>
-          <icon-lucide:loader-circle v-if="loginAction === 'guest'" class="guest-login-spinner" />
-          <icon-lucide:user-round v-else />
-        </template>
-        {{ $t('page.login.common.guestLogin') }}
-      </NButton>
-      <NButton block :disabled="loginAction !== null" @click="toggleLoginModule('register')">
-        <template #icon>
-          <icon-lucide:ticket />
-        </template>
-        {{ $t(loginModuleRecord.register) }}
-      </NButton>
 
-      <span class="text-center">
+      <div class="login-alt">
+        <NButton
+          text
+          size="small"
+          :loading="loginAction === 'guest'"
+          :disabled="loginAction === 'account'"
+          @click="handleGuestLogin"
+        >
+          {{ $t('page.login.common.guestLogin') }}
+        </NButton>
+        <span class="login-alt__dot">·</span>
+        <NButton text size="small" :disabled="loginAction !== null" @click="toggleLoginModule('register')">
+          {{ $t(loginModuleRecord.register) }}
+        </NButton>
+      </div>
+
+      <p class="login-legal">
         登录即代表已阅读并同意我们的
-        <NButton text type="primary">用户协议</NButton>
+        <NButton text type="primary" size="tiny">用户协议</NButton>
         和
-        <NButton text type="primary">隐私政策</NButton>
-      </span>
+        <NButton text type="primary" size="tiny">隐私政策</NButton>
+      </p>
     </div>
   </NForm>
 </template>
 
 <style scoped>
 .auth-form {
-  color: var(--color-text);
+  color: inherit;
 }
 
-:deep(.n-input) {
-  border-radius: 6px;
-  background: var(--color-card-band);
+.login-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-:deep(.n-input .n-input__border),
-:deep(.n-input .n-input__state-border) {
-  border-color: var(--color-border);
+.login-alt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 
-:deep(.n-input .n-input__prefix) {
-  color: var(--color-primary);
+.login-alt__dot {
+  font-size: 11px;
 }
 
-.guest-login-button {
-  position: relative;
-  overflow: hidden;
-}
-
-.guest-login-button::after {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: -32%;
-  width: 28%;
-  background: var(--color-research-soft-bg);
-  content: '';
-  opacity: 0;
-  pointer-events: none;
-}
-
-.guest-login-button.is-loading::after {
-  opacity: 0.8;
-  animation: guest-login-progress 1.1s ease-in-out infinite;
-}
-
-.guest-login-spinner {
-  animation: guest-login-spin 0.8s linear infinite;
-}
-
-@keyframes guest-login-progress {
-  to {
-    transform: translateX(475%);
-  }
-}
-
-@keyframes guest-login-spin {
-  to {
-    transform: rotate(1turn);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .guest-login-button.is-loading::after,
-  .guest-login-spinner {
-    animation: none;
-  }
+.login-legal {
+  margin: 2px 0 0;
+  font-size: 11px;
+  line-height: 1.65;
+  text-align: center;
 }
 </style>

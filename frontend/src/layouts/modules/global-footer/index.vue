@@ -6,7 +6,7 @@ defineOptions({
 
 <template>
   <DarkModeContainer class="h-full flex-center">
-    <span>Copyright MIT © 2025 Folio</span>
+    <span>Copyright MIT © 2025 Citewise</span>
   </DarkModeContainer>
 </template>
 

@@ -79,6 +79,14 @@ class ProtocolState:
     submission_attempt: int = 0
     validation_issues: tuple[str, ...] = ()
 
+    def to_dict(self) -> JsonMap:
+        return {
+            "phase": self.phase.value,
+            "contract": self.contract.value if self.contract else None,
+            "submission_attempt": self.submission_attempt,
+            "validation_issues": list(self.validation_issues),
+        }
+
 
 @dataclass(frozen=True)
 class ProtocolFacts:
@@ -156,6 +164,16 @@ _CATALOG_FIELD_LABELS = {
 }
 _RESEARCH_OUTCOMES = frozenset({"answered", "partial", "abstained"})
 _ABSTENTION_REASONS = frozenset({"NO_MATCHING_PAPER", "NO_SUPPORTING_SOURCE", "OUT_OF_SCOPE"})
+# These validation failures can be fixed by editing the submitted Markdown.  They
+# do not mean that the corpus lacks evidence.  Keeping them separate from the
+# broader MISSING_CONTRACT_INPUT class prevents a rejected answer from opening a
+# new research loop when the validator has already identified the exact repair.
+_CITATION_REPAIR_ISSUES = frozenset({
+    "UNCITED_CONTENT_BLOCK",
+    "INVALID_SOURCE_MARKER",
+    "NUMERIC_CITATION_NOT_ALLOWED",
+    "UNKNOWN_SOURCE_REF",
+})
 _RESEARCH_ABSTENTION_MESSAGES = {
     "ZH_CN": {
         "NO_MATCHING_PAPER": "当前论文库中没有找到与问题匹配的论文。",
@@ -237,11 +255,23 @@ def _decide_submission(
             model_result={"accepted": True, "contract": event.contract.value},
         )
 
+    # A missing contract input normally requires another tool call (for
+    # example, discovering a paper before a catalog answer).  Citation
+    # validation is different: the answer already exists and the validator
+    # names the Markdown blocks that need to be cited, narrowed, or removed.
+    # Lock the model to the submission tool for that repair so it cannot start
+    # an unbounded evidence-gathering loop.
+    citation_only_repair = (
+        event.contract is AnswerContract.RESEARCH
+        and bool(event.issue_codes)
+        and set(event.issue_codes) <= _CITATION_REPAIR_ISSUES
+    )
     phase = (
-        Phase.ACTIVE
-        if event.issue_class is SubmissionIssueClass.MISSING_CONTRACT_INPUT
-        and event.contract is not AnswerContract.DIRECT
-        else Phase.REPAIR
+        Phase.REPAIR
+        if citation_only_repair
+        or event.issue_class is not SubmissionIssueClass.MISSING_CONTRACT_INPUT
+        or event.contract is AnswerContract.DIRECT
+        else Phase.ACTIVE
     )
     next_state = ProtocolState(
         phase=phase,
@@ -612,6 +642,22 @@ def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
         "If paper discovery returns no candidates, retry once using only the requested paper title as query_text and "
         "omit inferred author, venue, and year filters. Do not claim that a paper is absent from the corpus until this "
         "unconstrained title search also returns no candidates.\n\n"
+        "Form content-search queries in the language of the paper text: use concise English keywords when the paper "
+        "text is English, and do not pass a full Chinese question unchanged as query_text. Preserve paper names, "
+        "model names, numbers, section numbers, and technical terms. For Appendix, Section, Table, Figure, page, "
+        "or section-number questions, call get_paper_structure first, then pass the returned section location refs "
+        "as section_refs to search_paper_content before reading exact content. If the first content search does not "
+        "surface useful evidence, rewrite the query once before expanding the search.\n\n"
+        "For a question with multiple requested facts, papers, or comparison dimensions, keep a short checklist of "
+        "those requested parts. Search separately when one query does not cover every part, and read the relevant "
+        "exact locations returned for each part. Before submitting, compare every requested part with the source "
+        "quotes actually read in this turn. If a part still lacks direct evidence, make one bounded follow-up search "
+        "when useful; otherwise submit a partial answer that identifies the missing part. Do not turn a one-fact "
+        "question into a multi-step investigation.\n\n"
+        "For paper recommendations, recommend only papers whose reasons are supported by exact read evidence. Put "
+        "an inline source quote in every recommendation reason, and do not make corpus-wide claims such as all "
+        "modern models derive from one paper unless the read evidence explicitly supports that scope. Narrow or "
+        "remove any unsupported reason instead of citing one quote after multiple papers.\n\n"
         "Use get_research_skill when a paradigm playbook would help. Skills are guidance, not gates, and may be "
         "combined. Candidate metadata and navigation previews are not citeable as paper content. Read exact locations "
         "before making paper-content claims. A citation does not license related general knowledge: every factual "
@@ -623,6 +669,11 @@ def research_agent_instructions(skills: ResearchSkillRegistry) -> str:
         "after a list does not support the preceding items. For an exact-fact request, prefer one complete cited "
         "sentence containing the subject and all requested values, without extra rationale. Use Markdown headings "
         "for structural labels; do not put a standalone bold-only label in its own paragraph. "
+        "In a recommendation answer, the opening scope statement, summary advice, and closing invitation are also "
+        "content blocks when they make factual or evaluative claims; cite each one or delete it. A short polite "
+        "closing without a factual claim may be omitted to keep the answer focused. When the validator reports "
+        "UNCITED_CONTENT_BLOCK, repair only the named blocks by adding a supporting quote, narrowing the claim, or "
+        "deleting it. Do not search for more papers for this citation-only repair. "
         "If retrieved notation appears malformed, inconsistent, or unexplained, state only the supported idea in "
         "words instead of reproducing an uncertain equation. Never present paper-specific notation as a universal definition. "
         "Never substitute adjacent papers when the corpus lacks the requested topic; state the gap plainly. "

@@ -19,6 +19,12 @@ const { conversationId, sessions, sessionsLoading } = storeToRefs(chatStore);
 const keyword = ref('');
 const showArchived = ref(false);
 
+const emptySessionLabel = computed(() => {
+  const query = keyword.value.trim();
+  if (query) return `没有匹配「${query}」的 query`;
+  return showArchived.value ? '暂无归档 query' : '暂无 query 记录';
+});
+
 const visibleSessions = computed(() => {
   const status = showArchived.value ? 'ARCHIVED' : 'ACTIVE';
   const query = keyword.value.trim().toLowerCase();
@@ -37,7 +43,7 @@ const visibleSessions = computed(() => {
 
 const activeCount = computed(() => sessions.value.filter(item => item.status === 'ACTIVE').length);
 const archivedCount = computed(() => sessions.value.filter(item => item.status === 'ARCHIVED').length);
-const accountName = computed(() => authStore.userInfo.username || 'Folio User');
+const accountName = computed(() => authStore.userInfo.username || 'Citewise User');
 const accountRole = computed(() => (authStore.isAdmin ? 'Admin management' : 'Workspace settings'));
 const avatarCells = computed(() => buildAvatarCells(accountName.value));
 const avatarStyle = computed(() => ({
@@ -86,8 +92,18 @@ const isWorkbenchActive = computed(() => {
   return route.name === 'knowledge-base';
 });
 
+const isExploreActive = computed(() => {
+  return route.name === 'discover';
+});
+
+const canDiscover = computed(() => authStore.userInfo.role !== 'GUEST');
+
 async function handleWorkbenchClick() {
   await router.push({ name: 'knowledge-base' });
+}
+
+async function handleExploreClick() {
+  await router.push({ name: 'discover' });
 }
 
 async function handleAccountClick() {
@@ -100,7 +116,7 @@ function handleLogout() {
 
 function buildAvatarCells(seed: string) {
   let hash = 0;
-  const normalized = seed || 'Folio';
+  const normalized = seed || 'Citewise';
 
   for (let index = 0; index < normalized.length; index += 1) {
     hash = Math.imul(31, hash) + normalized.charCodeAt(index);
@@ -117,7 +133,7 @@ function buildAvatarCells(seed: string) {
 
 function buildAvatarFill(seed: string) {
   let hash = 0;
-  const normalized = seed || 'Folio';
+  const normalized = seed || 'Citewise';
 
   for (let index = 0; index < normalized.length; index += 1) {
     hash = Math.imul(33, hash) + normalized.charCodeAt(index);
@@ -150,9 +166,16 @@ function formatDate(dateStr?: string) {
       <div class="brand-row">
         <SystemLogo class="brand-logo" />
         <div class="min-w-0 flex-1">
-          <div class="brand-title">Folio</div>
+          <div class="brand-title">Citewise</div>
         </div>
-        <NButton text size="tiny" class="collapse-button" @click="handleCollapse">
+        <NButton
+          text
+          size="small"
+          class="collapse-button"
+          aria-label="收起侧边栏"
+          title="收起侧边栏"
+          @click="handleCollapse"
+        >
           <template #icon>
             <icon-lucide:panel-left-close />
           </template>
@@ -170,6 +193,17 @@ function formatDate(dateStr?: string) {
           <icon-lucide:library class="library-button__icon" />
           <span>Paper Library</span>
         </button>
+        <button
+          v-if="canDiscover"
+          type="button"
+          class="library-button"
+          :class="{ 'library-button--active': isExploreActive }"
+          aria-label="进入论文探索"
+          @click="handleExploreClick"
+        >
+          <icon-lucide:compass class="library-button__icon" />
+          <span>探索论文</span>
+        </button>
         <NButton type="primary" block class="new-chat-button" @click="handleNewChat">
           <template #icon>
             <icon-lucide:plus />
@@ -179,7 +213,7 @@ function formatDate(dateStr?: string) {
       </div>
 
       <div class="sidebar-search">
-        <NInput v-model:value="keyword" clearable size="small" placeholder="Search chats">
+        <NInput v-model:value="keyword" clearable placeholder="Search chats">
           <template #prefix>
             <icon-lucide:search class="search-icon" />
           </template>
@@ -197,13 +231,13 @@ function formatDate(dateStr?: string) {
         <NSpin :show="sessionsLoading" class="h-full">
           <div v-if="visibleSessions.length === 0 && !sessionsLoading" class="empty-sessions">
             <icon-lucide:message-circle class="empty-sessions__icon" />
-            <span>{{ showArchived ? '暂无归档 query' : '暂无 query 记录' }}</span>
+            <span>{{ emptySessionLabel }}</span>
           </div>
 
           <NVirtualList
             v-else
             :items="visibleSessions"
-            :item-size="64"
+            :item-size="60"
             key-field="conversationId"
             class="session-virtual-list"
           >
@@ -214,7 +248,12 @@ function formatDate(dateStr?: string) {
                 :data-conversation-id="session.conversationId"
                 class="session-item group"
                 :class="session.conversationId === conversationId ? 'session-item--active' : ''"
+                role="button"
+                tabindex="0"
+                :aria-current="session.conversationId === conversationId ? 'true' : undefined"
                 @click="handleSelect(session.conversationId)"
+                @keydown.enter.prevent="handleSelect(session.conversationId)"
+                @keydown.space.prevent="handleSelect(session.conversationId)"
               >
                 <icon-lucide:circle-dot v-if="session.conversationId === conversationId" class="shrink-0 text-12px" />
                 <div class="min-w-0 flex-1">
@@ -229,10 +268,12 @@ function formatDate(dateStr?: string) {
                 <NPopconfirm v-if="!showArchived" @positive-click="handleArchive(session.conversationId)">
                   <template #trigger>
                     <NButton
-                      class="shrink-0 transition-opacity"
+                      class="shrink-0 transition-opacity focus-visible:opacity-100"
                       :class="session.conversationId === conversationId ? '' : 'opacity-0 group-hover:opacity-100'"
                       text
-                      size="tiny"
+                      size="small"
+                      :aria-label="`归档 ${session.title}`"
+                      :title="`归档 ${session.title}`"
                       @click.stop
                     >
                       <template #icon>
@@ -244,9 +285,11 @@ function formatDate(dateStr?: string) {
                 </NPopconfirm>
                 <NButton
                   v-else
-                  class="shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                  class="shrink-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
                   text
-                  size="tiny"
+                  size="small"
+                  :aria-label="`取消归档 ${session.title}`"
+                  :title="`取消归档 ${session.title}`"
                   @click.stop="handleUnarchive(session.conversationId)"
                 >
                   <template #icon>
@@ -260,11 +303,12 @@ function formatDate(dateStr?: string) {
                 >
                   <template #trigger>
                     <NButton
-                      class="shrink-0 transition-opacity"
+                      class="shrink-0 transition-opacity focus-visible:opacity-100"
                       :class="session.conversationId === conversationId ? '' : 'opacity-0 group-hover:opacity-100'"
                       text
-                      size="tiny"
+                      size="small"
                       :aria-label="`删除 ${session.title}`"
+                      :title="`删除 ${session.title}`"
                       @click.stop
                     >
                       <template #icon>
@@ -322,18 +366,20 @@ function formatDate(dateStr?: string) {
   height: 100%;
   flex-direction: column;
   overflow: hidden;
-  border-right: 1px solid color-mix(in srgb, var(--color-border) 74%, transparent);
-  background: color-mix(in srgb, var(--color-surface) 88%, var(--color-bg));
+  border-right: 1px solid var(--color-border);
+  background: var(--color-bg);
   transition:
-    width 0.2s ease,
-    min-width 0.2s ease;
+    width var(--duration-base) var(--ease-standard),
+    min-width var(--duration-base) var(--ease-standard);
 }
 
 .brand-row {
   display: flex;
+  height: 60px;
+  flex-shrink: 0;
   align-items: center;
-  gap: 8px;
-  padding: 12px 10px 10px;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
 }
 
 .brand-logo {
@@ -348,51 +394,57 @@ function formatDate(dateStr?: string) {
   white-space: nowrap;
   color: var(--color-primary);
   font-family: var(--font-interface);
-  font-size: 15px;
-  font-weight: 720;
-  letter-spacing: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .collapse-button {
+  min-width: 28px;
+  min-height: 28px;
   color: var(--color-text-muted);
 }
 
 .sidebar-actions {
   display: grid;
-  gap: 6px;
-  padding: 0 10px;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
 }
 
 .new-chat-button {
-  height: 38px;
-  border-radius: var(--radius-control);
-  font-weight: 720;
+  height: 40px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
 }
 
 .library-button {
   display: flex;
   width: 100%;
-  height: 34px;
+  height: 36px;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   border: 0;
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-text);
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 650;
-  padding: 0 10px;
+  font-size: var(--text-base);
+  font-weight: 500;
+  padding: 0 var(--space-2-5);
   text-align: left;
   transition:
-    background 0.16s ease,
-    color 0.16s ease;
+    background var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
 
-.library-button:hover,
+.library-button:hover {
+  background: var(--color-hover-tint);
+}
+
 .library-button--active {
   background: var(--color-research-soft-bg);
   color: var(--color-research);
+  font-weight: 600;
 }
 
 .library-button__icon {
@@ -401,12 +453,22 @@ function formatDate(dateStr?: string) {
 }
 
 .sidebar-search {
-  padding: 10px 10px 0;
+  padding: var(--space-3) var(--space-3) 0;
 }
 
 .sidebar-search :deep(.n-input) {
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+/* Naive's own focus border is the same colour as the resting border, so the
+   search field showed no focus state at all. */
+.sidebar-search :deep(.n-input.n-input--focus) {
+  box-shadow: 0 0 0 1px rgba(23, 24, 26, 0.14);
+}
+
+.sidebar-search :deep(.n-input:has(input:focus-visible)) {
+  box-shadow: 0 0 0 2px var(--color-research);
 }
 
 .search-icon {
@@ -418,21 +480,32 @@ function formatDate(dateStr?: string) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 14px 6px;
+  padding: var(--space-4) var(--space-4) var(--space-1-5);
   color: var(--color-text-muted);
   font-family: var(--font-interface);
-  font-size: 12px;
-  font-weight: 680;
-  letter-spacing: 0;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .archive-toggle {
+  /* Text-sized label with an expanded pointer target. */
+  margin: -4px -6px;
   border: 0;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-research);
   cursor: pointer;
-  font-size: 12px;
-  font-weight: 650;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 4px 6px;
+  text-transform: none;
+}
+
+.archive-toggle:hover {
+  background: var(--color-hover-tint);
 }
 
 .empty-sessions {
@@ -440,15 +513,15 @@ function formatDate(dateStr?: string) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 56px 12px;
+  gap: var(--space-2-5);
+  padding: var(--space-12) var(--space-3);
   color: var(--color-text-muted);
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .empty-sessions__icon {
-  color: var(--color-border-soft);
-  font-size: 34px;
+  color: var(--color-border-strong);
+  font-size: 32px;
 }
 
 .session-scroll {
@@ -499,26 +572,35 @@ function formatDate(dateStr?: string) {
 .session-item {
   display: flex;
   height: 100%;
-  min-height: 38px;
+  min-height: 56px;
   cursor: pointer;
   align-items: center;
-  gap: 9px;
-  margin: 1px 2px;
-  border: 0;
-  border-radius: var(--radius-control);
-  padding: 8px 9px;
+  gap: var(--space-2);
+  margin: 1px var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-2-5);
   color: var(--color-text);
   transition:
-    background 0.16s ease,
-    color 0.16s ease;
+    background var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
 
 .session-item:hover {
-  background: color-mix(in srgb, var(--color-surface) 84%, transparent);
+  background: var(--color-hover-tint);
+}
+
+/* Row actions stay 24px even though Naive renders text buttons smaller. */
+.session-item :deep(.n-button) {
+  min-width: 24px;
+  min-height: 24px;
 }
 
 .session-item--active {
-  background: #2e3a3730;
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
   color: var(--color-research);
   font-weight: 600;
 }
@@ -527,65 +609,69 @@ function formatDate(dateStr?: string) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
-  font-weight: 650;
+  font-size: var(--text-base);
+  font-weight: 500;
+}
+
+.session-item--active .session-title {
+  font-weight: 600;
 }
 
 .session-date {
-  margin-top: 1px;
+  margin-top: 2px;
   color: var(--color-text-muted);
   font-family: var(--font-utility);
-  font-size: 11px;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--leading-tight);
 }
 
 .sidebar-footer {
   display: flex;
   align-items: center;
-  gap: 8px;
-  border-top: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
-  padding: 8px 10px 10px;
+  gap: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-2-5) var(--space-3) var(--space-3);
 }
 
 .account-button {
   display: flex;
   min-width: 0;
-  min-height: 42px;
+  min-height: 44px;
   flex: 1 1 0;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-text);
   cursor: pointer;
-  padding: 5px 7px;
+  padding: var(--space-1-5) var(--space-2);
   text-align: left;
   transition:
-    background 0.16s ease,
-    color 0.16s ease;
+    background var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
 
 .account-button:hover,
 .account-button--active {
-  background: color-mix(in srgb, var(--color-surface) 86%, transparent);
+  background: var(--color-hover-tint);
   color: var(--color-primary);
 }
 
 .avatar-identicon {
   display: grid;
   position: relative;
-  width: 31px;
-  height: 31px;
+  width: 32px;
+  height: 32px;
   flex: 0 0 auto;
   grid-template-columns: repeat(5, 1fr);
   grid-template-rows: repeat(5, 1fr);
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
-  border-radius: 7px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   background: var(--color-surface-elevated);
-  box-shadow:
-    0 1px 0 color-mix(in srgb, var(--color-text) 8%, transparent) inset,
-    var(--shadow-card);
+  box-shadow: var(--shadow-card);
   gap: 1px;
   padding: 4px;
 }
@@ -602,23 +688,23 @@ function formatDate(dateStr?: string) {
   display: grid;
   min-width: 0;
   flex: 1 1 0;
-  gap: 2px;
+  gap: 1px;
 }
 
 .account-copy strong {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
-  font-weight: 680;
+  font-size: var(--text-base);
+  font-weight: 600;
 }
 
 .account-copy small {
   overflow: hidden;
   color: var(--color-text-muted);
   font-family: var(--font-interface);
-  font-size: 11px;
-  line-height: 1.25;
+  font-size: var(--text-xs);
+  line-height: var(--leading-tight);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -629,8 +715,8 @@ function formatDate(dateStr?: string) {
   font-size: 15px;
   opacity: 0;
   transition:
-    color 0.16s ease,
-    opacity 0.16s ease;
+    color var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard);
 }
 
 .account-button:hover .account-button__icon,
@@ -641,30 +727,30 @@ function formatDate(dateStr?: string) {
 
 .logout-button {
   display: inline-flex;
-  width: 34px;
-  height: 34px;
+  width: var(--control-icon-size);
+  height: var(--control-icon-size);
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
   font-size: 16px;
   transition:
-    background 0.16s ease,
-    color 0.16s ease;
+    background var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
 
 .logout-button:hover {
-  background: color-mix(in srgb, var(--color-accent-soft-bg) 78%, transparent);
+  background: color-mix(in srgb, var(--color-error) 10%, transparent);
   color: var(--color-error);
 }
 
 .dark .chat-sidebar {
-  border-right-color: color-mix(in srgb, var(--color-border) 80%, transparent);
-  background: color-mix(in srgb, var(--color-surface) 72%, var(--color-bg));
+  border-right-color: var(--color-border);
+  background: var(--color-bg);
 }
 
 .dark .sidebar-section-header,
@@ -677,12 +763,19 @@ function formatDate(dateStr?: string) {
 }
 
 .dark .session-item:hover {
-  background: var(--color-primary-soft-bg);
+  background: var(--color-hover-tint);
+}
+
+/* Row actions stay 24px even though Naive renders text buttons smaller. */
+.session-item :deep(.n-button) {
+  min-width: 24px;
+  min-height: 24px;
 }
 
 .dark .session-item--active {
-  background: #2e3a3730;
-  color: var(--color-text);
+  border-color: var(--color-border);
+  background: var(--color-surface-alt);
+  color: var(--color-research);
 }
 
 .dark .session-scroll--overflowing:hover {

@@ -29,6 +29,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import static io.github.chzarles.paperloom.utils.TextUtils.firstNonBlank;
 
 @Service
 public class CanonicalReadingLocationService {
@@ -377,14 +378,6 @@ public class CanonicalReadingLocationService {
         return result;
     }
 
-    private String firstNonBlank(String... values) {
-        for (String value : values) {
-            if (!blank(value)) {
-                return value.trim();
-            }
-        }
-        return "";
-    }
 
     private boolean blank(String value) {
         return value == null || value.isBlank();

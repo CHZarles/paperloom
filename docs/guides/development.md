@@ -6,7 +6,7 @@
 | --- | --- |
 | `src/main/java/` | Spring Boot product backend |
 | `src/test/java/` | Backend tests and evaluation contract tests |
-| `frontend/` | Folio Vue application and Playwright tests |
+| `frontend/` | Citewise Vue application and Playwright tests |
 | `harness_py/` | Python research harness and unit tests |
 | `research/golden-data/` | Evidence-first golden assets and analysis tools |
 | `docs/` | Maintained product documentation and engineering evolution |

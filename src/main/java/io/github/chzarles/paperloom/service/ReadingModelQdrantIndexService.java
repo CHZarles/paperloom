@@ -34,6 +34,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import static io.github.chzarles.paperloom.utils.TextUtils.firstNonBlank;
 
 @Service
 public class ReadingModelQdrantIndexService {
@@ -487,14 +488,6 @@ public class ReadingModelQdrantIndexService {
         }
     }
 
-    private static String firstNonBlank(String... values) {
-        for (String value : values) {
-            if (!blank(value)) {
-                return value.trim();
-            }
-        }
-        return "";
-    }
 
     private static boolean blank(String value) {
         return value == null || value.isBlank();

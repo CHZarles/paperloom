@@ -21,12 +21,18 @@ from uuid import uuid4
 import httpx
 from agents import (
     ItemHelpers,
+    ModelResponse,
     ModelSettings,
     OpenAIChatCompletionsModel,
     OpenAIResponsesModel,
 )
 from openai import APIConnectionError, APIStatusError, APITimeoutError, AsyncOpenAI
-from openai.types.responses import ResponseFunctionToolCall
+from openai.types.responses import (
+    Response,
+    ResponseCompletedEvent,
+    ResponseFunctionToolCall,
+    ResponseUsage,
+)
 
 from ...transport.provider_config import ProviderConfig
 from ...utils.errors import ResearchSystemError, RunLimitExceeded
@@ -65,6 +71,43 @@ def bind_research_context(context: ResearchRunContext) -> Iterator[None]:
         _ACTIVE_CONTEXT.reset(token)
 
 
+def completed_event_from_response(response: ModelResponse, model_name: str) -> ResponseCompletedEvent:
+    """把非流式 ``ModelResponse`` 包装成单个 ``response.completed`` 流事件。
+
+    ``Runner.run_streamed`` 只消费 ``Model.stream_response`` 产出的事件，最终从
+    ``response.completed`` 事件的 ``.response.output`` 解析工具调用与最终输出。本函数把
+    已经过 ``get_response`` 协议校验的完整响应原样装回该事件，供流式 run loop 使用。
+    """
+
+    usage = response.usage
+    return ResponseCompletedEvent(
+        response=Response(
+            id=response.response_id or "chatcmpl-streamed",
+            created_at=0,
+            model=model_name,
+            object="response",
+            output=response.output,
+            parallel_tool_calls=True,
+            tool_choice="auto",
+            tools=[],
+            status="completed",
+            usage=(
+                ResponseUsage(
+                    input_tokens=usage.input_tokens,
+                    input_tokens_details=usage.input_tokens_details,
+                    output_tokens=usage.output_tokens,
+                    output_tokens_details=usage.output_tokens_details,
+                    total_tokens=usage.total_tokens,
+                )
+                if usage
+                else None
+            ),
+        ),
+        type="response.completed",
+        sequence_number=0,
+    )
+
+
 class _ObservedOpenAIModel:
     """共享 OpenAI-compatible 模型的记录、关闭和工具协议兼容逻辑。"""
 
@@ -74,6 +117,44 @@ class _ObservedOpenAIModel:
 
     async def close(self) -> None:
         await self._client.close()
+
+    async def stream_response(
+        self,
+        system_instructions,
+        input,
+        model_settings,
+        tools,
+        output_schema,
+        handoffs,
+        tracing,
+        previous_response_id=None,
+        conversation_id=None,
+        prompt=None,
+    ):
+        """把流式接口委托回非流式协议路径。
+
+        ``Runner.run_streamed`` 只调用 ``Model.stream_response``，而本项目的协议执行层
+        （plain-text→nudge、工具参数修复、协议违规、在线诊断）全部写在 ``get_response``。
+        直接使用 SDK 自带的流式实现会绕过这些校验。这里不实现真流式，而是调用
+        ``get_response`` 拿到经过校验的完整响应，再包装成单个 ``response.completed`` 事件
+        交还 runner。代价是失去 token 级流（PRD 明确 P0 不交付），换取：
+        1. 协议层完整保留；
+        2. ``run_streamed`` 的后台 task 可被 ``cancel("immediate")`` 中断。
+        """
+
+        response: ModelResponse = await self.get_response(
+            system_instructions,
+            input,
+            model_settings,
+            tools,
+            output_schema,
+            handoffs,
+            tracing,
+            previous_response_id=previous_response_id,
+            conversation_id=conversation_id,
+            prompt=prompt,
+        )
+        yield completed_event_from_response(response, str(getattr(self, "model", "")))
 
     async def get_response(
         self,

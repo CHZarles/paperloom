@@ -108,6 +108,12 @@ declare namespace Env {
     readonly VITE_AUTOMATICALLY_DETECT_UPDATE?: CommonType.YesOrNo;
     /** show proxy url log in terminal */
     readonly VITE_PROXY_LOG?: CommonType.YesOrNo;
+    /**
+     * Whether to mount the Vue DevTools floating panel
+     *
+     * Off by default; set to `Y` in `.env` to bring the overlay back
+     */
+    readonly VITE_DEVTOOLS?: CommonType.YesOrNo;
     /** The launch editor */
     readonly VITE_DEVTOOLS_LAUNCH_EDITOR?: import('vite-plugin-vue-devtools').VitePluginVueDevToolsOptions['launchEditor'];
     /** The timeout of the websocket */

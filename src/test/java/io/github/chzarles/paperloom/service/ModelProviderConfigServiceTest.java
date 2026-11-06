@@ -1,6 +1,5 @@
 package io.github.chzarles.paperloom.service;
 
-import io.github.chzarles.paperloom.exception.CustomException;
 import io.github.chzarles.paperloom.model.ModelProviderConfig;
 import io.github.chzarles.paperloom.repository.ModelProviderConfigRepository;
 import io.github.chzarles.paperloom.utils.SecretCryptoService;
@@ -12,7 +11,6 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 

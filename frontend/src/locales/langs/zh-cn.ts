@@ -1,6 +1,6 @@
 const local: App.I18n.Schema = {
   system: {
-    title: 'Folio',
+    title: 'Citewise',
     updateTitle: '系统版本更新通知',
     updateContent: '检测到系统有新版本发布，是否立即刷新页面？',
     updateConfirm: '立即刷新',
@@ -164,11 +164,22 @@ const local: App.I18n.Schema = {
     'iframe-page': '外链页面',
     chat: '论文问答',
     'chat-history': '问答记录',
+    discover: '探索论文',
     'invite-code': '邀请码管理',
     'knowledge-base': '文献库',
     'personal-center': '个人档案'
   },
   page: {
+    landing: {
+      headline: '每个答案都有出处。',
+      lede: '向自己的文献库提问。每条回答附页码与原文，证据不足时不猜。',
+      authHint: '登录后继续你的文献工作。',
+    },
+    exception: {
+      403: '你没有访问该页面的权限。',
+      404: '该页面不存在，或已经被移动。',
+      500: '服务出现异常，请稍后重试。'
+    },
     login: {
       common: {
         loginOrRegister: '登录 / 注册',
@@ -212,7 +223,7 @@ const local: App.I18n.Schema = {
         protocol: '《用户协议》',
         and: '和',
         policy: '《隐私权政策》',
-        inviteCodeTip: '当前站点采用邀请码注册。还没有邀请码时，可联系管理员获取 Folio 邀请码。'
+        inviteCodeTip: '当前站点采用邀请码注册。还没有邀请码时，可联系管理员获取 Citewise 邀请码。'
       },
       resetPwd: {
         title: '重置密码'

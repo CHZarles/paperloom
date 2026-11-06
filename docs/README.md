@@ -14,18 +14,18 @@ guides.
 | Develop or test the repository | [Development Guide](guides/development.md) |
 | Configure or deploy it | [Configuration](reference/configuration.md) and [Deployment Guide](guides/deployment.md) |
 | Understand why the design changed | [Engineering Evolution](engineering-evolution/README.md) |
-| Prepare to explain the project | [Interview Materials](../interview/README.md) |
 
 ## Current System
 
 These documents describe behavior that maintainers should keep synchronized with code.
 
 - [Architecture Overview](architecture/overview.md): service boundaries, storage roles, and the live request path.
+- [Code Map](architecture/code-map.md): where to change what — processes, request paths, and file index for new maintainers.
 - [Runtime Diagram Catalog](architecture/runtime-diagrams.md): sequence diagrams grouped by business workflow.
 - [Reading Model and Agent Tools](architecture/reading-model-and-agent-tools.md): durable paper model, retrieval, and tool authorization.
 - [Evidence and Citations](architecture/evidence-and-citations.md): parser output through exact reads to reopened references.
 - [Governed Research Run](architecture/governed-research-run-spec.md): implemented limits, failure classes, and promotion gate.
-- [Naming Contract](architecture/naming.md): Folio and PaperLoom names used across product and code.
+- [Naming Contract](architecture/naming.md): Citewise and PaperLoom names used across product and code.
 - [Domain Language](reference/domain-language.md): canonical product and architecture vocabulary.
 - [Product Requirements](reference/product-requirements.md): maintained product contract.
 
@@ -52,7 +52,6 @@ Deployment assets stay beside these guides: [`docker-compose.yaml`](docker-compo
 | Incidents and verification | [`engineering-evolution/`](engineering-evolution/) | Evidence, diagnosis, correction, and outcome |
 | Performance experiments | [`performance/`](performance/) | Reproduction steps and measured before/after data |
 | Evaluation design | [`evaluation/`](evaluation/) | Scoring, benchmark, and Golden Data contracts |
-| Historical implementation plans | [`superpowers/`](superpowers/) | Point-in-time work plans, not current truth |
 
 Start with the [Engineering Evolution Index](engineering-evolution/README.md) or its
 [Timeline](engineering-evolution/timeline.md). Do not use a dated proposal as current behavior unless
@@ -60,19 +59,16 @@ its status says it was implemented and the current architecture agrees.
 
 ## Specialized Collections
 
-- [`harness_py/`](../harness_py/README.md): Python Harness operation and Agents SDK onboarding.
+- [`harness_py/`](../harness_py/README.md): Python research harness, live request path, and evaluation capture.
 - [`research/golden-data/`](../research/golden-data/README.md): Golden cases, schemas, adjudication, and frozen runs.
 - [`research/`](../research/README.md): research designs, benchmark data, exploratory notes, and Golden Data.
-- [`interview/`](../interview/README.md): learning guides, project evidence map, and defensible project stories.
 - [`site/`](../site/index.md): public project-site source and selected engineering narratives.
-- [`diagrams/`](../diagrams/README.md): legacy review-diagram sources; current runtime sources live in `site/diagrams/`.
 
 ## Repository-Level Documents
 
 - [`README.md`](../README.md) and [`README.zh-CN.md`](../README.zh-CN.md): concise public project entry points.
 - [`CONTRIBUTING.md`](../CONTRIBUTING.md): contribution workflow and required checks.
 - [`SECURITY.md`](../SECURITY.md): vulnerability reporting and operational security.
-- [`HANDOFF.md`](../HANDOFF.md): temporary maintainer handoff; update or replace it as work changes.
 - [`AGENTS.md`](../AGENTS.md) and [`CLAUDE.md`](../CLAUDE.md): instructions for coding agents, not product documentation.
 - [`THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md): third-party license notices.
 

@@ -17,7 +17,6 @@ import io.github.chzarles.paperloom.repository.PaperVisualAssetRepository;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
-import io.minio.RemoveObjectArgs;
 import io.minio.http.Method;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
@@ -44,6 +43,7 @@ import java.util.Optional;
 import java.util.Locale;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import static io.github.chzarles.paperloom.utils.MinioObjects.removeQuietly;
 
 @Service
 public class PaperVisualAssetService {
@@ -275,7 +275,7 @@ public class PaperVisualAssetService {
             return;
         }
         for (PaperVisualAsset asset : paperVisualAssetRepository.findByPaperId(paperId)) {
-            removeObjectQuietly(asset.getObjectKey());
+            removeQuietly(minioClient, BUCKET, asset.getObjectKey());
         }
         paperVisualAssetRepository.deleteByPaperId(paperId);
     }
@@ -847,19 +847,6 @@ public class PaperVisualAssetService {
         return Math.max(min, Math.min(max, value));
     }
 
-    private void removeObjectQuietly(String objectKey) {
-        if (objectKey == null || objectKey.isBlank()) {
-            return;
-        }
-        try {
-            minioClient.removeObject(RemoveObjectArgs.builder()
-                    .bucket(BUCKET)
-                    .object(objectKey)
-                    .build());
-        } catch (Exception ignored) {
-            // MinIO cleanup is best-effort; database metadata is still removed below.
-        }
-    }
 
     private String sha256(byte[] bytes) {
         try {

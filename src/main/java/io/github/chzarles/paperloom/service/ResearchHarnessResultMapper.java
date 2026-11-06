@@ -8,6 +8,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import static io.github.chzarles.paperloom.utils.TextUtils.firstNonBlank;
+import static io.github.chzarles.paperloom.utils.TextUtils.stringValue;
+import static io.github.chzarles.paperloom.utils.TextUtils.intValue;
 
 @Component
 public class ResearchHarnessResultMapper {
@@ -268,26 +271,6 @@ public class ResearchHarnessResultMapper {
         return List.copyOf(result);
     }
 
-    private String firstNonBlank(Object... values) {
-        for (Object value : values) {
-            String text = stringValue(value);
-            if (!text.isBlank()) {
-                return text;
-            }
-        }
-        return "";
-    }
-
-    private int intValue(Object value, int fallback) {
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        try {
-            return Integer.parseInt(stringValue(value));
-        } catch (NumberFormatException ignored) {
-            return fallback;
-        }
-    }
 
     private boolean booleanValue(Object value) {
         if (value instanceof Boolean bool) {

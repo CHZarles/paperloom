@@ -39,7 +39,7 @@ const profileLoaded = ref(false);
 const activeSection = ref<SettingsSection>('general');
 
 const userCacheId = computed(() => String(userInfo.value.id || userInfo.value.username || 'anonymous'));
-const accountName = computed(() => userInfo.value.username || 'Folio User');
+const accountName = computed(() => userInfo.value.username || 'Citewise User');
 const accountRoleLabel = computed(() => (userInfo.value.role === 'ADMIN' ? 'Admin' : 'User'));
 const avatarCells = computed(() => buildAvatarCells(accountName.value));
 const avatarStyle = computed(() => ({
@@ -85,7 +85,7 @@ function readSettingsPanelCache() {
 
 function buildAvatarCells(seed: string) {
   let hash = 0;
-  const normalized = seed || 'Folio';
+  const normalized = seed || 'Citewise';
 
   for (let index = 0; index < normalized.length; index += 1) {
     hash = Math.imul(31, hash) + normalized.charCodeAt(index);
@@ -102,7 +102,7 @@ function buildAvatarCells(seed: string) {
 
 function buildAvatarFill(seed: string) {
   let hash = 0;
-  const normalized = seed || 'Folio';
+  const normalized = seed || 'Citewise';
 
   for (let index = 0; index < normalized.length; index += 1) {
     hash = Math.imul(33, hash) + normalized.charCodeAt(index);
@@ -215,7 +215,7 @@ function buildAvatarFill(seed: string) {
   grid-template-columns: 260px minmax(0, 1fr);
   overflow: hidden;
   border: 1px solid var(--color-border);
-  border-radius: 16px;
+  border-radius: var(--radius-xl);
   background: var(--color-surface);
   box-shadow: var(--shadow-card-soft);
 }
@@ -224,7 +224,7 @@ function buildAvatarFill(seed: string) {
   min-width: 0;
   border-right: 1px solid var(--color-border);
   background: var(--color-bg);
-  padding: 16px 10px;
+  padding: var(--space-4) var(--space-3);
 }
 
 .settings-account,
@@ -232,7 +232,7 @@ function buildAvatarFill(seed: string) {
   display: flex;
   width: 100%;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-text);
   cursor: pointer;
@@ -288,33 +288,35 @@ function buildAvatarFill(seed: string) {
 
 .account-copy strong {
   color: var(--color-text);
-  font-size: 13px;
-  font-weight: 680;
+  font-size: var(--text-sm);
+  font-weight: 600;
 }
 
 .account-copy small {
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: var(--text-xs);
 }
 
 .settings-nav__label {
-  margin: 18px 10px 7px;
+  margin: var(--space-5) var(--space-2-5) var(--space-2);
   color: var(--color-text-muted);
-  font-size: 11px;
-  font-weight: 680;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .settings-nav__item {
   align-items: center;
-  gap: 9px;
-  height: 34px;
+  gap: var(--space-2);
+  height: 36px;
   margin: 1px 0;
-  padding: 0 10px;
-  font-size: 12px;
-  font-weight: 620;
+  padding: 0 var(--space-2-5);
+  font-size: var(--text-sm);
+  font-weight: 500;
   transition:
-    background-color 0.16s ease,
-    color 0.16s ease;
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
 
 .settings-nav__item svg {
@@ -331,26 +333,31 @@ function buildAvatarFill(seed: string) {
   white-space: nowrap;
 }
 
-.settings-nav__item:hover,
+.settings-nav__item:hover {
+  background: var(--color-hover-tint);
+}
+
 .settings-nav__item--active {
-  background: var(--color-primary-soft-bg);
-  color: var(--color-primary);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  color: var(--color-research);
+  font-weight: 600;
 }
 
 .settings-main {
   position: relative;
   min-width: 0;
   overflow-y: auto;
-  padding: 42px 56px 48px;
+  padding: var(--space-10) var(--space-12) var(--space-12);
 }
 
 .settings-close {
   position: absolute;
-  top: 18px;
-  right: 20px;
+  top: var(--space-4);
+  right: var(--space-4);
   display: flex;
-  width: 32px;
-  height: 32px;
+  width: var(--control-icon-size);
+  height: var(--control-icon-size);
   align-items: center;
   justify-content: center;
   border: 0;
@@ -378,9 +385,9 @@ function buildAvatarFill(seed: string) {
   margin: 0;
   color: var(--color-text);
   font-size: 22px;
-  font-weight: 680;
-  letter-spacing: 0;
-  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: var(--leading-tight);
 }
 
 .settings-rule {
@@ -400,14 +407,14 @@ function buildAvatarFill(seed: string) {
 
 .settings-row label {
   color: var(--color-text);
-  font-size: 13px;
-  font-weight: 620;
+  font-size: var(--text-base);
+  font-weight: 500;
 }
 
 .settings-row strong {
   color: var(--color-text-muted);
-  font-size: 13px;
-  font-weight: 560;
+  font-size: var(--text-base);
+  font-weight: 500;
   text-align: right;
 }
 
@@ -435,10 +442,10 @@ function buildAvatarFill(seed: string) {
 .section-count {
   margin: 0 0 3px;
   color: var(--color-text);
-  font-size: 15px;
-  font-weight: 760;
-  letter-spacing: 0;
-  line-height: 1.2;
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: var(--leading-tight);
 }
 
 .quota-panel__head strong {
@@ -457,26 +464,26 @@ function buildAvatarFill(seed: string) {
 .quota-panel__metrics span {
   min-width: 0;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--color-surface-alt);
   color: var(--color-text);
-  font-size: 13px;
-  font-weight: 700;
-  padding: 8px 9px;
+  font-size: var(--text-base);
+  font-weight: 600;
+  padding: var(--space-2) var(--space-2-5);
 }
 
 .quota-panel__metrics small {
   display: block;
   margin-bottom: 2px;
   color: var(--color-text-muted);
-  font-size: 11px;
-  font-weight: 650;
+  font-size: var(--text-xs);
+  font-weight: 500;
 }
 
 .section-count {
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3);
   color: var(--color-text-muted);
-  font-weight: 620;
+  font-weight: 500;
 }
 
 .settings-section :deep(.n-data-table) {
@@ -495,8 +502,9 @@ function buildAvatarFill(seed: string) {
 .settings-section :deep(.n-data-table-th) {
   background: var(--color-card-band-pressed);
   color: var(--color-text);
-  font-size: 12px;
-  padding: 10px 10px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  padding: var(--space-2-5);
 }
 
 .settings-section :deep(.n-data-table-td) {

@@ -1,5 +1,7 @@
 # Governed Research Run Specification
 
+> **2026-11 transport change.** The Redis Streams worker transport was removed; `POST /v1/research/stream` is the only research transport. Mentions of a Redis worker or of two transports below describe the earlier design and are kept as design history.
+
 Status: Implemented in code; production promotion requires the benchmark gate in section 11.
 
 ## 1. Decision

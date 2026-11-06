@@ -5,6 +5,7 @@ import { request } from '@/service/request';
 import { normalizeLegacyDisplayMathCitations } from '@/utils/research-markdown';
 import StreamingMarkdown from '@/components/custom/streaming-markdown.vue';
 import ProductReadingPaperChoiceList from './product-reading-paper-choice-list.vue';
+import { consumeStreamReveal } from './stream-reveal';
 
 const VueMarkdownIt = defineAsyncComponent(() =>
   import('@/vendor/vue-markdown-shiki').then(module => module.VueMarkdownIt)
@@ -65,10 +66,25 @@ const emit = defineEmits<{
   (e: 'openProcess', message: Api.Chat.Message): void;
 }>();
 
-function handleCopy(content: string) {
-  navigator.clipboard.writeText(content);
-  window.$message?.success('已复制');
+const copied = ref(false);
+let copiedTimer: ReturnType<typeof setTimeout> | undefined;
+
+async function handleCopy(content: string) {
+  try {
+    await navigator.clipboard.writeText(content);
+    copied.value = true;
+    if (copiedTimer) clearTimeout(copiedTimer);
+    copiedTimer = setTimeout(() => {
+      copied.value = false;
+    }, 1600);
+  } catch {
+    window.$message?.error('复制失败，请手动选择文本');
+  }
 }
+
+onUnmounted(() => {
+  if (copiedTimer) clearTimeout(copiedTimer);
+});
 
 const chatStore = useChatStore();
 const retrying = ref(false);
@@ -204,6 +220,82 @@ const assistantIsRunning = computed(
 const assistantIsStreaming = computed(
   () => props.msg.role === 'assistant' && ['pending', 'loading'].includes(props.msg.status || '')
 );
+
+// The backend hands over a finished answer in one chunk, so there is no token
+// stream to follow. Revealing the text over a few frames keeps the arrival
+// readable and gives the caret something to sit on.
+const REVEAL_FRAME_RATIO = 0.22;
+const REVEAL_MAX_CHARS_PER_FRAME = 80;
+const revealedContent = ref(props.msg.content || '');
+const revealing = ref(false);
+let revealFrame: number | null = null;
+let revealTarget = props.msg.content || '';
+let sawStreaming = false;
+
+function prefersReducedMotion() {
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function stopReveal() {
+  if (revealFrame !== null) {
+    window.cancelAnimationFrame(revealFrame);
+    revealFrame = null;
+  }
+  revealing.value = false;
+}
+
+function stepReveal() {
+  const remaining = revealTarget.length - revealedContent.value.length;
+  if (remaining <= 0) {
+    revealedContent.value = revealTarget;
+    stopReveal();
+    return;
+  }
+  const advance = Math.max(2, Math.min(REVEAL_MAX_CHARS_PER_FRAME, Math.ceil(remaining * REVEAL_FRAME_RATIO)));
+  revealedContent.value = revealTarget.slice(0, revealedContent.value.length + advance);
+  revealFrame = window.requestAnimationFrame(stepReveal);
+}
+
+watch(
+  assistantIsStreaming,
+  active => {
+    if (active) sawStreaming = true;
+  },
+  { immediate: true }
+);
+
+watch(
+  () => props.msg.content,
+  next => {
+    const value = next || '';
+    revealTarget = value;
+    // History messages and replaced content appear at once; only text that
+    // arrives while this message was streaming is revealed progressively.
+    if (!sawStreaming || prefersReducedMotion() || value.length <= revealedContent.value.length) {
+      stopReveal();
+      revealedContent.value = value;
+      return;
+    }
+    revealing.value = true;
+    if (revealFrame === null) {
+      revealFrame = window.requestAnimationFrame(stepReveal);
+    }
+  }
+);
+
+onUnmounted(stopReveal);
+
+// The message can be remounted between the answer arriving and its final
+// render, so a fresh instance asks whether this generation just completed.
+if (consumeStreamReveal(props.msg.generationId) && !prefersReducedMotion()) {
+  const initialContent = props.msg.content || '';
+  if (initialContent.length > 0) {
+    revealTarget = initialContent;
+    revealedContent.value = '';
+    revealing.value = true;
+    revealFrame = window.requestAnimationFrame(stepReveal);
+  }
+}
 // Keep the thinking animation alive across session switches and unmounts.
 // Once events have arrived for this message and no terminal event has arrived,
 // the research is still effectively running from the user's perspective —
@@ -913,7 +1005,11 @@ async function handleSourceFileClick(fileInfo: {
           @mouseover="syncActiveReferenceFromContent($event.target)"
           @focusin="syncActiveReferenceFromContent($event.target)"
         >
-          <StreamingMarkdown v-if="assistantIsStreaming" :content="msg.content" />
+          <StreamingMarkdown
+            v-if="assistantIsStreaming || revealing"
+            :content="revealing ? revealedContent : msg.content"
+            :streaming="revealing"
+          />
           <VueMarkdownIt v-else :content="content" />
         </div>
         <NText v-else-if="msg.role === 'user'" class="message-content user-content">{{ content }}</NText>
@@ -933,9 +1029,16 @@ async function handleSourceFileClick(fileInfo: {
               <icon-lucide:list-tree />
             </template>
           </NButton>
-          <NButton quaternary title="复制回答" aria-label="复制回答" @click="handleCopy(msg.content)">
+          <NButton
+            quaternary
+            :title="copied ? '已复制' : '复制回答'"
+            :aria-label="copied ? '已复制' : '复制回答'"
+            :class="{ 'copy-button--done': copied }"
+            @click="handleCopy(msg.content)"
+          >
             <template #icon>
-              <icon-lucide:copy />
+              <icon-lucide:check v-if="copied" class="copy-button__check" />
+              <icon-lucide:copy v-else />
             </template>
           </NButton>
           <NButton
@@ -1005,25 +1108,34 @@ async function handleSourceFileClick(fileInfo: {
 }
 
 :deep(.source-citation-chip) {
+  position: relative;
   display: inline-flex;
-  min-width: 24px;
+  min-width: 26px;
   height: 22px;
   align-items: center;
   justify-content: center;
   margin: 0 2px;
   border: 1px solid color-mix(in srgb, var(--color-citation) 42%, var(--color-border));
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--color-citation-soft-bg);
   color: var(--color-citation);
-  font-size: 12px;
-  font-weight: 700;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
   line-height: 1;
   text-decoration: none;
   vertical-align: 0.08em;
   transition:
-    background 0.16s ease,
-    border-color 0.16s ease,
-    color 0.16s ease;
+    background var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+
+  /* Keep the visual size compact but give the pointer a 32px target. */
+  &::after {
+    position: absolute;
+    inset: -5px -3px;
+    content: '';
+  }
 
   &:hover {
     border-color: color-mix(in srgb, var(--color-citation) 72%, var(--color-border));
@@ -1033,7 +1145,7 @@ async function handleSourceFileClick(fileInfo: {
   }
 
   &:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--color-citation) 58%, transparent);
+    outline: 2px solid var(--color-citation);
     outline-offset: 2px;
   }
 }
@@ -1054,9 +1166,11 @@ async function handleSourceFileClick(fileInfo: {
 .message-block {
   display: flex;
   width: 100%;
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--color-border-soft);
-  padding-bottom: 20px;
+  margin-bottom: var(--space-8);
+}
+
+.message-block:last-child {
+  margin-bottom: var(--space-2);
 }
 
 .message-block--user {
@@ -1073,7 +1187,7 @@ async function handleSourceFileClick(fileInfo: {
   width: 100%;
   max-width: 100%;
   align-items: flex-start;
-  gap: 10px;
+  gap: var(--space-2-5);
 }
 
 .message-block--assistant .message-row {
@@ -1083,30 +1197,28 @@ async function handleSourceFileClick(fileInfo: {
 
 .message-block--user .message-row {
   width: min(var(--reading-prose-width), calc(100% - 42px));
-  max-width: min(760px, 92%);
+  max-width: min(680px, 92%);
   justify-content: flex-end;
 }
 
 .message-avatar {
   display: inline-flex;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--color-surface-elevated);
-  box-shadow:
-    0 1px 0 color-mix(in srgb, var(--color-text) 8%, transparent) inset,
-    var(--shadow-card);
+  box-shadow: var(--shadow-card);
   color: var(--color-text-muted);
 }
 
 .message-avatar :deep(svg) {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
 }
 
 .message-avatar--assistant {
@@ -1120,7 +1232,7 @@ async function handleSourceFileClick(fileInfo: {
   max-width: calc(100% - 42px);
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .message-block--assistant .message-body {
@@ -1135,9 +1247,9 @@ async function handleSourceFileClick(fileInfo: {
 
 .message-content {
   max-width: 100%;
-  font-size: 15px;
-  line-height: 1.78;
   color: var(--color-text);
+  font-size: var(--text-lg);
+  line-height: var(--leading-relaxed);
 }
 
 .message-error {
@@ -1150,11 +1262,13 @@ async function handleSourceFileClick(fileInfo: {
   display: inline-flex;
   width: fit-content;
   max-width: 100%;
-  white-space: pre-wrap;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-lg);
   background: var(--color-surface-alt);
-  padding: 10px 13px;
+  padding: var(--space-2-5) var(--space-4);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  white-space: pre-wrap;
 }
 
 .assistant-content {
@@ -1196,6 +1310,10 @@ async function handleSourceFileClick(fileInfo: {
 .assistant-content :deep(.research-preformatted-block),
 .assistant-content :deep(.research-preformatted-block *) {
   color: var(--color-text) !important;
+}
+
+.copy-button__check {
+  color: var(--color-research);
 }
 
 .message-actions {
@@ -1305,14 +1423,128 @@ async function handleSourceFileClick(fileInfo: {
   --vp-code-line-number-color: var(--color-text-muted);
   --vp-code-line-highlight-color: var(--color-primary-soft-bg);
   background: transparent !important;
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    'PingFang SC',
-    'Microsoft YaHei',
-    sans-serif;
+  font-family: var(--font-interface);
+  font-size: var(--text-lg);
+  line-height: var(--leading-relaxed);
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+  /* Chinese answers are set with full-width punctuation; let the browser trim
+     the extra side bearing and keep closing marks off the start of a line. */
+  line-break: strict;
+  text-spacing-trim: space-first;
+  text-wrap: pretty;
+}
+
+.assistant-content :deep(.vp-doc body),
+.assistant-content :deep(.vp-doc p),
+.assistant-content :deep(.vp-doc li),
+.assistant-content :deep(.vp-doc td),
+.assistant-content :deep(.vp-doc th) {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.assistant-content :deep(.vp-doc > :first-child) {
+  margin-top: 0;
+}
+
+.assistant-content :deep(.vp-doc p) {
+  margin: 0 0 1.5em;
+}
+
+.assistant-content :deep(.vp-doc h1),
+.assistant-content :deep(.vp-doc h2),
+.assistant-content :deep(.vp-doc h3),
+.assistant-content :deep(.vp-doc h4) {
+  margin: 1.5em 0 0.6em;
+  color: var(--color-text);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  letter-spacing: -0.01em;
+}
+
+.assistant-content :deep(.vp-doc h1) {
+  font-size: 1.55em;
+}
+
+.assistant-content :deep(.vp-doc h2) {
+  font-size: 1.3em;
+}
+
+.assistant-content :deep(.vp-doc h3) {
+  font-size: 1.12em;
+}
+
+.assistant-content :deep(.vp-doc ul),
+.assistant-content :deep(.vp-doc ol) {
+  margin: 0 0 1.35em;
+  padding-left: 1.55em;
+}
+
+.assistant-content :deep(.vp-doc li + li) {
+  margin-top: 0.42em;
+}
+
+.assistant-content :deep(.vp-doc li > ul),
+.assistant-content :deep(.vp-doc li > ol) {
+  margin-top: 0.42em;
+  margin-bottom: 0;
+}
+
+.assistant-content :deep(.vp-doc blockquote) {
+  margin: 1.1em 0;
+  border-left: 3px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+  padding: 0.7em 1em;
+  color: var(--color-text-muted);
+}
+
+.assistant-content :deep(.vp-doc blockquote > :last-child) {
+  margin-bottom: 0;
+}
+
+.assistant-content :deep(.vp-doc code:not(pre code)) {
+  border: 1px solid var(--color-border-soft);
+  border-radius: 4px;
+  background: var(--color-surface-alt);
+  padding: 0.12em 0.35em;
+  color: var(--color-primary);
+  font-size: 0.9em;
+}
+
+.assistant-content :deep(.vp-doc pre) {
+  margin: 1.1em 0 1.35em;
+  line-height: 1.55;
+}
+
+.assistant-content :deep(.vp-doc hr) {
+  margin: 1.6em 0;
+  border: 0;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.assistant-content :deep(.vp-doc table) {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+  margin: 1.1em 0 1.35em;
+  border-collapse: collapse;
+  overflow-x: auto;
+  font-size: 0.95em;
+}
+
+.assistant-content :deep(.vp-doc th),
+.assistant-content :deep(.vp-doc td) {
+  border: 1px solid var(--color-border-soft);
+  padding: 0.65em 0.8em;
+  text-align: left;
+  vertical-align: top;
+}
+
+.assistant-content :deep(.vp-doc th) {
+  background: var(--color-surface-alt);
+  font-weight: 700;
 }
 
 .assistant-content :deep(.vp-doc > body) {

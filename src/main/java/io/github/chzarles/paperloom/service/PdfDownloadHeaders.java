@@ -3,7 +3,7 @@ package io.github.chzarles.paperloom.service;
 import java.util.Locale;
 import java.util.Map;
 
-final class PdfDownloadHeaders {
+public final class PdfDownloadHeaders {
 
     enum Disposition {
         INLINE("inline"),
@@ -43,7 +43,7 @@ final class PdfDownloadHeaders {
         return Map.of("Content-Type", CONTENT_TYPE_PDF);
     }
 
-    static String sanitizePdfFilename(String originalFilename, String fallbackPaperId) {
+    public static String sanitizePdfFilename(String originalFilename, String fallbackPaperId) {
         String filename = originalFilename;
         if (filename == null || filename.isBlank()) {
             filename = fallbackPaperId;

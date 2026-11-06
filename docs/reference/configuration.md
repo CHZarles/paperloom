@@ -12,6 +12,18 @@ should inject the same variables through their secret and configuration system.
 | `APP_TIMEZONE` | Application timezone |
 | `SECURITY_ALLOWED_ORIGINS` | Explicit browser-origin allowlist |
 
+## Paper Discovery
+
+Optional overrides for the arXiv discovery surface. Defaults apply when the variables are unset.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PAPER_DISCOVERY_ARXIV_API_BASE_URL` | `https://export.arxiv.org` | arXiv Atom API base URL |
+| `PAPER_DISCOVERY_ARXIV_PDF_BASE_URL` | `https://arxiv.org` | PDF download base URL |
+| `PAPER_DISCOVERY_ARXIV_TIMEOUT_SECONDS` | `25` | Per-request timeout |
+| `PAPER_DISCOVERY_ARXIV_MAX_PDF_BYTES` | `52428800` | Maximum accepted PDF size |
+| `PAPER_DISCOVERY_ARXIV_IMPORTS_PER_HOUR` | `20` | Per-user hourly import budget; `0` disables the check |
+
 ## Data Services
 
 | Group | Representative variables | Current role |
@@ -53,28 +65,17 @@ fallback.
 
 | Variable | Purpose |
 | --- | --- |
-| `RESEARCH_HARNESS_TRANSPORT` | `redis` for the scalable worker-pool path, `http` for local debug or rollback |
-| `RESEARCH_HARNESS_BASE_URL` | Internal harness HTTP endpoint used only when `RESEARCH_HARNESS_TRANSPORT=http` |
+| `RESEARCH_HARNESS_BASE_URL` | Internal harness HTTP endpoint; the only research transport |
 | `RESEARCH_HARNESS_INTERNAL_TOKEN` | Required shared internal-service credential; blank tokens reject Corpus requests |
+| `RESEARCH_HARNESS_MAX_ACTIVE_GENERATIONS` | Concurrent research turns allowed in flight |
 | `RESEARCH_HARNESS_USER_RETRY_MAX_PER_MESSAGE` | Maximum product-level regenerate attempts for one completed assistant answer |
-| `RESEARCH_HARNESS_REDIS_URL` | Redis URL used by `harness_py worker`; Java uses the Spring Redis settings |
-| `RESEARCH_HARNESS_REDIS_JOBS_STREAM` | Redis Stream key for Java-to-worker research jobs |
-| `RESEARCH_HARNESS_REDIS_EVENTS_PREFIX` | Redis Stream prefix for short-lived worker progress/results |
-| `RESEARCH_HARNESS_REDIS_STATUS_PREFIX` | Redis key prefix for short-lived runtime status |
-| `RESEARCH_HARNESS_REDIS_CANCEL_PREFIX` | Redis key prefix for cross-process cancellation |
-| `RESEARCH_HARNESS_REDIS_LOCK_PREFIX` | Redis key prefix for worker execution locks |
-| `RESEARCH_HARNESS_QUEUE_MAX_DEPTH` | Java fail-fast queue depth limit for online research turns |
-| `RESEARCH_HARNESS_EVENT_READ_TIMEOUT_SECONDS` | Java wait time for a terminal Redis event before failing the generation |
 | `RESEARCH_HARNESS_HTTP_REQUEST_TIMEOUT_SECONDS` | Total HTTP research-generation timeout; defaults to 930 seconds |
-| `RESEARCH_HARNESS_EVENT_TTL_SECONDS` | Worker TTL for event/status streams and keys |
-| `RESEARCH_HARNESS_STALE_PENDING_SECONDS` | Worker reclaim threshold for stale Redis Stream pending jobs |
 | `RESEARCH_HARNESS_LEASE_TTL_SECONDS` | Renewable Worker ownership lease; default `60`, at least three heartbeat intervals |
 | `RESEARCH_HARNESS_WORKER_HEARTBEAT_SECONDS` | Lease renewal interval; default `10` |
 | `RESEARCH_HARNESS_JOB_TIMEOUT_SECONDS` | Maximum Worker execution bound; default `900` |
 | `RESEARCH_HARNESS_WORKER_MAX_CONCURRENT_RUNS` | Keep at `1` for V1; scale by running more worker processes |
 | `JAVA_CORPUS_BASE_URL` | Java Corpus API base URL used by Python; local default is `http://127.0.0.1:8081` |
 | `JAVA_CORPUS_MAX_RESPONSE_BYTES` | Maximum accepted Java Corpus API response body; default is 8 MiB |
-| `PAPERLOOM_PUBLIC_API_BASE_URL` | Java public API base URL used by `paperloom_mcp`; local default is `http://127.0.0.1:8081` |
 | `RESEARCH_HARNESS_PYTHON` | Python executable for local launcher |
 | `MINIMAX_API_BASE_URL`, `MINIMAX_API_KEY`, `MINIMAX_MODEL` | Default research model provider |
 | `QDRANT_CONTRACT` | `sparse-only-v1` (default) or `sparse-dense-v1`; picks which Qdrant collection schema to use |
@@ -91,17 +92,6 @@ development and emergency rollback, but it is not the scalable production path.
 The Python service does not connect to MySQL or Qdrant. It calls the Java Corpus API with the locked
 scope; Java owns the hybrid Qdrant retrieval (sparse BM25 + dense MiniMax embedding, RRF-fused),
 permission/current-model validation, and canonical reads.
-
-The optional read-only MCP server is stateless and listens on loopback by default:
-
-```bash
-.venv-mcp/bin/python -m paperloom_mcp --host 127.0.0.1 --port 8090
-```
-
-Its Streamable HTTP endpoint is `http://127.0.0.1:8090/mcp`. Every MCP request must carry the current
-PaperLoom user JWT as `Authorization: Bearer ...`; the adapter forwards it to the authenticated Java
-`/api/v1/reading/**` facade and does not decode it or retain disclosure, Evidence, or conversation
-state. Remote exposure is unsupported in V1 and requires a separate HTTPS deployment spec.
 
 ## Secret Rules
 

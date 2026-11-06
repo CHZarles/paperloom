@@ -10,22 +10,26 @@ from unittest.mock import MagicMock, patch
 import yaml
 
 from harness_py.cli import main
-from harness_py.evaluation.paperloom31 import (
-    PreparationError,
+from harness_py.evaluation.paperloom_assessment import (
+    _assess_agent_case,
+    _assess_protocol_trace,
+    _controlled_protocol_metrics,
+    _retrieval_metrics,
+    _source_quotes_cover,
+    _target_funnel_metrics,
+)
+from harness_py.evaluation.paperloom_benchmark import _run_l2, _run_l3, run_benchmark
+from harness_py.evaluation.paperloom_common import PreparationError
+from harness_py.evaluation.paperloom_prepare import (
     build_agent_cases,
     build_targets,
     ensure_benchmark_config,
     scan_papers,
-    validate_snapshot,
-    _assess_agent_case,
-    _assess_protocol_trace,
-    _controlled_protocol_metrics,
-    _looks_like_bibliography,
+)
+from harness_py.evaluation.paperloom_snapshot import (
     _load_source_aligned_queries,
-    _retrieval_metrics,
-    _run_l2,
-    run_benchmark,
-    _source_quotes_cover,
+    _looks_like_bibliography,
+    validate_snapshot,
 )
 
 
@@ -128,7 +132,7 @@ class Paperloom31PreparationTest(unittest.TestCase):
                     }],
                 }]}
 
-        with patch("harness_py.evaluation.paperloom31.ReadingCorpusTools", Tools):
+        with patch("harness_py.evaluation.paperloom_benchmark.ReadingCorpusTools", Tools):
             result = _run_l2(
                 snapshot,
                 Gateway(),
@@ -157,14 +161,14 @@ class Paperloom31PreparationTest(unittest.TestCase):
 
         calls.clear()
         calls["fail"] = False
-        with patch("harness_py.evaluation.paperloom31.ReadingCorpusTools", Tools):
+        with patch("harness_py.evaluation.paperloom_benchmark.ReadingCorpusTools", Tools):
             _run_l2(snapshot, Gateway(), 7)
 
         self.assertEqual("原始问题", calls["search"]["query_text"])
         self.assertEqual("paperloom31-l2-target_1", calls["reader"]["request_id"])
 
         calls["fail"] = True
-        with patch("harness_py.evaluation.paperloom31.ReadingCorpusTools", Tools):
+        with patch("harness_py.evaluation.paperloom_benchmark.ReadingCorpusTools", Tools):
             failed = _run_l2(
                 snapshot,
                 Gateway(),
@@ -268,19 +272,19 @@ class Paperloom31PreparationTest(unittest.TestCase):
                 query_path.unlink()
                 return {"executed": True, "cases": [], "technical_errors": []}
 
-            with patch("harness_py.evaluation.paperloom31.validate_snapshot"), \
-                    patch("harness_py.evaluation.paperloom31._canonical_sha256", return_value="snapshot"), \
-                    patch("harness_py.evaluation.paperloom31._credentials", return_value=("admin", "password")), \
-                    patch("harness_py.evaluation.paperloom31._ProductApi", return_value=api), \
-                    patch("harness_py.evaluation.paperloom31.JavaCorpusGateway", return_value=gateway), \
-                    patch("harness_py.evaluation.paperloom31._run_l0", return_value=empty_stage), \
-                    patch("harness_py.evaluation.paperloom31._run_g0", return_value=empty_stage), \
-                    patch("harness_py.evaluation.paperloom31._run_l1", return_value=empty_stage), \
-                    patch("harness_py.evaluation.paperloom31._run_l2", side_effect=run_l2), \
-                    patch("harness_py.evaluation.paperloom31.build_harness_runtime"), \
-                    patch("harness_py.evaluation.paperloom31.LiveResearchChatHarness"), \
-                    patch("harness_py.evaluation.paperloom31.MiniMaxJudgeModel"), \
-                    patch("harness_py.evaluation.paperloom31._run_l3", side_effect=run_l3):
+            with patch("harness_py.evaluation.paperloom_benchmark.validate_snapshot"), \
+                    patch("harness_py.evaluation.paperloom_benchmark._canonical_sha256", return_value="snapshot"), \
+                    patch("harness_py.evaluation.paperloom_benchmark._credentials", return_value=("admin", "password")), \
+                    patch("harness_py.evaluation.paperloom_benchmark._ProductApi", return_value=api), \
+                    patch("harness_py.evaluation.paperloom_benchmark.JavaCorpusGateway", return_value=gateway), \
+                    patch("harness_py.evaluation.paperloom_benchmark._run_l0", return_value=empty_stage), \
+                    patch("harness_py.evaluation.paperloom_benchmark._run_g0", return_value=empty_stage), \
+                    patch("harness_py.evaluation.paperloom_benchmark._run_l1", return_value=empty_stage), \
+                    patch("harness_py.evaluation.paperloom_benchmark._run_l2", side_effect=run_l2), \
+                    patch("harness_py.evaluation.paperloom_benchmark.build_harness_runtime"), \
+                    patch("harness_py.evaluation.paperloom_benchmark.LiveResearchChatHarness"), \
+                    patch("harness_py.evaluation.paperloom_benchmark.MiniMaxJudgeModel"), \
+                    patch("harness_py.evaluation.paperloom_benchmark._run_l3", side_effect=run_l3):
                 with self.assertRaisesRegex(PreparationError, "BASELINE_IDENTITY_MISMATCH"):
                     run_benchmark(
                         snapshot_path,
@@ -525,6 +529,94 @@ class Paperloom31PreparationTest(unittest.TestCase):
         run["research_answer"]["cited_source_quote_refs"] = ["source_quote_1"]
         recommendation = _assess_agent_case(case, run, targets, {"paper_1"})
         self.assertEqual([], recommendation["hard_failures"])
+
+    def test_agent_gate_reports_provider_failure_without_funnel_failures(self) -> None:
+        case = {
+            "case_id": "comparison_01",
+            "expected_contract": "RESEARCH",
+            "expected_outcome": "answered",
+            "required_target_ids": ["target_1"],
+        }
+        run = {
+            "status": "FAILED_TECHNICAL",
+            "control": {"reason_code": "PROVIDER_UNAVAILABLE"},
+            "react_trace": [],
+            "evidence_ledger": {"items": []},
+            "research_answer": {},
+        }
+
+        assessment = _assess_agent_case(
+            case, run, {"target_1": {"target_id": "target_1", "location_ref": "location_1"}},
+            {"paper_1"}, {"passed": False, "failed_event_ids": []},
+        )
+
+        self.assertEqual([{
+            "stage": "L3",
+            "code": "AGENT_TECHNICAL_FAILURE",
+            "detail": "PROVIDER_UNAVAILABLE",
+            "technical": True,
+        }], assessment["hard_failures"])
+        self.assertEqual(
+            {"target_id": "target_1", "returned": False, "read": False, "cited": False},
+            assessment["target_checks"][0],
+        )
+
+    def test_agent_stage_skips_judge_after_provider_failure(self) -> None:
+        dataset = MagicMock()
+        dataset.paper_records_by_id = {"paper_1": {}}
+        gateway = MagicMock()
+        harness = MagicMock()
+        harness.run_turn.return_value = ({
+            "run_id": "run_provider_error",
+            "status": "FAILED_TECHNICAL",
+            "result_status": "FAILED_TECHNICAL",
+            "control": {"reason_code": "PROVIDER_UNAVAILABLE"},
+            "react_trace": [],
+            "evidence_ledger": {"items": []},
+            "research_answer": {},
+        }, None)
+        judge = MagicMock()
+        snapshot = {"agent_cases": [{
+            "case_id": "comparison_01",
+            "expected_contract": "RESEARCH",
+            "expected_outcome": "answered",
+            "question": "Compare two papers",
+            "required_target_ids": [],
+        }]}
+
+        with TemporaryDirectory() as directory:
+            out = Path(directory)
+            (out / "agent").mkdir()
+            (out / "judge").mkdir()
+            with patch("harness_py.evaluation.paperloom_benchmark._assess_protocol_trace", return_value={"passed": False}), \
+                    patch("harness_py.evaluation.paperloom_benchmark._judge_agent_case") as judge_case:
+                stage = _run_l3(snapshot, dataset, gateway, 1, harness, judge, out)
+
+        judge_case.assert_not_called()
+        self.assertEqual("not_applicable", stage["cases"][0]["judge"]["status"])
+        self.assertEqual("PROVIDER_UNAVAILABLE", stage["technical_errors"][0]["detail"])
+        self.assertEqual(0, stage["target_funnel"]["eligible_targets"])
+
+    def test_target_funnel_excludes_provider_failures(self) -> None:
+        rows = [
+            {"status": "COMPLETED", "target_checks": [
+                {"returned": True, "read": True, "cited": True},
+                {"returned": True, "read": False, "cited": False},
+            ]},
+            {"status": "FAILED_TECHNICAL", "target_checks": [
+                {"returned": False, "read": False, "cited": False},
+            ]},
+        ]
+
+        self.assertEqual({
+            "eligible_cases": 1,
+            "excluded_cases": 1,
+            "eligible_targets": 2,
+            "excluded_targets": 1,
+            "returned": 2,
+            "read": 1,
+            "cited": 1,
+        }, _target_funnel_metrics(rows))
 
     def test_protocol_trace_replays_and_aggregates_without_a_judge(self) -> None:
         event = {

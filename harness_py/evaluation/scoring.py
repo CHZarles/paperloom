@@ -9,7 +9,7 @@ import re
 from dataclasses import dataclass, field
 
 from .claim_evidence import answer_blocks, canonical_sha256, dataset_content_sha256
-from .fact_assertions import contract_sha256, evaluate_fact_assertions, fact_assertion_contract
+from .fact_assertions import evaluate_fact_assertions, fact_assertion_contract
 from .golden_case import case_expect
 from ..utils.models import SCORE_REPORT_SCHEMA_VERSION, GoldenDataset, JsonMap, as_list, child_map
 from ..utils.status import (
@@ -439,7 +439,7 @@ def _scorer_contract() -> JsonMap:
         "semantic_judgments": "calibrated-offline-claim-block-judge/v1",
         "fact_assertions": fact_assertion_contract(),
     }
-    return {**contract, "sha256": contract_sha256(contract)}
+    return {**contract, "sha256": canonical_sha256(contract)}
 
 
 def _case_status(dimensions: dict[str, DimensionScore]) -> str:

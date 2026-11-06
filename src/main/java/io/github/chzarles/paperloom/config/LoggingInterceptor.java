@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.util.UUID;
+import static io.github.chzarles.paperloom.utils.BearerToken.extractToken;
 
 /**
  * 日志拦截器
@@ -105,13 +106,6 @@ public class LoggingInterceptor implements HandlerInterceptor {
     /**
      * 从请求头中提取JWT Token
      */
-    private String extractToken(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
-    }
 
     /**
      * 判断是否为API请求

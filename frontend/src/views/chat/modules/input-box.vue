@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SessionScopePicker from './session-scope-picker.vue';
+import { markStreamCompletion } from './stream-reveal';
 
 const props = withDefaults(
   defineProps<{
@@ -395,6 +396,7 @@ function applyCompletionArtifacts(assistant: Api.Chat.Message, payload: Record<s
 }
 
 function handleCompletionPayload(assistant: Api.Chat.Message, payload: Record<string, any>) {
+  markStreamCompletion(assistant.generationId);
   flushPendingStreamChunks(assistant);
   flushPendingResearchEvents(assistant);
   applyCompletionStatus(assistant, payload);
@@ -616,6 +618,32 @@ const handleSend = async (messageOverride?: string) => {
 };
 
 const inputRef = ref();
+
+// Starting a new query (or sending the first message, which swaps the hero
+// composer for the dock one) should leave the caret in the composer.
+onMounted(() => {
+  if (typeof window === 'undefined' || !window.matchMedia('(pointer: fine)').matches) return;
+  nextTick(() => {
+    const active = document.activeElement;
+    if (props.variant === 'dock' && active && active !== document.body) return;
+    inputRef.value?.focus();
+  });
+});
+
+const TEXTAREA_MAX_HEIGHT = 128;
+
+const autoResize = () => {
+  const textarea = inputRef.value as HTMLTextAreaElement | undefined;
+  if (!textarea) return;
+  textarea.style.height = 'auto';
+  textarea.style.height = `${Math.min(textarea.scrollHeight, TEXTAREA_MAX_HEIGHT)}px`;
+};
+
+watch(
+  () => input.value.message,
+  () => nextTick(autoResize)
+);
+
 const insertNewline = () => {
   const textarea = inputRef.value;
   const start = textarea.selectionStart;
@@ -631,13 +659,15 @@ const insertNewline = () => {
 };
 
 const handShortcut = (e: KeyboardEvent) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
+  if (e.key !== 'Enter' || e.isComposing) return;
 
-    if (!e.shiftKey && !e.ctrlKey) {
-      handleSend();
-    } else insertNewline();
+  e.preventDefault();
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
+    handleSend();
+    return;
   }
+
+  insertNewline();
 };
 
 onUnmounted(() => {
@@ -666,9 +696,11 @@ onUnmounted(() => {
         </div>
         <textarea
           ref="inputRef"
-          v-model.trim="input.message"
+          v-model="input.message"
           placeholder="Ask about a paper, method, claim, table, or citation"
-          class="chat-input-textarea max-h-32 min-h-6 w-full flex-1 resize-none border-none bg-transparent py-1 text-14px caret-[rgb(var(--primary-color))] outline-none"
+          class="chat-input-textarea max-h-32 min-h-6 w-full resize-none border-none bg-transparent py-1 text-14px caret-[rgb(var(--primary-color))] outline-none"
+          aria-describedby="chat-input-shortcut-hint"
+          @input="autoResize"
           @keydown="handShortcut"
         />
       </div>
@@ -678,6 +710,8 @@ onUnmounted(() => {
         size="small"
         circle
         :type="isSending ? 'warning' : 'primary'"
+        :aria-label="isSending ? '停止生成' : '发送'"
+        :title="isSending ? '停止生成' : '发送'"
         @click="() => handleSend()"
       >
         <template #icon>
@@ -698,6 +732,7 @@ onUnmounted(() => {
         @update:busy="sourceScopeUpdating = $event"
       />
       <div class="flex items-center gap-2" :class="props.variant === 'hero' ? 'ml-auto' : ''">
+        <span id="chat-input-shortcut-hint" class="chat-input-muted text-11px">Enter 换行 · Ctrl/⌘ Enter 发送</span>
         <div class="flex items-center gap-1">
           <span class="connection-dot inline-block h-1.5 w-1.5 rounded-full" :class="connectionDotClass" />
           <span class="chat-input-muted text-11px">{{ connectionText }}</span>
@@ -717,6 +752,7 @@ onUnmounted(() => {
 }
 
 .chat-input-textarea {
+  flex: 0 0 auto;
   color: var(--color-text);
   line-height: 1.55;
   outline: none !important;
@@ -746,10 +782,10 @@ onUnmounted(() => {
 
 .search-scope-hint {
   max-width: 960px;
-  margin-bottom: 6px;
-  color: color-mix(in srgb, var(--color-text-muted) 72%, transparent);
-  font-size: 11px;
-  line-height: 16px;
+  margin-bottom: var(--space-1-5);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: var(--leading-snug);
 }
 
 .connection-dot--open {
@@ -822,7 +858,7 @@ onUnmounted(() => {
 
 .chat-input-wrap--dock {
   background: #fff;
-  padding: 8px 16px max(12px, env(safe-area-inset-bottom));
+  padding: var(--space-3) var(--space-4) max(var(--space-3), env(safe-area-inset-bottom));
 }
 
 .chat-input-wrap--hero {
@@ -832,26 +868,34 @@ onUnmounted(() => {
 .chat-input-wrap--hero .chat-input-shell {
   min-height: 112px;
   align-items: flex-end;
-  padding: 17px 18px;
+  padding: var(--space-4) var(--space-4) var(--space-3);
 }
 
 .chat-input-wrap--hero .chat-input-textarea {
   min-height: 74px;
-  font-size: 15px;
-  line-height: 1.55;
+  font-size: var(--text-md);
+  line-height: var(--leading-relaxed);
 }
 
 .chat-input-shell {
   max-width: 960px !important;
-  min-height: 68px;
+  min-height: 64px;
   border-radius: 24px;
   background: #f5f5f5 !important;
-  padding: 14px 16px;
-  transition: background-color 0.18s ease;
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  transition: background var(--duration-base) var(--ease-standard);
+}
+
+/* The composer is a soft surface, not a framed box: state changes the
+   fill instead of drawing a border. Focus still needs a boundary, because
+   the focused fill is white and the dock behind it is white too. */
+.chat-input-shell:hover {
+  background: #f1f3f2 !important;
 }
 
 .chat-input-shell:focus-within {
-  background: #f1f2f4 !important;
+  background: #fff !important;
+  box-shadow: 0 0 0 1px rgba(23, 24, 26, 0.14);
 }
 
 .chat-input-shell :deep(.n-button:focus),
@@ -874,13 +918,13 @@ onUnmounted(() => {
 
 @media (max-width: 640px) {
   .chat-input-wrap--dock {
-    padding-inline: 12px;
+    padding-inline: var(--space-3);
   }
 
   .chat-input-shell {
-    min-height: 58px;
+    min-height: 56px;
     border-radius: 20px;
-    padding: 10px 12px;
+    padding: var(--space-2-5) var(--space-2-5) var(--space-2);
   }
 }
 </style>

@@ -236,6 +236,12 @@ const isResearchActive = computed(
 );
 const MAX_VISIBLE_EVENTS = 100;
 
+// Cards only exist for finished events, so the caret marks the newest card
+// for as long as the research is still producing more.
+function isLiveCard(_card: PhaseView, index: number, cards: PhaseView[]) {
+  return isResearchActive.value && index === cards.length - 1;
+}
+
 // Introduced for the phase-card template migration in Task 2.
 // Filter out *_started events and collapse consecutive same-phase events in
 // one pass to avoid the intermediate array from filter + slice.
@@ -365,17 +371,31 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
 
       <div v-if="presentedAuditPhaseCards.length" class="research-process__timeline">
         <article
-          v-for="card in presentedAuditPhaseCards"
+          v-for="(card, cardIndex) in presentedAuditPhaseCards"
           :key="card.key"
           class="phase-card"
           :class="[`phase-card--${card.phase}`, `is-${card.state}`]"
         >
           <div class="phase-card__body">
             <div class="phase-card__heading">
-              <strong>{{ card.headline }}</strong>
+              <strong>
+                {{ card.headline }}
+                <span
+                  v-if="isLiveCard(card, cardIndex, presentedAuditPhaseCards) && !card.detail"
+                  class="stream-caret"
+                  aria-hidden="true"
+                />
+              </strong>
             </div>
             <div v-if="card.decision" class="phase-card__decision">{{ card.decision }}</div>
-            <div v-if="card.detail" class="phase-card__detail">{{ card.detail }}</div>
+            <div v-if="card.detail" class="phase-card__detail">
+              {{ card.detail }}
+              <span
+                v-if="isLiveCard(card, cardIndex, presentedAuditPhaseCards)"
+                class="stream-caret"
+                aria-hidden="true"
+              />
+            </div>
             <div v-if="card.items.length && card.phase !== 'read'" class="phase-card__items">
               <div v-for="item in card.items" :key="item.key" class="phase-card__item">
                 <span v-if="item.title" class="phase-card__item-title">{{ item.title }}</span>
@@ -413,17 +433,27 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
 
     <div v-else-if="events.length" class="research-process__timeline">
       <article
-        v-for="card in presentedPhaseCards"
+        v-for="(card, cardIndex) in presentedPhaseCards"
         :key="card.key"
         class="phase-card"
         :class="[`phase-card--${card.phase}`, `is-${card.state}`]"
       >
         <div class="phase-card__body">
           <div class="phase-card__heading">
-            <strong>{{ card.headline }}</strong>
+            <strong>
+              {{ card.headline }}
+              <span
+                v-if="isLiveCard(card, cardIndex, presentedPhaseCards) && !card.detail"
+                class="stream-caret"
+                aria-hidden="true"
+              />
+            </strong>
           </div>
           <div v-if="card.decision" class="phase-card__decision">{{ card.decision }}</div>
-          <div v-if="card.detail" class="phase-card__detail">{{ card.detail }}</div>
+          <div v-if="card.detail" class="phase-card__detail">
+            {{ card.detail }}
+            <span v-if="isLiveCard(card, cardIndex, presentedPhaseCards)" class="stream-caret" aria-hidden="true" />
+          </div>
           <div v-if="card.items.length && card.phase !== 'read'" class="phase-card__items">
             <div v-for="item in card.items" :key="item.key" class="phase-card__item">
               <span v-if="item.title" class="phase-card__item-title">{{ item.title }}</span>
@@ -667,6 +697,12 @@ function openEvidence(row: Api.Chat.ResearchAuditEvidence) {
   color: var(--color-research);
   font-size: 12px;
   font-weight: 600;
+}
+
+.phase-card__heading .stream-caret,
+.phase-card__detail .stream-caret {
+  /* the template already leaves a space before the caret */
+  margin-left: 0;
 }
 
 .phase-card__detail {

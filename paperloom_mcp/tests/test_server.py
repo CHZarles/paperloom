@@ -1,311 +1,430 @@
 from __future__ import annotations
 
-import json
+import base64
 import asyncio
-import re
+import os
 import socket
 import subprocess
 import sys
-import time
+import tempfile
 import unittest
 from pathlib import Path
+from urllib.parse import parse_qs, parse_qsl, urlparse
 
 import httpx
+import jsonschema
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
-from paperloom_mcp.server import ReadingMcpGateway, create_mcp_app
+from paperloom_mcp.server import (
+    OAuthTokenManager,
+    ReadingMcpGateway,
+    _bearer_token,
+    _decode_chunk,
+    create_mcp_app,
+    _tools,
+)
 
 
-class McpServerTest(unittest.IsolatedAsyncioTestCase):
-    async def asyncSetUp(self) -> None:
-        self.java_calls: list[tuple[str, str, str, dict]] = []
+def _free_loopback_port() -> int:
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
 
-        async def java(request: httpx.Request) -> httpx.Response:
-            body = json.loads(request.content or b"{}")
-            authorization = request.headers.get("Authorization", "")
-            request_id = request.headers.get("X-Request-ID", "")
-            self.java_calls.append((request.url.path, authorization, request_id, body))
-            if authorization == "Bearer forbidden":
-                return httpx.Response(403, content=b"")
-            if authorization not in {"Bearer user-a", "Bearer user-b"}:
-                return httpx.Response(401, content=b"")
-            if request.url.path.endswith("/papers/search"):
-                await asyncio.sleep(0.01)
-                if body.get("query_text") == "huge":
-                    return httpx.Response(200, json={"papers": [{"preview": "x" * 17_000}]})
-                if body.get("query_text") == "invalid-length":
-                    return httpx.Response(200, content=b"{}", headers={"Content-Length": "invalid"})
-                if body.get("query_text") == "unsafe-error":
-                    return httpx.Response(503, json={
-                        "error": "UPSTREAM_SECRET", "message": "secret paper content",
-                    })
-                if body.get("query_text") == "non-json-error":
-                    return httpx.Response(503, content=b"upstream stack trace")
-                if body.get("query_text") == "network-error":
-                    raise httpx.ConnectError("secret java.test", request=request)
-                if body.get("query_text") == "streamed-huge":
-                    raw = json.dumps({"papers": [{"preview": "x" * 17_000}]}).encode()
-                    return httpx.Response(200, stream=httpx.ByteStream(raw))
-                if body.get("query_text") == "unexpected-success":
-                    return httpx.Response(200, json={
-                        "source_quote_ref": "secret-ref", "model_version": "secret-model",
-                    })
-                return httpx.Response(200, json={
-                    "query_text": body.get("query_text") or "",
-                    "papers": [{"paper_id": "paper-a", "title": "Paper A"}],
-                    "matched_count": 1,
-                    "returned_count": 1,
-                    "coverage": "complete",
-                }, headers={"New-Token": "must-not-leak"})
-            if request.url.path.endswith("/papers/get"):
-                return httpx.Response(200, json={"paper_id": "paper-a", "title": "Paper A"})
-            if request.url.path.endswith("/structure"):
-                return httpx.Response(200, json={
-                    "structure_type": "SECTION", "items": [], "matched_count": 0,
-                    "returned_count": 0, "coverage": "complete",
-                })
-            if request.url.path.endswith("/content/search"):
-                return httpx.Response(200, json={
-                    "query_text": body.get("query_text") or "", "locations": [],
-                    "matched_count": 0, "returned_count": 0, "coverage": "complete",
-                })
-            if request.url.path.endswith("/content/read"):
-                return httpx.Response(200, json={
-                    "items": [{
-                        "paper_id": "paper-a",
-                        "location_ref": "location-a",
-                        "content_kind": "PASSAGE",
-                        "content": "canonical content",
-                    }],
-                    "missing_location_refs": [],
-                })
-            return httpx.Response(200, json={"items": []})
 
-        self.java_client = httpx.AsyncClient(
-            base_url="http://java.test",
-            transport=httpx.MockTransport(java),
+class McpUploadContractTest(unittest.IsolatedAsyncioTestCase):
+    async def test_stdio_cli_starts_and_lists_tools(self) -> None:
+        root = Path(__file__).resolve().parents[2]
+        python = os.environ.get("PAPERLOOM_TEST_PYTHON", sys.executable)
+        process = await asyncio.create_subprocess_exec(
+            python,
+            "-m",
+            "paperloom_mcp",
+            "--transport",
+            "stdio",
+            cwd=root,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
-        self.app = create_mcp_app(ReadingMcpGateway(client=self.java_client))
-
-    async def asyncTearDown(self) -> None:
-        await self.java_client.aclose()
-
-    async def test_initialize_lists_only_five_independent_query_tools(self) -> None:
-        async with self.app.router.lifespan_context(self.app):
-            async with self.session("user-a") as (session, initialized):
-                self.assertIsNotNone(initialized.capabilities.tools)
-                self.assertIsNone(initialized.capabilities.prompts)
-                self.assertIsNone(initialized.capabilities.resources)
-                tools = (await session.list_tools()).tools
-
-        self.assertEqual({
-            "search_papers",
-            "get_paper",
-            "get_paper_structure",
-            "search_paper_content",
-            "read_paper_content",
-        }, {tool.name for tool in tools})
-        forbidden = {"user_id", "role", "scope_paper_ids", "credential", "model_version", "evidence_payloads"}
-        for tool in tools:
-            properties = set(tool.inputSchema.get("properties", {}))
-            self.assertTrue(forbidden.isdisjoint(properties), tool.name)
-
-    async def test_tools_forward_bearer_to_public_java_queries_and_return_equivalent_content(self) -> None:
-        async with self.app.router.lifespan_context(self.app):
-            async with self.session("user-a") as (session, _):
-                search = await session.call_tool("search_papers", {"query_text": "Paper A", "limit": 5})
-                paper = await session.call_tool("get_paper", {"paper_id": "paper-a"})
-                structure = await session.call_tool("get_paper_structure", {"paper_id": "paper-a"})
-                content_search = await session.call_tool("search_paper_content", {
-                    "paper_id": "paper-a", "query_text": "query",
-                })
-                read = await session.call_tool("read_paper_content", {
-                    "paper_id": "paper-a",
-                    "location_refs": ["location-a"],
-                })
-
-        self.assertFalse(search.isError)
-        self.assertFalse(read.isError)
-        for result in (search, paper, structure, content_search, read):
-            self.assertEqual(result.structuredContent, json.loads(result.content[0].text))
-            self.assertEqual(
-                json.dumps(result.structuredContent, ensure_ascii=False, separators=(",", ":")),
-                result.content[0].text,
-            )
-        self.assertNotIn("source_quote_ref", json.dumps(read.structuredContent))
-        self.assertEqual(
-            [
-                "/api/v1/reading/papers/search",
-                "/api/v1/reading/papers/get",
-                "/api/v1/reading/structure",
-                "/api/v1/reading/content/search",
-                "/api/v1/reading/content/read",
-            ],
-            [path for path, _, _, _ in self.java_calls],
+        assert process.stdin is not None
+        assert process.stdout is not None
+        process.stdin.write(
+            b'{"jsonrpc":"2.0","id":1,"method":"initialize","params":{'
+            b'"protocolVersion":"2025-06-18","capabilities":{},'
+            b'"clientInfo":{"name":"test","version":"1"}}}\n'
         )
-        self.assertTrue(all(auth == "Bearer user-a" for _, auth, _, _ in self.java_calls))
-        self.assertTrue(all(re.fullmatch(r"[0-9a-f-]{36}", request_id)
-                            for _, _, request_id, _ in self.java_calls))
-        self.assertTrue(all("user_id" not in body and "scope_paper_ids" not in body
-                            for _, _, _, body in self.java_calls))
-        self.assertNotIn("must-not-leak", json.dumps([search.structuredContent, read.structuredContent]))
+        await process.stdin.drain()
+        line = await asyncio.wait_for(process.stdout.readline(), timeout=5)
+        self.assertIn(b'"result"', line)
+        self.assertIn(b'"serverInfo"', line)
+        process.terminate()
+        await asyncio.wait_for(process.wait(), timeout=5)
 
-    async def test_each_stateless_call_uses_its_own_bearer(self) -> None:
-        async def call(token: str):
-            async with self.session(token) as (session, _):
-                await session.call_tool("search_papers", {})
-
-        async with self.app.router.lifespan_context(self.app):
-            await asyncio.gather(call("user-a"), call("user-b"))
+    async def test_tool_surface_contains_upload_flow_without_arxiv_tools(self) -> None:
+        names = {tool.name for tool in _tools()}
 
         self.assertEqual(
-            {"Bearer user-a", "Bearer user-b"},
-            {auth for _, auth, _, _ in self.java_calls},
+            {
+                "search_papers",
+                "get_paper",
+                "get_paper_structure",
+                "search_paper_content",
+                "read_paper_content",
+                "upload_paper_chunk",
+                "get_paper_upload_status",
+            },
+            names,
         )
+        self.assertFalse(any("arxiv" in name.lower() for name in names))
 
-    async def test_missing_auth_and_size_limits_fail_closed(self) -> None:
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app)) as client:
-            unauthorized = await client.post("http://127.0.0.1:8090/mcp", json={
-                "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {},
+    async def test_upload_chunk_forwards_multipart_and_bearer(self) -> None:
+        requests: list[httpx.Request] = []
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            body = await request.aread()
+            self.assertIn(b'name="paperId"', body)
+            self.assertIn(b'name="chunkIndex"', body)
+            self.assertIn(b'name="file"', body)
+            self.assertIn(b"PDF bytes", body)
+            return httpx.Response(200, json={
+                "code": 200,
+                "message": "ok",
+                "data": {"uploaded": [0], "progress": 100, "paperId": "a" * 32},
             })
-            malformed = await client.post(
-                "http://127.0.0.1:8090/mcp",
-                headers={"Authorization": "Bearer user-a extra"},
-                json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
-            )
-            oversized = await client.post(
-                "http://127.0.0.1:8090/mcp",
-                headers={"Authorization": "Bearer user-a"},
-                content=b"x" * (1024 * 1024 + 1),
-            )
-        self.assertEqual(401, unauthorized.status_code)
-        self.assertEqual(401, malformed.status_code)
-        self.assertEqual(413, oversized.status_code)
-        self.assertEqual([], self.java_calls)
 
-    async def test_oversized_java_result_becomes_a_safe_tool_error(self) -> None:
-        async with self.app.router.lifespan_context(self.app):
-            async with self.session("user-a") as (session, _):
-                declared = await session.call_tool("search_papers", {"query_text": "huge"})
-                streamed = await session.call_tool("search_papers", {"query_text": "streamed-huge"})
-
-        for result in (declared, streamed):
-            self.assertTrue(result.isError)
-            self.assertEqual("READING_RESULT_TOO_LARGE", result.content[0].text)
-            self.assertNotIn("x" * 100, result.content[0].text)
-
-    async def test_java_rejected_bearer_is_a_safe_tool_error(self) -> None:
-        async with self.app.router.lifespan_context(self.app):
-            async with self.session("invalid") as (session, _):
-                unauthorized = await session.call_tool("search_papers", {})
-            async with self.session("forbidden") as (session, _):
-                forbidden = await session.call_tool("search_papers", {})
-
-        self.assertTrue(unauthorized.isError)
-        self.assertEqual("UNAUTHORIZED", unauthorized.content[0].text)
-        self.assertTrue(forbidden.isError)
-        self.assertEqual("FORBIDDEN", forbidden.content[0].text)
-
-    async def test_invalid_upstream_metadata_and_bodies_do_not_leak(self) -> None:
-        async with self.app.router.lifespan_context(self.app):
-            async with self.session("user-a") as (session, _):
-                invalid_length = await session.call_tool(
-                    "search_papers", {"query_text": "invalid-length"})
-                unsafe_error = await session.call_tool(
-                    "search_papers", {"query_text": "unsafe-error"})
-                non_json = await session.call_tool(
-                    "search_papers", {"query_text": "non-json-error"})
-                network_error = await session.call_tool(
-                    "search_papers", {"query_text": "network-error"})
-                unexpected = await session.call_tool(
-                    "search_papers", {"query_text": "unexpected-success"})
-
-        self.assertTrue(invalid_length.isError)
-        self.assertEqual("INVALID_READING_RESPONSE", invalid_length.content[0].text)
-        self.assertEqual("RETRIEVAL_UNAVAILABLE", unsafe_error.content[0].text)
-        self.assertEqual("INVALID_READING_RESPONSE", non_json.content[0].text)
-        self.assertEqual("RETRIEVAL_UNAVAILABLE", network_error.content[0].text)
-        self.assertEqual("INVALID_READING_RESPONSE", unexpected.content[0].text)
-        self.assertNotRegex(json.dumps([
-            unsafe_error.content[0].text, non_json.content[0].text,
-            network_error.content[0].text, unexpected.content[0].text,
-        ]), r"secret|java\.test|stack trace")
-
-    async def test_schema_failure_is_a_stable_tool_error_without_java_call(self) -> None:
-        async with self.app.router.lifespan_context(self.app):
-            async with self.session("user-a") as (session, _):
-                result = await session.call_tool("read_paper_content", {
-                    "paper_id": "paper-a", "location_refs": [" "],
-                })
-
-        self.assertTrue(result.isError)
-        self.assertEqual("READING_ARGUMENTS_INVALID", result.content[0].text)
-        self.assertEqual([], self.java_calls)
-
-    def test_cli_starts_loopback_mcp_server(self) -> None:
-        with socket.socket() as listener:
-            listener.bind(("127.0.0.1", 0))
-            port = listener.getsockname()[1]
-        process = subprocess.Popen(
-            [sys.executable, "-m", "paperloom_mcp", "--host", "127.0.0.1",
-             "--port", str(port), "--java-base-url", "http://127.0.0.1:8081"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+        client = httpx.AsyncClient(
+            transport=httpx.MockTransport(handler),
+            base_url="http://java.test",
         )
+        gateway = ReadingMcpGateway(client=client)
+        token = _bearer_token.set("user-token")
         try:
-            with httpx.Client(trust_env=False) as client:
-                for _ in range(50):
-                    if process.poll() is not None:
-                        self.fail("MCP CLI exited before accepting requests")
-                    try:
-                        response = client.get(
-                            f"http://127.0.0.1:{port}/mcp",
-                            headers={"Authorization": "Bearer smoke"},
-                            timeout=0.2,
-                        )
-                        break
-                    except httpx.ConnectError:
-                        time.sleep(0.1)
-                else:
-                    self.fail("MCP CLI did not start")
-            self.assertEqual(406, response.status_code)
+            result = await gateway.upload_chunk(
+                paper_id="a" * 32,
+                chunk_index=0,
+                total_chunks=1,
+                total_size=len(b"PDF bytes"),
+                paper_title="paper.pdf",
+                content=b"PDF bytes",
+            )
         finally:
-            process.terminate()
-            process.wait(timeout=5)
+            _bearer_token.reset(token)
+            await client.aclose()
 
-    def test_non_loopback_host_cannot_start_server(self) -> None:
-        with self.assertRaisesRegex(ValueError, "loopback"):
-            create_mcp_app(ReadingMcpGateway(client=self.java_client), host="0.0.0.0")
+        self.assertEqual(200, result["code"])
+        self.assertEqual("Bearer user-token", requests[0].headers["Authorization"])
+        self.assertEqual("/api/v1/papers/upload/chunk", requests[0].url.path)
 
-    def test_standalone_package_does_not_import_harness(self) -> None:
-        package = Path(__file__).resolve().parents[1]
-        for source in package.glob("*.py"):
-            self.assertNotIn("harness_py", source.read_text(encoding="utf-8"), source.name)
+    async def test_status_and_merge_use_existing_upload_endpoints(self) -> None:
+        paths: list[tuple[str, str]] = []
 
-    def session(self, token: str):
-        app = self.app
+        async def handler(request: httpx.Request) -> httpx.Response:
+            paths.append((request.method, request.url.path))
+            if request.url.path.endswith("/status"):
+                payload = {"code": 200, "message": "ok", "data": {
+                    "uploaded": [0], "progress": 50, "paperId": "a" * 32,
+                    "fileType": "PDF论文",
+                }}
+            else:
+                payload = {"code": 200, "message": "ok", "data": {
+                    "paperId": "a" * 32, "processingStatus": "PROCESSING",
+                }}
+            return httpx.Response(200, json=payload)
 
-        class SessionContext:
-            async def __aenter__(self):
-                self.http_client = httpx.AsyncClient(
-                    headers={"Authorization": f"Bearer {token}"},
-                    transport=httpx.ASGITransport(app=app),
-                )
-                self.transport = streamable_http_client(
-                    "http://127.0.0.1:8090/mcp", http_client=self.http_client)
-                streams = await self.transport.__aenter__()
-                self.session = ClientSession(streams[0], streams[1])
-                await self.session.__aenter__()
-                initialized = await self.session.initialize()
-                return self.session, initialized
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="http://java.test")
+        gateway = ReadingMcpGateway(client=client)
+        token = _bearer_token.set("user-token")
+        try:
+            await gateway.upload_status("a" * 32)
+            await gateway.merge_upload("a" * 32, "paper.pdf")
+        finally:
+            _bearer_token.reset(token)
+            await client.aclose()
 
-            async def __aexit__(self, exc_type, exc, traceback):
-                await self.session.__aexit__(exc_type, exc, traceback)
-                await self.transport.__aexit__(exc_type, exc, traceback)
-                await self.http_client.aclose()
+        self.assertEqual([
+            ("GET", "/api/v1/papers/upload/status"),
+            ("POST", "/api/v1/papers/upload/merge"),
+        ], paths)
 
-        return SessionContext()
+    async def test_chunk_payload_is_bounded_and_strict_base64(self) -> None:
+        with self.assertRaises(Exception):
+            _decode_chunk("not base64")
+
+        encoded = base64.b64encode(b"PDF bytes").decode()
+        self.assertEqual(b"PDF bytes", _decode_chunk(encoded))
+
+    async def test_upload_schema_rejects_arxiv_or_client_identity_fields(self) -> None:
+        upload = next(tool for tool in _tools() if tool.name == "upload_paper_chunk")
+        with self.assertRaises(jsonschema.ValidationError):
+            jsonschema.validate({
+                "paper_id": "a" * 32,
+                "chunk_index": 0,
+                "total_chunks": 1,
+                "total_size": 9,
+                "paper_title": "paper.pdf",
+                "content_base64": base64.b64encode(b"PDF bytes").decode(),
+                "user_id": "attacker-controlled",
+            }, upload.inputSchema)
+
+    async def test_streamable_http_server_advertises_upload_tools(self) -> None:
+        gateway = ReadingMcpGateway(
+            client=httpx.AsyncClient(
+                transport=httpx.MockTransport(lambda request: httpx.Response(500)),
+                base_url="http://java.test",
+            )
+        )
+        app = create_mcp_app(gateway, host="127.0.0.1", port=8090)
+        async with app.router.lifespan_context(app):
+            http_client = httpx.AsyncClient(
+                headers={"Authorization": "Bearer test-token"},
+                transport=httpx.ASGITransport(app=app),
+                base_url="http://127.0.0.1:8090",
+            )
+            async with streamable_http_client(
+                "http://127.0.0.1:8090/mcp", http_client=http_client
+            ) as (read_stream, write_stream, _):
+                async with ClientSession(read_stream, write_stream) as session:
+                    await session.initialize()
+                    tools = await session.list_tools()
+            await http_client.aclose()
+        await gateway.client.aclose()
+
+        self.assertIn("upload_paper_chunk", {tool.name for tool in tools.tools})
+        self.assertNotIn("merge_paper_upload", {tool.name for tool in tools.tools})
+
+    async def test_oauth_metadata_is_public_and_missing_bearer_advertises_it(self) -> None:
+        gateway = ReadingMcpGateway(
+            client=httpx.AsyncClient(
+                transport=httpx.MockTransport(lambda request: httpx.Response(500)),
+                base_url="http://java.test",
+            )
+        )
+        app = create_mcp_app(gateway, host="127.0.0.1", port=8090)
+        async with app.router.lifespan_context(app):
+            client = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://127.0.0.1:8090")
+            metadata = await client.get("/.well-known/oauth-protected-resource")
+            missing = await client.get("/mcp")
+            duplicate = await client.post(
+                "/mcp",
+                headers=[("Authorization", "Bearer first"), ("Authorization", "Bearer second")],
+            )
+            await client.aclose()
+        await gateway.client.aclose()
+
+        self.assertEqual(200, metadata.status_code)
+        self.assertEqual(["http://java.test"], metadata.json()["authorization_servers"])
+        self.assertEqual(401, missing.status_code)
+        self.assertEqual(401, duplicate.status_code)
+        self.assertIn(
+            'resource_metadata="http://127.0.0.1:8090/.well-known/oauth-protected-resource"',
+            missing.headers["www-authenticate"],
+        )
+
+    async def test_remote_http_mode_requires_client_bearer_and_uses_public_metadata(self) -> None:
+        gateway = ReadingMcpGateway(
+            client=httpx.AsyncClient(
+                transport=httpx.MockTransport(lambda request: httpx.Response(500)),
+                base_url="http://java.test",
+            ),
+            local_oauth_enabled=False,
+        )
+        app = create_mcp_app(
+            gateway,
+            host="0.0.0.0",
+            port=8090,
+            public_url="https://mcp.example.test",
+        )
+        async with app.router.lifespan_context(app):
+            client = httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app),
+                base_url="https://mcp.example.test",
+                headers={"Host": "mcp.example.test"},
+            )
+            metadata = await client.get("/.well-known/oauth-protected-resource")
+            missing = await client.post("/mcp", json={})
+            await client.aclose()
+        await gateway.client.aclose()
+
+        self.assertEqual(200, metadata.status_code)
+        self.assertEqual(
+            "https://mcp.example.test/mcp",
+            metadata.json()["resource"],
+        )
+        self.assertEqual(401, missing.status_code)
+
+    async def test_final_chunk_triggers_merge_inside_mcp_server(self) -> None:
+        paths: list[str] = []
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            paths.append(request.url.path)
+            if request.url.path.endswith("/chunk"):
+                payload = {"code": 200, "message": "ok", "data": {
+                    "uploaded": [0], "progress": 100, "paperId": "a" * 32,
+                }}
+            else:
+                payload = {"code": 200, "message": "merged", "data": {
+                    "paperId": "a" * 32, "processingStatus": "PROCESSING",
+                }}
+            return httpx.Response(200, json=payload)
+
+        gateway = ReadingMcpGateway(
+            client=httpx.AsyncClient(
+                transport=httpx.MockTransport(handler),
+                base_url="http://java.test",
+            )
+        )
+        app = create_mcp_app(gateway, host="127.0.0.1", port=8090)
+        async with app.router.lifespan_context(app):
+            http_client = httpx.AsyncClient(
+                headers={"Authorization": "Bearer test-token"},
+                transport=httpx.ASGITransport(app=app),
+                base_url="http://127.0.0.1:8090",
+            )
+            async with streamable_http_client(
+                "http://127.0.0.1:8090/mcp", http_client=http_client
+            ) as (read_stream, write_stream, _):
+                async with ClientSession(read_stream, write_stream) as session:
+                    await session.initialize()
+                    result = await session.call_tool("upload_paper_chunk", {
+                        "paper_id": "a" * 32,
+                        "chunk_index": 0,
+                        "total_chunks": 1,
+                        "total_size": 9,
+                        "paper_title": "paper.pdf",
+                        "content_base64": base64.b64encode(b"PDF bytes").decode(),
+                    })
+            await http_client.aclose()
+        await gateway.client.aclose()
+
+        self.assertEqual([
+            "/api/v1/papers/upload/chunk",
+            "/api/v1/papers/upload/merge",
+        ], paths)
+        self.assertFalse(result.isError)
+        self.assertEqual("PROCESSING", result.structuredContent["data"]["processingStatus"])
+
+    async def test_oauth_client_completes_pkce_callback_and_reuses_token(self) -> None:
+        port = _free_loopback_port()
+        callback_url = f"http://127.0.0.1:{port}/oauth/callback"
+        browser_urls: list[str] = []
+        token_requests: list[dict[str, str]] = []
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/.well-known/oauth-authorization-server":
+                return httpx.Response(200, json={
+                    "authorization_endpoint": "http://auth.test/oauth2/authorize",
+                    "token_endpoint": "http://auth.test/oauth2/token",
+                })
+            if request.url.path == "/oauth2/token":
+                token_requests.append(dict(parse_qsl((await request.aread()).decode())))
+                return httpx.Response(200, json={
+                    "access_token": "access-1", "refresh_token": "refresh-1",
+                    "token_type": "Bearer", "expires_in": 600, "scope": "paper.read",
+                })
+            return httpx.Response(404)
+
+        callback_client = httpx.AsyncClient(trust_env=False)
+        async def open_browser(url: str) -> bool:
+            browser_urls.append(url)
+            query = parse_qs(urlparse(url).query)
+            response = await callback_client.get(
+                f"{callback_url}?code=code-1&state={query['state'][0]}"
+            )
+            self.assertEqual(200, response.status_code)
+            return True
+
+        def browser_opener(url: str) -> bool:
+            asyncio.create_task(open_browser(url))
+            return True
+
+        with tempfile.TemporaryDirectory() as directory:
+            client = httpx.AsyncClient(
+                transport=httpx.MockTransport(handler),
+                base_url="http://auth.test",
+            )
+            manager = OAuthTokenManager(
+                "http://auth.test",
+                http_client=client,
+                redirect_uri=callback_url,
+                token_path=str(Path(directory) / "token.json"),
+                browser_opener=browser_opener,
+            )
+            try:
+                first = await manager.get_access_token("paper.read")
+                self.assertIsNone(manager._server)
+                self.assertEqual(0o600, (Path(directory) / "token.json").stat().st_mode & 0o777)
+                second = await manager.get_access_token("paper.read")
+            finally:
+                await manager.close()
+                await client.aclose()
+                await callback_client.aclose()
+
+        self.assertEqual("access-1", first)
+        self.assertEqual("access-1", second)
+        self.assertEqual(1, len(browser_urls))
+        self.assertEqual("code-1", token_requests[0]["code"])
+        self.assertIn("code_verifier", token_requests[0])
+        self.assertEqual("S256", parse_qs(urlparse(browser_urls[0]).query)["code_challenge_method"][0])
+
+    async def test_refresh_requires_requested_scope_and_keeps_rotating_token(self) -> None:
+        async def handler(request: httpx.Request) -> httpx.Response:
+            return httpx.Response(200, json={
+                "access_token": "access-2", "expires_in": 600,
+                "scope": "paper.read",
+            })
+
+        client = httpx.AsyncClient(
+            transport=httpx.MockTransport(handler),
+            base_url="http://auth.test",
+        )
+        manager = OAuthTokenManager("http://auth.test", http_client=client)
+        try:
+            refreshed = await manager._refresh_token({
+                "issuer": "http://auth.test",
+                "client_id": "paperloom-local-mcp",
+                "refresh_token": "refresh-1",
+                "scope": "paper.read",
+                "token_endpoint": "http://auth.test/oauth2/token",
+            }, ["paper.read", "paper.upload"])
+            payload = manager._token_payload(
+                {"access_token": "access-3", "expires_in": 600, "scope": "paper.read"},
+                ["paper.read"],
+                "http://auth.test/oauth2/token",
+                fallback_refresh_token="refresh-2",
+            )
+        finally:
+            await client.aclose()
+
+        self.assertIsNone(refreshed)
+        self.assertIsNotNone(payload)
+        self.assertEqual("refresh-2", payload["refresh_token"])
+
+    async def test_gateway_uses_local_oauth_token_when_request_has_no_bearer(self) -> None:
+        requests: list[httpx.Request] = []
+
+        async def handler(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(200, json={
+                "query_text": "", "papers": [], "matched_count": 0,
+                "returned_count": 0, "coverage": "complete",
+            })
+
+        class StubOAuth:
+            async def get_access_token(self, required_scope: str) -> str:
+                self.required_scope = required_scope
+                return "local-oauth-token"
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="http://java.test")
+        gateway = ReadingMcpGateway(client=client, oauth_manager=StubOAuth())
+        try:
+            result = await gateway.query("/api/v1/reading/papers/search", {"query_text": ""})
+        finally:
+            await client.aclose()
+
+        self.assertEqual(0, result["matched_count"])
+        self.assertEqual("Bearer local-oauth-token", requests[0].headers["Authorization"])
 
 
 if __name__ == "__main__":

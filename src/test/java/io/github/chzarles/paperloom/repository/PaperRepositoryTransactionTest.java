@@ -32,4 +32,25 @@ class PaperRepositoryTransactionTest {
 
         assertEquals(0, paperRepository.countByPaperId("litsearch:gold-1"));
     }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void backfillArxivIdOnlyWritesTheIdentifier() {
+        Paper paper = new Paper();
+        paper.setPaperId("md5-backfill");
+        paper.setOriginalFilename("manual.pdf");
+        paper.setUserId("u1");
+        paper.setStatus(Paper.STATUS_COMPLETED);
+        paper.setVectorizationStatus(Paper.VECTORIZATION_STATUS_PROCESSING);
+        paperRepository.saveAndFlush(paper);
+
+        int updated = paperRepository.backfillArxivIdIfAbsent("md5-backfill", "u1", "2409.04701");
+
+        assertEquals(1, updated);
+        Paper reloaded = paperRepository
+                .findFirstByPaperIdAndUserIdOrderByCreatedAtDesc("md5-backfill", "u1")
+                .orElseThrow();
+        assertEquals("2409.04701", reloaded.getArxivId());
+        assertEquals(Paper.VECTORIZATION_STATUS_PROCESSING, reloaded.getVectorizationStatus());
+    }
 }

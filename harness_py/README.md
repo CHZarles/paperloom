@@ -27,9 +27,6 @@ Java 是权限和语料数据源。每个请求都必须携带 `user_id` 与 `sc
 
 ## 阅读入口
 
-- [OPENAI_AGENTS_SDK_GUIDE.md](OPENAI_AGENTS_SDK_GUIDE.md)：理解 `Agent`、`Runner`、
-  Function Tool、Context、Session、Hooks 和 Model。
-- [ONBOARDING.md](ONBOARDING.md)：沿一次真实研究回合阅读核心代码。
 - [Reading Model 与 `harness_py` 工具](../docs/architecture/reading-model-and-agent-tools.md)：理解持久化模型、
   Live Projection、BM25 和授权阶梯。
 - [Evaluation System](../docs/evaluation/README.md)：理解 Run Capture、Golden Case 与数据利用方向。
@@ -38,8 +35,8 @@ Java 是权限和语料数据源。每个请求都必须携带 `user_id` 与 `sc
 - [Sparse Qdrant 工程实践](../site/practice/evaluation/qdrant-bm25-cutover-minimax-evidence-gap.md)：
   记录当前产品检索切换和 Candidate/Read/Cited 分层结果。
 
-第一次接触 Agents SDK 时先读 SDK Guide；已经熟悉 SDK 时可直接读 ONBOARDING 和本页的
-执行路径。
+Runtime 固定使用 `openai-agents`；`Agent`、`Runner`、Function Tool 的语义以官方文档为准，项目内的
+类名、参数和行为以 `requirements.in` 与源码为准。
 
 ## 核心结构
 

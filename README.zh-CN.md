@@ -2,7 +2,7 @@
 
 **PaperLoom 是一个面向研究论文 PDF 的、证据有界的 Agentic RAG 阅读工作台。**
 
-用户看到的产品叫 **Folio**。它把论文转化为带页码和阅读顺序的 Reading Model，让 Research
+用户看到的产品叫 **Citewise**。它把论文转化为带页码和阅读顺序的 Reading Model，让 Research
 Agent 只在当前会话明确授权的论文中使用工具检索和阅读，并让模型运行结束后的引用仍能重新打开。
 
 [项目网站](https://chzarles.github.io/paperloom/) · [项目文档](docs/README.md) ·
@@ -32,10 +32,8 @@ Agent 只在当前会话明确授权的论文中使用工具检索和阅读，�
 ```text
 ChatHandler
 -> ProductReadingConversationService
--> ResearchHarnessTransport
--> RedisResearchHarnessTransport
--> Redis Streams
--> RedisResearchWorker
+-> PythonResearchHarnessClient
+-> HTTP POST /v1/research/stream
 -> ResearchHarnessService
 -> OpenAI Agents SDK Runner
 -> Java Corpus API
@@ -95,7 +93,7 @@ Java 授权论文范围
 
 | 区域 | 当前责任 |
 | --- | --- |
-| Folio | Vue 3 研究工作台、论文选择、进度、会话与证据重开 |
+| Citewise | Vue 3 研究工作台、论文选择、进度、会话与证据重开 |
 | Java 产品边界 | 认证、授权、Source Scope 锁定、配额、取消、长期会话与 Reference Mapping |
 | Python 研究边界 | Agents SDK 循环、工具执行、Disclosure State、Evidence Ledger、引用校验与最终提交 |
 | Java Corpus 数据面 | 论文授权、按合同配置的 Qdrant 检索、Current Model 校验和精确读取 |
@@ -166,7 +164,6 @@ PaperLoom 仍在持续开发。目前的明确边界是研究论文 PDF 导入�
 - [Runtime 图目录](docs/architecture/runtime-diagrams.md)
 - [评估系统](docs/evaluation/README.md)
 - [工程演化记录](docs/engineering-evolution/README.md)
-- [中文面试材料](interview/README.md)
 - [项目实践网站](https://chzarles.github.io/paperloom/)
 
 PaperLoom 使用 [Apache License 2.0](LICENSE)。第三方组件继续遵循各自许可证，详见

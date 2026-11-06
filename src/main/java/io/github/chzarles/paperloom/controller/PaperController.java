@@ -5,13 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.model.PaperParserArtifact;
 import io.github.chzarles.paperloom.model.PaperReadingElement;
-import io.github.chzarles.paperloom.model.PaperReadingModel;
 import io.github.chzarles.paperloom.model.PaperVisualAsset;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.repository.PaperPublicationRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
-import io.github.chzarles.paperloom.service.ChatHandler;
 import io.github.chzarles.paperloom.service.ConversationService;
 import io.github.chzarles.paperloom.service.PaperCandidateSearchRequest;
 import io.github.chzarles.paperloom.service.PaperAccessService;
@@ -49,6 +47,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import static io.github.chzarles.paperloom.service.PdfDownloadHeaders.sanitizePdfFilename;
 
 /**
  * 论文控制器，处理论文库、预览和证据引用相关请求。
@@ -79,9 +78,6 @@ public class PaperController {
 
     @Autowired
     private JwtUtils jwtUtils;
-
-    @Autowired
-    private ChatHandler chatHandler;
 
     @Autowired
     private ConversationService conversationService;
@@ -1535,30 +1531,6 @@ public class PaperController {
         return paperAccessService.findPublishedPaper(paperId);
     }
 
-    private String sanitizePdfFilename(String originalFilename, String fallbackPaperId) {
-        String filename = originalFilename;
-        if (filename == null || filename.isBlank()) {
-            filename = fallbackPaperId;
-        }
-        if (filename == null || filename.isBlank()) {
-            filename = "paper";
-        }
-
-        filename = filename.trim()
-                .replaceAll("[\\r\\n\\t\\p{Cntrl}]+", " ")
-                .replace('/', '_')
-                .replace('\\', '_')
-                .replace('"', '_')
-                .trim();
-        filename = filename.replaceAll("\\s+", " ");
-        if (filename.isBlank()) {
-            filename = "paper";
-        }
-        if (!filename.toLowerCase(Locale.ROOT).endsWith(".pdf")) {
-            filename = filename + ".pdf";
-        }
-        return filename;
-    }
 
     private String normalizeProcessingStatus(String vectorizationStatus, int uploadStatus) {
         if (vectorizationStatus != null && !vectorizationStatus.isBlank()) {

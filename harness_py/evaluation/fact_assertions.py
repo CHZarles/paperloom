@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import hashlib
-import json
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -114,16 +112,6 @@ def fact_assertion_contract() -> JsonMap:
         "normalization": "unicode-nfkc-greek-subscript-scientific-number-word-v1",
         "claim_units": "markdown-line-sentence-contrast-clause-v1",
     }
-
-
-def contract_sha256(value: JsonMap) -> str:
-    encoded = json.dumps(
-        value,
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
 
 
 def evaluate_fact_assertions(facts: JsonMap, answer: JsonMap) -> FactAssertionResult:

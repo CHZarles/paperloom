@@ -30,6 +30,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import static io.github.chzarles.paperloom.utils.TextUtils.trimToNull;
 
 /**
  * 聊天处理服务
@@ -1024,13 +1025,6 @@ public class ChatHandler {
         );
     }
 
-    private String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
 
     private String resolveClientId(WebSocketSession session) {
         String clientId = chatSessionRegistry.getClientId(session);
@@ -1435,10 +1429,7 @@ public class ChatHandler {
             sendJsonToGenerationOrClient(userId, clientId, generationId, errorResponse);
             return;
         }
-        errorResponse.put(
-                "error",
-                "The research run stopped because of an internal service error. Your conversation is preserved; retry this turn."
-        );
+        errorResponse.put("error", ResearchHarnessFailureMessages.message(error));
         sendJsonToGenerationOrClient(userId, clientId, generationId, errorResponse);
     }
 

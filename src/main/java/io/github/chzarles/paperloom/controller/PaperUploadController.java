@@ -6,11 +6,9 @@ import io.github.chzarles.paperloom.model.PaperProcessingTask;
 import io.github.chzarles.paperloom.model.Paper;
 import io.github.chzarles.paperloom.repository.PaperRepository;
 import io.github.chzarles.paperloom.service.FileTypeValidationService;
-import io.github.chzarles.paperloom.service.ParseService;
 import io.github.chzarles.paperloom.service.PaperPublicationService;
 import io.github.chzarles.paperloom.service.PaperSearchabilityService;
 import io.github.chzarles.paperloom.service.UploadService;
-import io.github.chzarles.paperloom.service.UserService;
 import io.github.chzarles.paperloom.utils.LogUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -31,8 +29,6 @@ import java.util.Set;
 @RequestMapping("/api/v1/papers/upload")
 public class PaperUploadController {
 
-    private static final long DEFAULT_CHUNK_SIZE_BYTES = 5L * 1024 * 1024L;
-
     @Autowired
     private UploadService uploadService;
 
@@ -43,16 +39,10 @@ public class PaperUploadController {
     private KafkaConfig kafkaConfig;
 
     @Autowired
-    private UserService userService;
-
-    @Autowired
     private PaperRepository paperRepository;
 
     @Autowired
     private FileTypeValidationService fileTypeValidationService;
-
-    @Autowired
-    private ParseService parseService;
 
     @Autowired
     private PaperSearchabilityService paperSearchabilityService;

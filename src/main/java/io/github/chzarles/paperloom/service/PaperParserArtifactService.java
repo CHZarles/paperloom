@@ -7,7 +7,6 @@ import io.github.chzarles.paperloom.repository.PaperParserArtifactRepository;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
-import io.minio.RemoveObjectArgs;
 import io.minio.http.Method;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,6 +18,7 @@ import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
+import static io.github.chzarles.paperloom.utils.MinioObjects.removeQuietly;
 
 @Service
 public class PaperParserArtifactService {
@@ -143,24 +143,11 @@ public class PaperParserArtifactService {
             return;
         }
         for (PaperParserArtifact artifact : paperParserArtifactRepository.findByPaperId(paperId)) {
-            removeObjectQuietly(artifact.getObjectKey());
+            removeQuietly(minioClient, BUCKET, artifact.getObjectKey());
         }
         paperParserArtifactRepository.deleteByPaperId(paperId);
     }
 
-    private void removeObjectQuietly(String objectKey) {
-        if (objectKey == null || objectKey.isBlank()) {
-            return;
-        }
-        try {
-            minioClient.removeObject(RemoveObjectArgs.builder()
-                    .bucket(BUCKET)
-                    .object(objectKey)
-                    .build());
-        } catch (Exception ignored) {
-            // MinIO cleanup is best-effort; database metadata is still removed below.
-        }
-    }
 
     private String safeKey(String value) {
         return value == null || value.isBlank() ? "unknown" : value.replaceAll("[^a-zA-Z0-9._-]", "-");

@@ -32,6 +32,9 @@ public class SecurityConfig {
 
     @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @Autowired
+    private OAuthBearerAuthenticationFilter oauthBearerAuthenticationFilter;
     
     @Autowired
     private PaperAccessAuthorizationFilter paperAccessAuthorizationFilter;
@@ -74,6 +77,8 @@ public class SecurityConfig {
                     .authorizeHttpRequests(authorize -> authorize
                             // 允许静态资源访问
                             .requestMatchers("/", "/*.js", "/*.css", "/*.ico").permitAll()
+                            .requestMatchers("/.well-known/oauth-protected-resource").permitAll()
+                            .requestMatchers("/connect/register").permitAll()
                             // 允许 WebSocket 连接
                             .requestMatchers("/chat/**", "/ws/**").permitAll()
                             // 允许登录注册接口
@@ -84,6 +89,8 @@ public class SecurityConfig {
                             ).permitAll()
                             // Python Harness 使用独立内部 Token 访问无模型副作用的 Corpus 数据面。
                             .requestMatchers("/internal/v1/corpus/**").permitAll()
+                            // arXiv 发现会写入个人文献库并占用解析资源，与上传保持同样的角色边界
+                            .requestMatchers("/api/v1/discovery/**").hasAnyRole("USER", "ADMIN")
                             // 文件上传和下载相关接口 - 普通用户和管理员都可访问
                             .requestMatchers(
                                     "/api/v1/papers/upload/**",
@@ -120,6 +127,7 @@ public class SecurityConfig {
                     .sessionManagement(session -> session
                             .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                     // 添加JWT认证过滤器
+                    .addFilterBefore(oauthBearerAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                     .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                     // 添加论文访问授权过滤器
                     .addFilterAfter(paperAccessAuthorizationFilter, JwtAuthenticationFilter.class);

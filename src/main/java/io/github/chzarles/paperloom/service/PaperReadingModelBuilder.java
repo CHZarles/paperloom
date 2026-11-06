@@ -72,6 +72,7 @@ public class PaperReadingModelBuilder {
         int pageTextElementsOmittedBlankTextCount = 0;
         int elementsWithPageNumber = 0;
         int elementsWithText = 0;
+        // 先按解析顺序收集可读元素，后面再按页码和阅读顺序生成排序结果。
         List<ReadableElement> readable = new ArrayList<>();
         for (ParsedPaperElement element : elements) {
             if (element == null) {
@@ -140,6 +141,7 @@ public class PaperReadingModelBuilder {
                 byPage,
                 physicalPagesByNumber
         );
+        // 页面和位置按展示顺序追加；这个顺序本身就是 Reading Model 的业务数据。
         List<PaperPage> pages = new ArrayList<>();
         List<PaperSection> sections = new ArrayList<>();
         List<PaperLocation> locations = new ArrayList<>();

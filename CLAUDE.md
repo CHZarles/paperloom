@@ -5,7 +5,7 @@ lives under [`docs/`](docs/README.md); do not duplicate those documents here.
 
 ## Project Contract
 
-PaperLoom is an evidence-grounded research-paper RAG system. Folio is its user-facing application.
+PaperLoom is an evidence-grounded research-paper RAG system. Citewise is its user-facing application.
 The product subject is research-paper PDFs, not a general enterprise document assistant.
 
 Core invariants:

@@ -1,1 +1,1 @@
-"""Stateless read-only MCP adapter for PaperLoom."""
+"""PaperLoom's authenticated MCP adapter."""

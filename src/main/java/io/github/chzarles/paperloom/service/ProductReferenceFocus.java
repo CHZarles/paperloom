@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
+import static io.github.chzarles.paperloom.utils.TextUtils.trimToNull;
 
 public record ProductReferenceFocus(
         List<String> paperIds,
@@ -207,13 +208,6 @@ public record ProductReferenceFocus(
         );
     }
 
-    private static String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
 
     private static String sourceQuoteRef(String value) {
         String trimmed = trimToNull(value);

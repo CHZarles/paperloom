@@ -91,6 +91,7 @@ class ReadingCorpusTools:
     observations_by_evidence_id: dict[str, JsonMap] = field(default_factory=dict)
     authorized_paper_ids: set[str] = field(default_factory=set)
     disclosed_location_refs: set[str] = field(default_factory=set)
+    structure_location_refs: set[str] = field(default_factory=set)
 
     def __post_init__(self) -> None:
         if self.reader is None:
@@ -151,8 +152,12 @@ class ReadingCorpusTools:
                 "search_paper_content",
                 (
                     "Search relevant passages, tables, and figures inside previously disclosed candidate papers. "
-                    "Returns non-citeable previews and location refs. Read selected refs before making "
-                    "paper-content claims."
+                    "Use concise English keywords when the paper text is English; do not pass a full Chinese "
+                    "question unchanged as query_text. For Appendix, Section, Table, Figure, page, or "
+                    "section-number questions, call get_paper_structure first and pass its returned section "
+                    "location refs as section_refs. If the first search is not useful, rewrite the query once "
+                    "before expanding the search. Returns non-citeable previews and location refs. Read selected "
+                    "refs before making paper-content claims."
                 ),
                 {
                     "type": "object",
@@ -177,7 +182,9 @@ class ReadingCorpusTools:
                 "get_paper_structure",
                 (
                     "Browse the section outline or page structure of previously disclosed papers. This returns "
-                    "only navigation metadata and location refs, never paper body text or citations."
+                    "only navigation metadata and location refs, never paper body text or citations. Do not cite "
+                    "or read the returned section ref as body evidence; pass it as section_refs to "
+                    "search_paper_content, then read a returned passage, table, or figure ref."
                 ),
                 {
                     "type": "object",
@@ -195,7 +202,8 @@ class ReadingCorpusTools:
             _tool_schema(
                 "read_paper_content",
                 (
-                    "Read exact content from location refs returned by search_paper_content or get_paper_structure. "
+                    "Read exact content from passage, table, or figure location refs returned by search_paper_content. "
+                    "For multi-part questions, include relevant refs for each requested part in one call when possible. "
                     "Returns source_quote_ref values; only those values can be cited in the final answer."
                 ),
                 {
@@ -284,17 +292,34 @@ class ReadingCorpusTools:
             return error
         payload = self._forward(
             "get_paper_structure", "items", lambda: self.reader.get_structure(arguments))
-        self.disclosed_location_refs.update(
+        refs = {
             str(child_map(item).get("location_ref"))
             for item in as_list(payload.get("items"))
             if child_map(item).get("location_ref")
-        )
+        }
+        self.disclosed_location_refs.update(refs)
+        self.structure_location_refs.update(refs)
         return payload
 
     def read_paper_content(self, arguments: JsonMap) -> JsonMap:
         error = _location_disclosure_error(arguments, self.disclosed_location_refs, "items")
         if error:
             return error
+        refs = arguments.get("location_refs")
+        structure_refs = [
+            value.strip()
+            for value in refs or []
+            if isinstance(value, str) and value.strip() in self.structure_location_refs
+        ] if isinstance(refs, list) else []
+        if structure_refs:
+            return recoverable_error(
+                "structure_ref_not_evidence",
+                "STRUCTURE_REF_NOT_EVIDENCE",
+                "search_paper_content",
+                "items",
+                location_refs=structure_refs,
+                message="Use section_refs with search_paper_content, then read a passage, table, or figure ref.",
+            )
         payload = self._forward(
             "read_paper_content", "items", lambda: self.reader.read_locations(arguments))
         for raw in as_list(payload.get("items")):

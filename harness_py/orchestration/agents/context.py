@@ -225,7 +225,7 @@ class ResearchRunContext:
                 payload={
                     "model_call_id": self.tool_call_models.get(tool_call_id),
                     "tool_call_id": tool_call_id,
-                    "before": _protocol_state_payload(before),
+                    "before": before.to_dict(),
                     "event": _protocol_event_payload(event),
                     "facts": {
                         "known_source_quote_refs": sorted(facts.known_source_quotes),
@@ -236,20 +236,11 @@ class ResearchRunContext:
                         "accepted": bool(decision.model_result.get("accepted")),
                         "issue_codes": list(decision.model_result.get("issue_codes") or []),
                     },
-                    "after": _protocol_state_payload(decision.next_state),
+                    "after": decision.next_state.to_dict(),
                 },
             )
         self.protocol_state = decision.next_state
         return decision
-
-
-def _protocol_state_payload(state: ProtocolState) -> JsonMap:
-    return {
-        "phase": state.phase.value,
-        "contract": state.contract.value if state.contract else None,
-        "submission_attempt": state.submission_attempt,
-        "validation_issues": list(state.validation_issues),
-    }
 
 
 def _protocol_event_payload(event: ProtocolEvent) -> JsonMap:

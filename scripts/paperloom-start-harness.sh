@@ -25,8 +25,22 @@ load_env() {
   done <.env
 }
 
+sanitize_no_proxy() {
+  # httpx rejects bracketed IPv6 hosts such as "[::1]" when parsing NO_PROXY.
+  # Some proxy tools export that form, so strip the brackets before the harness
+  # inherits the environment.
+  local name value cleaned
+  for name in NO_PROXY no_proxy; do
+    value="${!name:-}"
+    [[ -z "$value" ]] && continue
+    cleaned="${value//\[/}"
+    cleaned="${cleaned//\]/}"
+    export "${name}=${cleaned}"
+  done
+}
+
 pid_alive() {
-  [[ -f "$PID_FILE" ]] && ps -p "$(cat "$PID_FILE")" >/dev/null 2>&1
+  [[ -f "$PID_FILE" ]] && kill -0 "$(cat "$PID_FILE")" >/dev/null 2>&1
 }
 
 health_code() {
@@ -50,7 +64,7 @@ stop() {
   pid="$(cat "$PID_FILE")"
   kill "$pid" 2>/dev/null || true
   for _ in $(seq 1 15); do
-    if ! ps -p "$pid" >/dev/null 2>&1; then
+    if ! kill -0 "$pid" >/dev/null 2>&1; then
       rm -f "$PID_FILE"
       echo "Stopped research harness pid=${pid}."
       return 0
@@ -71,6 +85,7 @@ start() {
     return 0
   fi
   load_env
+  sanitize_no_proxy
   local python_bin="${RESEARCH_HARNESS_PYTHON:-}"
   if [[ -z "$python_bin" ]]; then
     if [[ -x .venv-harness/bin/python ]]; then

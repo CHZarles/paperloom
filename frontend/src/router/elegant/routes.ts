@@ -65,6 +65,18 @@ export const generatedRoutes: GeneratedRoute[] = [
     }
   },
   {
+    name: 'discover',
+    path: '/discover',
+    component: 'layout.base$view.discover',
+    meta: {
+      title: 'discover',
+      i18nKey: 'route.discover',
+      icon: 'lucide:compass',
+      roles: ['USER', 'ADMIN'],
+      order: 2
+    }
+  },
+  {
     name: 'iframe-page',
     path: '/iframe-page/:url',
     component: 'layout.base$view.iframe-page',

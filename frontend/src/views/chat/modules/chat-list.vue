@@ -203,8 +203,10 @@ const pageLoading = computed(
 const showEmpty = computed(() => sessionsLoaded.value && !pageLoading.value && list.value.length === 0);
 
 function messageKey(item: Api.Chat.Message, index: number) {
-  if (item.conversationRecordId) return `${item.conversationRecordId}:${item.role}`;
+  // A live message gains conversationRecordId when it completes. Keying on it
+  // would remount the message mid-stream and throw away the streaming render.
   if (item.generationId) return `${item.generationId}:${item.role}`;
+  if (item.conversationRecordId) return `${item.conversationRecordId}:${item.role}`;
   if (item.timestamp) return `${item.timestamp}:${item.role}`;
   return `${item.role}:${index}`;
 }
@@ -278,63 +280,51 @@ function messageKey(item: Api.Chat.Message, index: number) {
 
 .jump-to-latest {
   position: absolute;
-  right: 22px;
-  bottom: 18px;
+  right: var(--space-5);
+  bottom: var(--space-4);
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: var(--control-icon-size);
+  height: var(--control-icon-size);
   place-items: center;
   border: 1px solid var(--color-border);
   border-radius: 50%;
   background: var(--color-surface);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-float);
   color: var(--color-text);
   cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
 }
 
 .jump-to-latest:hover {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  border-color: var(--color-border-strong);
+  color: var(--color-research);
+  box-shadow: var(--shadow-card-soft);
 }
 
 .welcome-panel {
-  position: relative;
   display: flex;
   min-height: 0;
   flex: 1 1 0;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 20px;
+  gap: var(--space-6);
   overflow: hidden;
-  padding: 30px 20px 64px;
+  padding: var(--space-10) var(--space-5) var(--space-16);
   text-align: center;
-}
-
-.welcome-panel::before {
-  position: absolute;
-  inset: auto 50% 18%;
-  width: min(640px, 78vw);
-  height: 1px;
-  background: var(--color-border-soft);
-  content: '';
-  pointer-events: none;
-  transform: translateX(-50%);
-}
-
-.welcome-title,
-.welcome-input {
-  position: relative;
-  z-index: 1;
 }
 
 .welcome-title {
   margin: 0;
   max-width: 960px;
   color: var(--color-text);
-  font-size: 44px;
-  font-weight: 680;
-  line-height: 1.08;
+  font-size: clamp(28px, 3.2vw, 38px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
 }
 
 .welcome-input {
@@ -344,25 +334,22 @@ function messageKey(item: Api.Chat.Message, index: number) {
 .chat-message-stack {
   width: min(var(--reading-width), 100%);
   margin: 0 auto;
-  padding: 26px 24px 36px;
+  padding: var(--space-6) var(--space-6) var(--space-10);
 }
 
 @media (max-width: 640px) {
   .welcome-panel {
     align-items: stretch;
-    padding: 26px 14px 46px;
+    padding: var(--space-6) var(--space-3-5) var(--space-12);
   }
 
   .welcome-title {
-    justify-content: center;
-  }
-
-  .welcome-title {
-    font-size: 32px;
+    text-align: center;
+    font-size: 28px;
   }
 
   .chat-message-stack {
-    padding: 18px 16px 28px;
+    padding: var(--space-4) var(--space-4) var(--space-8);
   }
 }
 </style>

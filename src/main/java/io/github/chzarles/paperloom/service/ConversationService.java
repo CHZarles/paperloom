@@ -40,6 +40,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import static io.github.chzarles.paperloom.utils.TextUtils.firstNonBlank;
+import static io.github.chzarles.paperloom.utils.TextUtils.stringValue;
+import static io.github.chzarles.paperloom.utils.TextUtils.trimToNull;
 
 @Service
 public class ConversationService {
@@ -1309,27 +1312,6 @@ public class ConversationService {
         return value.startsWith("structured_") && value.endsWith("_text_only");
     }
 
-    private String stringValue(Object value) {
-        return value == null ? "" : String.valueOf(value).trim();
-    }
-
-    private String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
-
-    private String firstNonBlank(Object... values) {
-        for (Object value : values) {
-            String text = stringValue(value);
-            if (!text.isBlank()) {
-                return text;
-            }
-        }
-        return "";
-    }
 
     private String writeReferenceMappings(Map<String, Map<String, Object>> referenceMappings) {
         if (referenceMappings == null || referenceMappings.isEmpty()) {

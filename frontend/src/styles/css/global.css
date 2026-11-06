@@ -17,6 +17,24 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-interface);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Placeholders are text: keep them readable instead of decorative. */
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-placeholder);
+  opacity: 1;
+}
+
+/* Naive UI ships a very light placeholder colour; align it with the token. */
+.n-input .n-input__placeholder,
+.n-base-selection .n-base-selection-placeholder {
+  color: var(--color-text-placeholder) !important;
 }
 
 ::selection {
@@ -134,6 +152,36 @@ body {
 
 .admin-console-card .n-button--primary-type {
   box-shadow: none;
+}
+
+/* Streaming caret: trails the text that is still being written. */
+.stream-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.02em;
+  margin-left: 3px;
+  border-radius: 1px;
+  background: currentColor;
+  vertical-align: -0.14em;
+  animation: stream-caret-blink 1s steps(2, start) infinite;
+}
+
+@keyframes stream-caret-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stream-caret {
+    animation: none;
+    opacity: 0.6;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

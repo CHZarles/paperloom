@@ -54,11 +54,7 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
                     "LLM Token 余额不足，预估需要：" + reserveTokens + ", 当前余额：" + balance, 0);
         }
 
-        return new TokenReservation(
-                "llm", quotaSubjectId, "", "",
-                reserveTokens, reserveTokens,
-                0, false, true
-        );
+        return new TokenReservation("llm", quotaSubjectId, reserveTokens, false, "");
     }
 
     @Override
@@ -76,11 +72,7 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
                     "Embedding Token 余额不足，预估需要：" + estimatedTokens + ", 当前余额：" + balance, 0);
         }
 
-        return new TokenReservation(
-                "embedding", quotaSubjectId, "", "",
-                estimatedTokens, estimatedTokens,
-                0, false, true
-        );
+        return new TokenReservation("embedding", quotaSubjectId, estimatedTokens, false, "");
     }
 
     /**
@@ -110,26 +102,17 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
             return;
         }
 
-        if (reservation.quotaKey() != null && !reservation.quotaKey().isBlank()) {
-            throw new IllegalArgumentException("Legacy daily quota reservations are no longer supported");
-        }
         try {
-            if ("llm".equals(reservation.scope())) {
-                userTokenService.settleLlmTokenReservation(
-                        reservation.userId(), reservation.reservedTokens(), actualTokens);
-                if (actualTokens > 0) {
-                    userTokenService.incrementUserTotalRequestCount(reservation.scope(), reservation.userId());
-                }
-                logger.info("用户 {} 结算 LLM Token: {}", reservation.userId(), actualTokens);
-            } else if ("embedding".equals(reservation.scope())) {
-                userTokenService.settleEmbeddingTokenReservation(
-                        reservation.userId(), reservation.reservedTokens(), actualTokens);
-                if (actualTokens > 0) {
-                    userTokenService.incrementUserTotalRequestCount(reservation.scope(), reservation.userId());
-                }
-                logger.info("用户 {} 结算 Embedding Token: {}, 剩余额度从预留中扣减",
-                        reservation.userId(), actualTokens);
+            boolean applied = "llm".equals(reservation.scope())
+                    ? userTokenService.settleLlmTokenReservation(reservation.userId(),
+                            reservation.reservationId(), reservation.reservedTokens(), actualTokens)
+                    : userTokenService.settleEmbeddingTokenReservation(reservation.userId(),
+                            reservation.reservationId(), reservation.reservedTokens(), actualTokens);
+            if (applied && actualTokens > 0) {
+                userTokenService.incrementUserTotalRequestCount(reservation.scope(), reservation.userId());
             }
+            logger.info("用户 {} 结算 {} Token: {}, 生效={}",
+                    reservation.userId(), reservation.scope(), actualTokens, applied);
         } catch (Exception e) {
             logger.error("结算用户 Token 失败：userId={}, scope={}, tokens={}",
                     reservation.userId(), reservation.scope(), actualTokens, e);
@@ -143,9 +126,11 @@ public class UsageBalanceQuotaService extends UsageQuotaService {
             return;
         }
         if ("llm".equals(reservation.scope())) {
-            userTokenService.releaseLlmTokenReservation(reservation.userId(), reservation.reservedTokens());
+            userTokenService.releaseLlmTokenReservation(
+                    reservation.userId(), reservation.reservationId(), reservation.reservedTokens());
         } else if ("embedding".equals(reservation.scope())) {
-            userTokenService.releaseEmbeddingTokenReservation(reservation.userId(), reservation.reservedTokens());
+            userTokenService.releaseEmbeddingTokenReservation(
+                    reservation.userId(), reservation.reservationId(), reservation.reservedTokens());
         }
     }
 

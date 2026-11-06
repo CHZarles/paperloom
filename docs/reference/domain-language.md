@@ -9,7 +9,7 @@ that existed at that time.
 **PaperLoom**<br>
 The repository and evidence-bounded agentic RAG system for research-paper reading.
 
-**Folio**<br>
+**Citewise**<br>
 The user-facing Vue research workbench: paper library, source selection, conversations, research
 progress, and evidence inspection.
 

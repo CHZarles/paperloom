@@ -1,7 +1,6 @@
 package io.github.chzarles.paperloom.service;
 
 import java.util.List;
-import java.util.Map;
 
 public record RetrievalCandidates(List<RankedLocationCandidate> ranked,
                                    int matchedCount,

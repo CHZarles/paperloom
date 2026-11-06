@@ -26,6 +26,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import static io.github.chzarles.paperloom.utils.TextUtils.trimToNull;
+import io.github.chzarles.paperloom.utils.TextUtils;
 
 @Service
 public class ConversationScopeService {
@@ -309,7 +311,7 @@ public class ConversationScopeService {
                 .filter(paper -> canAccessPaper(user, paper))
                 .filter(paperSearchabilityService::isSearchable)
                 .map(Paper::getPaperId)
-                .map(this::trimToNull)
+                .map(TextUtils::trimToNull)
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
@@ -404,7 +406,7 @@ public class ConversationScopeService {
                 .filter(paperSearchabilityService::isSearchable)
                 .filter(paper -> titleMatches(paper, query, safeRegex))
                 .map(Paper::getPaperId)
-                .map(this::trimToNull)
+                .map(TextUtils::trimToNull)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         if (requireMatches && paperIds.isEmpty()) {
@@ -491,7 +493,7 @@ public class ConversationScopeService {
         }
         return list.stream()
                 .map(value -> value == null ? null : String.valueOf(value))
-                .map(this::trimToNull)
+                .map(TextUtils::trimToNull)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toCollection(LinkedHashSet::new))
                 .stream()
@@ -610,11 +612,4 @@ public class ConversationScopeService {
         }
     }
 
-    private String trimToNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
 }
