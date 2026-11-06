@@ -59,7 +59,8 @@ Production requirements include:
 - `ADMIN_BOOTSTRAP_ENABLED=false` after initial provisioning;
 - explicit CORS origins;
 - private network access for data services and the research harness;
-- a `PAPER_PARSING_MINERU_API_TOKEN` stored as a deployment secret;
+- MinerU credentials (`PAPER_PARSING_MINERU_ACCESS_KEY` / `PAPER_PARSING_MINERU_SECRET_KEY`) stored
+  as deployment secrets;
 - `RESEARCH_HARNESS_BASE_URL` pointing at the local `harness_py serve` process;
 - persistent volumes and a tested backup policy;
 - resource limits suitable for Qdrant, embedding traffic, and PDF parsing.

@@ -124,6 +124,9 @@ paper:
     mineru:
       base-url: ${PAPER_PARSING_MINERU_BASE_URL:https://mineru.net}
       api-token: ${PAPER_PARSING_MINERU_API_TOKEN:}
+      auth-base-url: ${PAPER_PARSING_MINERU_AUTH_BASE_URL:https://sso.openxlab.org.cn/gw/uaa-be/api/v1/open}
+      access-key: ${PAPER_PARSING_MINERU_ACCESS_KEY:}
+      secret-key: ${PAPER_PARSING_MINERU_SECRET_KEY:}
       model-version: ${PAPER_PARSING_MINERU_MODEL_VERSION:vlm}
       enable-formula: ${PAPER_PARSING_MINERU_ENABLE_FORMULA:true}
       enable-table: ${PAPER_PARSING_MINERU_ENABLE_TABLE:true}

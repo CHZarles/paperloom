@@ -157,8 +157,9 @@ cd frontend && pnpm typecheck && pnpm build
 
 ## 7. 已知陷阱
 
-- **MinerU 需要 token**。缺 `PAPER_PARSING_MINERU_API_TOKEN` 时上传会失败并落到
-  `markVectorizationFailed`，不是静默降级。
+- **MinerU 需要 AK/SK**。缺 `PAPER_PARSING_MINERU_ACCESS_KEY` / `PAPER_PARSING_MINERU_SECRET_KEY`
+  时上传会失败并落到 `markVectorizationFailed`，不是静默降级。后端在
+  `sso.openxlab.org.cn` 用该密钥对换短时 JWT（约 1 小时，401 自动刷新重试一次）。
 - **Python 测试在本机需要修正 `NO_PROXY`**。环境里带方括号的 IPv6 地址会让 httpx 报
   `Invalid port: ':1]'`，先 `export NO_PROXY=localhost,127.0.0.1,::1 no_proxy=...` 再跑。
 - **`pnpm install` 之后必须重启前端 dev server 并清 `node_modules/.vite`**。依赖树的 peer 后缀会变，旧缓存仍指向已删除的 `node_modules/.pnpm/...` 路径，表现是页面正常但消息渲染不出来（`vue-markdown-shiki` 的 CSS 404，动态导入失败）。
