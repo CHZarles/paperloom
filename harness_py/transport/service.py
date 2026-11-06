@@ -16,6 +16,7 @@ import threading
 import time
 from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass, fields
+import httpx
 import uvicorn
 from starlette.applications import Starlette
 from starlette.concurrency import run_in_threadpool
@@ -92,6 +93,85 @@ class InFlightEntry:
     state: str
 
 
+class ReadinessProbe:
+    """就绪探测：回答"该 harness 现在能否接活"。
+
+    - provider 配置可加载（服务构造时已加载，故此处只读其诊断）；
+    - 最近一次 Corpus 探测未失败（后台定时刷新，带 TTL 缓存，`/ready` 不同步穿透）。
+
+    内部 token 由 harness 与 Corpus 共用同一环境变量 ``RESEARCH_HARNESS_INTERNAL_TOKEN``，
+    单一来源天然一致，故不单独探测。本探针仅作 readiness，不影响 liveness（`/health`
+    不因依赖故障而失败）。
+    """
+
+    def __init__(
+        self,
+        service: ResearchHarnessService,
+        *,
+        corpus_probe=None,
+        ttl_seconds: float = 30.0,
+    ) -> None:
+        self.service = service
+        self.ttl_seconds = ttl_seconds
+        self._corpus_probe = corpus_probe or _default_corpus_probe
+        self._corpus_ok = False
+        self._corpus_reason = ""
+        self._last_probe_monotonic = 0.0
+        self._lock = threading.Lock()
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+
+    def start(self) -> None:
+        if self._thread is not None and self._thread.is_alive():
+            return
+        self._stop.clear()
+        self._thread = threading.Thread(
+            target=self._run,
+            name="readiness-probe",
+            daemon=True,
+        )
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop.set()
+
+    def _run(self) -> None:
+        while not self._stop.is_set():
+            self.refresh_corpus()
+            self._stop.wait(self.ttl_seconds)
+
+    def refresh_corpus(self) -> None:
+        try:
+            self._corpus_probe()
+            ok, reason = True, ""
+        except Exception as error:
+            ok, reason = False, type(error).__name__
+        with self._lock:
+            self._corpus_ok = ok
+            self._corpus_reason = reason
+            self._last_probe_monotonic = time.monotonic()
+
+    def ready(self) -> tuple[bool, list[str]]:
+        reasons: list[str] = []
+        diagnostics = self.service.provider.public_diagnostics() if self.service.provider else {}
+        if not diagnostics.get("has_api_key"):
+            reasons.append("provider_unconfigured")
+        with self._lock:
+            corpus_ok = self._corpus_ok
+            corpus_reason = self._corpus_reason
+        if not corpus_ok:
+            reasons.append(f"corpus_unavailable:{corpus_reason or 'unknown'}")
+        return (not reasons, reasons)
+
+
+def _default_corpus_probe() -> None:
+    """轻量探测 Java Corpus 可达性：任意 HTTP 响应（含 4xx）都视为可达。"""
+
+    base_url = os.getenv("JAVA_CORPUS_BASE_URL", "http://127.0.0.1:8081").rstrip("/")
+    with httpx.Client(timeout=httpx.Timeout(2.0, connect=2.0)) as client:
+        client.get(base_url)
+
+
 class ResearchHarnessService:
     """Internal HTTP-facing adapter around the accepted live harness runtime."""
 
@@ -111,6 +191,7 @@ class ResearchHarnessService:
         self.in_flight = InFlightRegistry()
         self.shutting_down = threading.Event()
         self.drain_seconds = _positive_env_float("RESEARCH_HARNESS_DRAIN_SECONDS", 30.0)
+        self.readiness = ReadinessProbe(self)
 
     def run_turn(self, request: JsonMap) -> JsonMap:
         return self.run_job(request, lambda _event: None, lambda: False)
@@ -218,6 +299,18 @@ def _service_app(service: ResearchHarnessService, token: str) -> Starlette:
             "eval_capture_failures": getattr(service.harness, "eval_capture_failures", 0),
         })
 
+    async def ready(_request: Request) -> JSONResponse:
+        ok, reasons = service.readiness.ready()
+        body = {
+            "status": "ok" if ok else "not_ready",
+            "in_flight": service.in_flight.count(),
+            "eval_capture_failures": getattr(service.harness, "eval_capture_failures", 0),
+        }
+        if not ok:
+            body["reason"] = "; ".join(reasons)
+            return JSONResponse(body, status_code=503)
+        return JSONResponse(body)
+
     async def turn(request: Request) -> JSONResponse:
         if service.shutting_down.is_set():
             return draining_response()
@@ -253,24 +346,29 @@ def _service_app(service: ResearchHarnessService, token: str) -> Starlette:
 
     @asynccontextmanager
     async def lifespan(_app: Starlette):
-        yield
-        # 进入停机：标记 draining，等待在途回合在限时内发出终态后退出。
-        service.shutting_down.set()
-        deadline = time.monotonic() + service.drain_seconds
-        while service.in_flight.count() > 0 and time.monotonic() < deadline:
-            await asyncio.sleep(0.05)
-        remaining = service.in_flight.snapshot()
-        if remaining:
-            logging.getLogger(__name__).warning(
-                "drain timed out with %d in-flight turn(s): %s",
-                len(remaining),
-                [entry["request_id"] for entry in remaining],
-            )
+        service.readiness.start()
+        try:
+            yield
+        finally:
+            service.readiness.stop()
+            # 进入停机：标记 draining，等待在途回合在限时内发出终态后退出。
+            service.shutting_down.set()
+            deadline = time.monotonic() + service.drain_seconds
+            while service.in_flight.count() > 0 and time.monotonic() < deadline:
+                await asyncio.sleep(0.05)
+            remaining = service.in_flight.snapshot()
+            if remaining:
+                logging.getLogger(__name__).warning(
+                    "drain timed out with %d in-flight turn(s): %s",
+                    len(remaining),
+                    [entry["request_id"] for entry in remaining],
+                )
 
     return Starlette(
         lifespan=lifespan,
         routes=[
             Route("/health", health, methods=["GET"]),
+            Route("/ready", ready, methods=["GET"]),
             Route("/v1/research/turn", turn, methods=["POST"]),
             Route("/v1/research/stream", stream, methods=["POST"]),
         ],

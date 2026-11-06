@@ -9,6 +9,7 @@ from harness_py.orchestration.live_chat import LiveResearchChatHarness
 from harness_py.orchestration.runtime import TurnExecutionResult
 from harness_py.transport.service import (
     InFlightRegistry,
+    ReadinessProbe,
     ResearchHarnessService,
     _service_app,
 )
@@ -286,3 +287,62 @@ class ServiceTest(unittest.TestCase):
 
         service.in_flight.unregister("request_defer")
         self.assertEqual(0, service.in_flight.count())
+
+    def test_readiness_probe_reports_ready_and_not_ready(self) -> None:
+        class Provider:
+            def public_diagnostics(self):
+                return {"provider": "minimax", "has_api_key": True}
+
+        service = ResearchHarnessService(
+            provider=Provider(),
+            harness=object(),
+            corpus_gateway=object(),
+        )
+
+        # 探测成功：ready。
+        service.readiness._corpus_probe = lambda: None
+        service.readiness.refresh_corpus()
+        ok, reasons = service.readiness.ready()
+        self.assertTrue(ok)
+        self.assertEqual([], reasons)
+
+        # 探测失败：not ready，带 reason。
+        def failing_probe():
+            raise RuntimeError("down")
+
+        service.readiness._corpus_probe = failing_probe
+        service.readiness.refresh_corpus()
+        ok, reasons = service.readiness.ready()
+        self.assertFalse(ok)
+        self.assertIn("corpus_unavailable", reasons[0])
+
+    def test_ready_endpoint_maps_readiness_to_http_status(self) -> None:
+        class Provider:
+            def public_diagnostics(self):
+                return {"provider": "minimax", "has_api_key": True}
+
+        service = ResearchHarnessService(
+            provider=Provider(),
+            harness=object(),
+            corpus_gateway=object(),
+        )
+        service.readiness._corpus_probe = lambda: None
+        service.readiness.refresh_corpus()
+
+        with TestClient(_service_app(service, "")) as client:
+            ok_response = client.get("/ready")
+            self.assertEqual(200, ok_response.status_code)
+            self.assertEqual("ok", ok_response.json()["status"])
+            self.assertEqual(0, ok_response.json()["in_flight"])
+
+        # 探测失败后 /ready 返回 503 + reason。
+        def failing_probe():
+            raise RuntimeError("down")
+
+        service.readiness._corpus_probe = failing_probe
+        service.readiness.refresh_corpus()
+
+        with TestClient(_service_app(service, "")) as client:
+            fail_response = client.get("/ready")
+            self.assertEqual(503, fail_response.status_code)
+            self.assertIn("corpus_unavailable", fail_response.json()["reason"])
