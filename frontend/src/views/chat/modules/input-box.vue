@@ -683,7 +683,7 @@ onUnmounted(() => {
       {{ searchScopeHint }}
     </div>
     <div
-      class="chat-input-shell mx-auto w-full flex items-end gap-2 px-3.5 py-2.5"
+      class="chat-input-shell mx-auto w-full"
       :class="props.variant === 'hero' ? 'max-w-[960px]' : 'max-w-[960px]'"
     >
       <div class="chat-input-main">
@@ -704,39 +704,36 @@ onUnmounted(() => {
           @keydown="handShortcut"
         />
       </div>
-      <NButton
-        :disabled="sendDisabled"
-        class="shrink-0 self-end"
-        size="small"
-        circle
-        :type="isSending ? 'warning' : 'primary'"
-        :aria-label="isSending ? '停止生成' : '发送'"
-        :title="isSending ? '停止生成' : '发送'"
-        @click="() => handleSend()"
-      >
-        <template #icon>
-          <icon-lucide:square v-if="isSending" class="text-16px" />
-          <icon-lucide:arrow-up v-else class="text-16px" />
-        </template>
-      </NButton>
+      <div class="chat-input-tools">
+        <SessionScopePicker
+          v-if="props.variant === 'hero'"
+          :conversation-id="conversationId"
+          :scope="currentScope"
+          :disabled="!canEditSourceScope"
+          @update:busy="sourceScopeUpdating = $event"
+        />
+        <NButton
+          :disabled="sendDisabled"
+          class="chat-input-send ml-auto"
+          size="medium"
+          circle
+          :type="isSending ? 'warning' : 'primary'"
+          :aria-label="isSending ? '停止生成' : '发送'"
+          :title="isSending ? '停止生成' : '发送'"
+          @click="() => handleSend()"
+        >
+          <template #icon>
+            <icon-lucide:square v-if="isSending" class="text-16px" />
+            <icon-lucide:arrow-up v-else class="text-16px" />
+          </template>
+        </NButton>
+      </div>
     </div>
-    <div
-      class="chat-input-footer mx-auto mt-1.5 w-full flex items-center justify-between gap-3 px-1"
-      :class="props.variant === 'hero' ? 'max-w-[960px]' : 'max-w-[960px]'"
-    >
-      <SessionScopePicker
-        v-if="props.variant === 'hero'"
-        :conversation-id="conversationId"
-        :scope="currentScope"
-        :disabled="!canEditSourceScope"
-        @update:busy="sourceScopeUpdating = $event"
-      />
-      <div class="flex items-center gap-2" :class="props.variant === 'hero' ? 'ml-auto' : ''">
-        <span id="chat-input-shortcut-hint" class="chat-input-muted text-11px">Enter 换行 · Ctrl/⌘ Enter 发送</span>
-        <div class="flex items-center gap-1">
-          <span class="connection-dot inline-block h-1.5 w-1.5 rounded-full" :class="connectionDotClass" />
-          <span class="chat-input-muted text-11px">{{ connectionText }}</span>
-        </div>
+    <div class="chat-input-footer mx-auto mt-1.5 w-full flex items-center justify-between gap-3 px-1">
+      <span id="chat-input-shortcut-hint" class="chat-input-muted text-11px">Enter 换行 · Ctrl/⌘ Enter 发送</span>
+      <div class="flex items-center gap-1">
+        <span class="connection-dot inline-block h-1.5 w-1.5 rounded-full" :class="connectionDotClass" />
+        <span class="chat-input-muted text-11px">{{ connectionText }}</span>
       </div>
     </div>
   </div>
@@ -857,7 +854,7 @@ onUnmounted(() => {
 }
 
 .chat-input-wrap--dock {
-  background: #fff;
+  background: var(--color-bg);
   padding: var(--space-3) var(--space-4) max(var(--space-3), env(safe-area-inset-bottom));
 }
 
@@ -866,8 +863,7 @@ onUnmounted(() => {
 }
 
 .chat-input-wrap--hero .chat-input-shell {
-  min-height: 112px;
-  align-items: flex-end;
+  min-height: 128px;
   padding: var(--space-4) var(--space-4) var(--space-3);
 }
 
@@ -877,25 +873,45 @@ onUnmounted(() => {
   line-height: var(--leading-relaxed);
 }
 
+/* The composer is the Vibe-Chat-style card: a white surface with a
+   hairline frame; focus narrows the frame to the academic blue instead
+   of swapping fills. Tools live inside the card, meta text below it. */
 .chat-input-shell {
+  display: flex;
   max-width: 960px !important;
-  min-height: 64px;
-  border-radius: 24px;
-  background: #f5f5f5 !important;
-  padding: var(--space-3) var(--space-3) var(--space-2);
-  transition: background var(--duration-base) var(--ease-standard);
+  min-height: 56px;
+  flex-direction: column;
+  gap: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-composer);
+  background: var(--color-surface) !important;
+  box-shadow: var(--shadow-card);
+  padding: var(--space-2-5) var(--space-3-5) var(--space-2);
+  transition:
+    border-color var(--duration-base) var(--ease-standard),
+    box-shadow var(--duration-base) var(--ease-standard);
 }
 
-/* The composer is a soft surface, not a framed box: state changes the
-   fill instead of drawing a border. Focus still needs a boundary, because
-   the focused fill is white and the dock behind it is white too. */
 .chat-input-shell:hover {
-  background: #f1f3f2 !important;
+  border-color: var(--color-border-strong);
 }
 
 .chat-input-shell:focus-within {
-  background: #fff !important;
-  box-shadow: 0 0 0 1px rgba(23, 24, 26, 0.14);
+  border-color: color-mix(in srgb, var(--color-research) 55%, var(--color-border));
+  box-shadow:
+    0 0 0 3px var(--color-focus-ring),
+    var(--shadow-card);
+}
+
+.chat-input-tools {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.chat-input-send:not(:disabled):hover {
+  background: var(--color-primary-hover);
 }
 
 .chat-input-shell :deep(.n-button:focus),
@@ -923,7 +939,7 @@ onUnmounted(() => {
 
   .chat-input-shell {
     min-height: 56px;
-    border-radius: 20px;
+    border-radius: var(--radius-xl);
     padding: var(--space-2-5) var(--space-2-5) var(--space-2);
   }
 }
