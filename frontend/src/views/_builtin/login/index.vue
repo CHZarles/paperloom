@@ -524,7 +524,7 @@ const posterColumns = computed(() => [0, 1, 2, 3].map(column => posters.filter((
 }
 
 .auth-card :deep(.login-legal .n-button) {
-  color: #16786e;
+  color: var(--color-research);
 }
 
 .auth-card :deep(.login-alt .n-button),
