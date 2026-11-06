@@ -255,7 +255,6 @@ function formatDate(dateStr?: string) {
                 @keydown.enter.prevent="handleSelect(session.conversationId)"
                 @keydown.space.prevent="handleSelect(session.conversationId)"
               >
-                <icon-lucide:circle-dot v-if="session.conversationId === conversationId" class="shrink-0 text-12px" />
                 <div class="min-w-0 flex-1">
                   <div class="session-title">
                     {{ session.title }}
