@@ -32,6 +32,7 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -78,6 +79,9 @@ class ConversationServiceTest {
 
     @Mock
     private ConversationSessionRepository sessionRepository;
+
+    @Mock
+    private ChatGenerationStateService chatGenerationStateService;
 
     @Mock
     private ObjectMapper objectMapper;
@@ -1084,5 +1088,28 @@ class ConversationServiceTest {
         assertEquals("conversation-empty", sessions.get(0).get("conversationId"));
         assertEquals("新对话", sessions.get(0).get("title"));
         assertEquals(Boolean.TRUE, sessions.get(0).get("current"));
+    }
+
+    @Test
+    void getConversationSessionsMarksStreamingConversationsAsGenerating() {
+        ConversationSession streaming = new ConversationSession();
+        ReflectionTestUtils.setField(streaming, "id", 21L);
+        streaming.setConversationId("conversation-streaming");
+        streaming.setTitle("Streaming session");
+        streaming.setStatus(ConversationSession.SessionStatus.ACTIVE);
+        ConversationSession idle = new ConversationSession();
+        ReflectionTestUtils.setField(idle, "id", 22L);
+        idle.setConversationId("conversation-idle");
+        idle.setTitle("Idle session");
+        idle.setStatus(ConversationSession.SessionStatus.ACTIVE);
+        when(sessionRepository.findByUserIdOrderByUpdatedAtDesc(1L)).thenReturn(List.of(streaming, idle));
+        when(chatGenerationStateService.getStreamingConversationIdsForUser("1"))
+                .thenReturn(Set.of("conversation-streaming"));
+
+        List<Map<String, Object>> result = conversationService.getConversationSessions(1L);
+
+        assertEquals(2, result.size());
+        assertEquals(Boolean.TRUE, result.get(0).get("generating"));
+        assertEquals(Boolean.FALSE, result.get(1).get("generating"));
     }
 }

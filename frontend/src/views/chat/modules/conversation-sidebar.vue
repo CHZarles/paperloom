@@ -42,6 +42,11 @@ const visibleSessions = computed(() => {
 });
 
 const activeCount = computed(() => sessions.value.filter(item => item.status === 'ACTIVE').length);
+// Server flag (any conversation of the user, any tab) wins; the store set is
+// the immediate local fallback for the conversation open in this tab.
+function isSessionGenerating(session: Api.Chat.ConversationSession): boolean {
+  return Boolean((session as { generating?: boolean }).generating) || generatingConversationIds.value.has(session.conversationId);
+}
 const archivedCount = computed(() => sessions.value.filter(item => item.status === 'ARCHIVED').length);
 const accountName = computed(() => authStore.userInfo.username || 'Citewise User');
 const accountRole = computed(() => (authStore.isAdmin ? 'Admin management' : 'Workspace settings'));
@@ -254,7 +259,7 @@ function formatDate(dateStr?: string) {
                 @keydown.space.prevent="handleSelect(session.conversationId)"
               >
                 <icon-lucide:sparkles
-                  v-if="generatingConversationIds.has(session.conversationId)"
+                  v-if="isSessionGenerating(session)"
                   class="session-item__generating shrink-0"
                   aria-hidden="true"
                 />

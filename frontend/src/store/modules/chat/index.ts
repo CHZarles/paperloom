@@ -618,6 +618,9 @@ export const useChatStore = defineStore(SetupStoreId.Chat, () => {
     }
     conversationId.value = targetConversationId;
     if (loadDetails && !restored) await loadConversationDetails(targetConversationId, { force: true });
+    // Keep sidebar badges honest when the user switches into a conversation:
+    // a turn may have finished (or started) elsewhere since the last index load.
+    loadSessionIndex({ silent: true }).catch(() => {});
     return true;
   }
 

@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -296,6 +297,26 @@ public class ChatGenerationStateService {
             return getGenerationForUser(generationId, userId);
         }
         return Optional.empty();
+    }
+
+    /** Conversations of this user that currently have a streaming turn — for list badges. */
+    public Set<String> getStreamingConversationIdsForUser(String userId) {
+        Set<String> generationIds = redisTemplate.opsForZSet().reverseRange(userActiveGenerationsKey(userId), 0, -1);
+        if (generationIds == null || generationIds.isEmpty()) {
+            return Set.of();
+        }
+        Set<String> conversationIds = new LinkedHashSet<>();
+        for (String generationId : generationIds) {
+            GenerationMeta meta = readMeta(generationId);
+            if (meta == null || meta.status() != GenerationStatus.STREAMING) {
+                continue;
+            }
+            if (!userId.equals(meta.userId()) || meta.conversationId() == null || meta.conversationId().isBlank()) {
+                continue;
+            }
+            conversationIds.add(meta.conversationId());
+        }
+        return conversationIds;
     }
 
     public boolean renewConversationLease(String generationId) {

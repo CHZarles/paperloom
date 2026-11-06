@@ -57,6 +57,9 @@ public class ConversationService {
     @Autowired
     private ConversationSessionRepository sessionRepository;
 
+    @Autowired(required = false)
+    private ChatGenerationStateService chatGenerationStateService;
+
     @Autowired
     private UserRepository userRepository;
 
@@ -308,9 +311,20 @@ public class ConversationService {
             autoLibraryPaperCount = conversationScopeService.autoLibraryReadablePaperCount(userId);
         }
 
+        // Sidebar "generating" badges must reflect turns streaming in ANY of the
+        // user's conversations — not just the one currently open in this tab.
+        Set<String> streamingConversationIds = chatGenerationStateService == null
+                ? Set.of()
+                : chatGenerationStateService.getStreamingConversationIdsForUser(String.valueOf(userId));
+        if (streamingConversationIds == null) {
+            streamingConversationIds = Set.of();
+        }
+
         for (ConversationSession session : sessions) {
-            result.add(toSessionListResponse(session, autoLibraryPaperCount,
-                    session.getConversationId().equals(currentConversationId)));
+            Map<String, Object> item = toSessionListResponse(session, autoLibraryPaperCount,
+                    session.getConversationId().equals(currentConversationId));
+            item.put("generating", streamingConversationIds.contains(session.getConversationId()));
+            result.add(item);
         }
 
         return result;

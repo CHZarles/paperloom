@@ -627,6 +627,9 @@ const handleSend = async (messageOverride?: string) => {
   input.value = { message: '' };
   chatStore.setReferenceFocus(null);
   startGenerationStatusMonitor();
+  // Refresh the sidebar so this conversation gets/keeps its generating badge,
+  // including from other tabs whose local message list is a different one.
+  chatStore.loadSessionIndex({ silent: true }).catch(() => {});
 };
 
 const inputRef = ref();
