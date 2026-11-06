@@ -473,6 +473,15 @@ const currentProgressText = computed(() => {
   return detail ? `${progressEventTitle(latest)} · ${detail}` : progressEventTitle(latest);
 });
 
+// Each incoming research event swaps the live status text; the key drives
+// the enter/leave transition so the swap reads as motion, not a jump cut.
+const currentProgressKey = computed(() => {
+  const latest = researchEvents.value[researchEvents.value.length - 1];
+  if (!latest) return 'thinking';
+  const sequence = Number(latest.sequence || 0);
+  return sequence > 0 ? String(sequence) : inlineProgressIdentity(latest);
+});
+
 function splitTrailingUrlPunctuation(rawUrl: string) {
   let url = rawUrl;
   let trailing = '';
@@ -974,11 +983,21 @@ async function handleSourceFileClick(fileInfo: {
           aria-label="Open research process"
           @click="emit('openProcess', msg)"
         >
-          <span class="assistant-process__dot" aria-hidden="true" />
-          <span>{{ currentProgressText }}</span>
+          <icon-lucide:loader-circle class="assistant-live-status__spinner" aria-hidden="true" />
+          <Transition name="progress-swap" mode="out-in">
+            <span :key="currentProgressKey" class="assistant-live-status__text">
+              {{ currentProgressText }}
+            </span>
+          </Transition>
           <icon-lucide:panel-right-open />
         </button>
-        <div v-if="showInlineProgress" class="assistant-progress-strip" aria-live="polite">
+        <TransitionGroup
+          v-if="showInlineProgress"
+          name="progress-row"
+          tag="div"
+          class="assistant-progress-strip"
+          aria-live="polite"
+        >
           <div
             v-for="event in inlineProgressItems"
             :key="event.key"
@@ -991,7 +1010,7 @@ async function handleSourceFileClick(fileInfo: {
               <span v-if="event.detail" class="assistant-progress-row__detail">{{ event.detail }}</span>
             </div>
           </div>
-        </div>
+        </TransitionGroup>
         <span v-if="msg.role === 'assistant' && msg.answerMode" class="answer-mode">[{{ msg.answerMode }}]</span>
         <NText v-if="msg.status === 'error'" class="message-error">
           {{ msg.content || '服务器繁忙，请稍后再试' }}
@@ -1641,16 +1660,57 @@ async function handleSourceFileClick(fileInfo: {
   color: var(--color-primary);
 }
 
-.assistant-live-status .assistant-process__dot {
+.assistant-live-status .assistant-live-status__spinner {
+  width: 13px;
+  height: 13px;
   flex: 0 0 auto;
-  background: var(--color-primary);
-  animation: runner-dot 1.2s ease-in-out infinite;
+  color: var(--color-primary);
+  animation: status-spin 0.9s linear infinite;
 }
 
 .assistant-live-status svg {
   width: 14px;
   height: 14px;
   flex: 0 0 auto;
+}
+
+/* Live status: the text swaps per research event. Enter slides up under
+   the leaving word; the strip rows settle in the same direction so the
+   whole block reads as one moving feed. */
+.progress-swap-enter-active {
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard);
+}
+
+.progress-swap-leave-active {
+  transition: opacity 80ms var(--ease-standard);
+}
+
+.progress-swap-enter-from {
+  opacity: 0;
+  transform: translateY(3px);
+}
+
+.progress-swap-leave-to {
+  opacity: 0;
+}
+
+.progress-row-enter-active {
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard);
+}
+
+.progress-row-enter-from {
+  opacity: 0;
+  transform: translateY(3px);
+}
+
+@keyframes status-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .assistant-process__dot {
@@ -1673,9 +1733,15 @@ async function handleSourceFileClick(fileInfo: {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .assistant-live-status .assistant-process__dot,
+  .assistant-live-status .assistant-live-status__spinner,
   .assistant-progress-row--running .assistant-progress-row__dot {
     animation: none;
+  }
+
+  .progress-swap-enter-active,
+  .progress-swap-leave-active,
+  .progress-row-enter-active {
+    transition: none;
   }
 }
 

@@ -724,13 +724,13 @@ onUnmounted(() => {
           class="chat-input-send"
           size="small"
           circle
-          :type="isSending ? 'warning' : 'primary'"
+          type="primary"
           :aria-label="isSending ? '停止生成' : '发送'"
           :title="isSending ? '停止生成' : '发送'"
           @click="() => handleSend()"
         >
           <template #icon>
-            <icon-lucide:square v-if="isSending" class="text-14px" />
+            <icon-lucide:loader-circle v-if="isSending" class="animate-spin animate-duration-750 text-14px" />
             <icon-lucide:arrow-up v-else class="text-14px" />
           </template>
         </NButton>
@@ -910,6 +910,12 @@ onUnmounted(() => {
 
 .chat-input-send:not(:disabled):hover {
   background: var(--color-primary-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-input-send .animate-spin {
+    animation: none;
+  }
 }
 
 .chat-input-shell :deep(.n-button:focus),
