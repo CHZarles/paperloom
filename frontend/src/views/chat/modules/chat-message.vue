@@ -303,6 +303,19 @@ if (consumeStreamReveal(props.msg.generationId) && !prefersReducedMotion()) {
 const researchFinished = computed(() =>
   researchEvents.value.some(e => ['job_completed', 'job_failed', 'job_cancelled'].includes(e.eventType || e.type))
 );
+// Vibe-style thinking badge: while generating we animate the sparkle;
+// once finished the same slot collapses into "Thought for Xs" using the
+// terminal event's elapsed time (falling back to summed model passes).
+const thoughtSeconds = computed(() => {
+  const terminal = [...researchEvents.value]
+    .reverse()
+    .find(e => ['job_completed', 'run_limited', 'job_failed'].includes(e.eventType || e.type) && Number(e.elapsedMs) > 0);
+  if (terminal) return Math.round(Number(terminal.elapsedMs) / 1000);
+  const modelMs = researchEvents.value
+    .filter(e => (e.eventType || e.type) === 'model_call_completed')
+    .reduce((acc, e) => acc + Number(e.durationMs || 0), 0);
+  return modelMs > 0 ? Math.round(modelMs / 1000) : null;
+});
 const assistantIsGenerating = computed(
   () =>
     props.msg.role === 'assistant' &&
@@ -983,12 +996,22 @@ async function handleSourceFileClick(fileInfo: {
           aria-label="Open research process"
           @click="emit('openProcess', msg)"
         >
-          <icon-lucide:loader-circle class="assistant-live-status__spinner" aria-hidden="true" />
+          <icon-lucide:sparkles class="assistant-live-status__sparkle" aria-hidden="true" />
           <Transition name="progress-swap" mode="out-in">
             <span :key="currentProgressKey" class="assistant-live-status__text">
               {{ currentProgressText }}
             </span>
           </Transition>
+          <icon-lucide:panel-right-open />
+        </button>
+        <button
+          v-else-if="researchFinished && thoughtSeconds !== null"
+          type="button"
+          class="assistant-live-status"
+          title="View research process"
+          @click="emit('openProcess', msg)"
+        >
+          <span>Thought for {{ thoughtSeconds }}s</span>
           <icon-lucide:panel-right-open />
         </button>
         <TransitionGroup
@@ -1660,12 +1683,12 @@ async function handleSourceFileClick(fileInfo: {
   color: var(--color-primary);
 }
 
-.assistant-live-status .assistant-live-status__spinner {
+.assistant-live-status .assistant-live-status__sparkle {
   width: 13px;
   height: 13px;
   flex: 0 0 auto;
-  color: var(--color-primary);
-  animation: status-spin 0.9s linear infinite;
+  color: var(--color-research);
+  animation: thought-sparkle 1.5s ease-in-out infinite;
 }
 
 .assistant-live-status svg {
@@ -1707,9 +1730,27 @@ async function handleSourceFileClick(fileInfo: {
   transform: translateY(3px);
 }
 
-@keyframes status-spin {
-  to {
-    transform: rotate(360deg);
+@keyframes thought-sparkle {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.86);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes thought-breath {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+
+  50% {
+    opacity: 1;
   }
 }
 
@@ -1732,10 +1773,16 @@ async function handleSourceFileClick(fileInfo: {
   }
 }
 
+/* Under reduced motion, keep a visible "alive" signal without rotation:
+   the spinner and running dots breathe via opacity only. Text swaps and
+   row entries flatten to instant changes. */
 @media (prefers-reduced-motion: reduce) {
-  .assistant-live-status .assistant-live-status__spinner,
+  .assistant-live-status .assistant-live-status__sparkle {
+    animation: thought-breath 2.4s ease-in-out infinite;
+  }
+
   .assistant-progress-row--running .assistant-progress-row__dot {
-    animation: none;
+    animation: runner-dot 1.6s ease-in-out infinite;
   }
 
   .progress-swap-enter-active,

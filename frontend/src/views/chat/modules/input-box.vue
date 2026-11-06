@@ -912,9 +912,22 @@ onUnmounted(() => {
   background: var(--color-primary-hover);
 }
 
+/* Under reduced motion the spinner breathes via opacity instead of
+   rotating, so the working state stays visible without motion. */
 @media (prefers-reduced-motion: reduce) {
   .chat-input-send .animate-spin {
-    animation: none;
+    animation: send-breath 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes send-breath {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
   }
 }
 
