@@ -513,7 +513,16 @@ watch(wsData, val => {
 
   const assistant = findAssistantMessage(payload.generationId, payload);
 
-  if (!assistant) return;
+  if (!assistant) {
+    // A 409 (conversation busy) arrives with no generation to attach to — the
+    // running turn was lost by this tab (fresh tab, page switch, stale state).
+    // Re-probe the active generation so this tab re-attaches: the streaming
+    // state comes back and the send button turns into a working stop control.
+    if (payload.type === 'error' && Number(payload.code) === 409) {
+      chatStore.syncGenerationAfterReconnect().catch(() => {});
+    }
+    return;
+  }
 
   if (payload.type === 'start') {
     handleStartPayload(assistant, payload);
@@ -682,10 +691,7 @@ onUnmounted(() => {
     <div v-if="props.variant === 'dock' && searchScopeHint" class="search-scope-hint mx-auto w-full px-1">
       {{ searchScopeHint }}
     </div>
-    <div
-      class="chat-input-shell mx-auto w-full"
-      :class="props.variant === 'hero' ? 'max-w-[960px]' : 'max-w-[960px]'"
-    >
+    <div class="chat-input-shell mx-auto w-full" :class="props.variant === 'hero' ? 'max-w-[960px]' : 'max-w-[960px]'">
       <div class="chat-input-main">
         <div v-if="referenceFocus" class="scope-chip">
           <icon-lucide:quote class="scope-chip__icon" />
