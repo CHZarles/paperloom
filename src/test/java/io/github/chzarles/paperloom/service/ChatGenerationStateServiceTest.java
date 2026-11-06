@@ -8,6 +8,8 @@ import org.springframework.data.redis.core.ValueOperations;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -283,5 +285,60 @@ class ChatGenerationStateServiceTest {
                   "clientId": "client-a"
                 }
                 """;
+    }
+
+    @Test
+    void getActiveGenerationRecoversStreamingTurnFromAnotherClientId() throws Exception {
+        RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("chat:user:1:client:client-fresh:active_generation")).thenReturn(null);
+        when(redisTemplate.keys("chat:user:1:client:*:active_generation"))
+                .thenReturn(Set.of("chat:user:1:client:client-starter:active_generation"));
+        when(valueOperations.get("chat:user:1:client:client-starter:active_generation")).thenReturn("gen-running");
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        String streamingMeta = objectMapper.writeValueAsString(new ChatGenerationStateService.GenerationMeta(
+                "gen-running", "1", "conversation-1", "question",
+                ChatGenerationStateService.GenerationStatus.STREAMING,
+                "2026-11-06T22:00:00Z", "2026-11-06T22:01:00Z", null, "client-starter",
+                null, null, null, null, null, Boolean.FALSE));
+        when(valueOperations.get("chat:generation:gen-running:meta")).thenReturn(streamingMeta);
+        when(redisTemplate.opsForList()).thenReturn(null);
+
+        ChatGenerationStateService service = new ChatGenerationStateService(redisTemplate, objectMapper);
+
+        Optional<ChatGenerationStateService.GenerationSnapshot> snapshot =
+                service.getActiveGenerationForUserAndClient("1", "client-fresh");
+
+        assertTrue(snapshot.isPresent());
+        assertEquals("gen-running", snapshot.get().generationId());
+        assertEquals(ChatGenerationStateService.GenerationStatus.STREAMING, snapshot.get().status());
+    }
+
+    @Test
+    void getActiveGenerationFallbackSkipsFinishedGenerations() throws Exception {
+        RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
+        ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("chat:user:1:client:client-fresh:active_generation")).thenReturn(null);
+        when(redisTemplate.keys("chat:user:1:client:*:active_generation"))
+                .thenReturn(Set.of("chat:user:1:client:client-starter:active_generation"));
+        when(valueOperations.get("chat:user:1:client:client-starter:active_generation")).thenReturn("gen-done");
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        String finishedMeta = objectMapper.writeValueAsString(new ChatGenerationStateService.GenerationMeta(
+                "gen-done", "1", "conversation-1", "question",
+                ChatGenerationStateService.GenerationStatus.COMPLETED,
+                "2026-11-06T22:00:00Z", "2026-11-06T22:01:00Z", null, "client-starter",
+                null, null, null, null, null, Boolean.FALSE));
+        when(valueOperations.get("chat:generation:gen-done:meta")).thenReturn(finishedMeta);
+
+        ChatGenerationStateService service = new ChatGenerationStateService(redisTemplate, objectMapper);
+
+        Optional<ChatGenerationStateService.GenerationSnapshot> snapshot =
+                service.getActiveGenerationForUserAndClient("1", "client-fresh");
+
+        assertFalse(snapshot.isPresent());
     }
 }

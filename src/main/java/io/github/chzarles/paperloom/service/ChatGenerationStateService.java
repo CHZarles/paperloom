@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Optional;
 import java.util.UUID;
 import static io.github.chzarles.paperloom.utils.TextUtils.trimToNull;
@@ -261,10 +262,43 @@ public class ChatGenerationStateService {
             return Optional.empty();
         }
         String generationId = redisTemplate.opsForValue().get(activeGenerationKey(userId, normalizedClientId));
-        if (generationId == null || generationId.isBlank()) {
+        if (generationId != null && !generationId.isBlank()) {
+            Optional<GenerationSnapshot> snapshot = getGenerationForUser(generationId, userId);
+            if (snapshot.isPresent()) {
+                return snapshot;
+            }
+        }
+        return latestStreamingGenerationForUser(userId);
+    }
+
+    /**
+     * Cross-tab recovery: a fresh tab or browser gets a new chat clientId, so the
+     * per-client pointer of the page that started the generation is invisible to
+     * it and the conversation history does not contain the unfinished answer yet.
+     * Without a fallback the new page cannot see (or stop) the running generation
+     * while the conversation lease keeps rejecting new sends. Falls back to the
+     * newest still-streaming generation of the user.
+     */
+    private Optional<GenerationSnapshot> latestStreamingGenerationForUser(String userId) {
+        Set<String> keys = redisTemplate.keys(activeGenerationKeyPatternForUser(userId));
+        if (keys == null || keys.isEmpty()) {
             return Optional.empty();
         }
-        return getGenerationForUser(generationId, userId);
+        GenerationMeta latest = null;
+        for (String key : keys) {
+            String generationId = redisTemplate.opsForValue().get(key);
+            if (generationId == null || generationId.isBlank()) {
+                continue;
+            }
+            GenerationMeta meta = readMeta(generationId);
+            if (meta == null || meta.status() != GenerationStatus.STREAMING) {
+                continue;
+            }
+            if (latest == null || String.valueOf(meta.updatedAt()).compareTo(String.valueOf(latest.updatedAt())) > 0) {
+                latest = meta;
+            }
+        }
+        return latest == null ? Optional.empty() : getGenerationForUser(latest.generationId(), userId);
     }
 
     public boolean renewConversationLease(String generationId) {
@@ -575,6 +609,10 @@ public class ChatGenerationStateService {
 
     private String activeGenerationKey(String userId, String clientId) {
         return "chat:user:" + userId + ":client:" + clientId + ":active_generation";
+    }
+
+    private String activeGenerationKeyPatternForUser(String userId) {
+        return "chat:user:" + userId + ":client:*:active_generation";
     }
 
     private String conversationActiveGenerationKey(String userId, String conversationId) {
