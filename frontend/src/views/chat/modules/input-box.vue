@@ -712,9 +712,16 @@ onUnmounted(() => {
           :disabled="!canEditSourceScope"
           @update:busy="sourceScopeUpdating = $event"
         />
+        <div class="chat-input-meta" data-testid="chat-input-meta">
+          <span id="chat-input-shortcut-hint" class="chat-input-muted text-11px">Enter 换行 · Ctrl/⌘ Enter 发送</span>
+        </div>
+        <div class="chat-input-meta ml-auto">
+          <span class="connection-dot inline-block h-1.5 w-1.5 rounded-full" :class="connectionDotClass" />
+          <span class="chat-input-muted text-11px">{{ connectionText }}</span>
+        </div>
         <NButton
           :disabled="sendDisabled"
-          class="chat-input-send ml-auto"
+          class="chat-input-send"
           size="medium"
           circle
           :type="isSending ? 'warning' : 'primary'"
@@ -727,13 +734,6 @@ onUnmounted(() => {
             <icon-lucide:arrow-up v-else class="text-16px" />
           </template>
         </NButton>
-      </div>
-    </div>
-    <div class="chat-input-footer mx-auto mt-1.5 w-full flex items-center justify-between gap-3 px-1">
-      <span id="chat-input-shortcut-hint" class="chat-input-muted text-11px">Enter 换行 · Ctrl/⌘ Enter 发送</span>
-      <div class="flex items-center gap-1">
-        <span class="connection-dot inline-block h-1.5 w-1.5 rounded-full" :class="connectionDotClass" />
-        <span class="chat-input-muted text-11px">{{ connectionText }}</span>
       </div>
     </div>
   </div>
@@ -767,13 +767,8 @@ onUnmounted(() => {
 }
 
 @media (max-width: 640px) {
-  .chat-input-footer {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .chat-input-footer > :last-child {
-    margin-left: 0;
+  #chat-input-shortcut-hint {
+    display: none;
   }
 }
 
@@ -855,7 +850,7 @@ onUnmounted(() => {
 
 .chat-input-wrap--dock {
   background: var(--color-bg);
-  padding: var(--space-3) var(--space-4) max(var(--space-3), env(safe-area-inset-bottom));
+  padding: var(--space-3) var(--space-4) max(var(--space-4), env(safe-area-inset-bottom));
 }
 
 .chat-input-wrap--hero {
@@ -875,18 +870,19 @@ onUnmounted(() => {
 
 /* The composer is the Vibe-Chat-style card: a white surface with a
    hairline frame; focus narrows the frame to the academic blue instead
-   of swapping fills. Tools live inside the card, meta text below it. */
+   of swapping fills. Tools and meta live inside the card — nothing
+   dangles below it. */
 .chat-input-shell {
   display: flex;
   max-width: 960px !important;
-  min-height: 56px;
+  min-height: 72px;
   flex-direction: column;
   gap: var(--space-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-composer);
   background: var(--color-surface) !important;
   box-shadow: var(--shadow-card);
-  padding: var(--space-2-5) var(--space-3-5) var(--space-2);
+  padding: var(--space-3) var(--space-4) var(--space-2-5);
   transition:
     border-color var(--duration-base) var(--ease-standard),
     box-shadow var(--duration-base) var(--ease-standard);
@@ -907,7 +903,14 @@ onUnmounted(() => {
   display: flex;
   min-height: 34px;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
+}
+
+.chat-input-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  white-space: nowrap;
 }
 
 .chat-input-send:not(:disabled):hover {
@@ -926,10 +929,6 @@ onUnmounted(() => {
 
 .chat-input-shell :deep(.n-base-wave) {
   display: none !important;
-}
-
-.chat-input-footer {
-  max-width: 960px !important;
 }
 
 @media (max-width: 640px) {
