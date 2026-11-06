@@ -848,8 +848,11 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
+/* The dock band must not paint its own background: the conversation
+   panel is the background, and the composer floats on it as a white
+   card — so the color never breaks around the composer. */
 .chat-input-wrap--dock {
-  background: var(--color-bg);
+  background: transparent;
   padding: var(--space-3) var(--space-4) max(var(--space-4), env(safe-area-inset-bottom));
 }
 
