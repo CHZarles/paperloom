@@ -93,6 +93,10 @@ public class ChatGenerationStateService {
         if (meta.clientId() != null) {
             redisTemplate.opsForValue().set(activeGenerationKey(userId, meta.clientId()), generationId, GENERATION_TTL);
         }
+        // User-level index of running turns (score = epoch ms, newest last).
+        // Enables cross-tab recovery without key scanning; TTL matches the turn.
+        redisTemplate.opsForZSet().add(userActiveGenerationsKey(userId), generationId, System.currentTimeMillis());
+        redisTemplate.expire(userActiveGenerationsKey(userId), GENERATION_TTL);
         return toSnapshot(meta, "", Collections.emptyMap(), Collections.emptyMap());
     }
 
@@ -276,29 +280,22 @@ public class ChatGenerationStateService {
      * per-client pointer of the page that started the generation is invisible to
      * it and the conversation history does not contain the unfinished answer yet.
      * Without a fallback the new page cannot see (or stop) the running generation
-     * while the conversation lease keeps rejecting new sends. Falls back to the
-     * newest still-streaming generation of the user.
+     * while the conversation lease keeps rejecting new sends. Reads the user-level
+     * index of running turns (newest first) and returns the first still streaming.
      */
     private Optional<GenerationSnapshot> latestStreamingGenerationForUser(String userId) {
-        Set<String> keys = redisTemplate.keys(activeGenerationKeyPatternForUser(userId));
-        if (keys == null || keys.isEmpty()) {
+        Set<String> generationIds = redisTemplate.opsForZSet().reverseRange(userActiveGenerationsKey(userId), 0, -1);
+        if (generationIds == null || generationIds.isEmpty()) {
             return Optional.empty();
         }
-        GenerationMeta latest = null;
-        for (String key : keys) {
-            String generationId = redisTemplate.opsForValue().get(key);
-            if (generationId == null || generationId.isBlank()) {
-                continue;
-            }
+        for (String generationId : generationIds) {
             GenerationMeta meta = readMeta(generationId);
             if (meta == null || meta.status() != GenerationStatus.STREAMING) {
                 continue;
             }
-            if (latest == null || String.valueOf(meta.updatedAt()).compareTo(String.valueOf(latest.updatedAt())) > 0) {
-                latest = meta;
-            }
+            return getGenerationForUser(generationId, userId);
         }
-        return latest == null ? Optional.empty() : getGenerationForUser(latest.generationId(), userId);
+        return Optional.empty();
     }
 
     public boolean renewConversationLease(String generationId) {
@@ -323,6 +320,7 @@ public class ChatGenerationStateService {
         if (meta.clientId() != null) {
             compareAndExpire(activeGenerationKey(meta.userId(), meta.clientId()), generationId);
         }
+        redisTemplate.expire(userActiveGenerationsKey(meta.userId()), GENERATION_TTL);
         return true;
     }
 
@@ -360,6 +358,7 @@ public class ChatGenerationStateService {
                 meta.replaceMessage()
         );
         writeMeta(updated);
+        redisTemplate.opsForZSet().remove(userActiveGenerationsKey(meta.userId()), generationId);
         clearActiveGeneration(meta.userId(), meta.clientId(), meta.conversationId(), generationId);
     }
 
@@ -611,8 +610,8 @@ public class ChatGenerationStateService {
         return "chat:user:" + userId + ":client:" + clientId + ":active_generation";
     }
 
-    private String activeGenerationKeyPatternForUser(String userId) {
-        return "chat:user:" + userId + ":client:*:active_generation";
+    private String userActiveGenerationsKey(String userId) {
+        return "chat:user:" + userId + ":active_generations";
     }
 
     private String conversationActiveGenerationKey(String userId, String conversationId) {

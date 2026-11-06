@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.ListOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.ZSetOperations;
 
 import java.time.Duration;
 import java.util.List;
@@ -30,6 +31,7 @@ class ChatGenerationStateServiceTest {
         RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(redisTemplate.opsForZSet()).thenReturn(mock(ZSetOperations.class));
         when(valueOperations.setIfAbsent(
                 eq("chat:user:1:conversation:conversation-1:active_generation"),
                 any(String.class),
@@ -57,6 +59,7 @@ class ChatGenerationStateServiceTest {
         RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(redisTemplate.opsForZSet()).thenReturn(mock(ZSetOperations.class));
         when(valueOperations.setIfAbsent(
                 eq("chat:user:1:conversation:conversation-1:active_generation"),
                 any(String.class),
@@ -77,6 +80,7 @@ class ChatGenerationStateServiceTest {
         RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(redisTemplate.opsForZSet()).thenReturn(mock(ZSetOperations.class));
         when(valueOperations.setIfAbsent(any(String.class), any(String.class), any(Duration.class))).thenReturn(true);
         ChatGenerationStateService service = new ChatGenerationStateService(redisTemplate, new ObjectMapper());
 
@@ -91,6 +95,7 @@ class ChatGenerationStateServiceTest {
         RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(redisTemplate.opsForZSet()).thenReturn(mock(ZSetOperations.class));
         when(valueOperations.get("chat:user:1:client:client-a:active_generation")).thenReturn("generation-1");
         when(valueOperations.get("chat:generation:generation-1:meta")).thenReturn(generationMetaJson());
         when(valueOperations.get("chat:generation:generation-1:content")).thenReturn("partial answer");
@@ -109,6 +114,7 @@ class ChatGenerationStateServiceTest {
         RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(redisTemplate.opsForZSet()).thenReturn(mock(ZSetOperations.class));
         when(valueOperations.get("chat:generation:generation-1:meta")).thenReturn(generationMetaJson());
         ChatGenerationStateService service = new ChatGenerationStateService(redisTemplate, new ObjectMapper());
 
@@ -137,6 +143,7 @@ class ChatGenerationStateServiceTest {
         RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(redisTemplate.opsForZSet()).thenReturn(mock(ZSetOperations.class));
         when(valueOperations.get("chat:generation:generation-1:meta")).thenReturn(generationMetaJson());
         when(redisTemplate.execute(
                 eq(ChatGenerationStateService.COMPARE_AND_EXPIRE_SCRIPT),
@@ -161,6 +168,7 @@ class ChatGenerationStateServiceTest {
         RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(redisTemplate.opsForZSet()).thenReturn(mock(ZSetOperations.class));
         when(valueOperations.get("chat:generation:generation-1:meta")).thenReturn(generationMetaJson());
         when(redisTemplate.execute(
                 eq(ChatGenerationStateService.COMPARE_AND_EXPIRE_SCRIPT),
@@ -178,6 +186,7 @@ class ChatGenerationStateServiceTest {
         RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(redisTemplate.opsForZSet()).thenReturn(mock(ZSetOperations.class));
         when(valueOperations.get("chat:generation:generation-1:meta")).thenReturn("""
                 {
                   "generationId": "generation-1",
@@ -216,6 +225,7 @@ class ChatGenerationStateServiceTest {
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         ListOperations<String, String> listOperations = mock(ListOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(redisTemplate.opsForZSet()).thenReturn(mock(ZSetOperations.class));
         when(redisTemplate.opsForList()).thenReturn(listOperations);
         when(valueOperations.get("chat:generation:generation-1:meta")).thenReturn("""
                 {
@@ -292,10 +302,12 @@ class ChatGenerationStateServiceTest {
         RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(redisTemplate.opsForZSet()).thenReturn(mock(ZSetOperations.class));
         when(valueOperations.get("chat:user:1:client:client-fresh:active_generation")).thenReturn(null);
-        when(redisTemplate.keys("chat:user:1:client:*:active_generation"))
-                .thenReturn(Set.of("chat:user:1:client:client-starter:active_generation"));
-        when(valueOperations.get("chat:user:1:client:client-starter:active_generation")).thenReturn("gen-running");
+        ZSetOperations<String, String> zSetOperations = mock(ZSetOperations.class);
+        when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        when(zSetOperations.reverseRange("chat:user:1:active_generations", 0, -1))
+                .thenReturn(Set.of("gen-running"));
 
         ObjectMapper objectMapper = new ObjectMapper();
         String streamingMeta = objectMapper.writeValueAsString(new ChatGenerationStateService.GenerationMeta(
@@ -321,10 +333,12 @@ class ChatGenerationStateServiceTest {
         RedisTemplate<String, String> redisTemplate = mock(RedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(redisTemplate.opsForZSet()).thenReturn(mock(ZSetOperations.class));
         when(valueOperations.get("chat:user:1:client:client-fresh:active_generation")).thenReturn(null);
-        when(redisTemplate.keys("chat:user:1:client:*:active_generation"))
-                .thenReturn(Set.of("chat:user:1:client:client-starter:active_generation"));
-        when(valueOperations.get("chat:user:1:client:client-starter:active_generation")).thenReturn("gen-done");
+        ZSetOperations<String, String> zSetOperations = mock(ZSetOperations.class);
+        when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
+        when(zSetOperations.reverseRange("chat:user:1:active_generations", 0, -1))
+                .thenReturn(Set.of("gen-done"));
 
         ObjectMapper objectMapper = new ObjectMapper();
         String finishedMeta = objectMapper.writeValueAsString(new ChatGenerationStateService.GenerationMeta(
