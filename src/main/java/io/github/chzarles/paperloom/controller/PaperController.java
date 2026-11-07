@@ -11,12 +11,8 @@ import io.github.chzarles.paperloom.repository.PaperPublicationRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingElementRepository;
 import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.service.ConversationService;
-import io.github.chzarles.paperloom.service.PaperCandidateSearchRequest;
 import io.github.chzarles.paperloom.service.PaperAccessService;
 import io.github.chzarles.paperloom.service.PaperParserArtifactService;
-import io.github.chzarles.paperloom.service.PaperRecommendationCandidate;
-import io.github.chzarles.paperloom.service.PaperRecommendationCandidateService;
-import io.github.chzarles.paperloom.service.PaperRecommendationSearchRequest;
 import io.github.chzarles.paperloom.service.PaperSearchabilityService;
 import io.github.chzarles.paperloom.service.PaperService;
 import io.github.chzarles.paperloom.service.PaperVisualAssetService;
@@ -95,9 +91,6 @@ public class PaperController {
 
     @Autowired
     private PaperVisualAssetService paperVisualAssetService;
-
-    @Autowired
-    private PaperRecommendationCandidateService paperRecommendationCandidateService;
 
     /**
      * 删除论文及其相关数据。
@@ -207,8 +200,7 @@ public class PaperController {
      * @param userId 当前用户ID
      * @return 可访问的论文列表
      */
-    @GetMapping("/accessible")
-    public ResponseEntity<?> getAccessiblePapers(
+    ResponseEntity<?> getAccessiblePapers(
             @RequestAttribute("userId") String userId,
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
@@ -288,44 +280,6 @@ public class PaperController {
             return response;
         }
         return getAccessiblePapers(userId, page, size, query, readiness);
-    }
-
-    @PostMapping("/recommendation-candidates")
-    public ResponseEntity<?> recommendationCandidates(
-            @RequestBody(required = false) PaperRecommendationCandidatesRequest request,
-            @RequestAttribute("userId") String userId) {
-        if (request == null || !hasText(request.queryText())) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "code", HttpStatus.BAD_REQUEST.value(),
-                    "message", "queryText 不能为空"
-            ));
-        }
-
-        PaperRecommendationSearchRequest searchRequest = new PaperRecommendationSearchRequest(
-                request.queryText(),
-                userId,
-                PaperCandidateSearchRequest.clampLimit(request.paperLimit()),
-                PaperRecommendationSearchRequest.clampPerPaperLocationLimit(request.perPaperLocationLimit())
-        );
-        List<PaperRecommendationCandidate> candidates = paperRecommendationCandidateService.search(searchRequest);
-
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("queryText", searchRequest.queryText());
-        data.put("scope", "PRODUCT_LIBRARY");
-        data.put("candidates", candidates);
-
-        return ResponseEntity.ok(Map.of(
-                "code", 200,
-                "message", "获取论文候选成功",
-                "data", data
-        ));
-    }
-
-    public record PaperRecommendationCandidatesRequest(
-            String queryText,
-            Integer paperLimit,
-            Integer perPaperLocationLimit
-    ) {
     }
 
     private boolean isPagedRequest(Integer page, Integer size) {
@@ -1002,107 +956,6 @@ public class PaperController {
         }
     }
 
-    @GetMapping("/download")
-    public ResponseEntity<?> downloadPaper(
-            @RequestParam String paperId,
-            @RequestHeader(value = "Authorization", required = false) String authorization,
-            @RequestParam(required = false) String token) {
-
-        LogUtils.PerformanceMonitor monitor = LogUtils.startPerformanceMonitor("DOWNLOAD_PAPER");
-        try {
-            RequestAuthContext authContext = resolveRequestAuthContext(authorization, token);
-            String userId = authContext.userId();
-
-            LogUtils.logBusiness("DOWNLOAD_PAPER", userId != null ? userId : "anonymous", "接收到论文下载请求: paperId=%s", paperId);
-
-            if (userId == null) {
-                Optional<Paper> publicFile = findPublishedPaper(paperId);
-                if (publicFile.isEmpty()) {
-                    Map<String, Object> response = new HashMap<>();
-                    response.put("code", HttpStatus.NOT_FOUND.value());
-                    response.put("message", "论文不存在或需要登录访问");
-                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-                }
-
-                Paper file = publicFile.get();
-                String downloadUrl = paperService.generateAttachmentDownloadUrl(file.getPaperId());
-
-                if (downloadUrl == null) {
-                    Map<String, Object> response = new HashMap<>();
-                    response.put("code", HttpStatus.INTERNAL_SERVER_ERROR.value());
-                    response.put("message", "无法生成下载链接");
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-                }
-
-                Map<String, Object> response = new HashMap<>();
-                response.put("code", 200);
-                response.put("message", "论文下载链接生成成功");
-                response.put("data", Map.of(
-                    "paperId", file.getPaperId(),
-                    "paperTitle", file.getPaperTitle(),
-                    "originalFilename", file.getOriginalFilename(),
-                    "downloadUrl", downloadUrl,
-                    "sourceFileSizeBytes", file.getTotalSize()
-                ));
-                return ResponseEntity.ok(response);
-            }
-
-            Optional<Paper> targetFile = findAccessiblePaper(paperId, userId);
-
-            if (targetFile.isEmpty()) {
-                LogUtils.logUserOperation(userId, "DOWNLOAD_PAPER", paperId, "FAILED_NOT_FOUND");
-                monitor.end("下载失败：论文不存在或无权限访问");
-                Map<String, Object> response = new HashMap<>();
-                response.put("code", HttpStatus.NOT_FOUND.value());
-                response.put("message", "论文不存在或无权限访问");
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
-            }
-
-            Paper file = targetFile.get();
-
-            String downloadUrl = paperService.generateAttachmentDownloadUrl(file.getPaperId());
-
-            if (downloadUrl == null) {
-                LogUtils.logUserOperation(userId, "DOWNLOAD_PAPER", paperId, "FAILED_GENERATE_URL");
-                monitor.end("下载失败：无法生成下载链接");
-                Map<String, Object> response = new HashMap<>();
-                response.put("code", HttpStatus.INTERNAL_SERVER_ERROR.value());
-                response.put("message", "无法生成下载链接");
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-            }
-
-            LogUtils.logFileOperation(userId, "DOWNLOAD", file.getOriginalFilename(), file.getPaperId(), "SUCCESS");
-            LogUtils.logUserOperation(userId, "DOWNLOAD_PAPER", paperId, "SUCCESS");
-            monitor.end("论文下载链接生成成功");
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 200);
-            response.put("message", "论文下载链接生成成功");
-            response.put("data", Map.of(
-                "paperId", file.getPaperId(),
-                "paperTitle", file.getPaperTitle(),
-                "originalFilename", file.getOriginalFilename(),
-                "downloadUrl", downloadUrl,
-                "sourceFileSizeBytes", file.getTotalSize()
-            ));
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            String userId = "unknown";
-            try {
-                if (token != null && !token.trim().isEmpty()) {
-                    userId = jwtUtils.extractUsernameFromToken(token);
-                }
-            } catch (Exception ignored) {}
-
-            LogUtils.logBusinessError("DOWNLOAD_PAPER", userId, "论文下载失败: paperId=%s", e, paperId);
-            monitor.end("下载失败: " + e.getMessage());
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", HttpStatus.INTERNAL_SERVER_ERROR.value());
-            response.put("message", "论文下载失败: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
-    }
 
     @GetMapping("/preview")
     public ResponseEntity<?> previewPaper(
@@ -1201,6 +1054,107 @@ public class PaperController {
             Map<String, Object> response = new HashMap<>();
             response.put("code", HttpStatus.INTERNAL_SERVER_ERROR.value());
             response.put("message", "论文预览失败: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    private ResponseEntity<?> downloadPaper(
+            String paperId,
+            String authorization,
+            String token) {
+
+        LogUtils.PerformanceMonitor monitor = LogUtils.startPerformanceMonitor("DOWNLOAD_PAPER");
+        try {
+            RequestAuthContext authContext = resolveRequestAuthContext(authorization, token);
+            String userId = authContext.userId();
+
+            LogUtils.logBusiness("DOWNLOAD_PAPER", userId != null ? userId : "anonymous", "接收到论文下载请求: paperId=%s", paperId);
+
+            if (userId == null) {
+                Optional<Paper> publicFile = findPublishedPaper(paperId);
+                if (publicFile.isEmpty()) {
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("code", HttpStatus.NOT_FOUND.value());
+                    response.put("message", "论文不存在或需要登录访问");
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+                }
+
+                Paper file = publicFile.get();
+                String downloadUrl = paperService.generateAttachmentDownloadUrl(file.getPaperId());
+
+                if (downloadUrl == null) {
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("code", HttpStatus.INTERNAL_SERVER_ERROR.value());
+                    response.put("message", "无法生成下载链接");
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+                }
+
+                Map<String, Object> response = new HashMap<>();
+                response.put("code", 200);
+                response.put("message", "论文下载链接生成成功");
+                response.put("data", Map.of(
+                    "paperId", file.getPaperId(),
+                    "paperTitle", file.getPaperTitle(),
+                    "originalFilename", file.getOriginalFilename(),
+                    "downloadUrl", downloadUrl,
+                    "sourceFileSizeBytes", file.getTotalSize()
+                ));
+                return ResponseEntity.ok(response);
+            }
+
+            Optional<Paper> targetFile = findAccessiblePaper(paperId, userId);
+
+            if (targetFile.isEmpty()) {
+                LogUtils.logUserOperation(userId, "DOWNLOAD_PAPER", paperId, "FAILED_NOT_FOUND");
+                monitor.end("下载失败：论文不存在或无权限访问");
+                Map<String, Object> response = new HashMap<>();
+                response.put("code", HttpStatus.NOT_FOUND.value());
+                response.put("message", "论文不存在或无权限访问");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+            }
+
+            Paper file = targetFile.get();
+
+            String downloadUrl = paperService.generateAttachmentDownloadUrl(file.getPaperId());
+
+            if (downloadUrl == null) {
+                LogUtils.logUserOperation(userId, "DOWNLOAD_PAPER", paperId, "FAILED_GENERATE_URL");
+                monitor.end("下载失败：无法生成下载链接");
+                Map<String, Object> response = new HashMap<>();
+                response.put("code", HttpStatus.INTERNAL_SERVER_ERROR.value());
+                response.put("message", "无法生成下载链接");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            }
+
+            LogUtils.logFileOperation(userId, "DOWNLOAD", file.getOriginalFilename(), file.getPaperId(), "SUCCESS");
+            LogUtils.logUserOperation(userId, "DOWNLOAD_PAPER", paperId, "SUCCESS");
+            monitor.end("论文下载链接生成成功");
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 200);
+            response.put("message", "论文下载链接生成成功");
+            response.put("data", Map.of(
+                "paperId", file.getPaperId(),
+                "paperTitle", file.getPaperTitle(),
+                "originalFilename", file.getOriginalFilename(),
+                "downloadUrl", downloadUrl,
+                "sourceFileSizeBytes", file.getTotalSize()
+            ));
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            String userId = "unknown";
+            try {
+                if (token != null && !token.trim().isEmpty()) {
+                    userId = jwtUtils.extractUsernameFromToken(token);
+                }
+            } catch (Exception ignored) {}
+
+            LogUtils.logBusinessError("DOWNLOAD_PAPER", userId, "论文下载失败: paperId=%s", e, paperId);
+            monitor.end("下载失败: " + e.getMessage());
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", HttpStatus.INTERNAL_SERVER_ERROR.value());
+            response.put("message", "论文下载失败: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }

@@ -77,18 +77,7 @@ public class ConversationScopeService {
         }
     }
 
-    public Map<String, Object> defaultScope() {
-        Map<String, Object> scope = new LinkedHashMap<>();
-        scope.put("scopeMode", ConversationScopeMode.AUTO_LIBRARY.name());
-        scope.put("scopeLocked", false);
-        scope.put("scopeStatus", ConversationScopeStatus.READY.name());
-        scope.put("sourceLabel", DEFAULT_AUTO_LIBRARY_LABEL);
-        scope.put("sourcePaperCount", null);
-        scope.put("paperIds", List.of());
-        scope.put("sourceRecipe", null);
-        return scope;
-    }
-
+    
     @Transactional
     public Map<String, Object> updateUnlockedScope(Long userId,
                                                    String conversationId,
@@ -133,35 +122,6 @@ public class ConversationScopeService {
         session.setSourcePaperCount(paperIds.size());
         sessionRepository.save(session);
         return scopeResponse(userId, resolveSession(session));
-    }
-
-    @Transactional(readOnly = true)
-    public Map<String, Object> previewTitleMatchScope(Long userId,
-                                                      String conversationId,
-                                                      UpdateConversationScopeRequest request) {
-        ConversationSession session = requireOwnedSession(userId, conversationId);
-        if (session.isScopeLocked()) {
-            throw new CustomException("Conversation scope is locked", HttpStatus.CONFLICT);
-        }
-        User user = resolveUser(userId);
-        List<String> paperIds = resolveTitleMatchPaperIds(user, request, false);
-        Map<String, List<Paper>> papersByPaperId = productPapersByPaperId(paperIds);
-        List<Map<String, Object>> papers = paperIds.stream()
-                .map(paperId -> papersByPaperId.getOrDefault(paperId, List.of()).stream()
-                        .filter(paper -> canAccessPaper(user, paper))
-                        .filter(paperSearchabilityService::isSearchable)
-                        .findFirst()
-                        .map(this::paperPreview)
-                        .orElse(null))
-                .filter(Objects::nonNull)
-                .toList();
-        Map<String, Object> preview = new LinkedHashMap<>();
-        preview.put("paperCount", paperIds.size());
-        preview.put("paperIds", paperIds);
-        preview.put("papers", papers);
-        preview.put("sourceLabel", titleMatchLabel(request, paperIds));
-        preview.put("sourceRecipe", titleMatchRecipe(request, paperIds));
-        return preview;
     }
 
     @Transactional(readOnly = true)

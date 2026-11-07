@@ -134,40 +134,6 @@ class ConversationSessionScopeControllerTest {
     }
 
     @Test
-    void previewTitleMatchPassesRequestToServiceAndReturns200() {
-        UpdateConversationScopeRequest request = new UpdateConversationScopeRequest(
-                "SOURCE_SET_SNAPSHOT",
-                null,
-                null,
-                null,
-                null,
-                "lora",
-                null
-        );
-        Map<String, Object> data = Map.of(
-                "paperCount", 1,
-                "paperIds", List.of("paper-1"),
-                "papers", List.of(Map.of(
-                        "paperTitle", "LoRA",
-                        "originalFilename", "lora.pdf"
-                )),
-                "sourceLabel", "Title match: lora (1 papers)",
-                "sourceRecipe", Map.of(
-                        "type", "title_match",
-                        "titleQuery", "lora",
-                        "paperCount", 1
-                )
-        );
-        when(conversationScopeService.previewTitleMatchScope(1L, "conversation-1", request)).thenReturn(data);
-
-        ResponseEntity<?> response = controller.previewTitleMatchScope("Bearer token", "conversation-1", request);
-
-        assertEquals(200, response.getStatusCode().value());
-        assertEquals(data, body(response).get("data"));
-        verify(conversationScopeService).previewTitleMatchScope(1L, "conversation-1", request);
-    }
-
-    @Test
     void deleteSessionPassesOwnedConversationToServiceAndReturns200() {
         ResponseEntity<?> response = controller.deleteSession("Bearer token", "conversation-1");
 

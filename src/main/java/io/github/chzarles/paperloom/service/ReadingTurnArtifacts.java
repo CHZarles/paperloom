@@ -7,7 +7,6 @@ import java.util.Map;
 public record ReadingTurnArtifacts(
         String artifactVersion,
         GoalCard goalCard,
-        ReadingIntentFrame intentFrame,
         PaperShortlist paperShortlist,
         ReadingPlan readingPlan,
         ClaimEvidencePanel claimEvidencePanel,
@@ -21,7 +20,6 @@ public record ReadingTurnArtifacts(
                 ? "reading-turn-artifacts/v1"
                 : artifactVersion.trim();
         goalCard = goalCard == null ? GoalCard.empty("") : goalCard;
-        intentFrame = intentFrame == null ? ReadingIntentFrame.empty(goalCard.interpretedGoal()) : intentFrame;
         paperShortlist = paperShortlist == null ? PaperShortlist.empty() : paperShortlist;
         readingPlan = readingPlan == null ? ReadingPlan.empty() : readingPlan;
         claimEvidencePanel = claimEvidencePanel == null ? ClaimEvidencePanel.empty() : claimEvidencePanel;
@@ -35,7 +33,6 @@ public record ReadingTurnArtifacts(
         return new ReadingTurnArtifacts(
                 "reading-turn-artifacts/v1",
                 GoalCard.empty(interpretedGoal),
-                ReadingIntentFrame.empty(interpretedGoal),
                 PaperShortlist.empty(),
                 ReadingPlan.empty(),
                 ClaimEvidencePanel.empty(),

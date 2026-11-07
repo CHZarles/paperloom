@@ -531,12 +531,6 @@ public class UserTokenService {
      * @param size 每页大小
      * @return 分页结果
      */
-    public Page<UserTokenRecord> getUserTokenRecords(String userId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt", "recordDate"));
-        Page<UserTokenRecord> recordPage = userTokenRecordRepository.findByUserIdOrderByRecordDateDesc(userId, pageable);
-        return recordPage;
-    }
-
     public Long getUserLlmTotalIncreaseTokens(String userId) {
         return getUserTotalIncreaseTokens(userId, UserTokenRecord.TokenType.LLM);
     }

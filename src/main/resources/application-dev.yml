@@ -110,13 +110,6 @@ paper:
       poll-interval-seconds: ${PAPER_PARSING_MINERU_POLL_INTERVAL_SECONDS:3}
       max-result-in-memory-bytes: ${PAPER_PARSING_MINERU_MAX_RESULT_IN_MEMORY_BYTES:67108864}
 
-paperloom:
-  trace:
-    enabled: ${PAPERLOOM_TRACE_ENABLED:true}
-    root: ${PAPERLOOM_TRACE_ROOT:data/traces/product-react}
-    queue-capacity: ${PAPERLOOM_TRACE_QUEUE_CAPACITY:1000}
-    writer-threads: ${PAPERLOOM_TRACE_WRITER_THREADS:1}
-
 research-harness:
   user-retry-max-per-message: ${RESEARCH_HARNESS_USER_RETRY_MAX_PER_MESSAGE:3}
   base-url: ${RESEARCH_HARNESS_BASE_URL:http://127.0.0.1:8091}
@@ -147,8 +140,3 @@ logging:
     io.github.chzarles.paperloom: ${LOG_LEVEL_APP:DEBUG}
     io.minio: ${LOG_LEVEL_MINIO:DEBUG}
 
-deepseek:
-  api:
-    url: ${DEEPSEEK_API_URL:https://api.deepseek.com/v1}
-    model: ${DEEPSEEK_API_MODEL:deepseek-chat}
-    key: ${DEEPSEEK_API_KEY:}

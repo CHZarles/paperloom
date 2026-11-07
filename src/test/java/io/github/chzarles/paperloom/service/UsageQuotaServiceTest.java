@@ -20,12 +20,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class UsageBalanceQuotaServiceTest {
+class UsageQuotaServiceTest {
 
     @Test
     void shouldSettleAgainstUserTokenBalanceOnly() {
         UserTokenService userTokenService = mock(UserTokenService.class);
-        UsageBalanceQuotaService service = service(new UsageQuotaProperties(), userTokenService);
+        UsageQuotaService service = service(new UsageQuotaProperties(), userTokenService);
         when(userTokenService.reserveLlmTokens("42", 300)).thenReturn(true);
         when(userTokenService.settleLlmTokenReservation(eq("42"), anyString(), eq(300L), eq(180)))
                 .thenReturn(true);
@@ -40,7 +40,7 @@ class UsageBalanceQuotaServiceTest {
     @Test
     void shouldNotCountRequestWhenSettlementIsRepeated() {
         UserTokenService userTokenService = mock(UserTokenService.class);
-        UsageBalanceQuotaService service = service(new UsageQuotaProperties(), userTokenService);
+        UsageQuotaService service = service(new UsageQuotaProperties(), userTokenService);
         when(userTokenService.reserveLlmTokens("42", 300)).thenReturn(true);
         when(userTokenService.settleLlmTokenReservation(eq("42"), anyString(), eq(300L), eq(180)))
                 .thenReturn(false);
@@ -56,7 +56,7 @@ class UsageBalanceQuotaServiceTest {
         UserTokenService userTokenService = mock(UserTokenService.class);
         UsageQuotaProperties properties = new UsageQuotaProperties();
         properties.getLlm().setEnabled(false);
-        UsageBalanceQuotaService service = service(properties, userTokenService);
+        UsageQuotaService service = service(properties, userTokenService);
 
         UsageQuotaService.TokenReservation reservation = service.reserveLlmTokens("42", 100, 200);
 
@@ -67,7 +67,7 @@ class UsageBalanceQuotaServiceTest {
     @Test
     void shouldFailFastWhenBalanceIsInsufficient() {
         UserTokenService userTokenService = mock(UserTokenService.class);
-        UsageBalanceQuotaService service = service(new UsageQuotaProperties(), userTokenService);
+        UsageQuotaService service = service(new UsageQuotaProperties(), userTokenService);
         when(userTokenService.reserveLlmTokens("42", 300)).thenReturn(false);
         when(userTokenService.getLlmTokenBalance("42")).thenReturn(120L);
 
@@ -85,7 +85,7 @@ class UsageBalanceQuotaServiceTest {
         when(userTokenService.reserveLlmTokens("guest-pool", 300)).thenReturn(true);
         when(userTokenService.settleLlmTokenReservation(eq("guest-pool"), anyString(), eq(300L), eq(180)))
                 .thenReturn(true);
-        UsageBalanceQuotaService service = new UsageBalanceQuotaService(
+        UsageQuotaService service = new UsageQuotaService(
                 new UsageQuotaProperties(), userTokenService, userRepository);
 
         UsageQuotaService.TokenReservation reservation = service.reserveLlmTokens("42", 100, 200);
@@ -103,7 +103,7 @@ class UsageBalanceQuotaServiceTest {
         User guest = new User();
         guest.setRole(User.Role.GUEST);
         when(userRepository.findById(42L)).thenReturn(Optional.of(guest));
-        UsageBalanceQuotaService service = new UsageBalanceQuotaService(
+        UsageQuotaService service = new UsageQuotaService(
                 new UsageQuotaProperties(), userTokenService, userRepository);
         int estimatedTokens = service.estimateEmbeddingTokens(List.of("hello"));
         when(userTokenService.reserveEmbeddingTokens("guest-pool", estimatedTokens)).thenReturn(true);
@@ -131,7 +131,7 @@ class UsageBalanceQuotaServiceTest {
         when(userTokenService.getUserLlmTotalIncreaseTokens("guest-pool")).thenReturn(100L);
         when(userTokenService.getEmbeddingTokenBalance("guest-pool")).thenReturn(60L);
         when(userTokenService.getUserEmbeddingTotalIncreaseTokens("guest-pool")).thenReturn(100L);
-        UsageBalanceQuotaService service = new UsageBalanceQuotaService(
+        UsageQuotaService service = new UsageQuotaService(
                 new UsageQuotaProperties(), userTokenService, userRepository);
 
         UsageQuotaService.UserUsageSnapshot snapshot = service.getSnapshots(List.of("42")).get("42");
@@ -141,8 +141,8 @@ class UsageBalanceQuotaServiceTest {
         verify(userTokenService).getUserDailyChatCount("42", LocalDate.now());
     }
 
-    private UsageBalanceQuotaService service(UsageQuotaProperties properties,
+    private UsageQuotaService service(UsageQuotaProperties properties,
                                              UserTokenService userTokenService) {
-        return new UsageBalanceQuotaService(properties, userTokenService, mock(UserRepository.class));
+        return new UsageQuotaService(properties, userTokenService, mock(UserRepository.class));
     }
 }

@@ -36,24 +36,26 @@ class ChatSessionRegistryTest {
         when(session1.isOpen()).thenReturn(true);
         when(session2.isOpen()).thenReturn(true);
 
-        registry.registerSession("user1", session1);
-        registry.registerSession("user1", session2);
+        registry.registerSession("user1", null, session1);
+        registry.registerSession("user1", null, session2);
 
         var sessions = registry.getSessions("user1");
         assertEquals(2, sessions.size());
     }
 
     @Test
-    void shouldBroadcastToAllSessions() throws Exception {
+    void shouldTargetClientAcrossSessions() throws Exception {
         when(session1.getId()).thenReturn("session-1");
         when(session2.getId()).thenReturn("session-2");
         when(session1.isOpen()).thenReturn(true);
         when(session2.isOpen()).thenReturn(true);
+        when(session1.getAttributes()).thenReturn(new HashMap<>());
+        when(session2.getAttributes()).thenReturn(new HashMap<>());
 
-        registry.registerSession("user1", session1);
-        registry.registerSession("user1", session2);
+        registry.registerSession("user1", "client-a", session1);
+        registry.registerSession("user1", "client-a", session2);
 
-        registry.sendJsonToUser("user1", Map.of("type", "test", "message", "hello"));
+        registry.sendJsonToClient("user1", "client-a", Map.of("type", "chunk", "chunk", "hello"));
 
         verify(session1).sendMessage(any());
         verify(session2).sendMessage(any());
@@ -82,8 +84,8 @@ class ChatSessionRegistryTest {
         when(session2.getId()).thenReturn("session-2");
         when(session2.isOpen()).thenReturn(true);
 
-        registry.registerSession("user1", session1);
-        registry.registerSession("user1", session2);
+        registry.registerSession("user1", null, session1);
+        registry.registerSession("user1", null, session2);
 
         registry.unregisterSession("user1", session1);
 

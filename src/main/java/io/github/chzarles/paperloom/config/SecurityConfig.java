@@ -96,7 +96,6 @@ public class SecurityConfig {
                             // 文件上传和下载相关接口 - 普通用户和管理员都可访问
                             .requestMatchers(
                                     "/api/v1/papers/upload/**",
-                                    "/api/v1/papers/download",
                                     "/api/v1/papers/preview"
                             ).hasAnyRole("USER", "ADMIN")
                             // 对话历史相关接口 - 用户只能查看自己的历史，管理员可以查看所有

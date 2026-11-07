@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class UsageBalanceDashboardServiceTest {
+class UsageDashboardServiceTest {
 
     @Mock
     private UserRepository userRepository;
@@ -27,8 +27,8 @@ class UsageBalanceDashboardServiceTest {
 
     @Test
     void shouldKeepUsageMonitorAvailableWhenTokenRecordsContainLegacyUserIds() {
-        UsageBalanceDashboardService dashboardService =
-                new UsageBalanceDashboardService(userRepository, usageQuotaService, userTokenService);
+        UsageDashboardService dashboardService =
+                new UsageDashboardService(userRepository, usageQuotaService, userTokenService);
         UserTokenRecord llmConsumer = tokenRecord("legacy-user", UserTokenRecord.TokenType.LLM, 1200L, 8800L, 3L);
 
         when(usageQuotaService.getDailyAggregates(List.of(), 7)).thenReturn(List.of(

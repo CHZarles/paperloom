@@ -134,5 +134,4 @@ public interface UserTokenRecordRepository extends JpaRepository<UserTokenRecord
     /**
      * 分页查询用户所有 Token 记录
      */
-    Page<UserTokenRecord> findByUserIdOrderByRecordDateDesc(String userId, Pageable pageable);
 }

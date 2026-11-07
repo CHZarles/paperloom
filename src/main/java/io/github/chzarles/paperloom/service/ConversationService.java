@@ -431,14 +431,6 @@ public class ConversationService {
         return session;
     }
 
-    public void updateSessionTitle(Long userId, String conversationId, String title) {
-        findOwnedSession(userId, conversationId).ifPresent(session -> {
-            if (session.getTitle() == null || "新对话".equals(session.getTitle())) {
-                session.setTitle(title);
-                sessionRepository.save(session);
-            }
-        });
-    }
 
     public void archiveConversationSession(Long userId, String conversationId) {
         ConversationSession session = requireOwnedSession(userId, conversationId);

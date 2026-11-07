@@ -9,9 +9,6 @@ import io.github.chzarles.paperloom.repository.PaperReadingModelRepository;
 import io.github.chzarles.paperloom.service.ConversationService;
 import io.github.chzarles.paperloom.service.PaperAccessService;
 import io.github.chzarles.paperloom.service.PaperParserArtifactService;
-import io.github.chzarles.paperloom.service.PaperRecommendationCandidate;
-import io.github.chzarles.paperloom.service.PaperRecommendationCandidateService;
-import io.github.chzarles.paperloom.service.PaperRecommendationSearchRequest;
 import io.github.chzarles.paperloom.service.PaperSearchabilityService;
 import io.github.chzarles.paperloom.service.PaperService;
 import io.github.chzarles.paperloom.service.PaperVisualAssetService;
@@ -100,9 +97,6 @@ class PaperControllerContractTest {
     @Mock
     private PaperVisualAssetService paperVisualAssetService;
 
-    @Mock
-    private PaperRecommendationCandidateService paperRecommendationCandidateService;
-
     private PaperController paperController;
 
     @BeforeEach
@@ -120,7 +114,6 @@ class PaperControllerContractTest {
         ReflectionTestUtils.setField(paperController, "paperReadingModelRepository", paperReadingModelRepository);
         ReflectionTestUtils.setField(paperController, "paperReadingElementRepository", paperReadingElementRepository);
         ReflectionTestUtils.setField(paperController, "paperVisualAssetService", paperVisualAssetService);
-        ReflectionTestUtils.setField(paperController, "paperRecommendationCandidateService", paperRecommendationCandidateService);
 
         when(paperParserArtifactService.findLatestParserArtifact(anyString())).thenReturn(Optional.empty());
         when(paperReadingModelRepository.findFirstByPaperIdAndIsCurrentTrue(anyString())).thenReturn(Optional.empty());
@@ -246,77 +239,6 @@ class PaperControllerContractTest {
                 isNull(),
                 eq(PageRequest.of(0, 10))
         );
-    }
-
-    @Test
-    void recommendationCandidateEndpointReturnsPaperGroupedCandidatesAndClampsLimits() {
-        ReadingLocationCandidate location = new ReadingLocationCandidate(
-                "paper-agent",
-                "v1",
-                "section-ref-1",
-                PaperLocationType.SECTION,
-                2,
-                2,
-                "Evaluation",
-                null,
-                "Agentic eval appears here.",
-                "SECTION",
-                "SECTION_LOCATION",
-                List.of("sectionText"),
-                List.of()
-        );
-        PaperRecommendationCandidate candidate = new PaperRecommendationCandidate(
-                "paper-agent",
-                "Agentic Eval Benchmark",
-                "Ada Lovelace",
-                2025,
-                "NeurIPS",
-                "Preview",
-                "title matched all query tokens",
-                "SUPPORTED",
-                List.of(location)
-        );
-        when(paperRecommendationCandidateService.search(any(PaperRecommendationSearchRequest.class)))
-                .thenReturn(List.of(candidate));
-
-        var response = paperController.recommendationCandidates(
-                new PaperController.PaperRecommendationCandidatesRequest("Agentic eval", 999, 99),
-                "1"
-        );
-
-        assertEquals(200, response.getStatusCode().value());
-        Map<?, ?> body = (Map<?, ?>) response.getBody();
-        Map<?, ?> data = (Map<?, ?>) body.get("data");
-        List<?> candidates = (List<?>) data.get("candidates");
-        PaperRecommendationCandidate first = (PaperRecommendationCandidate) candidates.get(0);
-
-        assertEquals(200, body.get("code"));
-        assertEquals("获取论文候选成功", body.get("message"));
-        assertEquals("Agentic eval", data.get("queryText"));
-        assertEquals("PRODUCT_LIBRARY", data.get("scope"));
-        assertEquals("paper-agent", first.paperId());
-        assertEquals("SUPPORTED", first.evidenceStatus());
-
-        ArgumentCaptor<PaperRecommendationSearchRequest> requestCaptor =
-                ArgumentCaptor.forClass(PaperRecommendationSearchRequest.class);
-        verify(paperRecommendationCandidateService).search(requestCaptor.capture());
-        assertEquals("1", requestCaptor.getValue().userId());
-
-        assertEquals(100, requestCaptor.getValue().paperLimit());
-        assertEquals(10, requestCaptor.getValue().perPaperLocationLimit());
-    }
-
-    @Test
-    void recommendationCandidateEndpointRejectsBlankQuery() {
-        var response = paperController.recommendationCandidates(
-                new PaperController.PaperRecommendationCandidatesRequest(" ", 20, 3),
-                "1"
-        );
-
-        assertEquals(400, response.getStatusCode().value());
-        Map<?, ?> body = (Map<?, ?>) response.getBody();
-        assertEquals(400, body.get("code"));
-        verify(paperRecommendationCandidateService, never()).search(any(PaperRecommendationSearchRequest.class));
     }
 
     @Test

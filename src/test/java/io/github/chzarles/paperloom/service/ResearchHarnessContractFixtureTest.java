@@ -22,7 +22,7 @@ class ResearchHarnessContractFixtureTest {
                 "conversation-1",
                 "generation-1",
                 "What does LoRA do?",
-                SourceScope.manual(java.util.List.of("paper-1"), RetrievalBudgetProfile.INTERACTIVE),
+                SourceScope.manual(java.util.List.of("paper-1")),
                 java.util.List.of(),
                 Map.of(),
                 ProductModelContext.defaults()

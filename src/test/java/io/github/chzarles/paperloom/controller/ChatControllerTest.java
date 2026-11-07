@@ -5,7 +5,6 @@ import io.github.chzarles.paperloom.service.ChatHandler;
 import io.github.chzarles.paperloom.service.ConversationService;
 import io.github.chzarles.paperloom.utils.JwtUtils;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
@@ -31,7 +30,6 @@ class ChatControllerTest {
         ChatController controller = new ChatController(
                 jwtUtils,
                 generationStateService,
-                mock(StringRedisTemplate.class),
                 mock(ChatHandler.class),
                 mock(ConversationService.class)
         );
@@ -61,7 +59,6 @@ class ChatControllerTest {
         ChatController controller = new ChatController(
                 jwtUtils,
                 mock(ChatGenerationStateService.class),
-                mock(StringRedisTemplate.class),
                 chatHandler,
                 mock(ConversationService.class)
         );
@@ -92,7 +89,6 @@ class ChatControllerTest {
         ChatController controller = new ChatController(
                 jwtUtils,
                 mock(ChatGenerationStateService.class),
-                mock(StringRedisTemplate.class),
                 mock(ChatHandler.class),
                 conversationService
         );

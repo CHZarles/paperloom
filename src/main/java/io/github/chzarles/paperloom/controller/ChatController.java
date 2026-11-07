@@ -8,7 +8,6 @@ import io.github.chzarles.paperloom.service.ConversationService;
 import io.github.chzarles.paperloom.utils.JwtUtils;
 import io.github.chzarles.paperloom.utils.LogUtils;
 import org.springframework.http.ResponseEntity;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -19,7 +18,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.LinkedHashMap;
-import java.util.Locale;
 import java.util.Map;
 
 @RestController
@@ -28,18 +26,15 @@ public class ChatController {
 
     private final JwtUtils jwtUtils;
     private final ChatGenerationStateService chatGenerationStateService;
-    private final StringRedisTemplate stringRedisTemplate;
     private final ChatHandler chatHandler;
     private final ConversationService conversationService;
 
     public ChatController(JwtUtils jwtUtils,
                           ChatGenerationStateService chatGenerationStateService,
-                          StringRedisTemplate stringRedisTemplate,
                           ChatHandler chatHandler,
                           ConversationService conversationService) {
         this.jwtUtils = jwtUtils;
         this.chatGenerationStateService = chatGenerationStateService;
-        this.stringRedisTemplate = stringRedisTemplate;
         this.chatHandler = chatHandler;
         this.conversationService = conversationService;
     }
@@ -105,35 +100,6 @@ public class ChatController {
         ));
     }
 
-    @PostMapping("/feedback")
-    public ResponseEntity<?> submitFeedback(@RequestHeader("Authorization") String token,
-                                            @RequestBody FeedbackRequest request) {
-        String userId = extractValidatedUserId(token);
-        if (userId == null) {
-            return ResponseEntity.status(401).body(responseBody(401, "Invalid token", null));
-        }
-
-        if (request == null || request.rating() == null || request.rating().isBlank()) {
-            return ResponseEntity.badRequest().body(responseBody(400, "rating 不能为空", null));
-        }
-
-        String rating = request.rating().trim().toLowerCase(Locale.ROOT);
-        if (!"good".equals(rating) && !"bad".equals(rating)) {
-            return ResponseEntity.badRequest().body(responseBody(400, "rating 只允许 good 或 bad", null));
-        }
-        String reason = buildFeedbackReason(request);
-        String key = "feedback:" + userId;
-        String field = String.valueOf(System.currentTimeMillis());
-        String value = reason.isBlank() ? "rating=" + rating : "rating=" + rating + "; reason=" + reason;
-        stringRedisTemplate.opsForHash().put(key, field, value);
-        return ResponseEntity.ok(responseBody(200, "反馈已记录", Map.of(
-                "key", key,
-                "field", field,
-                "rating", rating,
-                "reason", reason
-        )));
-    }
-
     @PostMapping("/generation/{generationId}/retry")
     public ResponseEntity<?> retryGeneration(@PathVariable String generationId,
                                              @RequestHeader("Authorization") String token,
@@ -175,27 +141,6 @@ public class ChatController {
         ));
     }
 
-    private String buildFeedbackReason(FeedbackRequest request) {
-        StringBuilder reason = new StringBuilder();
-        if (request.reason() != null && !request.reason().isBlank()) {
-            reason.append(request.reason().trim());
-        }
-        if (request.conversationId() != null && !request.conversationId().isBlank()) {
-            appendReasonPart(reason, "conversationId=" + request.conversationId().trim());
-        }
-        if (request.generationId() != null && !request.generationId().isBlank()) {
-            appendReasonPart(reason, "generationId=" + request.generationId().trim());
-        }
-        return reason.toString();
-    }
-
-    private void appendReasonPart(StringBuilder reason, String part) {
-        if (!reason.isEmpty()) {
-            reason.append("; ");
-        }
-        reason.append(part);
-    }
-
     private String extractValidatedUserId(String authorization) {
         if (authorization == null || !authorization.startsWith("Bearer ")) {
             return null;
@@ -214,14 +159,6 @@ public class ChatController {
         response.put("message", message);
         response.put("data", data);
         return response;
-    }
-
-    public record FeedbackRequest(
-            String rating,
-            String reason,
-            String conversationId,
-            String generationId
-    ) {
     }
 
     public record RetryGenerationRequest(
