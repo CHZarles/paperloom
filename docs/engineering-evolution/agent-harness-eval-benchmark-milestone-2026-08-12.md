@@ -452,13 +452,13 @@ EvalInput = (
 
 | 层 | 评价对象 | 判定方式 | 主要实现 |
 | --- | --- | --- | --- |
-| Protocol | 状态转移是否合法 | 确定性 Replay | [`_assess_protocol_trace`](../../harness_py/evaluation/paperloom31.py#L1447) |
-| Contract | 是否选择正确 Contract | Expected vs Actual | [`_assess_agent_case`](../../harness_py/evaluation/paperloom31.py#L1339) |
-| Retrieval | Paper/Location/Span 是否召回 | 冻结 Target | [`_run_l1`](../../harness_py/evaluation/paperloom31.py#L1159)、[`_run_l2`](../../harness_py/evaluation/paperloom31.py#L1182) |
-| Provenance | 引用身份和 Block Binding | 确定性 Validator | [`_assess_agent_case`](../../harness_py/evaluation/paperloom31.py#L1339) |
-| Grounding | 引文是否支持结论 | LLM Judge | [`_judge_agent_case`](../../harness_py/evaluation/paperloom31.py#L1584) |
-| Answer Quality | 是否完整、相关、有用 | LLM Judge | [`_judge_agent_case`](../../harness_py/evaluation/paperloom31.py#L1584) |
-| Performance | 调用数、Token、时延 | Trace/Usage | [`_controlled_protocol_metrics`](../../harness_py/evaluation/paperloom31.py#L1557) 与 Run Usage |
+| Protocol | 状态转移是否合法 | 确定性 Replay | [`_assess_protocol_trace`](../../harness_py/evaluation/paperloom_assessment.py) |
+| Contract | 是否选择正确 Contract | Expected vs Actual | [`_assess_agent_case`](../../harness_py/evaluation/paperloom_assessment.py) |
+| Retrieval | Paper/Location/Span 是否召回 | 冻结 Target | [`_run_l1`](../../harness_py/evaluation/paperloom_benchmark.py)、[`_run_l2`](../../harness_py/evaluation/paperloom_benchmark.py) |
+| Provenance | 引用身份和 Block Binding | 确定性 Validator | [`_assess_agent_case`](../../harness_py/evaluation/paperloom_assessment.py) |
+| Grounding | 引文是否支持结论 | LLM Judge | [`_judge_agent_case`](../../harness_py/evaluation/paperloom_assessment.py) |
+| Answer Quality | 是否完整、相关、有用 | LLM Judge | [`_judge_agent_case`](../../harness_py/evaluation/paperloom_assessment.py) |
+| Performance | 调用数、Token、时延 | Trace/Usage | [`_controlled_protocol_metrics`](../../harness_py/evaluation/paperloom_assessment.py) 与 Run Usage |
 
 确定性指标可以进入发布 Gate；Grounding 与 Answer Quality 是概率性测量，不参与在线发布，也不因低分自动
 重新运行 Agent。Judge 客户端见 [`MiniMaxJudgeModel`](../../harness_py/evaluation/judge_model.py#L25)。
@@ -478,9 +478,9 @@ RunResult
   = code/model/snapshot identity + L0/G0/L1/L2/L3 + Trace + Usage
 ```
 
-版本常量见 [`paperloom31.py`](../../harness_py/evaluation/paperloom31.py#L41)，Config 构造见
-[`ensure_benchmark_config`](../../harness_py/evaluation/paperloom31.py#L121)，Snapshot 校验见
-[`validate_snapshot`](../../harness_py/evaluation/paperloom31.py#L840)。
+版本常量见 [`paperloom_assessment.py`](../../harness_py/evaluation/paperloom_assessment.py)，Config 构造见
+[`ensure_benchmark_config`](../../harness_py/evaluation/paperloom_assessment.py#L121)，Snapshot 校验见
+[`validate_snapshot`](../../harness_py/evaluation/paperloom_assessment.py#L840)。
 
 ### 10.2 Snapshot 生成
 
@@ -497,12 +497,12 @@ RunResult
 
 对应实现：
 
-- 总入口：[`create_snapshot`](../../harness_py/evaluation/paperloom31.py#L190)。
-- 导出 Current Model：[`export_current_model_candidates`](../../harness_py/evaluation/paperloom31.py#L301)。
-- 选择每篇一个 Target：[`build_targets`](../../harness_py/evaluation/paperloom31.py#L328)。
-- 稳定排序：[`_candidate_rank`](../../harness_py/evaluation/paperloom31.py#L484)。
-- 自动出题与校验：[`_generate_target_question`](../../harness_py/evaluation/paperloom31.py#L514)。
-- 构造 Agent Case：[`build_agent_cases`](../../harness_py/evaluation/paperloom31.py#L603)。
+- 总入口：[`create_snapshot`](../../harness_py/evaluation/paperloom_assessment.py#L190)。
+- 导出 Current Model：[`export_current_model_candidates`](../../harness_py/evaluation/paperloom_assessment.py#L301)。
+- 选择每篇一个 Target：[`build_targets`](../../harness_py/evaluation/paperloom_assessment.py#L328)。
+- 稳定排序：[`_candidate_rank`](../../harness_py/evaluation/paperloom_assessment.py#L484)。
+- 自动出题与校验：[`_generate_target_question`](../../harness_py/evaluation/paperloom_assessment.py#L514)。
+- 构造 Agent Case：[`build_agent_cases`](../../harness_py/evaluation/paperloom_assessment.py#L603)。
 
 Hash Rank 只产生稳定选择顺序，不是相关性分数：
 
@@ -535,20 +535,20 @@ rank(candidate) = SHA256(
 ```
 
 Agent 只获得完整 31 篇 Scope、问题和 Case History；不会获得 Target ID、正确 Paper ID、Location Ref、Qrels 或
-Expected Answer。Case 生成见 [`build_agent_cases`](../../harness_py/evaluation/paperloom31.py#L603)。
+Expected Answer。Case 生成见 [`build_agent_cases`](../../harness_py/evaluation/paperloom_assessment.py#L603)。
 
 ### 10.4 分层执行
 
 `run_benchmark` 顺序执行五层，见
-[`run_benchmark`](../../harness_py/evaluation/paperloom31.py#L930)：
+[`run_benchmark`](../../harness_py/evaluation/paperloom_assessment.py#L930)：
 
 | 层 | 检查内容 | 代码 |
 | --- | --- | --- |
-| L0 | PDF Hash、Processing、Current Model、Index、Target 完整性 | [`_run_l0`](../../harness_py/evaluation/paperloom31.py#L1056) |
-| G0 | 管理员拥有、全局发布、普通用户可见、Scope 隔离 | [`_run_g0`](../../harness_py/evaluation/paperloom31.py#L1095) |
-| L1 | 规范标题的 Metadata Retrieval | [`_run_l1`](../../harness_py/evaluation/paperloom31.py#L1159) |
-| L2 | 单篇 Oracle Scope 内的 Location Retrieval + Exact Read | [`_run_l2`](../../harness_py/evaluation/paperloom31.py#L1182) |
-| L3 | 完整 31 篇 Scope 下的真实 Agent Run | [`_run_l3`](../../harness_py/evaluation/paperloom31.py#L1263) |
+| L0 | PDF Hash、Processing、Current Model、Index、Target 完整性 | [`_run_l0`](../../harness_py/evaluation/paperloom_assessment.py#L1056) |
+| G0 | 管理员拥有、全局发布、普通用户可见、Scope 隔离 | [`_run_g0`](../../harness_py/evaluation/paperloom_assessment.py#L1095) |
+| L1 | 规范标题的 Metadata Retrieval | [`_run_l1`](../../harness_py/evaluation/paperloom_benchmark.py) |
+| L2 | 单篇 Oracle Scope 内的 Location Retrieval + Exact Read | [`_run_l2`](../../harness_py/evaluation/paperloom_benchmark.py) |
+| L3 | 完整 31 篇 Scope 下的真实 Agent Run | [`_run_l3`](../../harness_py/evaluation/paperloom_assessment.py#L1263) |
 
 L1/L2 指标为 Recall@K 与 MRR。L3 记录 Contract、Outcome、Protocol Replay、Provenance、Target
 `returned/read/cited`、Judge 与 Usage。
@@ -574,8 +574,8 @@ Research Provenance passes
 no fabricated or unresolvable citation
 ```
 
-Gate 汇总见 [`run_benchmark`](../../harness_py/evaluation/paperloom31.py#L930)，单 Case 判定见
-[`_assess_agent_case`](../../harness_py/evaluation/paperloom31.py#L1339)。
+Gate 汇总见 [`run_benchmark`](../../harness_py/evaluation/paperloom_assessment.py#L930)，单 Case 判定见
+[`_assess_agent_case`](../../harness_py/evaluation/paperloom_assessment.py)。
 
 ## 11. 当前里程碑结果
 

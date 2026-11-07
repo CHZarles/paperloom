@@ -204,10 +204,3 @@ CLI 同时打印 `l2_metrics` 和 `l2_source_aligned_metrics`。新 Run Schema �
 
 这些工作只有在三层指标暴露出真实产品失败，而且能明确归因到对应模块时再单独立项。
 
-## 8. 面试表达
-
-> 我发现单篇论文证据检索的 Recall@5 只有 74.19%，但没有直接换 Embedding。对 8 个失败 Case 做单变量
-> 中英 Query 差分后，7 个进入 Top 3；同时端到端 Agent 是 16/17，因为 Agent 经常先生成英文检索词。
-> 这说明原 Benchmark 把 Retriever 的跨语言压力测试和产品链路能力混在了一起。我保留原始中文 L2，
-> 新增盲审冻结的 Source-Aligned L2，并继续用 L3 代表端到端表现。三层共用同一 Java 检索、Qrel 和读取
-> 校验，只有 Query 不同。这样没有靠改题掩盖低分，也能把后续问题准确归因到 Retriever 或 Agent。

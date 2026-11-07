@@ -213,15 +213,6 @@ Embedding Token、重建索引和运维成本可接受时才替换产品配置�
 5. Agent 不增加额外翻译模型调用，PaperLoom-31 L3 Hard Pass 不低于当前 `16/17`；
 6. 所有 Retrieval 改动继续保持 Java Scope 授权、Current Reading Model 过滤和 Source Quote Provenance。
 
-## 7. 面试表达
-
-> 在 PaperLoom-31 分层评测中，我发现单篇论文证据召回 Recall@5 只有 74.19%。我没有直接扩大 Top K
-> 或调 RRF 权重，而是对 8 个失败 Case 做单变量中英 Query 差分：英文改写后 7 个进入 Top 3，从而定位
-> 到中文问题检索英文论文导致 Sparse BM25 失效。进一步审计发现，附录编号属于结构导航问题，且 Exact
-> Location 指标会把答案等价段落记为失败。最终方案是拆分跨语言、源语言对齐、精确位置和等价证据四个
-> 指标，复用 Agent 已有英文 Query Formulation 与结构工具；只有残余 Miss 才考虑更换多语言 Embedding
-> 或加入 Reranker，避免用更高成本掩盖错误的问题分层。
-
 ## 8. 实验结论与当前决策
 
 2026-08-23 使用同一冻结 Snapshot、同一 Retriever、同一 Top K，只替换 Query 语言完成对照实验：

@@ -41,10 +41,10 @@ Runtime 固定使用 `openai-agents`；`Agent`、`Runner`、Function Tool 的语
 ## 核心结构
 
 ```text
-core/                         公共模型、状态和错误
+utils/                        公共模型、状态和错误
 corpus/
   gateway.py                  复用连接池调用 Java Corpus API
-  product_db_dataset.py       Golden/CLI 显式使用的本地 MySQL 适配器
+  product_db_dataset.py       Product Reading Model 行数据到 GoldenDataset 的形状转换
   tools.py                    统一 Tool Schema、授权状态和 Evidence Ledger
 orchestration/
   live_chat.py                单回合产品边界与 Eval Recorder 生命周期
