@@ -1,23 +1,15 @@
 from __future__ import annotations
 
-# Qdrant product corpus 离线迁移诊断：把 MySQL 的 paper_packs / reading_models /
-# parsed_typed 等表数据转成 GoldenDataset，用于 replay 调试与跨版本回归。
-# prod runtime 走 transport/service.py:JavaCorpusGateway；本文件不参与 hot path。
-# 数据源通过 subprocess 调 mysql 客户端，避免在 Python 侧再引入一个 DB driver。
-# 字符串 / SQL 拼装只用于诊断脚本，不是 Web 输入；不暴露给 OpenAI Agents SDK。
+# Product Reading Model 行数据的 GoldenDataset 形状转换：transport/service.py 在
+# health/preflight 里对 Java Corpus Gateway 返回的行做汇总；测试用它构造
+# 与产品同形状的内存数据集。生产数据读取本身走 transport/service.py:JavaCorpusGateway。
 
 import json
 import re
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 from ..utils.models import GoldenDataset, JsonMap, as_list
-from ..transport.provider_config import DockerMySqlProviderConfigStore, _database_name, _mysql_quote
-
-
-CommandRunner = Callable[[list[str]], subprocess.CompletedProcess[str]]
 
 
 @dataclass(frozen=True)
@@ -34,84 +26,6 @@ class ProductCorpusSummary:
             "reading_element_count": self.reading_element_count,
             "paper_ids": self.paper_ids,
         }
-
-
-class DockerMySqlProductCorpusStore:
-    """Loads a live product paper corpus from the local MySQL container.
-
-    The returned object intentionally uses the same in-memory shape as golden datasets so the
-    research tools and agent loop do not care whether their corpus came from fixtures or product DB.
-    """
-
-    def __init__(
-        self,
-        env_path: str | Path = ".env",
-        container_env: str = "HARNESS_MYSQL_CONTAINER",
-        default_container: str = "paperloom-mysql",
-        command_runner: CommandRunner | None = None,
-    ):
-        provider_store = DockerMySqlProviderConfigStore(
-            env_path=env_path,
-            container_env=container_env,
-            default_container=default_container,
-        )
-        self.env_path = Path(env_path)
-        self.container = provider_store.container
-        self.env = provider_store.env
-        self.command_runner = command_runner or _run_command
-
-    def load_dataset(
-        self,
-        paper_ids: list[str] | None = None,
-        query: str | None = None,
-        limit: int = 30,
-    ) -> GoldenDataset:
-        paper_rows = self._query_json_lines(_paper_rows_sql(paper_ids or [], query or "", limit))
-        if not paper_rows:
-            return build_product_dataset([], [])
-        element_rows = self._query_json_lines(_element_rows_sql({
-            str(row["paper_id"]): str(row["model_version"])
-            for row in paper_rows
-            if row.get("paper_id") and row.get("model_version")
-        }))
-        visual_asset_rows = self._query_json_lines(_visual_asset_rows_sql([
-            str(row["paper_id"])
-            for row in paper_rows
-            if row.get("paper_id")
-        ]))
-        return build_product_dataset(paper_rows, element_rows, visual_asset_rows)
-
-    def _query_json_lines(self, sql: str) -> list[JsonMap]:
-        db_name = _database_name(self.env.get("SPRING_DATASOURCE_URL", ""))
-        user = self.env.get("SPRING_DATASOURCE_USERNAME", "root")
-        password = self.env.get("SPRING_DATASOURCE_PASSWORD", "")
-        command = [
-            "docker",
-            "exec",
-            "-e",
-            f"MYSQL_PWD={password}",
-            self.container,
-            "/usr/bin/mysql",
-            "-N",
-            "-B",
-            "-r",
-            f"-u{user}",
-            "-D",
-            db_name,
-            "-e",
-            sql,
-        ]
-        result = self.command_runner(command)
-        if result.returncode != 0:
-            raise RuntimeError(f"product DB query failed: {result.stderr.strip()}")
-        rows: list[JsonMap] = []
-        for line in result.stdout.splitlines():
-            if not line.strip():
-                continue
-            parsed = json.loads(line)
-            if isinstance(parsed, dict):
-                rows.append(parsed)
-        return rows
 
 
 def build_product_dataset(
@@ -196,124 +110,6 @@ def summarize_product_corpus(dataset: GoldenDataset) -> ProductCorpusSummary:
         reading_element_count=reading_element_count,
         paper_ids=sorted(dataset.paper_records_by_id),
     )
-
-
-def _paper_rows_sql(paper_ids: list[str], query: str, limit: int) -> str:
-    filters = ["m.is_current = 1", "m.model_status = 'READING_MODEL_READY'"]
-    if paper_ids:
-        filters.append("m.paper_id in (" + ",".join(_mysql_quote(paper_id) for paper_id in paper_ids) + ")")
-    for term in _query_terms(query):
-        like = _mysql_quote("%" + _escape_like(term) + "%")
-        filters.append(
-            "("
-            "m.paper_id like " + like + " escape '\\\\' or "
-            "f.paper_title like " + like + " escape '\\\\' or "
-            "f.file_name like " + like + " escape '\\\\' or "
-            "f.authors like " + like + " escape '\\\\' or "
-            "f.abstract_text like " + like + " escape '\\\\' or "
-            "f.arxiv_id like " + like + " escape '\\\\'"
-            ")"
-        )
-    safe_limit = max(1, min(int(limit or 30), 1000))
-    return f"""
-select json_object(
-  'paper_id', m.paper_id,
-  'title', coalesce(nullif(f.paper_title, ''), nullif(f.file_name, ''), m.paper_id),
-  'original_filename', f.file_name,
-  'authors', f.authors,
-  'year', f.publication_year,
-  'venue', f.venue,
-  'abstract', f.abstract_text,
-  'doi', f.doi,
-  'arxiv_id', f.arxiv_id,
-  'user_id', f.user_id,
-  'model_version', m.model_version,
-  'model_status', m.model_status,
-  'parser_name', m.parser_name,
-  'parser_version', m.parser_version,
-  'page_count', m.page_count,
-  'readable_page_count', m.readable_page_count,
-  'readable_char_count', m.readable_char_count,
-  'updated_at', cast(m.updated_at as char)
-) as row_json
-from paper_reading_models m
-left join (
-  select f1.*
-  from file_upload f1
-  join (
-    select file_md5, max(id) as id
-    from file_upload
-    group by file_md5
-  ) latest on latest.id = f1.id
-) f on f.file_md5 = m.paper_id
-where {" and ".join(filters)}
-order by m.updated_at desc
-limit {safe_limit}
-""".strip()
-
-
-def _element_rows_sql(model_versions_by_paper: dict[str, str]) -> str:
-    if not model_versions_by_paper:
-        return "select json_object() where false"
-    filters = [
-        "(e.paper_id = " + _mysql_quote(paper_id)
-        + " and e.model_version = " + _mysql_quote(model_version) + ")"
-        for paper_id, model_version in model_versions_by_paper.items()
-    ]
-    return f"""
-select json_object(
-  'paper_id', e.paper_id,
-  'model_version', e.model_version,
-  'id', e.reading_element_id,
-  'readingElementId', e.reading_element_id,
-  'contentListIndex', e.content_list_index,
-  'parserElementId', e.parser_element_id,
-  'sourceObjectId', e.source_object_id,
-  'elementType', e.element_type,
-  'pageNumber', e.page_number,
-  'readingOrder', e.reading_order,
-  'sectionTitle', e.section_title,
-  'parentReadingElementId', e.parent_reading_element_id,
-  'attachmentRole', e.attachment_role,
-  'associationStatus', e.association_status,
-  'locationRef', e.location_ref,
-  'locationType', cast(e.location_type as char),
-  'captionText', e.caption_text,
-  'bodyText', e.body_text,
-  'searchableText', e.searchable_text,
-  'captionSource', e.caption_source,
-  'parserImagePath', e.parser_image_path,
-  'bboxJson', e.bbox_json,
-  'sourceSpanJson', e.source_span_json,
-  'structuredPayloadJson', e.structured_payload_json,
-  'rawAttributesJson', e.raw_attributes_json,
-  'parserName', e.parser_name,
-  'parserVersion', e.parser_version
-) as row_json
-from paper_reading_elements e
-where {" or ".join(filters)}
-order by e.paper_id, coalesce(e.reading_order, e.id), e.id
-""".strip()
-
-
-def _visual_asset_rows_sql(paper_ids: list[str]) -> str:
-    if not paper_ids:
-        return "select json_object() where false"
-    return f"""
-select json_object(
-  'paper_id', a.paper_id,
-  'asset_type', a.asset_type,
-  'page_number', a.page_number,
-  'table_id', a.table_id,
-  'figure_id', a.figure_id,
-  'reading_element_id', a.reading_element_id,
-  'bbox_json', a.bbox_json
-) as row_json
-from paper_visual_assets a
-where a.asset_status = 'AVAILABLE'
-  and a.paper_id in ({",".join(_mysql_quote(paper_id) for paper_id in paper_ids)})
-order by a.paper_id, a.page_number, a.id
-""".strip()
 
 
 def _reading_element(row: JsonMap, visual_assets: JsonMap | None = None) -> JsonMap:
@@ -402,14 +198,3 @@ def _first_non_blank(*values: object) -> str:
     return ""
 
 
-def _escape_like(value: str) -> str:
-    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-
-
-def _query_terms(query: str) -> list[str]:
-    terms = re.findall(r"[A-Za-z0-9_]+", query)
-    return [term for term in terms[:8] if term]
-
-
-def _run_command(command: list[str]) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(command, text=True, encoding="utf-8", errors="replace", capture_output=True)
