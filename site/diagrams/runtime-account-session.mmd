@@ -29,11 +29,6 @@ sequenceDiagram
         JWT->>Redis: cache new token IDs
         Auth-->>Folio: new access + refresh tokens
     end
-    alt logout current device
-        Folio->>Auth: POST /users/logout
-        Auth->>Redis: blacklist access token until expiry<br/>remove active token entry
-    else logout all devices
-        Folio->>Auth: POST /users/logout-all
-        Auth->>Redis: remove all cached access-token IDs for user
-    end
+    Folio->>Auth: POST /users/logout
+    Auth->>Redis: blacklist access token until expiry<br/>remove active token entry
     Folio->>Folio: clear local auth, chat, and route state

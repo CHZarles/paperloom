@@ -95,7 +95,7 @@ class ReadingQuerySecurityTest {
                             .contentType(MediaType.APPLICATION_JSON).content("{}")
                             .with(user("admin").roles("ADMIN")))
                     .andExpect(status().isOk());
-            mvc.perform(get("/api/v1/admin/system/status"))
+            mvc.perform(get("/api/v1/admin/users/list"))
                     .andExpect(status().isForbidden());
         } finally {
             logger.detachAppender(events);

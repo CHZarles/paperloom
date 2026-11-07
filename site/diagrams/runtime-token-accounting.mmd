@@ -7,7 +7,7 @@ sequenceDiagram
     participant Security as Spring Security
     participant AdminAPI as AdminController
     participant Transport as RedisResearchHarnessTransport
-    participant Quota as UsageBalanceQuotaService
+    participant Quota as UsageQuotaService
     participant Redis as Redis Balance
     participant Worker as Python Worker
     participant MySQL as MySQL Token Ledger
@@ -44,9 +44,8 @@ sequenceDiagram
             end
         end
     end
-    User->>Folio: open usage / token records
-    Folio->>UserAPI: GET /users/usage and /users/token-records
-    UserAPI->>Quota: read usage snapshot
+    Admin->>Folio: open user management / usage overview
+    Folio->>AdminAPI: GET /admin/users and GET /admin/usage/overview
+    AdminAPI->>Quota: read usage snapshots
     Quota->>Redis: read current balances
-    UserAPI->>MySQL: read paged audit ledger
-    UserAPI-->>Folio: balances + token records
+    AdminAPI-->>Folio: users + balances + usage overview

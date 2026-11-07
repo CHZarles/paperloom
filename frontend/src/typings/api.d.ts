@@ -550,30 +550,6 @@ declare namespace Api {
       actions?: ReadingUiAction[] | null;
     }
 
-    interface ReadingIntentFrame {
-      originalUserRequest?: string | null;
-      readingAction?: string | null;
-      paperQueryTexts?: string[] | null;
-      locationQueryTexts?: string[] | null;
-      locationQueryPlans?: ReadingLocationQueryPlan[] | null;
-      locationTypes?: string[] | null;
-      locationIntents?: string[] | null;
-      sourceLanguages?: string[] | null;
-      retrievalLanguages?: string[] | null;
-      sectionRoles?: string[] | null;
-      planningStatus?: string | null;
-      missing?: string[] | null;
-    }
-
-    interface ReadingLocationQueryPlan {
-      queryText?: string | null;
-      intent?: string | null;
-      sourceLanguage?: string | null;
-      retrievalLanguage?: string | null;
-      sectionRoles?: string[] | null;
-      locationTypes?: string[] | null;
-    }
-
     interface ReadingPaperShortlistItem {
       paperId?: string | null;
       paperHandle?: string | null;
@@ -663,7 +639,6 @@ declare namespace Api {
     interface ReadingTurnArtifacts {
       artifactVersion?: string | null;
       goalCard?: ReadingGoalCard | null;
-      intentFrame?: ReadingIntentFrame | null;
       paperShortlist?: { items?: ReadingPaperShortlistItem[] | null } | null;
       readingPlan?: { steps?: ReadingPlanStep[] | null } | null;
       claimEvidencePanel?: { rows?: ReadingClaimEvidenceRow[] | null } | null;

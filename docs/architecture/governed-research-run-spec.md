@@ -524,7 +524,7 @@ harness_py/transport/service.py
 harness_py/transport/redis_worker.py
 src/main/java/.../PythonResearchHarnessClient.java
 src/main/java/.../UsageQuotaService.java
-src/main/java/.../UsageBalanceQuotaService.java
+src/main/java/.../UsageQuotaService.java
 ```
 
 The balance gate atomically reserves one token before dispatch. A failed reservation creates no
