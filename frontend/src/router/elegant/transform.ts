@@ -169,10 +169,9 @@ const routeMap: RouteMap = {
   "chat": "/chat",
   "chat-history": "/chat-history",
   "discover": "/discover",
-  "iframe-page": "/iframe-page/:url",
   "invite-code": "/invite-code",
   "knowledge-base": "/knowledge-base",
-  "login": "/login/:module(pwd-login|code-login|register|reset-pwd|bind-wechat)?",
+  "login": "/login/:module(pwd-login|register)?",
   "personal-center": "/personal-center"
 };
 

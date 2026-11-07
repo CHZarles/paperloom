@@ -29,12 +29,10 @@ const local: App.I18n.Schema = {
     keywordSearch: '请输入关键词搜索',
     logout: '退出登录',
     logoutConfirm: '确认退出登录吗？',
-    lookForward: '敬请期待',
     modify: '修改',
     modifySuccess: '修改成功',
     noData: '无数据',
     operate: '操作',
-    pleaseCheckValue: '请检查输入的值是否合法',
     refresh: '刷新',
     reset: '重置',
     search: '搜索',
@@ -43,7 +41,6 @@ const local: App.I18n.Schema = {
     trigger: '触发',
     update: '更新',
     updateSuccess: '更新成功',
-    userCenter: '个人中心',
     yesOrNo: {
       yes: '是',
       no: '否'
@@ -161,7 +158,6 @@ const local: App.I18n.Schema = {
     403: '无权限',
     404: '页面不存在',
     500: '服务器错误',
-    'iframe-page': '外链页面',
     chat: '论文问答',
     'chat-history': '问答记录',
     discover: '探索论文',
@@ -187,12 +183,9 @@ const local: App.I18n.Schema = {
         guestLogin: '游客登录',
         register: '注册账号',
         userNamePlaceholder: '请输入用户名',
-        phonePlaceholder: '请输入手机号',
-        codePlaceholder: '请输入验证码',
         passwordPlaceholder: '请输入密码',
         confirmPasswordPlaceholder: '请再次输入密码',
         inviteCodePlaceholder: '请输入邀请码',
-        codeLogin: '验证码登录',
         confirm: '确定',
         back: '返回',
         validateSuccess: '验证成功',
@@ -202,20 +195,7 @@ const local: App.I18n.Schema = {
       pwdLogin: {
         title: '密码登录',
         rememberMe: '记住用户名和密码',
-        forgetPassword: '忘记密码？',
-        register: '注册账号',
-        otherAccountLogin: '其他账号登录',
-        otherLoginMode: '其他登录方式',
-        superAdmin: '超级管理员',
-        admin: '管理员',
-        user: '普通用户'
-      },
-      codeLogin: {
-        title: '验证码登录',
-        getCode: '获取验证码',
-        reGetCode: '{time}秒后重新获取',
-        sendCodeSuccess: '验证码发送成功',
-        imageCodePlaceholder: '请输入图片验证码'
+        register: '注册账号'
       },
       register: {
         title: '注册账号',
@@ -224,12 +204,6 @@ const local: App.I18n.Schema = {
         and: '和',
         policy: '《隐私权政策》',
         inviteCodeTip: '当前站点采用邀请码注册。还没有邀请码时，可联系管理员获取 Citewise 邀请码。'
-      },
-      resetPwd: {
-        title: '重置密码'
-      },
-      bindWeChat: {
-        title: '绑定微信'
       }
     }
   },
@@ -239,10 +213,6 @@ const local: App.I18n.Schema = {
       required: '请输入用户名',
       invalid: '用户名格式不正确'
     },
-    phone: {
-      required: '请输入手机号',
-      invalid: '手机号格式不正确'
-    },
     pwd: {
       required: '请输入密码',
       invalid: '密码格式不正确，6-18位字符，必须包含字母和数字'
@@ -250,14 +220,6 @@ const local: App.I18n.Schema = {
     confirmPwd: {
       required: '请输入确认密码',
       invalid: '两次输入密码不一致'
-    },
-    code: {
-      required: '请输入验证码',
-      invalid: '验证码格式不正确'
-    },
-    email: {
-      required: '请输入邮箱',
-      invalid: '邮箱格式不正确'
     }
   },
   dropdown: {

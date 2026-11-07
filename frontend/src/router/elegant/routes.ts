@@ -77,19 +77,6 @@ export const generatedRoutes: GeneratedRoute[] = [
     }
   },
   {
-    name: 'iframe-page',
-    path: '/iframe-page/:url',
-    component: 'layout.base$view.iframe-page',
-    props: true,
-    meta: {
-      title: 'iframe-page',
-      i18nKey: 'route.iframe-page',
-      constant: true,
-      hideInMenu: true,
-      keepAlive: true
-    }
-  },
-  {
     name: 'invite-code',
     path: '/invite-code',
     component: 'layout.base$view.invite-code',
@@ -115,7 +102,7 @@ export const generatedRoutes: GeneratedRoute[] = [
   },
   {
     name: 'login',
-    path: '/login/:module(pwd-login|code-login|register|reset-pwd|bind-wechat)?',
+    path: '/login/:module(pwd-login|register)?',
     component: 'layout.blank$view.login',
     props: true,
     meta: {

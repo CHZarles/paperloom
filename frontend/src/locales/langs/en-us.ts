@@ -29,12 +29,10 @@ const local: App.I18n.Schema = {
     keywordSearch: 'Please enter keyword',
     logout: 'Logout',
     logoutConfirm: 'Are you sure you want to log out?',
-    lookForward: 'Coming soon',
     modify: 'Modify',
     modifySuccess: 'Modify Success',
     noData: 'No Data',
     operate: 'Operate',
-    pleaseCheckValue: 'Please check whether the value is valid',
     refresh: 'Refresh',
     reset: 'Reset',
     search: 'Search',
@@ -43,7 +41,6 @@ const local: App.I18n.Schema = {
     trigger: 'Trigger',
     update: 'Update',
     updateSuccess: 'Update Success',
-    userCenter: 'User Center',
     yesOrNo: {
       yes: 'Yes',
       no: 'No'
@@ -161,7 +158,6 @@ const local: App.I18n.Schema = {
     403: 'No Permission',
     404: 'Page Not Found',
     500: 'Server Error',
-    'iframe-page': 'Iframe',
     chat: 'Paper Q&A',
     'chat-history': 'Q&A History',
     discover: 'Discover Papers',
@@ -187,12 +183,9 @@ const local: App.I18n.Schema = {
         guestLogin: 'Continue as guest',
         register: 'Sign up',
         userNamePlaceholder: 'Please enter user name',
-        phonePlaceholder: 'Please enter phone number',
-        codePlaceholder: 'Please enter verification code',
         passwordPlaceholder: 'Please enter password',
         confirmPasswordPlaceholder: 'Please enter password again',
         inviteCodePlaceholder: 'Please enter invite code',
-        codeLogin: 'Verification code login',
         confirm: 'Confirm',
         back: 'Back',
         validateSuccess: 'Verification passed',
@@ -202,20 +195,7 @@ const local: App.I18n.Schema = {
       pwdLogin: {
         title: 'Password Login',
         rememberMe: 'Remember username and password',
-        forgetPassword: 'Forget password?',
-        register: 'Register',
-        otherAccountLogin: 'Other Account Login',
-        otherLoginMode: 'Other Login Mode',
-        superAdmin: 'Super Admin',
-        admin: 'Admin',
-        user: 'User'
-      },
-      codeLogin: {
-        title: 'Verification Code Login',
-        getCode: 'Get verification code',
-        reGetCode: 'Reacquire after {time}s',
-        sendCodeSuccess: 'Verification code sent successfully',
-        imageCodePlaceholder: 'Please enter image verification code'
+        register: 'Register'
       },
       register: {
         title: 'Register',
@@ -225,12 +205,6 @@ const local: App.I18n.Schema = {
         policy: '《Privacy Policy》',
         inviteCodeTip:
           'This site is invite-only. If you do not have an invite code yet, contact an administrator for a Citewise invite code.'
-      },
-      resetPwd: {
-        title: 'Reset Password'
-      },
-      bindWeChat: {
-        title: 'Bind WeChat'
       }
     }
   },
@@ -240,10 +214,6 @@ const local: App.I18n.Schema = {
       required: 'Please enter user name',
       invalid: 'User name format is incorrect'
     },
-    phone: {
-      required: 'Please enter phone number',
-      invalid: 'Phone number format is incorrect'
-    },
     pwd: {
       required: 'Please enter password',
       invalid: '6-18 characters and must include letters and numbers'
@@ -251,14 +221,6 @@ const local: App.I18n.Schema = {
     confirmPwd: {
       required: 'Please enter password again',
       invalid: 'The two passwords are inconsistent'
-    },
-    code: {
-      required: 'Please enter verification code',
-      invalid: 'Verification code format is incorrect'
-    },
-    email: {
-      required: 'Please enter email',
-      invalid: 'Email format is incorrect'
     }
   },
   dropdown: {

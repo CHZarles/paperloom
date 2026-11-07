@@ -1,8 +1,7 @@
 import { computed, effectScope, onScopeDispose, reactive, ref, watch } from 'vue';
 import type { Ref } from 'vue';
 import type { PaginationProps } from 'naive-ui';
-import { jsonClone } from '@sa/utils';
-import { useBoolean, useHookTable } from '@sa/hooks';
+import { useHookTable } from '@sa/hooks';
 import { useAppStore } from '@/store/modules/app';
 import { $t } from '@/locales';
 
@@ -210,67 +209,6 @@ export function useTable<A extends NaiveUI.TableApiFn>(config: NaiveUI.NaiveTabl
     searchParams,
     updateSearchParams,
     resetSearchParams
-  };
-}
-
-export function useTableOperate<T extends TableData = TableData>(getData: () => Promise<void>) {
-  const { bool: dialogVisible, setTrue: openDialog, setFalse: closeDialog } = useBoolean();
-
-  const operateType = ref<NaiveUI.TableOperateType>('add');
-
-  function handleAdd() {
-    operateType.value = 'add';
-    openDialog();
-  }
-
-  /** the editing row data */
-  const editingData: Ref<T | null> = ref(null);
-
-  function handleAddChild(rowData: T) {
-    operateType.value = 'addChild';
-    editingData.value = jsonClone(rowData);
-
-    openDialog();
-  }
-
-  function handleEdit(rowData: T) {
-    operateType.value = 'edit';
-    editingData.value = jsonClone(rowData);
-
-    openDialog();
-  }
-
-  /** the checked row keys of table */
-  const checkedRowKeys = ref<string[]>([]);
-
-  /** the hook after the batch delete operation is completed */
-  async function onBatchDeleted() {
-    window.$message?.success($t('common.deleteSuccess'));
-
-    checkedRowKeys.value = [];
-
-    await getData();
-  }
-
-  /** the hook after the delete operation is completed */
-  async function onDeleted() {
-    window.$message?.success($t('common.deleteSuccess'));
-
-    await getData();
-  }
-
-  return {
-    dialogVisible,
-    openDialog,
-    closeDialog,
-    operateType,
-    handleAdd,
-    handleAddChild,
-    editingData,
-    handleEdit,
-    checkedRowKeys,
-    onBatchDeleted,
-    onDeleted
   };
 }
 
