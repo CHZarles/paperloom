@@ -532,6 +532,10 @@ function formatDate(dateStr?: string) {
 }
 
 .session-scroll {
+  /* Flex column child: without min-height the list grows to its content
+     height and pushes the account area below the viewport once there are
+     more sessions than fit. Allow it to shrink; the virtual list scrolls. */
+  min-height: 0;
   scrollbar-width: none;
   scrollbar-color: transparent transparent;
 }
