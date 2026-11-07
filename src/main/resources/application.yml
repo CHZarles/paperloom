@@ -156,6 +156,10 @@ research-harness:
   internal-token: ${RESEARCH_HARNESS_INTERNAL_TOKEN:}
   http:
     request-timeout-seconds: ${RESEARCH_HARNESS_HTTP_REQUEST_TIMEOUT_SECONDS:930}
+discovery:
+  runner:
+    base-url: ${DISCOVERY_RUNNER_BASE_URL:http://127.0.0.1:8092}
+    internal-token: ${DISCOVERY_RUNNER_INTERNAL_TOKEN:}
 
 qdrant:
   base-url: ${QDRANT_BASE_URL:http://127.0.0.1:6333}

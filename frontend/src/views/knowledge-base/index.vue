@@ -23,7 +23,7 @@ const sidebarCollapsed = ref(typeof window !== 'undefined' ? window.innerWidth <
 const isMobileLibrary = ref(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
 let libraryNavigationNarrow = typeof window !== 'undefined' ? window.innerWidth < 960 : false;
 const settingsVisible = ref(false);
-const settingsModalHostStyle = { width: 'min(1480px, calc(100vw - 32px))' };
+const settingsModalHostStyle = { width: 'calc(100vw - 32px)' };
 
 function normalizeLibraryView(value: unknown): 'papers' | 'collections' {
   return value === 'collections' ? 'collections' : 'papers';
@@ -1287,7 +1287,7 @@ async function onBeforeUpload(
 }
 
 .settings-modal-host {
-  width: min(1480px, calc(100vw - 32px));
+  width: calc(100vw - 32px);
 }
 
 .paper-library-page {

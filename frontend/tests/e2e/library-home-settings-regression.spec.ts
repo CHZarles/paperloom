@@ -448,11 +448,7 @@ test('settings modal exposes admin and billing entries in place', async ({ page 
 });
 
 test('regular users do not see or load admin settings content', async ({ page }) => {
-  const adminModuleFragments = [
-    '/src/views/user/',
-    '/src/views/invite-code/',
-    '/src/views/recharge-manage/'
-  ];
+  const adminModuleFragments = ['/src/views/user/', '/src/views/invite-code/', '/src/views/recharge-manage/'];
   const adminModuleRequests: string[] = [];
   let adminApiRequests = 0;
 
@@ -481,11 +477,7 @@ test('regular users do not see or load admin settings content', async ({ page })
   await expect(page.locator('[data-testid="settings-modal"]')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Recharge', exact: true })).toBeVisible();
 
-  for (const adminEntry of [
-    'User Management',
-    'Invite Codes',
-    'Recharge Management'
-  ]) {
+  for (const adminEntry of ['User Management', 'Invite Codes', 'Recharge Management']) {
     await expect(page.getByRole('button', { name: adminEntry, exact: true })).toHaveCount(0);
   }
   await expect(page.getByRole('button', { name: /^Embedding Model/ })).toHaveCount(0);

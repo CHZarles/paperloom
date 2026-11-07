@@ -173,7 +173,7 @@ const local: App.I18n.Schema = {
     landing: {
       headline: '每个答案都有出处。',
       lede: '向自己的文献库提问。每条回答附页码与原文，证据不足时不猜。',
-      authHint: '登录后继续你的文献工作。',
+      authHint: '登录后继续你的文献工作。'
     },
     exception: {
       403: '你没有访问该页面的权限。',

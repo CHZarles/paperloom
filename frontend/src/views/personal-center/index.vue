@@ -24,13 +24,7 @@ function closeSettings() {
   overflow: hidden;
   background: var(--color-bg);
   color: var(--color-text);
-  padding: 44px;
-}
-
-@media (max-width: 1120px) {
-  .settings-page {
-    padding: 24px;
-  }
+  padding: 16px;
 }
 
 @media (max-width: 720px) {

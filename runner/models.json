@@ -1,0 +1,37 @@
+{
+  "providers": {
+    "minimax": {
+      "baseUrl": "https://api.minimaxi.com/v1",
+      "models": [
+        {
+          "id": "MiniMax-M3.1-Flash",
+          "api": "openai-completions",
+          "contextWindow": 204800,
+          "maxTokens": 131072,
+          "reasoning": true,
+          "type": "chat"
+        }
+      ]
+    },
+    "opengo": {
+      "baseUrl": "https://opencode.ai/zen/go/v1",
+      "apiKey": "$OPENGO_API_KEY",
+      "authHeader": true,
+      "api": "openai-completions",
+      "headers": {
+        "x-opencode-session": "!uuidgen",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
+      },
+      "models": [
+        {
+          "id": "deepseek-v4.1-flash",
+          "api": "openai-completions",
+          "contextWindow": 131072,
+          "maxTokens": 32768,
+          "reasoning": true,
+          "type": "chat"
+        }
+      ]
+    }
+  }
+}

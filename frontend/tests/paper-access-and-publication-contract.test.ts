@@ -11,11 +11,7 @@ const uploadDialogSource = readFileSync(
 const uploadStoreSource = readFileSync(resolve(currentDir, '../src/store/modules/knowledge-base/index.ts'), 'utf8');
 const librarySource = readFileSync(resolve(currentDir, '../src/views/knowledge-base/index.vue'), 'utf8');
 
-assert.doesNotMatch(
-  uploadDialogSource,
-  /published/,
-  'paper upload must not expose visibility controls'
-);
+assert.doesNotMatch(uploadDialogSource, /published/, 'paper upload must not expose visibility controls');
 assert.doesNotMatch(uploadStoreSource, /published/, 'paper upload requests must not send visibility fields');
 assert.match(librarySource, /\/processing\/retry/, 'failed initial processing must use the processing retry route');
 assert.match(

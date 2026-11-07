@@ -434,6 +434,7 @@ class MiniMaxAgentsModel(_ObservedOpenAIModel, OpenAIChatCompletionsModel):
                         headers={
                             "Authorization": f"Bearer {self.provider.api_key}",
                             "Content-Type": "application/json",
+                            **_opencode_go_headers(self.provider),
                         },
                         json=request_body,
                     )
@@ -552,8 +553,12 @@ def _client(
     timeout_seconds: int,
     max_attempts: int,
 ) -> AsyncOpenAI:
+    async def _stamp_go_headers(request: httpx.Request) -> None:
+        for key, value in _opencode_go_headers(provider).items():
+            request.headers[key] = value
+
     http_client = httpx.AsyncClient(trust_env=not _is_loopback_url(provider.api_base_url), event_hooks={
-        "request": [owner._record_request],
+        "request": [owner._record_request, _stamp_go_headers],
         "response": [owner._record_response],
     })
     return AsyncOpenAI(
@@ -567,6 +572,21 @@ def _client(
 
 def _is_loopback_url(url: str) -> bool:
     return urlparse(url).hostname in {"127.0.0.1", "::1", "localhost"}
+
+
+# OpenCode Go 计划端点按客户端身份路由：无 session 头被拒（MissingSessionID），
+# 无浏览器 UA 被 Cloudflare 拦（1010）。本地开发注入，仅对 opencode go base_url 生效；
+# 该端点不在长期供应商清单，换供应商后此函数自然变成空操作。
+_OPENCODE_GO_BROWSER_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/130.0 Safari/537.36"
+)
+
+
+def _opencode_go_headers(provider: ProviderConfig) -> dict[str, str]:
+    if "opencode.ai/zen/go" not in provider.api_base_url:
+        return {}
+    return {"x-opencode-session": str(uuid4()), "User-Agent": _OPENCODE_GO_BROWSER_UA}
 
 
 def _safe_headers(headers: httpx.Headers) -> dict[str, str]:

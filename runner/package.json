@@ -1,0 +1,15 @@
+{
+  "name": "paperloom-discovery-runner",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.19"
+  },
+  "scripts": {
+    "start": "node runner.mjs"
+  },
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "1.5.0",
+    "typebox": "1.3.27"
+  }
+}

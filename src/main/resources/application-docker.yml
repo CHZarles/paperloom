@@ -124,6 +124,10 @@ research-harness:
   internal-token: ${RESEARCH_HARNESS_INTERNAL_TOKEN:}
   http:
     request-timeout-seconds: ${RESEARCH_HARNESS_HTTP_REQUEST_TIMEOUT_SECONDS:930}
+discovery:
+  runner:
+    base-url: ${DISCOVERY_RUNNER_BASE_URL:http://discovery-runner:8092}
+    internal-token: ${DISCOVERY_RUNNER_INTERNAL_TOKEN:}
 
 security:
   # 容器部署时请显式填写前端实际访问域名，支持 Origin pattern

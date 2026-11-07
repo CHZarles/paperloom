@@ -173,7 +173,7 @@ const local: App.I18n.Schema = {
     landing: {
       headline: 'Every answer has a source.',
       lede: 'Ask your own paper library. Every answer comes with the page and the quote behind it — and stops where the evidence stops.',
-      authHint: 'Sign in to pick up where you left off.',
+      authHint: 'Sign in to pick up where you left off.'
     },
     exception: {
       403: 'You do not have permission to open this page.',

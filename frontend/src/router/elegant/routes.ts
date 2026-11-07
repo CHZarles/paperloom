@@ -67,7 +67,7 @@ export const generatedRoutes: GeneratedRoute[] = [
   {
     name: 'discover',
     path: '/discover',
-    component: 'layout.base$view.discover',
+    component: 'layout.blank$view.discover',
     meta: {
       title: 'discover',
       i18nKey: 'route.discover',

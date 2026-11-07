@@ -909,6 +909,84 @@ declare namespace Api {
       status: 'IMPORTED' | 'PROCESSING' | 'READY';
       message: string;
     }
+
+    /** 智能探索（Discovery Agent，v3 聊天单例） */
+    interface AgentPostResult {
+      type: 'TURN' | 'CLEAR' | 'MEMORY' | 'STATUS';
+      turnId?: string;
+      kind?: 'CHAT' | 'DISTILL';
+      messageId?: number;
+    }
+
+    interface AgentCard {
+      arxivId: string;
+      title: string;
+      authors: string[];
+      categories: string[];
+      publishedYear: number | null;
+      /** NONE 未入库、PROCESSING 解析中、READY 已可检索、FAILED 解析失败 */
+      libraryStatus: 'NONE' | 'PROCESSING' | 'READY' | 'FAILED';
+      summary: string;
+    }
+
+    interface AgentImportResultItem {
+      arxivId: string;
+      status: 'IMPORTED' | 'PROCESSING' | 'READY' | 'FAILED';
+      paperId?: string;
+      message: string;
+    }
+
+    interface AgentImportsResponse {
+      items: AgentImportResultItem[];
+    }
+
+    interface AgentChatMessage {
+      id: number;
+      role: 'USER' | 'ASSISTANT' | 'SYSTEM' | 'CUTOFF';
+      kind: 'CHAT' | 'DISTILL' | 'USER_IMPORT' | null;
+      turnId: string | null;
+      turnStatus: 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | null;
+      reasonCode: string | null;
+      content: string | null;
+      cards: AgentCard[] | null;
+      importResults: AgentImportResultItem[] | null;
+      model: string | null;
+      createdAt: string | null;
+    }
+
+    interface AgentActiveTurn {
+      turnId: string;
+      kind: 'CHAT' | 'DISTILL';
+      status: string;
+      messageId: number;
+      assistantText: string;
+      cards: AgentCard[];
+      importResults: AgentImportResultItem[] | null;
+      savedMemory: AgentMemoryItem[] | null;
+      steps: { text: string }[];
+      searchCount: number;
+      observedCount: number;
+      contextPercent: number | null;
+      elapsedMs: number;
+      usage: { inputTokens: number; outputTokens: number };
+    }
+
+    interface AgentChatThread {
+      messages: AgentChatMessage[];
+      activeTurn: AgentActiveTurn | null;
+      window: { count: number; chars: number; capChars: number };
+      memoryCount: number;
+      enabled: boolean;
+    }
+
+    interface AgentMemoryItem {
+      id: number;
+      kind: 'ROLE' | 'PREF' | 'INSIGHT';
+      content: string;
+      source: 'USER' | 'DISTILLED';
+      active: boolean;
+      updatedAt: string | null;
+    }
   }
 
   namespace KnowledgeBase {

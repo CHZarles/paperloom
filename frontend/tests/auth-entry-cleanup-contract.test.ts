@@ -9,10 +9,6 @@ const registerSource = readFileSync(resolve(currentDir, '../src/views/_builtin/l
 
 assert.match(loginSource, /class="landing__story"/, 'the entry page should keep the brand story column');
 assert.match(loginSource, /class="auth-card"/, 'the entry page should render the authentication card');
-assert.doesNotMatch(
-  loginSource,
-  /<NCard/,
-  'the authentication card is the only framed surface on the entry page'
-);
+assert.doesNotMatch(loginSource, /<NCard/, 'the authentication card is the only framed surface on the entry page');
 assert.doesNotMatch(registerSource, /invite-side-panel/, 'registration should not render the promotional side panel');
 assert.doesNotMatch(registerSource, /公众号|二维码|正在内测/, 'registration should not contain promotional copy');
