@@ -45,7 +45,10 @@ const activeCount = computed(() => sessions.value.filter(item => item.status ===
 // Server flag (any conversation of the user, any tab) wins; the store set is
 // the immediate local fallback for the conversation open in this tab.
 function isSessionGenerating(session: Api.Chat.ConversationSession): boolean {
-  return Boolean((session as { generating?: boolean }).generating) || generatingConversationIds.value.has(session.conversationId);
+  return (
+    Boolean((session as { generating?: boolean }).generating) ||
+    generatingConversationIds.value.has(session.conversationId)
+  );
 }
 const archivedCount = computed(() => sessions.value.filter(item => item.status === 'ARCHIVED').length);
 const accountName = computed(() => authStore.userInfo.username || 'Citewise User');
@@ -540,6 +543,17 @@ function formatDate(dateStr?: string) {
   scrollbar-color: transparent transparent;
 }
 
+/* NVirtualList 需要有界高度才启用虚拟滚动；NSpin 的内容层默认无高度，
+   会把列表撑到内容全高，再被上层 overflow-hidden 裁掉——正是侧栏滑不动的根因 */
+.session-scroll :deep(.n-spin-content),
+.session-scroll :deep(.n-spin-container) {
+  height: 100%;
+}
+
+.session-virtual-list {
+  height: 100%;
+}
+
 .session-scroll--overflowing {
   scrollbar-width: none;
   scrollbar-color: transparent transparent;
@@ -838,7 +852,6 @@ function formatDate(dateStr?: string) {
   background: var(--color-surface-elevated);
   box-shadow: var(--shadow-card);
 }
-
 
 @keyframes session-generating-sparkle {
   0%,
