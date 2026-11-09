@@ -59,6 +59,24 @@ const ZERO_USAGE = {
 /** turnId -> 运行态。 */
 const turns = new Map();
 
+/** 窗口内历史卡片按 runner 内部形状播种进 observed，让模型能跨轮重复 shortlist（档三的「保留仍贴合的」）。 */
+function seedHistoryCards(payload) {
+  const observed = new Map();
+  for (const c of payload.historyCards ?? []) {
+    const id = String(c.arxivId ?? "").trim();
+    if (id) observed.set(id, {
+      arxiv_id: id,
+      title: String(c.title ?? ""),
+      summary: String(c.summary ?? "").slice(0, 400),
+      authors: Array.isArray(c.authors) ? c.authors.slice(0, 6) : [],
+      categories: Array.isArray(c.categories) ? c.categories.slice(0, 6) : [],
+      published_year: c.publishedYear ?? null,
+      library_status: c.libraryStatus ?? "NONE"
+    });
+  }
+  return { observed };
+}
+
 function newState(payload) {
   return {
     turnId: String(payload.turnId ?? "").trim(),
@@ -70,8 +88,10 @@ function newState(payload) {
     historyCardIds: new Set((payload.historyCardIds ?? []).map(String)),
     status: "STARTING", reasonCode: "",
     steps: [], observed: new Map(), cards: [],
+    ...seedHistoryCards(payload),
     importResults: null, savedMemory: null, shortlisted: null,
     searchCount: 0, assistantText: "",
+    queries: [],
     usage: { inputTokens: 0, outputTokens: 0 },
     session: null, watchdog: null, hintSent: false,
     startedAt: performance.now()
@@ -104,6 +124,7 @@ function snapshot(state) {
     importResults: state.importResults,
     savedMemory: state.savedMemory,
     steps: state.steps.slice(-200),
+    queries: state.queries.slice(-12),
     searchCount: state.searchCount,
     observedCount: state.observed.size,
     usage: state.usage,
@@ -193,6 +214,7 @@ function buildChatTools(state) {
         }
       }
       state.searchCount += 1;
+      state.queries.push({ q: params.query, hits: items.length });
       state.steps.push(`检索「${params.query}」→ ${items.length} 条（累计 ${state.observed.size}）`);
       const hint = contextHint(state);
       return {
@@ -209,9 +231,10 @@ function buildChatTools(state) {
     name: "shortlist_papers",
     label: "筛选候选",
     description:
-      "把本轮你真正推荐给用户的论文放进候选栏（完整 id 逐个列出，按推荐优先级排序）。" +
-      "没调过这个工具时，候选栏会显示检索过的全部论文；调用后只显示你筛出的。" +
-      "检索结束后、给最终答复前必须调用一次，只放你会在正文里点评的那些。",
+      "把这轮你真正推荐给用户的论文放进候选栏（完整 id 逐个列出，按推荐优先级排序）。" +
+      "id 可以来自本轮检索，也可以来自之前轮次的候选（历史候选仍在池内，反馈轮可以直接沿用）。" +
+      "没调过这个工具时，候选栏会显示本轮检索过的全部论文；调用后只显示你筛出的。" +
+      "检索结束后、给最终答复前必须调用一次。",
     parameters: Type.Object({
       arxiv_ids: Type.Array(Type.String(), { minItems: 1, maxItems: 30 })
     }),
@@ -223,7 +246,7 @@ function buildChatTools(state) {
         else rejected.push(id);
       }
       if (valid.length === 0) {
-        return { content: [{ type: "text", text: JSON.stringify({ error: "no_valid_ids", message: "所有 id 都不在本轮检索到的论文里" }) }], details: {} };
+        return { content: [{ type: "text", text: JSON.stringify({ error: "no_valid_ids", message: "所有 id 都不在候选池（本轮检索或窗口内历史候选）" }) }], details: {} };
       }
       state.shortlisted = valid;
       state.steps.push(
@@ -300,25 +323,25 @@ function buildDistillTools(state) {
 
 // ---- system prompt ----
 
-const CHAT_CONTRACT = `你是 PaperLoom 的论文发现助理，在「探索论文」页与用户对话。
+const CHAT_CONTRACT = `你是 PaperLoom 的论文发现助理。职能只有一句话：把「这个人现在需要什么论文」翻译成一组对应的论文。
 
-## 对话纪律（最高优先级）
+对话不是为了聊天，是需求澄清——每轮的价值只有一个：让候选集合更贴近他的需要。
 
-你的回复应该像聊天，而不是一篇报告。每轮只讲一个小话题，控制在三四段文字以内（不超过 250 字）；宁可多聊几轮把调研推进下去，也不要在一条消息里把所有东西全部倒出来。
+## 按轮分档作业（先判断档位，再决定检索预算）
 
-推荐节奏：
-- 目标模糊时，先用一两句复述你的理解，问 1–2 个关键问题（领域边界？方法类还是应用类？时间窗？），然后停下等用户；
-- 用户确认后再多角度检索（同义词、缩写、算法名、变体，不重复相同 query）；
-- 检索结束后先调 shortlist_papers 精选候选（见行为边界 1），再写答复：正文只做「脉络式点评」——这批工作分几条路线、差别在哪、建议先看哪篇为什么；点名论文时带上 arXiv 号（如 2402.02750），用户会在候选栏对照；
-- 结尾自然推进对话：给一个具体的小行动或小问题（「这条路线要不要深入？」「要不要按 XX 约束再收一轮？」），不要用"还需要我做什么吗"这类终态收尾；
-- 用户在上一轮给的反馈（排除某方向、偏好某类、已入库），下一轮要体现你记住了。
+**档一 · 需求不清（开题轮）**：他要的东西关键划界还不明确（方法还是应用？时间窗？偏好？）。复述你的理解，问最关键的 1-2 个问题，然后停。最多 1 次探测性检索。这轮不产出结论。
 
-## 行为边界
+**档二 · 需求明确（首次交付轮）**：多角度检索（同义词/缩写/算法名，3-6 次，每个角度 1 次），调 shortlist_papers 精选（5-15 篇，按贴合需求的程度排序），正文只写「匹配说明」：这批为什么对应他的需求、建议的阅读顺序、哪几篇是为边界情况准备的。250 字以内，结尾给一步推进。
 
-1. 工具三个：search_arxiv_papers（检索）、shortlist_papers（每轮检索完、写最终答复前必须调用一次：把你真正推荐、会在正文点名的论文 id 按优先级列出，一般 5–15 篇；候选栏只显示你筛出的这些，未筛的不会进候选栏）、import_arxiv_papers（仅在用户明确说"入库"时才调用；用户多数时候会在候选栏自己操作）。
-2. 判断只依据元数据（标题/摘要/作者/年份/类目），不得给出论文内容性结论；library_status 非 NONE 的论文不要推荐。
-3. 你只做三件事：发现论文、感知库内已有、帮入库。用户问学术内容问题（"A 方法为什么比 B 好"）时，礼貌说明自己不做内容解读并引导去 Chat；三件事之外的请求婉拒。
-4. 中文回复。你拥有对话窗口（历史会注入）和长期记忆（用户沉淀的偏好），不要假装记得窗口之外的内容。`;
+**档三 · 需求更新（反馈轮）**：他排除/收窄/转向了。预算 1-2 次定向检索，只补差集；更新 shortlist（保留仍贴合的，替换被排除的）；正文一句话确认变化 + 新增什么、去掉什么。这轮必须快，不要重新开题。继续之前先回顾你消息里附带的「本轮动作/本轮候选」：用过的检索词不原样重跑，换个角度收差集；旧候选已经覆盖的直接沿用，不用再检索。
+
+任何一档都不做：学术内容解读（引导去 Chat）、综述式写作、与他当前需求无关的扩展检索。当候选已经贴合需求时，收尾引导他去右侧候选栏拿走，而不是继续找话题。
+
+## 硬性边界
+
+1. 工具：search_arxiv_papers（检索）、shortlist_papers（每轮检索完必调一次；候选栏只显示你筛出的）、import_arxiv_papers（仅当他说「入库」时）。
+2. 判断只依据元数据（标题/摘要/作者/年份/类目）；library_status 非 NONE 的不进 shortlist。
+3. 中文回复。窗口内历史与长期记忆可用，窗口外的不假装记得。`;
 
 const DISTILL_CONTRACT = `你是 PaperLoom 论文发现助理的记忆沉淀器。任务：从当前对话中提炼值得长期保留的信息，调用 save_memory 一次性写入。
 

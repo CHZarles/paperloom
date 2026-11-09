@@ -16,6 +16,8 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -99,7 +101,7 @@ public class DiscoveryRunnerClient {
     /** turn 受理 payload（字段与 runner.mjs newState 对齐）。 */
     public ObjectNode buildTurnPayload(String turnId, String userId, String kind, String lastMessage,
                                        List<HistoryMessage> history, List<MemoryItem> memory,
-                                       List<String> historyCardIds) {
+                                       List<Map<String, Object>> historyCards) {
         ObjectNode node = objectMapper.createObjectNode();
         node.put("turnId", turnId);
         node.put("userId", userId);
@@ -117,8 +119,31 @@ public class DiscoveryRunnerClient {
             h.put("kind", item.kind());
             h.put("content", item.content());
         }
+        // 窗口内全部候选卡片：runner 用它允许模型跨轮重新 shortlist（档三的「保留仍贴合的」）
+        ArrayNode cardsNode = node.putArray("historyCards");
+        Set<String> seen = new HashSet<>();
+        for (Map<String, Object> card : historyCards) {
+            String id = String.valueOf(card.getOrDefault("arxivId", ""));
+            if (id.isEmpty() || !seen.add(id)) {
+                continue;
+            }
+            ObjectNode c = cardsNode.addObject();
+            c.put("arxivId", id);
+            c.put("title", String.valueOf(card.getOrDefault("title", "")));
+            c.put("publishedYear", card.get("publishedYear") == null ? -1 : ((Number) card.get("publishedYear")).intValue());
+            c.put("libraryStatus", String.valueOf(card.getOrDefault("libraryStatus", "NONE")));
+            c.put("summary", String.valueOf(card.getOrDefault("summary", "")));
+            ArrayNode authors = c.putArray("authors");
+            if (card.get("authors") instanceof List<?> list) {
+                list.stream().limit(6).forEach(a -> authors.add(String.valueOf(a)));
+            }
+            ArrayNode categories = c.putArray("categories");
+            if (card.get("categories") instanceof List<?> list) {
+                list.stream().limit(6).forEach(a -> categories.add(String.valueOf(a)));
+            }
+        }
         ArrayNode cardIds = node.putArray("historyCardIds");
-        historyCardIds.forEach(cardIds::add);
+        seen.forEach(cardIds::add);
         return node;
     }
 

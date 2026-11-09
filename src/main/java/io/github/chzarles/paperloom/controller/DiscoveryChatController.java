@@ -70,6 +70,14 @@ public class DiscoveryChatController {
         return ResponseEntity.ok(success(Map.of("ok", true)));
     }
 
+    /** 从候选栏移除一篇候选（服务端从消息行 cards 里摘除；不动库内论文） */
+    @DeleteMapping("/chat/cards/{arxivId}")
+    public ResponseEntity<Map<String, Object>> removeCandidate(
+            @RequestAttribute("userId") String userId,
+            @PathVariable("arxivId") String arxivId) {
+        return ResponseEntity.ok(success(chatService.removeCandidateCard(userId, arxivId)));
+    }
+
     public record ImportRequest(List<String> arxivIds) {
     }
 

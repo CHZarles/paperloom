@@ -67,6 +67,10 @@ public class DiscoveryChatMessage {
     @Column(name = "import_results", columnDefinition = "LONGTEXT")
     private String importResults;
 
+    /** 当轮检索动作 JSON 数组 [{"q":"...","hits":12}]（ASSISTANT 行；历史注入用） */
+    @Column(name = "search_log", columnDefinition = "TEXT")
+    private String searchLog;
+
     @Column(name = "token_usage", columnDefinition = "TEXT")
     private String tokenUsage;
 

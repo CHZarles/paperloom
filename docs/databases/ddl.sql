@@ -398,6 +398,7 @@ CREATE TABLE IF NOT EXISTS `discovery_chat_message` (
     `content` LONGTEXT COMMENT '消息文本（USER 原文 / ASSISTANT 回复 / SYSTEM 反馈）',
     `cards` LONGTEXT COMMENT '候选卡片 JSON 数组（ASSISTANT 行；入库门的事实源窗口部分）',
     `import_results` LONGTEXT COMMENT '入库结果 JSON（ASSISTANT 行）',
+    `search_log` TEXT COMMENT '当轮检索动作 JSON 数组 [{"q":"...","hits":12}]（ASSISTANT 行）',
     `token_usage` TEXT COMMENT '用量 JSON {"inputTokens":0,"outputTokens":0}',
     `model` VARCHAR(64) DEFAULT NULL COMMENT '实际使用的模型',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

@@ -51,6 +51,7 @@ public class DiscoveryChatService {
     /** 短期窗口上限（PRD v3 §3.1）：最近 40 条且 ≤24k 字符，超窗整段不带。 */
     private static final int WINDOW_MAX_MESSAGES = 40;
     private static final int WINDOW_MAX_CHARS = 24000;
+    private static final int HISTORY_CARDS_MAX = 60;
     /** 长期记忆块上限：超出丢最旧 INSIGHT。 */
     private static final int MEMORY_BLOCK_MAX_CHARS = 4000;
     private static final int MEMORY_CONTENT_MAX = 2000;
@@ -165,7 +166,7 @@ public class DiscoveryChatService {
             Window window = assembleWindow(userId);
             List<DiscoveryRunnerClient.MemoryItem> memory = assembleMemoryBlock(userId);
             runnerClient.startTurn(runnerClient.buildTurnPayload(
-                    turnId, userId, kind, lastMessage, window.history(), memory, window.cardIds()));
+                    turnId, userId, kind, lastMessage, window.history(), memory, window.cards()));
         } catch (Exception e) {
             finalizeRow(assistantRow, DiscoveryChatMessage.TURN_STATUS_FAILED, "runner_unavailable");
             throw new CustomException("智能探索服务暂时不可用，请稍后再试", HttpStatus.BAD_GATEWAY);
@@ -203,6 +204,8 @@ public class DiscoveryChatService {
         List<DiscoveryChatMessage> rows = chatRepository.findTop500ByUserIdOrderByIdDesc(userId);
         List<DiscoveryChatMessage> ordered = rows.stream()
                 .filter(r -> r.getId() > after)
+                // RUNNING 的 ASSISTANT 行不进消息列表，避免前端游标跳过它导致完成态永远拉不回
+                .filter(r -> !DiscoveryChatMessage.TURN_STATUS_RUNNING.equals(r.getTurnStatus()))
                 .sorted(Comparator.comparing(DiscoveryChatMessage::getId))
                 .toList();
         List<Map<String, Object>> messages = new ArrayList<>();
@@ -481,6 +484,44 @@ public class DiscoveryChatService {
         return results;
     }
 
+    /**
+     * 从候选栏移除一篇候选：把该 arXiv 从所有消息行的 cards 里摘除（含 CUTOFF 前的行，彻底删干净）。
+     * 只动候选展示，不影响库内已入库的论文与 importResults 记录。
+     */
+    public Map<String, Object> removeCandidateCard(String userId, String arxivId) {
+        String id = ArxivIdentifier.normalize(arxivId).orElse(arxivId == null ? "" : arxivId.trim());
+        if (id.isEmpty()) {
+            throw new CustomException("缺少 arXiv 编号", HttpStatus.BAD_REQUEST);
+        }
+        List<DiscoveryChatMessage> rows = chatRepository.findTop500ByUserIdOrderByIdDesc(userId);
+        int touched = 0;
+        for (DiscoveryChatMessage row : rows) {
+            List<Map<String, Object>> cards = cardsList(row.getCards());
+            if (cards.isEmpty()) {
+                continue;
+            }
+            List<Map<String, Object>> kept = cards.stream()
+                    .filter(c -> !id.equals(String.valueOf(c.getOrDefault("arxivId", ""))))
+                    .toList();
+            if (kept.size() == cards.size()) {
+                continue;
+            }
+            try {
+                row.setCards(objectMapper.writeValueAsString(kept));
+                chatRepository.save(row);
+                touched += 1;
+            } catch (Exception e) {
+                logger.warn("候选移除落行失败 => rowId: {}, error: {}", row.getId(), e.getMessage());
+            }
+        }
+        LogUtils.logBusiness("DISCOVERY_AGENT_CARD_REMOVE", userId,
+                "移除候选: arxivId=%s, 落行数=%d", id, touched);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("ok", true);
+        data.put("removedRows", touched);
+        return data;
+    }
+
     // --------------------------------------------------------- 轮询与终态
 
     @PostConstruct
@@ -587,6 +628,9 @@ public class DiscoveryChatService {
             if (snapshot.hasNonNull("importResults")) {
                 row.setImportResults(objectMapper.writeValueAsString(jsonToList(snapshot.path("importResults"))));
             }
+            if (snapshot.has("queries")) {
+                row.setSearchLog(objectMapper.writeValueAsString(jsonToList(snapshot.path("queries"))));
+            }
             if (snapshot.has("usage")) {
                 row.setTokenUsage(objectMapper.writeValueAsString(usageOf(snapshot.path("usage"))));
             }
@@ -605,7 +649,7 @@ public class DiscoveryChatService {
     // --------------------------------------------------------- 窗口与记忆组装
 
     private record Window(List<DiscoveryRunnerClient.HistoryMessage> history,
-                          List<String> cardIds, int chars) {
+                          List<String> cardIds, List<Map<String, Object>> cards, int chars) {
     }
 
     /** CUTOFF 之后最近 40 条且 ≤24k 字符；助手文本后追加候选卡片摘要，保证下一轮模型看得到。 */
@@ -632,6 +676,10 @@ public class DiscoveryChatService {
             } else if (DiscoveryChatMessage.ROLE_ASSISTANT.equals(row.getRole())
                     && DiscoveryChatMessage.TURN_STATUS_COMPLETED.equals(row.getTurnStatus())) {
                 String text = String.valueOf(row.getContent() == null ? "" : row.getContent());
+                String action = actionDigest(row);
+                if (!action.isEmpty()) {
+                    text += "\n[本轮动作：" + action + "]";
+                }
                 String digest = cardsDigest(row);
                 if (!digest.isEmpty()) {
                     text += "\n[本轮候选：" + digest + "]";
@@ -644,12 +692,38 @@ public class DiscoveryChatService {
         List<DiscoveryRunnerClient.HistoryMessage> history = new ArrayList<>(newestFirst);
         java.util.Collections.reverse(history);
         // 窗口内全部卡片的 id（含被字符预算裁掉的轮次之前的部分）
+        Map<String, Map<String, Object>> cardsById = new LinkedHashMap<>();
         for (DiscoveryChatMessage row : rows) {
             if (DiscoveryChatMessage.ROLE_ASSISTANT.equals(row.getRole()) && row.getId() > cutoffId) {
-                cardIds.addAll(cardIdsOf(row));
+                for (Map<String, Object> card : cardsList(row.getCards())) {
+                    String id = String.valueOf(card.getOrDefault("arxivId", ""));
+                    if (!id.isEmpty() && cardsById.size() < HISTORY_CARDS_MAX) {
+                        cardsById.putIfAbsent(id, card);
+                    }
+                }
             }
         }
-        return new Window(history, new ArrayList<>(cardIds), chars);
+        return new Window(history, new ArrayList<>(cardsById.keySet()), new ArrayList<>(cardsById.values()), chars);
+    }
+
+    /** 当轮检索动作摘要，随历史回注，续轮模型据此知悉自己已用过的检索词。 */
+    private String actionDigest(DiscoveryChatMessage row) {
+        StringBuilder sb = new StringBuilder();
+        for (Map<String, Object> q : cardsList(row.getSearchLog())) {
+            String term = String.valueOf(q.getOrDefault("q", ""));
+            if (term.isEmpty()) {
+                continue;
+            }
+            if (sb.length() >= 500) {
+                sb.append("…");
+                break;
+            }
+            if (sb.length() > 0) {
+                sb.append("；");
+            }
+            sb.append("「").append(term).append("」").append(q.getOrDefault("hits", "")).append(" 条");
+        }
+        return sb.toString();
     }
 
     private String cardsDigest(DiscoveryChatMessage row) {
@@ -666,14 +740,6 @@ public class DiscoveryChatService {
                     .append(card.getOrDefault("publishedYear", "")).append("（").append(card.getOrDefault("libraryStatus", "")).append("）");
         }
         return sb.toString();
-    }
-
-    private List<String> cardIdsOf(DiscoveryChatMessage row) {
-        List<String> ids = new ArrayList<>();
-        for (Map<String, Object> card : cardsList(row.getCards())) {
-            ids.add(String.valueOf(card.getOrDefault("arxivId", "")));
-        }
-        return ids;
     }
 
     /** ROLE → PREF → INSIGHT（新到旧），块上限内丢最旧 INSIGHT。 */
