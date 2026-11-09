@@ -67,26 +67,13 @@ export const generatedRoutes: GeneratedRoute[] = [
   {
     name: 'discover',
     path: '/discover',
-    component: 'layout.base$view.discover',
+    component: 'layout.blank$view.discover',
     meta: {
       title: 'discover',
       i18nKey: 'route.discover',
       icon: 'lucide:compass',
       roles: ['USER', 'ADMIN'],
       order: 2
-    }
-  },
-  {
-    name: 'iframe-page',
-    path: '/iframe-page/:url',
-    component: 'layout.base$view.iframe-page',
-    props: true,
-    meta: {
-      title: 'iframe-page',
-      i18nKey: 'route.iframe-page',
-      constant: true,
-      hideInMenu: true,
-      keepAlive: true
     }
   },
   {
@@ -115,7 +102,7 @@ export const generatedRoutes: GeneratedRoute[] = [
   },
   {
     name: 'login',
-    path: '/login/:module(pwd-login|code-login|register|reset-pwd|bind-wechat)?',
+    path: '/login/:module(pwd-login|register)?',
     component: 'layout.blank$view.login',
     props: true,
     meta: {

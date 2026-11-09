@@ -119,7 +119,6 @@ public class ChatHandler {
     public void processMessage(String userId, ChatRequest request, WebSocketSession session) {
         String userMessage = request == null ? "" : request.message();
         ProductReferenceFocus incomingReferenceFocus = request == null ? null : request.referenceFocus();
-        RetrievalBudgetProfile retrievalBudgetProfile = RetrievalBudgetProfile.INTERACTIVE;
         logger.info("开始处理消息，用户ID: {}, 会话ID: {}", userId, session.getId());
         String requestClientId = resolveClientId(session);
         String requestedConversationId = request == null ? null : trimToNull(request.conversationId());
@@ -154,8 +153,7 @@ public class ChatHandler {
                 conversationScopeService.assertReferenceFocusWithinScope(effectiveScope, referenceFocus);
             }
             SourceScope productScope = SourceScope.manual(
-                    conversationScopeService.authorizedPaperIdsForHarness(userIdLong, effectiveScope),
-                    retrievalBudgetProfile
+                    conversationScopeService.authorizedPaperIdsForHarness(userIdLong, effectiveScope)
             );
             String clickedSourceQuoteRef = structuredSourceQuoteRef(referenceFocus);
             List<String> clickedPaperHandles = clickedPaperHandles(referenceFocus);
@@ -259,7 +257,7 @@ public class ChatHandler {
         String conversationId = retryContext.conversationId();
         conversationService.requireActiveOwnedConversationSession(userIdLong, conversationId);
         List<String> paperIds = retryPaperIds(userIdLong, conversationId, retryContext.effectiveScope());
-        SourceScope productScope = SourceScope.manual(paperIds, RetrievalBudgetProfile.INTERACTIVE);
+        SourceScope productScope = SourceScope.manual(paperIds);
 
         ChatGenerationStateService.GenerationSnapshot generation =
                 chatGenerationStateService.createRetryGeneration(
@@ -790,7 +788,7 @@ public class ChatHandler {
                 generationId,
                 responseFuture,
                 responseBuilders.get(generationId),
-                new LlmProviderRouter.StreamCompletion(
+                new StreamCompletion(
                         answer.stopReason().name(),
                         0,
                         0,
@@ -1049,7 +1047,7 @@ public class ChatHandler {
     private void finalizeResponse(String userId, String userMessage, String conversationId, String generationId,
                                   CompletableFuture<String> responseFuture,
                                   StringBuilder responseBuilder,
-                                  LlmProviderRouter.StreamCompletion completion) {
+                                  StreamCompletion completion) {
         if (finishCancelledGeneration(generationId, responseFuture, responseBuilder)) {
             return;
         }
@@ -1493,9 +1491,7 @@ public class ChatHandler {
         String requesterClientId = resolveClientId(requesterSession);
         String requestedGenerationId = trimToNull(generationId);
         Optional<ChatGenerationStateService.GenerationSnapshot> ownedGeneration = requestedGenerationId == null
-                ? requesterClientId == null || requesterClientId.isBlank()
-                        ? chatGenerationStateService.getActiveGenerationForUser(userId)
-                        : chatGenerationStateService.getActiveGenerationForUserAndClient(userId, requesterClientId)
+                ? chatGenerationStateService.getActiveGenerationForUserAndClient(userId, requesterClientId)
                 : chatGenerationStateService.getGenerationForUser(requestedGenerationId, userId);
         if (ownedGeneration.isEmpty()
                 || ownedGeneration.get().status() != ChatGenerationStateService.GenerationStatus.STREAMING) {
@@ -2236,18 +2232,18 @@ public class ChatHandler {
     public record ChatRequest(
             String message,
             ProductReferenceFocus referenceFocus,
-            RetrievalBudgetProfile retrievalBudgetProfile,
             String conversationId
     ) {
         public ChatRequest {
-            retrievalBudgetProfile = retrievalBudgetProfile == null
-                    ? RetrievalBudgetProfile.INTERACTIVE
-                    : retrievalBudgetProfile;
             conversationId = conversationId == null || conversationId.isBlank() ? null : conversationId.trim();
         }
+    }
 
-        public ChatRequest(String message, ProductReferenceFocus referenceFocus, String conversationId) {
-            this(message, referenceFocus, RetrievalBudgetProfile.INTERACTIVE, conversationId);
-        }
+    record StreamCompletion(
+            String finishReason,
+            int promptTokens,
+            int completionTokens,
+            int responseChars
+    ) {
     }
 }

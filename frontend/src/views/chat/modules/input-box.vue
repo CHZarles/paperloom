@@ -513,7 +513,16 @@ watch(wsData, val => {
 
   const assistant = findAssistantMessage(payload.generationId, payload);
 
-  if (!assistant) return;
+  if (!assistant) {
+    // A 409 (conversation busy) arrives with no generation to attach to — the
+    // running turn was lost by this tab (fresh tab, page switch, stale state).
+    // Re-probe the active generation so this tab re-attaches: the streaming
+    // state comes back and the send button turns into a working stop control.
+    if (payload.type === 'error' && Number(payload.code) === 409) {
+      chatStore.syncGenerationAfterReconnect().catch(() => {});
+    }
+    return;
+  }
 
   if (payload.type === 'start') {
     handleStartPayload(assistant, payload);
@@ -589,6 +598,9 @@ const handleSend = async (messageOverride?: string) => {
       window.$message?.error('无法创建对话，请稍后再试');
       return;
     }
+    // The draft just became a real conversation — surface it in the sidebar
+    // right away (with its generating badge), before the first answer lands.
+    chatStore.loadSessionIndex({ silent: true }).catch(() => {});
   }
 
   const outgoingReferenceFocusPayload = outgoingReferenceFocus(referenceFocus.value);
@@ -615,6 +627,9 @@ const handleSend = async (messageOverride?: string) => {
   input.value = { message: '' };
   chatStore.setReferenceFocus(null);
   startGenerationStatusMonitor();
+  // Refresh the sidebar so this conversation gets/keeps its generating badge,
+  // including from other tabs whose local message list is a different one.
+  chatStore.loadSessionIndex({ silent: true }).catch(() => {});
 };
 
 const inputRef = ref();
@@ -682,10 +697,7 @@ onUnmounted(() => {
     <div v-if="props.variant === 'dock' && searchScopeHint" class="search-scope-hint mx-auto w-full px-1">
       {{ searchScopeHint }}
     </div>
-    <div
-      class="chat-input-shell mx-auto w-full flex items-end gap-2 px-3.5 py-2.5"
-      :class="props.variant === 'hero' ? 'max-w-[960px]' : 'max-w-[960px]'"
-    >
+    <div class="chat-input-shell mx-auto w-full" :class="props.variant === 'hero' ? 'max-w-[960px]' : 'max-w-[960px]'">
       <div class="chat-input-main">
         <div v-if="referenceFocus" class="scope-chip">
           <icon-lucide:quote class="scope-chip__icon" />
@@ -698,45 +710,42 @@ onUnmounted(() => {
           ref="inputRef"
           v-model="input.message"
           placeholder="Ask about a paper, method, claim, table, or citation"
-          class="chat-input-textarea max-h-32 min-h-6 w-full resize-none border-none bg-transparent py-1 text-14px caret-[rgb(var(--primary-color))] outline-none"
+          class="chat-input-textarea max-h-32 min-h-6 w-full resize-none border-none bg-transparent py-0.5 text-14px caret-[rgb(var(--primary-color))] outline-none"
           aria-describedby="chat-input-shortcut-hint"
           @input="autoResize"
           @keydown="handShortcut"
         />
       </div>
-      <NButton
-        :disabled="sendDisabled"
-        class="shrink-0 self-end"
-        size="small"
-        circle
-        :type="isSending ? 'warning' : 'primary'"
-        :aria-label="isSending ? '停止生成' : '发送'"
-        :title="isSending ? '停止生成' : '发送'"
-        @click="() => handleSend()"
-      >
-        <template #icon>
-          <icon-lucide:square v-if="isSending" class="text-16px" />
-          <icon-lucide:arrow-up v-else class="text-16px" />
-        </template>
-      </NButton>
-    </div>
-    <div
-      class="chat-input-footer mx-auto mt-1.5 w-full flex items-center justify-between gap-3 px-1"
-      :class="props.variant === 'hero' ? 'max-w-[960px]' : 'max-w-[960px]'"
-    >
-      <SessionScopePicker
-        v-if="props.variant === 'hero'"
-        :conversation-id="conversationId"
-        :scope="currentScope"
-        :disabled="!canEditSourceScope"
-        @update:busy="sourceScopeUpdating = $event"
-      />
-      <div class="flex items-center gap-2" :class="props.variant === 'hero' ? 'ml-auto' : ''">
-        <span id="chat-input-shortcut-hint" class="chat-input-muted text-11px">Enter 换行 · Ctrl/⌘ Enter 发送</span>
-        <div class="flex items-center gap-1">
+      <div class="chat-input-tools">
+        <SessionScopePicker
+          v-if="props.variant === 'hero'"
+          :conversation-id="conversationId"
+          :scope="currentScope"
+          :disabled="!canEditSourceScope"
+          @update:busy="sourceScopeUpdating = $event"
+        />
+        <div class="chat-input-meta" data-testid="chat-input-meta">
+          <span id="chat-input-shortcut-hint" class="chat-input-muted text-11px">Enter 换行 · Ctrl/⌘ Enter 发送</span>
+        </div>
+        <div class="chat-input-meta ml-auto">
           <span class="connection-dot inline-block h-1.5 w-1.5 rounded-full" :class="connectionDotClass" />
           <span class="chat-input-muted text-11px">{{ connectionText }}</span>
         </div>
+        <NButton
+          :disabled="sendDisabled"
+          class="chat-input-send"
+          size="small"
+          circle
+          type="primary"
+          :aria-label="isSending ? '停止生成' : '发送'"
+          :title="isSending ? '停止生成' : '发送'"
+          @click="() => handleSend()"
+        >
+          <template #icon>
+            <icon-lucide:loader-circle v-if="isSending" class="animate-spin animate-duration-750 text-14px" />
+            <icon-lucide:arrow-up v-else class="text-14px" />
+          </template>
+        </NButton>
       </div>
     </div>
   </div>
@@ -770,13 +779,8 @@ onUnmounted(() => {
 }
 
 @media (max-width: 640px) {
-  .chat-input-footer {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .chat-input-footer > :last-child {
-    margin-left: 0;
+  #chat-input-shortcut-hint {
+    display: none;
   }
 }
 
@@ -856,9 +860,12 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
+/* The dock band must not paint its own background: the conversation
+   panel is the background, and the composer floats on it as a white
+   card — so the color never breaks around the composer. */
 .chat-input-wrap--dock {
-  background: #fff;
-  padding: var(--space-3) var(--space-4) max(var(--space-3), env(safe-area-inset-bottom));
+  background: transparent;
+  padding: var(--space-3) var(--space-4) max(var(--space-4), env(safe-area-inset-bottom));
 }
 
 .chat-input-wrap--hero {
@@ -866,8 +873,7 @@ onUnmounted(() => {
 }
 
 .chat-input-wrap--hero .chat-input-shell {
-  min-height: 112px;
-  align-items: flex-end;
+  min-height: 116px;
   padding: var(--space-4) var(--space-4) var(--space-3);
 }
 
@@ -877,25 +883,64 @@ onUnmounted(() => {
   line-height: var(--leading-relaxed);
 }
 
+/* The composer floats over the chat: a borderless white card lifted by
+   the dedicated composer shadow. Focus narrows to the research-blue
+   ring instead of swapping fills. All tools and meta live inside. */
 .chat-input-shell {
+  display: flex;
   max-width: 960px !important;
-  min-height: 64px;
-  border-radius: 24px;
-  background: #f5f5f5 !important;
-  padding: var(--space-3) var(--space-3) var(--space-2);
-  transition: background var(--duration-base) var(--ease-standard);
-}
-
-/* The composer is a soft surface, not a framed box: state changes the
-   fill instead of drawing a border. Focus still needs a boundary, because
-   the focused fill is white and the dock behind it is white too. */
-.chat-input-shell:hover {
-  background: #f1f3f2 !important;
+  min-height: 60px;
+  flex-direction: column;
+  gap: var(--space-1-5);
+  border: none;
+  border-radius: var(--radius-composer);
+  background: var(--color-surface) !important;
+  box-shadow: var(--shadow-composer);
+  padding: var(--space-2-5) var(--space-3-5) var(--space-2);
+  transition: box-shadow var(--duration-base) var(--ease-standard);
 }
 
 .chat-input-shell:focus-within {
-  background: #fff !important;
-  box-shadow: 0 0 0 1px rgba(23, 24, 26, 0.14);
+  box-shadow:
+    0 0 0 3px var(--color-focus-ring),
+    var(--shadow-composer);
+}
+
+.chat-input-tools {
+  display: flex;
+  min-height: 30px;
+  align-items: center;
+  gap: var(--space-2-5);
+}
+
+.chat-input-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+  white-space: nowrap;
+}
+
+.chat-input-send:not(:disabled):hover {
+  background: var(--color-primary-hover);
+}
+
+/* Under reduced motion the spinner breathes via opacity instead of
+   rotating, so the working state stays visible without motion. */
+@media (prefers-reduced-motion: reduce) {
+  .chat-input-send .animate-spin {
+    animation: send-breath 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes send-breath {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 .chat-input-shell :deep(.n-button:focus),
@@ -912,10 +957,6 @@ onUnmounted(() => {
   display: none !important;
 }
 
-.chat-input-footer {
-  max-width: 960px !important;
-}
-
 @media (max-width: 640px) {
   .chat-input-wrap--dock {
     padding-inline: var(--space-3);
@@ -923,7 +964,7 @@ onUnmounted(() => {
 
   .chat-input-shell {
     min-height: 56px;
-    border-radius: 20px;
+    border-radius: var(--radius-xl);
     padding: var(--space-2-5) var(--space-2-5) var(--space-2);
   }
 }

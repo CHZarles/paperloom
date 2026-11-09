@@ -65,18 +65,6 @@ test('reading artifacts render after reload and source evidence resolves from so
       scopeLocked: true,
       actions: [{ action: 'REFINE_GOAL', label: 'Refine goal', payload: {} }]
     },
-    intentFrame: {
-      originalUserRequest: 'find beginner-friendly AI agent evaluation papers',
-      paperQueryTexts: ['AI agent evaluation'],
-      locationQueryTexts: [],
-      locationTypes: [],
-      locationIntents: [],
-      sourceLanguages: [],
-      retrievalLanguages: [],
-      sectionRoles: [],
-      planningStatus: 'paper_query_observed',
-      missing: []
-    },
     paperShortlist: {
       items: [
         {
@@ -285,7 +273,6 @@ test('reading artifacts render after reload and source evidence resolves from so
   await expect(page.locator('.reading-artifacts')).toContainText('find beginner-friendly AI agent evaluation papers');
   await expect(page.locator('.reading-artifacts')).toContainText('All readable papers · 30 papers · locked');
   await expect(page.locator('.reading-artifacts')).toContainText('Decision Path');
-  await expect(page.locator('.reading-artifacts')).toContainText('Paper discovery');
   await expect(page.locator('.reading-artifacts')).toContainText('Verification');
   await expect(page.locator('.reading-artifacts')).toContainText('The verification check passed.');
   await expect(page.locator('.reading-artifacts')).not.toContainText('trace gate');
@@ -343,18 +330,6 @@ test('paper shortlist actions send structured focus and reading plan survives re
       readablePaperCount: 30,
       scopeLocked: true,
       actions: []
-    },
-    intentFrame: {
-      originalUserRequest: 'find beginner-friendly AI agent evaluation papers',
-      paperQueryTexts: ['AI agent evaluation'],
-      locationQueryTexts: [],
-      locationTypes: [],
-      locationIntents: [],
-      sourceLanguages: [],
-      retrievalLanguages: [],
-      sectionRoles: [],
-      planningStatus: 'paper_query_observed',
-      missing: []
     },
     paperShortlist: {
       items: [
@@ -447,21 +422,7 @@ test('paper shortlist actions send structured focus and reading plan survives re
 
   const readingPlanArtifacts = {
     artifactVersion: 'reading-turn-artifacts/v1',
-    goalCard: shortlistArtifacts.goalCard,
-    intentFrame: {
-      originalUserRequest: '列出这篇论文可阅读的位置',
-      readingAction: 'LIST_LOCATIONS',
-      paperQueryTexts: [],
-      locationQueryTexts: [],
-      locationTypes: ['PAGE', 'SECTION'],
-      locationIntents: [],
-      sourceLanguages: [],
-      retrievalLanguages: [],
-      sectionRoles: [],
-      planningStatus: 'not_planned',
-      missing: []
-    },
-    paperShortlist: { items: [] },
+    goalCard: shortlistArtifacts.goalCard,    paperShortlist: { items: [] },
     readingPlan: {
       steps: [
         {

@@ -77,18 +77,21 @@ the same key. Kafka supports upload processing and Redis supports separate trans
 
 ## 3. Configure MinerU Cloud API
 
-Create a token in [MinerU API management](https://mineru.net/apiManage/docs), then set it outside
-the repository or in your local `.env`:
+Create an Access Key / Secret Key pair in [MinerU API management](https://mineru.net/apiManage/docs),
+then set it outside the repository or in your local `.env`:
 
 ```bash
 PAPER_PARSING_MINERU_BASE_URL=https://mineru.net
-PAPER_PARSING_MINERU_API_TOKEN=replace-with-your-token
+PAPER_PARSING_MINERU_ACCESS_KEY=replace-with-your-access-key
+PAPER_PARSING_MINERU_SECRET_KEY=replace-with-your-secret-key
 PAPER_PARSING_MINERU_MODEL_VERSION=vlm
 ```
 
-PaperLoom requests a short-lived MinerU upload URL, uploads the PDF directly to it, then polls the
-batch result and stores the returned ZIP artifact. The normal product path fails explicitly if the
-token is absent or MinerU rejects the task; it does not silently downgrade to a weaker parser.
+PaperLoom exchanges the Access Key / Secret Key pair for a short-lived MinerU access token, requests
+a signed upload URL, uploads the PDF directly to it, then polls the batch result and stores the
+returned ZIP artifact. The normal product path fails explicitly if the credentials are absent or
+MinerU rejects the task; it does not silently downgrade to a weaker parser. A legacy manually issued
+`PAPER_PARSING_MINERU_API_TOKEN` is still accepted as an alternative to the key pair.
 
 ## 4. Start the Research Harness
 

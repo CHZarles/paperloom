@@ -33,6 +33,6 @@ defineOptions({ name: 'SystemLogo' });
 }
 
 .system-logo__evidence {
-  fill: var(--brand-teal);
+  fill: var(--brand-accent);
 }
 </style>

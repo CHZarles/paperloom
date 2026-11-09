@@ -15,7 +15,7 @@ const authStore = useAuthStore();
 const { toLogin } = useRouterPush();
 const { SvgIconVNode } = useSvgIcon();
 const settingsVisible = ref(false);
-const settingsModalHostStyle = { width: 'min(1480px, calc(100vw - 32px))' };
+const settingsModalHostStyle = { width: 'calc(100vw - 32px)' };
 
 function loginOrRegister() {
   toLogin();
@@ -142,7 +142,7 @@ function buildAvatarFill(seed: string) {
 
 <style scoped>
 .settings-modal-host {
-  width: min(1480px, calc(100vw - 32px));
+  width: calc(100vw - 32px);
 }
 
 .avatar-identicon {

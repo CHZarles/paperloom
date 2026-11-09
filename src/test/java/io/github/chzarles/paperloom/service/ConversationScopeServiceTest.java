@@ -89,15 +89,6 @@ class ConversationScopeServiceTest {
         assertEquals(ConversationScopeMode.AUTO_LIBRARY, session.getScopeMode());
         assertEquals(false, session.isScopeLocked());
         assertEquals(ConversationScopeStatus.READY, session.getScopeStatus());
-
-        Map<String, Object> defaults = service.defaultScope();
-
-        assertEquals("AUTO_LIBRARY", defaults.get("scopeMode"));
-        assertEquals(false, defaults.get("scopeLocked"));
-        assertEquals("READY", defaults.get("scopeStatus"));
-        assertEquals("All readable papers", defaults.get("sourceLabel"));
-        assertNull(defaults.get("sourcePaperCount"));
-        assertIterableEquals(List.of(), (List<?>) defaults.get("paperIds"));
     }
 
     @Test
@@ -380,82 +371,6 @@ class ConversationScopeServiceTest {
     }
 
     @Test
-    void titleQueryPreviewReturnsOnlySearchableAccessibleMatches() {
-        ConversationSession session = ownedSession("conversation-1");
-        Paper lora = paper("paper-lora", "1");
-        lora.setPaperTitle("LoRA: Low-Rank Adaptation of Large Language Models");
-        lora.setOriginalFilename("lora.pdf");
-        Paper unsearchable = paper("paper-unsearchable", "1");
-        unsearchable.setPaperTitle("LoRA implementation note");
-        Paper unrelated = paper("paper-transformer", "1");
-        unrelated.setPaperTitle("Attention Is All You Need");
-        when(sessionRepository.findByConversationIdAndUserId("conversation-1", 1L)).thenReturn(Optional.of(session));
-        when(paperAccessService.accessiblePapers("1"))
-                .thenReturn(List.of(lora, unsearchable, unrelated));
-        when(paperSearchabilityService.isSearchable(lora)).thenReturn(true);
-        when(paperSearchabilityService.isSearchable(unsearchable)).thenReturn(false);
-        when(paperSearchabilityService.isSearchable(unrelated)).thenReturn(true);
-        when(paperRepository.findByPaperIdIn(List.of("paper-lora"))).thenReturn(List.of(lora));
-
-        Map<String, Object> preview = service.previewTitleMatchScope(
-                1L,
-                "conversation-1",
-                new UpdateConversationScopeRequest(
-                        "SOURCE_SET_SNAPSHOT",
-                        null,
-                        null,
-                        null,
-                        null,
-                        "lora",
-                        null
-                )
-        );
-
-        assertEquals(1, preview.get("paperCount"));
-        assertIterableEquals(List.of("paper-lora"), (List<?>) preview.get("paperIds"));
-        assertEquals("Title match: lora (1 papers)", preview.get("sourceLabel"));
-        Map<?, ?> recipe = (Map<?, ?>) preview.get("sourceRecipe");
-        assertEquals("title_match", recipe.get("type"));
-        assertEquals("lora", recipe.get("titleQuery"));
-        assertNull(recipe.get("titleRegex"));
-        assertEquals(1, recipe.get("paperCount"));
-        List<?> papers = (List<?>) preview.get("papers");
-        assertEquals(1, papers.size());
-        assertEquals("LoRA: Low-Rank Adaptation of Large Language Models", ((Map<?, ?>) papers.get(0)).get("paperTitle"));
-    }
-
-    @Test
-    void titleRegexPreviewMatchesTitleOrFilename() {
-        ConversationSession session = ownedSession("conversation-1");
-        Paper filenameMatch = paper("paper-lora", "1");
-        filenameMatch.setPaperTitle("Low rank adapters");
-        filenameMatch.setOriginalFilename("lora-notes.pdf");
-        when(sessionRepository.findByConversationIdAndUserId("conversation-1", 1L)).thenReturn(Optional.of(session));
-        when(paperAccessService.accessiblePapers("1")).thenReturn(List.of(filenameMatch));
-        when(paperSearchabilityService.isSearchable(filenameMatch)).thenReturn(true);
-        when(paperRepository.findByPaperIdIn(List.of("paper-lora"))).thenReturn(List.of(filenameMatch));
-
-        Map<String, Object> preview = service.previewTitleMatchScope(
-                1L,
-                "conversation-1",
-                new UpdateConversationScopeRequest(
-                        "SOURCE_SET_SNAPSHOT",
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        "(?i)^lora"
-                )
-        );
-
-        assertIterableEquals(List.of("paper-lora"), (List<?>) preview.get("paperIds"));
-        Map<?, ?> recipe = (Map<?, ?>) preview.get("sourceRecipe");
-        assertNull(recipe.get("titleQuery"));
-        assertEquals("(?i)^lora", recipe.get("titleRegex"));
-    }
-
-    @Test
     void titleMatchSnapshotStoresResolvedPaperIdsAndRecipe() throws Exception {
         ConversationSession session = ownedSession("conversation-1");
         Paper lora = paper("paper-lora", "1");
@@ -492,51 +407,6 @@ class ConversationScopeServiceTest {
     }
 
     @Test
-    void invalidTitleRegexIsRejected() {
-        ConversationSession session = ownedSession("conversation-1");
-        when(sessionRepository.findByConversationIdAndUserId("conversation-1", 1L)).thenReturn(Optional.of(session));
-
-        CustomException exception = assertThrows(CustomException.class, () -> service.previewTitleMatchScope(
-                1L,
-                "conversation-1",
-                new UpdateConversationScopeRequest(
-                        "SOURCE_SET_SNAPSHOT",
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        "["
-                )
-        ));
-
-        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
-    }
-
-    @Test
-    void titleMatchPreviewRejectsLockedSession() {
-        ConversationSession session = ownedSession("conversation-1");
-        session.setScopeLocked(true);
-        when(sessionRepository.findByConversationIdAndUserId("conversation-1", 1L)).thenReturn(Optional.of(session));
-
-        CustomException exception = assertThrows(CustomException.class, () -> service.previewTitleMatchScope(
-                1L,
-                "conversation-1",
-                new UpdateConversationScopeRequest(
-                        "SOURCE_SET_SNAPSHOT",
-                        null,
-                        null,
-                        null,
-                        null,
-                        "lora",
-                        null
-                )
-        ));
-
-        assertEquals(HttpStatus.CONFLICT, exception.getStatus());
-    }
-
-    @Test
     void titleMatchSnapshotRejectsNoMatches() {
         ConversationSession session = ownedSession("conversation-1");
         when(sessionRepository.findByConversationIdAndUserIdForUpdate("conversation-1", 1L)).thenReturn(Optional.of(session));
@@ -558,28 +428,6 @@ class ConversationScopeServiceTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
         verify(sessionRepository, never()).save(session);
-    }
-
-    @Test
-    void titleMatchRejectsQueryAndRegexTogether() {
-        ConversationSession session = ownedSession("conversation-1");
-        when(sessionRepository.findByConversationIdAndUserId("conversation-1", 1L)).thenReturn(Optional.of(session));
-
-        CustomException exception = assertThrows(CustomException.class, () -> service.previewTitleMatchScope(
-                1L,
-                "conversation-1",
-                new UpdateConversationScopeRequest(
-                        "SOURCE_SET_SNAPSHOT",
-                        null,
-                        null,
-                        null,
-                        null,
-                        "lora",
-                        "lora"
-                )
-        ));
-
-        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
     }
 
     @Test

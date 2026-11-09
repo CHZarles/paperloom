@@ -2,7 +2,6 @@ package io.github.chzarles.paperloom.handler;
 
 import io.github.chzarles.paperloom.service.ChatHandler;
 import io.github.chzarles.paperloom.service.ChatSessionRegistry;
-import io.github.chzarles.paperloom.service.RetrievalBudgetProfile;
 import io.github.chzarles.paperloom.utils.JwtUtils;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -24,7 +23,7 @@ import static org.mockito.Mockito.when;
 class ChatWebSocketHandlerTest {
 
     @Test
-    void structuredChatPayloadDefaultsMissingRetrievalBudgetProfileToInteractive() {
+    void structuredChatPayloadPassesChatMessage() {
         ChatHandler chatHandler = mock(ChatHandler.class);
         ChatWebSocketHandler handler = handler(chatHandler);
         WebSocketSession session = session();
@@ -38,43 +37,6 @@ class ChatWebSocketHandlerTest {
 
         ChatHandler.ChatRequest request = capturedRequest(chatHandler, session);
         assertEquals("explain this paper", request.message());
-        assertEquals(RetrievalBudgetProfile.INTERACTIVE, request.retrievalBudgetProfile());
-    }
-
-    @Test
-    void structuredChatPayloadIgnoresScopeRetrievalBudgetProfile() {
-        ChatHandler chatHandler = mock(ChatHandler.class);
-        ChatWebSocketHandler handler = handler(chatHandler);
-        WebSocketSession session = session();
-
-        handler.handleTextMessage(
-                session,
-                new TextMessage("""
-                        {"type":"chat","conversationId":"conversation-1","message":"audit the evidence","referenceFocus":{"retrievalBudgetProfile":"deep_audit"}}
-                        """)
-        );
-
-        ChatHandler.ChatRequest request = capturedRequest(chatHandler, session);
-        assertEquals("audit the evidence", request.message());
-        assertEquals(RetrievalBudgetProfile.INTERACTIVE, request.retrievalBudgetProfile());
-    }
-
-    @Test
-    void structuredChatPayloadIgnoresTopLevelRetrievalBudgetWithoutReferenceFocus() {
-        ChatHandler chatHandler = mock(ChatHandler.class);
-        ChatWebSocketHandler handler = handler(chatHandler);
-        WebSocketSession session = session();
-
-        handler.handleTextMessage(
-                session,
-                new TextMessage("""
-                        {"type":"chat","conversationId":"conversation-1","message":"audit the session","retrievalBudgetProfile":"deep_audit","referenceFocus":null}
-                        """)
-        );
-
-        ChatHandler.ChatRequest request = capturedRequest(chatHandler, session);
-        assertEquals("audit the session", request.message());
-        assertEquals(RetrievalBudgetProfile.INTERACTIVE, request.retrievalBudgetProfile());
     }
 
     @Test
@@ -86,14 +48,13 @@ class ChatWebSocketHandlerTest {
         handler.handleTextMessage(
                 session,
                 new TextMessage("""
-                        {"type":"chat","conversationId":"conversation-1","message":"explain this citation","referenceFocus":{"referenceNumber":2,"retrievalBudgetProfile":"high_recall"}}
+                        {"type":"chat","conversationId":"conversation-1","message":"explain this citation","referenceFocus":{"referenceNumber":2}}
                         """)
         );
 
         ChatHandler.ChatRequest request = capturedRequest(chatHandler, session);
         assertEquals("explain this citation", request.message());
         assertEquals(2, request.referenceFocus().referenceNumber());
-        assertEquals(RetrievalBudgetProfile.INTERACTIVE, request.retrievalBudgetProfile());
     }
 
     @Test

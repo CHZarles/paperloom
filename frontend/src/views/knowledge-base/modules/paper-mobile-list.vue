@@ -142,7 +142,7 @@ function handleRowAction(key: string | number, row: Api.Paper.UploadTask) {
     <article v-for="row in rows" :key="row.paperId" class="paper-mobile-item">
       <header class="paper-mobile-item__header">
         <button type="button" class="paper-mobile-item__title" @click="emit('preview', row)">
-          {{ row.originalFilename }}
+          {{ row.paperTitle || row.originalFilename }}
         </button>
         <NDropdown :options="rowOptions(row)" trigger="click" @select="key => handleRowAction(key, row)">
           <NButton quaternary circle class="paper-mobile-item__menu" aria-label="Paper actions">

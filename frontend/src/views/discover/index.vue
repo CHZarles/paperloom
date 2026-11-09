@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { NButton, NInput, NSelect, NSpin, NTag } from 'naive-ui';
+import { NButton, NButtonGroup, NInput, NSelect, NSpin, NTag } from 'naive-ui';
 import { addPapersToCollection, fetchArxivSearch, fetchPaperCollections, importArxivPaper } from '@/service/api';
+import AgentChat from './modules/agent-chat.vue';
 
 defineOptions({
   name: 'DiscoverPage'
@@ -10,6 +11,9 @@ defineOptions({
 const PAGE_SIZE = 20;
 
 const router = useRouter();
+
+/** 默认进智能探索（聊天助理），关键词检索保留为副入口。 */
+const mode = ref<'keyword' | 'agent'>('agent');
 
 const keyword = ref('');
 const sort = ref<'relevance' | 'submitted'>('relevance');
@@ -171,141 +175,281 @@ function authorsText(authors: string[]) {
 </script>
 
 <template>
-  <div class="discover-page">
-    <header class="discover-header">
-      <div>
-        <h1>探索论文</h1>
-        <p>检索 arXiv 元数据，点选后按 PDF 入库。入库后走和手动上传相同的解析与索引，可在文献库里对全文提问。</p>
-      </div>
-      <NButton quaternary size="small" @click="router.push('/knowledge-base')">去文献库</NButton>
+  <div class="discover-shell">
+    <!-- 独立页面自己的顶栏：左边切换模式，右边只保留两个出口 -->
+    <header class="discover-topbar">
+      <NButtonGroup size="small" class="discover-mode-switch">
+        <NButton :type="mode === 'agent' ? 'primary' : 'default'" secondary @click="mode = 'agent'">
+          <template #icon>
+            <icon-lucide:sparkles />
+          </template>
+          聊天助理
+        </NButton>
+        <NButton :type="mode === 'keyword' ? 'primary' : 'default'" secondary @click="mode = 'keyword'">
+          关键词检索
+        </NButton>
+      </NButtonGroup>
+      <NButton quaternary size="small" @click="router.push('/chat')">
+        <template #icon>
+          <icon-lucide:message-circle />
+        </template>
+        返回 Chat
+      </NButton>
+      <NButton quaternary size="small" @click="router.push('/knowledge-base')">
+        <template #icon>
+          <icon-lucide:library />
+        </template>
+        去文献库
+      </NButton>
     </header>
 
-    <section class="search-bar">
-      <NInput
-        v-model:value="keyword"
-        placeholder="检索 arXiv，例如 retrieval augmented generation"
-        clearable
-        @keyup.enter="handleSearch"
-      />
-      <NSelect v-model:value="sort" class="sort-select" :options="sortOptions" />
-      <div class="collection-picker">
-        <span class="collection-label">入库到</span>
-        <NSelect
-          v-model:value="targetCollectionId"
-          class="collection-select"
-          :options="collectionOptions"
-          :consistent-menu-width="false"
-        />
+    <!-- 进入页面先是一块舒展的居中搜索区，点击检索后才展开成工作台 -->
+    <section v-if="mode === 'keyword' && !searched" class="discover-hero">
+      <span class="hero-badge">
+        <icon-lucide:compass class="text-24px" />
+      </span>
+      <h1 class="hero-title">探索 arXiv 论文</h1>
+      <p class="hero-sub">
+        检索元数据，点选后按 PDF 入库；入库后走和手动上传相同的解析与索引，可在文献库里对全文提问。
+      </p>
+      <div class="hero-search">
+        <NInput
+          v-model:value="keyword"
+          size="large"
+          placeholder="例如 retrieval augmented generation"
+          clearable
+          @keyup.enter="handleSearch"
+        >
+          <template #prefix>
+            <icon-lucide:search class="text-icon" />
+          </template>
+        </NInput>
+        <NButton type="primary" size="large" :loading="loading" @click="handleSearch">检索</NButton>
       </div>
-      <NButton type="primary" :loading="loading" @click="handleSearch">检索</NButton>
+      <div class="hero-options">
+        <NSelect v-model:value="sort" size="small" class="sort-select" :options="sortOptions" />
+        <div class="collection-picker">
+          <span class="collection-label">入库到</span>
+          <NSelect
+            v-model:value="targetCollectionId"
+            size="small"
+            class="collection-select"
+            :options="collectionOptions"
+            :consistent-menu-width="false"
+          />
+        </div>
+      </div>
     </section>
 
-    <div class="status-row">
-      <span>{{ statusText }}</span>
-      <span v-if="importedCount > 0" class="imported-hint">本次已入库 {{ importedCount }} 篇，解析中</span>
+    <div v-else-if="mode === 'keyword'" class="discover-workbench">
+      <section class="discover-toolbar discover-col">
+        <NInput
+          v-model:value="keyword"
+          class="discover-keyword"
+          placeholder="检索 arXiv，例如 retrieval augmented generation"
+          clearable
+          @keyup.enter="handleSearch"
+        >
+          <template #prefix>
+            <icon-lucide:search class="text-icon" />
+          </template>
+        </NInput>
+        <NSelect v-model:value="sort" class="sort-select" :options="sortOptions" />
+        <div class="collection-picker">
+          <span class="collection-label">入库到</span>
+          <NSelect
+            v-model:value="targetCollectionId"
+            class="collection-select"
+            :options="collectionOptions"
+            :consistent-menu-width="false"
+          />
+        </div>
+        <NButton type="primary" :loading="loading" @click="handleSearch">检索</NButton>
+      </section>
+
+      <div class="discover-col status-row">
+        <span>{{ statusText }}</span>
+        <span v-if="importedCount > 0" class="imported-hint">本次已入库 {{ importedCount }} 篇，解析中</span>
+      </div>
+
+      <div class="discover-col discover-results">
+        <NSpin :show="loading" class="results-spin">
+          <div v-if="errorMessage" class="state-block">
+            <p class="error-text">{{ errorMessage }}</p>
+            <NButton size="small" secondary @click="handleSearch">重试</NButton>
+          </div>
+
+          <div v-else-if="items.length === 0" class="state-block">没有匹配的论文，换个检索词试试。</div>
+
+          <ul v-if="hasResults" class="result-list">
+            <li v-for="item in items" :key="item.arxivId" class="result-item">
+              <div class="result-main">
+                <a class="result-title" :href="item.absUrl" target="_blank" rel="noopener noreferrer">
+                  {{ item.title }}
+                </a>
+                <p class="result-meta">
+                  <span class="utility-text">arXiv:{{ item.arxivId }}</span>
+                  <template v-if="item.publishedYear">· {{ item.publishedYear }}</template>
+                  <template v-if="item.categories.length">· {{ item.categories.join(' / ') }}</template>
+                </p>
+                <p class="result-authors">{{ authorsText(item.authors) }}</p>
+                <p class="result-summary-text">{{ item.summary }}</p>
+              </div>
+
+              <div class="result-side">
+                <NTag v-if="item.libraryStatus !== 'NONE'" size="small" :type="STATUS_META[item.libraryStatus].tag">
+                  {{ STATUS_META[item.libraryStatus].label }}
+                </NTag>
+                <div class="result-actions">
+                  <NButton
+                    size="small"
+                    type="primary"
+                    :disabled="item.libraryStatus === 'READY' || item.libraryStatus === 'PROCESSING'"
+                    :loading="importing === item.arxivId"
+                    @click="handleImport(item)"
+                  >
+                    {{ STATUS_META[item.libraryStatus].action }}
+                  </NButton>
+                  <NButton
+                    size="small"
+                    quaternary
+                    tag="a"
+                    :href="item.pdfUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    PDF
+                  </NButton>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </NSpin>
+      </div>
+
+      <footer class="discover-col pager">
+        <NButton size="small" secondary :disabled="page === 0 || loading" @click="goPrev">上一页</NButton>
+        <span class="pager-info">第 {{ page + 1 }} 页</span>
+        <NButton size="small" secondary :disabled="!hasNext || loading" @click="goNext">下一页</NButton>
+      </footer>
     </div>
 
-    <section class="results-panel">
-      <NSpin :show="loading" class="panel-spin">
-        <div class="state-block" :class="{ 'state-block--hidden': hasResults }">
-          <template v-if="errorMessage">
-            <p class="error-text">{{ errorMessage }}</p>
-            <NButton size="small" @click="handleSearch">重试</NButton>
-          </template>
-          <p v-else-if="!searched">输入检索词，看看 arXiv 上有什么。</p>
-          <p v-else-if="items.length === 0">没有匹配的论文，换个检索词试试。</p>
-        </div>
-
-        <ul v-if="hasResults" class="result-list">
-          <li v-for="item in items" :key="item.arxivId" class="result-item">
-            <div class="result-head">
-              <a class="result-title" :href="item.absUrl" target="_blank" rel="noopener noreferrer">{{ item.title }}</a>
-              <NTag v-if="item.libraryStatus !== 'NONE'" size="small" :type="STATUS_META[item.libraryStatus].tag">
-                {{ STATUS_META[item.libraryStatus].label }}
-              </NTag>
-            </div>
-
-            <p class="result-meta">
-              arXiv:{{ item.arxivId }}
-              <template v-if="item.publishedYear">· {{ item.publishedYear }}</template>
-              <template v-if="item.categories.length">· {{ item.categories.join(' / ') }}</template>
-            </p>
-            <p class="result-authors">{{ authorsText(item.authors) }}</p>
-            <p class="result-summary-text">{{ item.summary }}</p>
-
-            <div class="result-actions">
-              <NButton
-                size="small"
-                type="primary"
-                :disabled="item.libraryStatus === 'READY' || item.libraryStatus === 'PROCESSING'"
-                :loading="importing === item.arxivId"
-                @click="handleImport(item)"
-              >
-                {{ STATUS_META[item.libraryStatus].action }}
-              </NButton>
-              <NButton size="small" quaternary tag="a" :href="item.pdfUrl" target="_blank" rel="noopener noreferrer">
-                PDF
-              </NButton>
-            </div>
-          </li>
-        </ul>
-      </NSpin>
-    </section>
-
-    <footer class="pager">
-      <NButton size="small" :disabled="page === 0 || loading" @click="goPrev">上一页</NButton>
-      <span class="pager-info">第 {{ page + 1 }} 页</span>
-      <NButton size="small" :disabled="!hasNext || loading" @click="goNext">下一页</NButton>
-    </footer>
+    <!-- 智能探索：有记忆的单例聊天助理（发现论文/感知库内/帮入库；/clear、/沉淀、记忆面板） -->
+    <AgentChat v-else />
   </div>
 </template>
 
-<style scoped>
-.discover-page {
+<style scoped lang="scss">
+/* 独立全屏页（layout.blank）：整页就是产品画布，不再套一层卡片 */
+.discover-shell {
   display: flex;
   width: 100%;
-  height: 100%;
+  height: 100vh;
   min-height: 0;
   flex-direction: column;
-  gap: 12px;
-  box-sizing: border-box;
-  max-width: 1040px;
-  margin: 0 auto;
-  padding: 20px 20px 16px;
-  overflow: hidden;
+  padding: 0 16px 20px;
+  overflow: auto;
+  background: var(--color-bg);
   color: var(--color-text);
 }
 
-.discover-header {
-  display: flex;
-  flex: none;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.discover-header h1 {
-  margin: 0 0 4px;
-  font-size: 20px;
-  font-weight: 600;
-}
-
-.discover-header p {
-  margin: 0;
-  max-width: 680px;
-  color: var(--color-text-secondary, #6b7280);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.search-bar {
+.discover-topbar {
   display: flex;
   flex: none;
   align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 4px;
+}
+
+.discover-mode-switch {
+  margin-right: auto;
+}
+
+/* 阅读宽度令牌：与产品的 reading-width 对齐，栏内列表不会拉成超长行 */
+.discover-col {
+  width: 100%;
+  max-width: var(--reading-width);
+  margin: 0 auto;
+}
+
+.discover-workbench {
+  display: flex;
+  flex: none;
+  min-height: 0;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.discover-hero {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px 0 48px;
+}
+
+.hero-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-research-soft-bg);
+  color: var(--color-research);
+}
+
+.hero-title {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  line-height: var(--leading-tight);
+  text-align: center;
+}
+
+.hero-sub {
+  max-width: 560px;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  text-align: center;
+}
+
+.hero-search {
+  display: flex;
+  width: min(760px, 100%);
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.hero-search :deep(.n-input) {
+  flex: 1;
+}
+
+.hero-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.discover-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
-.search-bar :deep(.n-input) {
+.discover-keyword {
+  flex: 1 1 260px;
   min-width: 0;
 }
 
@@ -318,12 +462,12 @@ function authorsText(authors: string[]) {
   display: flex;
   flex: none;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .collection-label {
-  color: var(--color-text-secondary, #6b7280);
-  font-size: 12px;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
   white-space: nowrap;
 }
 
@@ -337,25 +481,23 @@ function authorsText(authors: string[]) {
   align-items: center;
   justify-content: space-between;
   min-height: 18px;
-  color: var(--color-text-secondary, #6b7280);
-  font-size: 12px;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
 }
 
 .imported-hint {
-  color: var(--color-success, #18a058);
+  color: var(--color-success);
 }
 
-.results-panel {
-  flex: 1;
+.discover-results {
+  display: flex;
   min-height: 0;
-  overflow-y: auto;
+  flex: 1 1 auto;
+  flex-direction: column;
   overscroll-behavior: contain;
-  /* 结果多少只影响内部滚动，不改变外框宽度 */
-  scrollbar-gutter: stable;
-  padding-right: 4px;
 }
 
-.panel-spin {
+.results-spin {
   display: block;
   min-height: 100%;
 }
@@ -368,70 +510,87 @@ function authorsText(authors: string[]) {
   justify-content: center;
   gap: 10px;
   padding: 40px 0;
-  color: var(--color-text-secondary, #6b7280);
-  font-size: 13px;
-}
-
-.state-block--hidden {
-  display: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
 }
 
 .error-text {
   margin: 0;
-  color: var(--color-error, #d03050);
+  color: var(--color-error);
 }
 
 .result-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   margin: 0;
-  padding: 0 0 8px;
+  padding: 0 0 12px;
   list-style: none;
 }
 
 .result-item {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 14px;
-  border: 1px solid var(--color-border, #e5e7eb);
-  border-radius: 10px;
-  background: var(--color-bg-container, #ffffff);
+  gap: 20px;
+  padding: 16px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  transition:
+    border-color var(--duration-fast) var(--ease-standard),
+    box-shadow var(--duration-fast) var(--ease-standard);
 }
 
-.result-head {
+.result-item:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-card);
+}
+
+.result-main {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.result-side {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 2px;
 }
 
 .result-title {
-  color: var(--color-text);
-  font-size: 15px;
+  color: var(--color-research);
+  font-size: var(--text-lg);
   font-weight: 600;
-  line-height: 1.45;
+  line-height: var(--leading-snug);
   text-decoration: none;
 }
 
 .result-title:hover {
+  color: var(--color-research-hover);
   text-decoration: underline;
 }
 
 .result-meta,
 .result-authors {
   margin: 0;
-  color: var(--color-text-secondary, #6b7280);
-  font-size: 12px;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: var(--leading-snug);
 }
 
 .result-summary-text {
   display: -webkit-box;
   margin: 0;
   overflow: hidden;
-  color: var(--color-text-secondary, #4b5563);
-  font-size: 13px;
-  line-height: 1.6;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
 }
@@ -452,7 +611,60 @@ function authorsText(authors: string[]) {
 }
 
 .pager-info {
-  color: var(--color-text-secondary, #6b7280);
-  font-size: 12px;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+/* 桌面端：工作台撑满剩余视口，结果栏内滚动；移动端：整页滚动 */
+@media (min-width: 640px) {
+  .discover-shell {
+    padding: 0 32px 24px;
+    overflow: hidden;
+  }
+
+  .discover-topbar {
+    padding: 12px 4px;
+  }
+
+  .discover-workbench {
+    flex: 1 1 auto;
+  }
+
+  .discover-results {
+    overflow-y: auto;
+    /* 结果多少只影响内部滚动，不改变外框宽度 */
+    scrollbar-gutter: stable;
+    padding-right: 2px;
+  }
+}
+
+@media (max-width: 720px) {
+  .hero-search {
+    flex-direction: column;
+  }
+
+  .discover-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .discover-keyword,
+  .sort-select,
+  .collection-picker,
+  .collection-select {
+    width: 100%;
+  }
+
+  .result-item {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .result-side {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 0;
+  }
 }
 </style>

@@ -162,6 +162,35 @@ declare namespace Api {
       embeddingRankings: UsageRankingItem[];
       alerts: UsageAlert[];
     }
+
+    interface ModelProviderItem {
+      provider: string;
+      displayName: string;
+      apiStyle: string;
+      apiBaseUrl: string;
+      model: string;
+      enabled: boolean;
+      active: boolean;
+      dimension: number | null;
+      hasApiKey: boolean;
+    }
+
+    interface ModelProviderOverview {
+      scope: 'llm' | 'embedding';
+      activeProvider: string;
+      providers: ModelProviderItem[];
+    }
+
+    interface ModelProviderSaveRequest {
+      displayName?: string | null;
+      apiStyle?: string | null;
+      apiBaseUrl: string;
+      modelName: string;
+      apiKey?: string | null;
+      enabled: boolean;
+      active: boolean;
+      dimension?: number | null;
+    }
   }
 
   namespace Paper {
@@ -521,30 +550,6 @@ declare namespace Api {
       actions?: ReadingUiAction[] | null;
     }
 
-    interface ReadingIntentFrame {
-      originalUserRequest?: string | null;
-      readingAction?: string | null;
-      paperQueryTexts?: string[] | null;
-      locationQueryTexts?: string[] | null;
-      locationQueryPlans?: ReadingLocationQueryPlan[] | null;
-      locationTypes?: string[] | null;
-      locationIntents?: string[] | null;
-      sourceLanguages?: string[] | null;
-      retrievalLanguages?: string[] | null;
-      sectionRoles?: string[] | null;
-      planningStatus?: string | null;
-      missing?: string[] | null;
-    }
-
-    interface ReadingLocationQueryPlan {
-      queryText?: string | null;
-      intent?: string | null;
-      sourceLanguage?: string | null;
-      retrievalLanguage?: string | null;
-      sectionRoles?: string[] | null;
-      locationTypes?: string[] | null;
-    }
-
     interface ReadingPaperShortlistItem {
       paperId?: string | null;
       paperHandle?: string | null;
@@ -634,7 +639,6 @@ declare namespace Api {
     interface ReadingTurnArtifacts {
       artifactVersion?: string | null;
       goalCard?: ReadingGoalCard | null;
-      intentFrame?: ReadingIntentFrame | null;
       paperShortlist?: { items?: ReadingPaperShortlistItem[] | null } | null;
       readingPlan?: { steps?: ReadingPlanStep[] | null } | null;
       claimEvidencePanel?: { rows?: ReadingClaimEvidenceRow[] | null } | null;
@@ -879,6 +883,84 @@ declare namespace Api {
       /** IMPORTED 本次已入库并排队解析、PROCESSING 解析中、READY 已可检索 */
       status: 'IMPORTED' | 'PROCESSING' | 'READY';
       message: string;
+    }
+
+    /** 智能探索（Discovery Agent，v3 聊天单例） */
+    interface AgentPostResult {
+      type: 'TURN' | 'CLEAR' | 'MEMORY' | 'STATUS';
+      turnId?: string;
+      kind?: 'CHAT' | 'DISTILL';
+      messageId?: number;
+    }
+
+    interface AgentCard {
+      arxivId: string;
+      title: string;
+      authors: string[];
+      categories: string[];
+      publishedYear: number | null;
+      /** NONE 未入库、PROCESSING 解析中、READY 已可检索、FAILED 解析失败 */
+      libraryStatus: 'NONE' | 'PROCESSING' | 'READY' | 'FAILED';
+      summary: string;
+    }
+
+    interface AgentImportResultItem {
+      arxivId: string;
+      status: 'IMPORTED' | 'PROCESSING' | 'READY' | 'FAILED';
+      paperId?: string;
+      message: string;
+    }
+
+    interface AgentImportsResponse {
+      items: AgentImportResultItem[];
+    }
+
+    interface AgentChatMessage {
+      id: number;
+      role: 'USER' | 'ASSISTANT' | 'SYSTEM' | 'CUTOFF';
+      kind: 'CHAT' | 'DISTILL' | 'USER_IMPORT' | null;
+      turnId: string | null;
+      turnStatus: 'RUNNING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | null;
+      reasonCode: string | null;
+      content: string | null;
+      cards: AgentCard[] | null;
+      importResults: AgentImportResultItem[] | null;
+      model: string | null;
+      createdAt: string | null;
+    }
+
+    interface AgentActiveTurn {
+      turnId: string;
+      kind: 'CHAT' | 'DISTILL';
+      status: string;
+      messageId: number;
+      assistantText: string;
+      cards: AgentCard[];
+      importResults: AgentImportResultItem[] | null;
+      savedMemory: AgentMemoryItem[] | null;
+      steps: { text: string }[];
+      searchCount: number;
+      observedCount: number;
+      contextPercent: number | null;
+      elapsedMs: number;
+      usage: { inputTokens: number; outputTokens: number };
+    }
+
+    interface AgentChatThread {
+      messages: AgentChatMessage[];
+      activeTurn: AgentActiveTurn | null;
+      window: { count: number; chars: number; capChars: number };
+      memoryCount: number;
+      enabled: boolean;
+    }
+
+    interface AgentMemoryItem {
+      id: number;
+      kind: 'ROLE' | 'PREF' | 'INSIGHT';
+      content: string;
+      source: 'USER' | 'DISTILLED';
+      active: boolean;
+      updatedAt: string | null;
     }
   }
 

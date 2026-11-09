@@ -34,7 +34,6 @@ class ChatHandlerStopResponseTest {
         handler.stopResponse("1", null, session);
 
         verify(generationStateService).markCancelled("generation-a");
-        verify(generationStateService, never()).getActiveGenerationForUser("1");
         verify(sessionRegistry).sendJsonToClient(eq("1"), eq("client-a"), argThat(payload ->
                 "stop".equals(payload.get("type")) && "generation-a".equals(payload.get("generationId"))
         ));
@@ -53,7 +52,6 @@ class ChatHandlerStopResponseTest {
 
         handler.stopResponse("1", null, session);
 
-        verify(generationStateService, never()).getActiveGenerationForUser("1");
         verify(generationStateService, never()).markCancelled(anyString());
         verify(sessionRegistry, never()).sendJsonToClient(anyString(), anyString(), any());
     }

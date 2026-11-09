@@ -53,7 +53,6 @@ public class PaperAccessAuthorizationFilter extends OncePerRequestFilter {
                 path.matches(".*/papers/upload/merge.*") ||
                 path.matches(".*/papers/upload/status.*") ||
                 path.matches(".*/papers/uploads.*") ||
-                path.matches(".*/papers/accessible.*") ||
                 (path.matches(".*/papers/[a-fA-F0-9]{32}.*") &&
                         ("DELETE".equals(request.getMethod()) || "POST".equals(request.getMethod()) || "PATCH".equals(request.getMethod())))) {
 
@@ -68,8 +67,6 @@ public class PaperAccessAuthorizationFilter extends OncePerRequestFilter {
                     operation = "获取上传状态";
                 } else if (path.contains("/uploads")) {
                     operation = "获取用户论文";
-                } else if (path.contains("/accessible")) {
-                    operation = "获取可访问论文";
                 } else if ("DELETE".equals(request.getMethod()) && path.matches(".*/papers/[a-fA-F0-9]{32}.*")) {
                     operation = "删除论文";
                 } else if ("POST".equals(request.getMethod()) && path.matches(".*/papers/[a-fA-F0-9]{32}/processing/retry.*")) {

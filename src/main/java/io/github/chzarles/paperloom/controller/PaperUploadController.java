@@ -439,42 +439,7 @@ public class PaperUploadController {
      *
      * @return 返回支持的论文格式信息
      */
-    @GetMapping("/supported-types")
-    public ResponseEntity<Map<String, Object>> getSupportedFileTypes() {
-        LogUtils.PerformanceMonitor monitor = LogUtils.startPerformanceMonitor("GET_SUPPORTED_TYPES");
-        try {
-            LogUtils.logBusiness("GET_SUPPORTED_TYPES", "system", "获取支持的论文格式列表");
-
-            Set<String> supportedTypes = fileTypeValidationService.getSupportedFileTypes();
-            Set<String> supportedExtensions = fileTypeValidationService.getSupportedExtensions();
-
-            // 构建数据对象
-            Map<String, Object> data = new HashMap<>();
-            data.put("supportedTypes", supportedTypes);
-            data.put("supportedExtensions", supportedExtensions);
-            data.put("description", "PaperLoom 当前只支持 PDF 论文上传、解析和向量化");
-
-            // 构建统一响应格式
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 200);
-            response.put("message", "获取支持的论文格式成功");
-            response.put("data", data);
-
-            LogUtils.logBusiness("GET_SUPPORTED_TYPES", "system", "成功返回支持的论文格式: 类型数量=%d, 扩展名数量=%d",
-                    supportedTypes.size(), supportedExtensions.size());
-            monitor.end("获取支持的论文格式成功");
-
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            LogUtils.logBusinessError("GET_SUPPORTED_TYPES", "system", "获取支持的论文格式失败", e);
-            monitor.end("获取支持的论文格式失败: " + e.getMessage());
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("code", HttpStatus.INTERNAL_SERVER_ERROR.value());
-            errorResponse.put("message", "获取支持的论文格式失败: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-        }
-    }
-
+    
     /**
      * 根据 PDF 文件名获取论文格式。
      *

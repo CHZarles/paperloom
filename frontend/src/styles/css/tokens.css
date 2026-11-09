@@ -2,50 +2,54 @@
   color-scheme: light;
 
   /* ---- Surfaces & text -------------------------------------------------
-     Muted text is tuned to clear 4.5:1 on every tinted surface below
-     (white 5.96, #f6f8f7 5.59, #f0f3f1 5.34, #f1f4f2 5.39). */
-  --color-bg: #f6f8f7;
+     Academic palette, modern cut: clean paper-white neutrals, ink text,
+     one brighter scholarly blue accent. Muted text clears 4.5:1 on every
+     tinted surface below (white 5.9, #f6f7f8 5.5, #eef0f2 5.1, #f1f2f4
+     5.3). */
+  --color-bg: #f6f7f8;
   --color-surface: #ffffff;
-  --color-surface-alt: #f0f3f1;
+  --color-surface-alt: #eef0f2;
   --color-surface-elevated: #ffffff;
-  --color-text: #202522;
-  --color-text-muted: #5c665f;
-  --color-text-placeholder: #646e68;
+  --color-text: #17181c;
+  --color-text-muted: #5f656e;
+  --color-text-placeholder: #666c73;
 
   /* ---- Brand surfaces (auth / marketing) -------------------------------
-     Dark, high-contrast brand layer. The product workspace stays light;
-     these tokens are only for the entry page and the brand mark. */
-  --brand-ink: #08100f;
-  --brand-ink-raised: #0e1817;
-  --brand-on-ink: #eef4f2;
-  --brand-on-ink-muted: #9fb0ab;
-  --brand-teal: #17b8a6;
-  --brand-teal-bright: #5eead4;
-  --brand-teal-soft: rgba(23, 184, 166, 0.14);
+     Dark ink layer with a scholarly blue accent. The product workspace
+     stays light; these tokens are only for the entry page and the brand
+     mark. */
+  --brand-ink: #0a0f14;
+  --brand-ink-raised: #10161d;
+  --brand-on-ink: #ecf0f3;
+  --brand-on-ink-muted: #9aa8b5;
+  --brand-accent: #5b8def;
+  --brand-accent-bright: #8fb0f5;
+  --brand-accent-soft: rgba(91, 141, 239, 0.2);
 
   /* ---- Accents ---------------------------------------------------------
-     Primary is near-black (actions, headings); research is the single
-     chromatic accent (links, citations, focus, active states). */
-  --color-primary: #202522;
-  --color-primary-hover: #303732;
-  --color-primary-soft-bg: #e7ece9;
-  --color-accent: #59635e;
-  --color-accent-hover: #303732;
-  --color-accent-soft-bg: #edf1ef;
-  --color-research: #16786e;
-  --color-research-hover: #0f665d;
-  --color-research-soft-bg: #e5f2ef;
+     Primary is ink (actions, headings); research is the single chromatic
+     accent (links, citations, focus, active states) — a brighter
+     scholarly blue. */
+  --color-primary: #16181d;
+  --color-primary-hover: #262a33;
+  --color-primary-soft-bg: #e9eaec;
+  --color-accent: #5d636c;
+  --color-accent-hover: #16181d;
+  --color-accent-soft-bg: #eceef0;
+  --color-research: #2065d3;
+  --color-research-hover: #1a55b4;
+  --color-research-soft-bg: #e9f1fc;
 
   /* ---- Lines ----------------------------------------------------------- */
-  --color-border: #dce3df;
-  --color-border-soft: #e9eeeb;
-  --color-border-strong: #c8d2cd;
+  --color-border: #e4e6e9;
+  --color-border-soft: #eceef0;
+  --color-border-strong: #c7cbd1;
 
   /* ---- States ---------------------------------------------------------- */
-  --color-focus-ring: rgba(22, 120, 110, 0.32);
-  --color-selection: rgba(22, 120, 110, 0.2);
-  --color-hover-tint: rgba(32, 37, 34, 0.04);
-  --color-active-tint: rgba(22, 120, 110, 0.09);
+  --color-focus-ring: rgba(32, 101, 211, 0.34);
+  --color-selection: rgba(32, 101, 211, 0.18);
+  --color-hover-tint: rgba(23, 24, 28, 0.04);
+  --color-active-tint: rgba(32, 101, 211, 0.1);
 
   /* ---- Evidence --------------------------------------------------------
      Citation amber is a *content* accent: it must stay readable on its own
@@ -53,8 +57,8 @@
   --color-citation: #8a4f0c;
   --color-citation-hover: #6f3f09;
   --color-citation-soft-bg: #fff4de;
-  --color-card-band: #f1f4f2;
-  --color-card-band-pressed: #e8eeea;
+  --color-card-band: #f1f2f4;
+  --color-card-band-pressed: #e6e8eb;
 
   /* ---- Semantic -------------------------------------------------------- */
   --color-success: #168039;
@@ -67,6 +71,8 @@
   --font-interface:
     -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Display', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei',
     Helvetica, Arial, sans-serif;
+  /* Display/PAGE headings use the scholarly serif already shipped for reading. */
+  --font-display: 'Literata Variable', 'Noto Serif SC', 'Songti SC', 'STSong', Georgia, serif;
   --font-reading: 'Literata Variable', 'Noto Serif SC', 'Songti SC', 'STSong', Georgia, serif;
   --font-utility: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 
@@ -105,19 +111,24 @@
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 8px;
-  /* Named aliases kept for existing component contracts. */
-  --radius-control: 8px;
-  --radius-panel: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  /* Named aliases kept for existing component contracts.
+     Academic-influence shape: controls and panels step up, the composer
+     card and floating layers get the softest corners. */
+  --radius-control: 10px;
+  --radius-panel: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-composer: 24px;
   --radius-pill: 999px;
 
   /* ---- Elevation -------------------------------------------------------
-     Two levels only: a hairline lift for resting cards, and one soft
-     shadow for floating layers. */
-  --shadow-card: 0 1px 2px rgba(32, 37, 34, 0.05), 0 1px 1px rgba(32, 37, 34, 0.03);
-  --shadow-card-soft: 0 16px 42px rgba(32, 37, 34, 0.08);
-  --shadow-float: 0 8px 24px rgba(32, 37, 34, 0.1), 0 1px 2px rgba(32, 37, 34, 0.06);
+     Three levels: a hairline lift for resting cards; one soft shadow for
+     floating layers; and the lifted shadow for the floating composer
+     card (the only element that floats over scrolling content). */
+  --shadow-card: 0 1px 2px rgba(23, 25, 29, 0.05), 0 1px 1px rgba(23, 25, 29, 0.03);
+  --shadow-card-soft: 0 16px 42px rgba(23, 25, 29, 0.08);
+  --shadow-composer: 0 4px 18px rgba(23, 25, 29, 0.09), 0 1px 2px rgba(23, 25, 29, 0.05);
+  --shadow-float: 0 8px 24px rgba(23, 25, 29, 0.1), 0 1px 2px rgba(23, 25, 29, 0.06);
 
   /* ---- Motion ---------------------------------------------------------- */
   --ease-standard: cubic-bezier(0.2, 0.6, 0.25, 1);
@@ -132,39 +143,41 @@
 
 .dark {
   color-scheme: dark;
-  --color-bg: #111716;
-  --color-surface: #18201e;
-  --color-surface-alt: #202925;
-  --color-surface-elevated: #25302c;
-  --color-text: #e7ece9;
-  --color-text-muted: #9ba7a1;
-  --color-text-placeholder: #8b968f;
-  --color-primary: #e7ece9;
+  /* Neutral blackboard dark mode: cool dark surfaces, brighter blue accent. */
+  --color-bg: #11131a;
+  --color-surface: #171a22;
+  --color-surface-alt: #1f232d;
+  --color-surface-elevated: #242936;
+  --color-text: #e7e9ee;
+  --color-text-muted: #9ba2ae;
+  --color-text-placeholder: #878e9a;
+  --color-primary: #e7e9ee;
   --color-primary-hover: #ffffff;
-  --color-primary-soft-bg: #2b3531;
-  --color-accent: #b7c4c0;
-  --color-accent-hover: #e7ece9;
-  --color-accent-soft-bg: #26302c;
-  --color-research: #77c6ba;
-  --color-research-hover: #9ad9d0;
-  --color-research-soft-bg: #203c37;
-  --color-border: #34413c;
-  --color-border-soft: #27322e;
-  --color-border-strong: #46534d;
-  --color-focus-ring: rgba(119, 198, 186, 0.36);
-  --color-selection: rgba(119, 198, 186, 0.3);
+  --color-primary-soft-bg: #2b303c;
+  --color-accent: #a9b1bd;
+  --color-accent-hover: #e7e9ee;
+  --color-accent-soft-bg: #242933;
+  --color-research: #74a3f2;
+  --color-research-hover: #97bcf6;
+  --color-research-soft-bg: #1c2a44;
+  --color-border: #2d3340;
+  --color-border-soft: #232834;
+  --color-border-strong: #40495a;
+  --color-focus-ring: rgba(116, 163, 242, 0.38);
+  --color-selection: rgba(116, 163, 242, 0.3);
   --color-hover-tint: rgba(255, 255, 255, 0.05);
-  --color-active-tint: rgba(119, 198, 186, 0.14);
+  --color-active-tint: rgba(116, 163, 242, 0.16);
   --color-citation: #e4b765;
   --color-citation-hover: #f1cd89;
-  --color-citation-soft-bg: #3a301f;
-  --color-card-band: #1d2623;
-  --color-card-band-pressed: #2a3531;
+  --color-citation-soft-bg: #3a3020;
+  --color-card-band: #1d222d;
+  --color-card-band-pressed: #252b38;
   --color-success: #55c58b;
   --color-warning: #e6b85c;
   --color-warning-text: #e6b85c;
   --color-error: #ff7a70;
   --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.025), 0 10px 28px rgba(0, 0, 0, 0.18);
   --shadow-card-soft: 0 18px 54px rgba(0, 0, 0, 0.32);
+  --shadow-composer: 0 4px 18px rgba(0, 0, 0, 0.35), 0 1px 0 rgba(255, 255, 255, 0.04);
   --shadow-float: 0 10px 30px rgba(0, 0, 0, 0.42), 0 1px 0 rgba(255, 255, 255, 0.04);
 }

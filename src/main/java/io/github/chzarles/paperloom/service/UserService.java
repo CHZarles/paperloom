@@ -151,37 +151,6 @@ public class UserService {
         }
     }
 
-    /**
-     * 创建管理员用户。
-     *
-     * @param username 要注册的管理员用户名
-     * @param password 要注册的管理员密码
-     * @param creatorUsername 创建者的用户名（必须是已存在的管理员）
-     * @throws CustomException 如果用户名已存在或创建者不是管理员，则抛出异常
-     */
-    public void createAdminUser(String username, String password, String creatorUsername) {
-        // 验证创建者是否为管理员
-        User creator = userRepository.findByUsername(creatorUsername)
-                .orElseThrow(() -> new CustomException("Creator not found", HttpStatus.NOT_FOUND));
-
-        if (creator.getRole() != User.Role.ADMIN) {
-            throw new CustomException("Only administrators can create admin accounts", HttpStatus.FORBIDDEN);
-        }
-
-        // 检查数据库中是否已存在该用户名
-        if (userRepository.findByUsername(username).isPresent()) {
-            throw new CustomException("Username already exists", HttpStatus.BAD_REQUEST);
-        }
-
-        validatePassword(password);
-
-        User adminUser = new User();
-        adminUser.setUsername(username);
-        adminUser.setPassword(PasswordUtil.encode(password));
-        adminUser.setRole(User.Role.ADMIN);
-        userRepository.save(adminUser);
-    }
-
     private void validatePassword(String password) {
         if (password == null || !PASSWORD_PATTERN.matcher(password).matches()) {
             throw new CustomException("密码格式不正确，6-18位字符，必须包含字母和数字", HttpStatus.BAD_REQUEST);

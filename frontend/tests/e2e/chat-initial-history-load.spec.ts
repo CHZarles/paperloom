@@ -155,7 +155,9 @@ test('chat page loads only the selected conversation history on entry', async ({
   expect(paperCollectionsRequests).toBe(0);
 });
 
-test('switching back to a recently loaded session restores cached messages without refetching details', async ({ page }) => {
+test('switching back to a recently loaded session restores cached messages without refetching details', async ({
+  page
+}) => {
   await installMockLoginState(page);
 
   const sessionA = {
@@ -251,7 +253,11 @@ test('switching back to a recently loaded session restores cached messages witho
   await page.route(/\/users\/conversations$/, route => fulfillApi(route, [sessionA, sessionB]));
   await page.route(/\/users\/conversations\/([^/]+)\/switch$/, route => fulfillApi(route, {}));
   await page.route(/\/users\/conversations\/([^/]+)\/scope$/, route => {
-    const conversationId = route.request().url().match(/\/users\/conversations\/([^/]+)\/scope$/)?.[1] || '';
+    const conversationId =
+      route
+        .request()
+        .url()
+        .match(/\/users\/conversations\/([^/]+)\/scope$/)?.[1] || '';
     scopeRequests.set(conversationId, (scopeRequests.get(conversationId) || 0) + 1);
     return fulfillApi(route, scopes[conversationId]);
   });

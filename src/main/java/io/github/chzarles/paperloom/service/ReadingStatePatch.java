@@ -36,10 +36,7 @@ public record ReadingStatePatch(
             originalFilename = originalFilename == null ? "" : originalFilename.trim();
         }
 
-        public boolean hasIdentity() {
-            return !paperId.isBlank() || !paperHandle.isBlank();
-        }
-    }
+            }
 
     public record SelectedLocation(
             String paperId,
@@ -54,10 +51,7 @@ public record ReadingStatePatch(
             label = label == null ? "" : label.trim();
         }
 
-        public boolean hasIdentity() {
-            return !locationRef.isBlank();
-        }
-    }
+            }
 
     public record SelectedSourceQuote(
             String sourceQuoteRef,
@@ -74,8 +68,5 @@ public record ReadingStatePatch(
             citationMarker = citationMarker == null ? "" : citationMarker.trim();
         }
 
-        public boolean hasIdentity() {
-            return !sourceQuoteRef.isBlank();
-        }
-    }
+            }
 }

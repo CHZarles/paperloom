@@ -346,3 +346,75 @@ class ServiceTest(unittest.TestCase):
             fail_response = client.get("/ready")
             self.assertEqual(503, fail_response.status_code)
             self.assertIn("corpus_unavailable", fail_response.json()["reason"])
+
+
+class ProviderStoreTest(unittest.TestCase):
+    def _provider(self, name: str):
+        from harness_py.transport.provider_config import ProviderConfig
+
+        return ProviderConfig(
+            scope="llm",
+            provider=name,
+            api_style="openai-compatible",
+            api_base_url="https://example.invalid/v1",
+            model=f"model-{name}",
+            api_key=f"sk-{name}",
+        )
+
+    def test_store_mode_reloads_provider_and_rebuilds_only_on_change(self) -> None:
+        class FakeStore:
+            def __init__(self):
+                self.provider = None
+
+            def load_active_provider(self, scope):
+                assert scope == "llm"
+                return self.provider
+
+        store = FakeStore()
+        store.provider = self._provider("a")
+        service = ResearchHarnessService(provider_store=store, corpus_gateway=object())
+
+        first = service._harness_for_run()
+        self.assertEqual("a", service.provider.provider)
+        # 相同配置重复加载不重建 harness。
+        self.assertIs(first, service._harness_for_run())
+
+        store.provider = self._provider("b")
+        second = service._harness_for_run()
+        self.assertIsNot(first, second)
+        self.assertEqual("b", service.provider.provider)
+
+    def test_store_mode_run_turn_fails_closed_and_leaves_registry_empty(self) -> None:
+        class BrokenStore:
+            def load_active_provider(self, scope):
+                raise RuntimeError("no active provider row found for scope=llm")
+
+        service = ResearchHarnessService(provider_store=BrokenStore(), corpus_gateway=object())
+
+        with self.assertRaises(RuntimeError):
+            service.run_turn({
+                "request_id": "request_no_provider",
+                "conversation_id": "conversation_1",
+                "user_id": 7,
+                "user_message": "hi",
+                "scope": {"paper_ids": ["synthetic_paper"]},
+            })
+        self.assertEqual(0, service.in_flight.count())
+
+    def test_store_mode_reports_unconfigured_provider_until_loaded(self) -> None:
+        class NotLoadedStore:
+            def load_active_provider(self, scope):
+                raise RuntimeError("no active provider row found for scope=llm")
+
+        service = ResearchHarnessService(provider_store=NotLoadedStore(), corpus_gateway=object())
+
+        self.assertEqual({}, service.provider_diagnostics())
+        ok, reasons = service.readiness.ready()
+        self.assertFalse(ok)
+        self.assertIn("provider_unconfigured", reasons)
+
+        with TestClient(_service_app(service, "")) as client:
+            response = client.get("/health")
+
+        self.assertEqual(200, response.status_code)
+        self.assertEqual({}, response.json()["provider"])

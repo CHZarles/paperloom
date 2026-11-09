@@ -12,8 +12,10 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Optional;
 import java.util.UUID;
 import static io.github.chzarles.paperloom.utils.TextUtils.trimToNull;
@@ -89,10 +91,13 @@ public class ChatGenerationStateService {
             deleteGeneration(generationId);
             throw new GenerationInProgressException(conversationId);
         }
-        redisTemplate.opsForValue().set(activeGenerationKey(userId), generationId, GENERATION_TTL);
         if (meta.clientId() != null) {
             redisTemplate.opsForValue().set(activeGenerationKey(userId, meta.clientId()), generationId, GENERATION_TTL);
         }
+        // User-level index of running turns (score = epoch ms, newest last).
+        // Enables cross-tab recovery without key scanning; TTL matches the turn.
+        redisTemplate.opsForZSet().add(userActiveGenerationsKey(userId), generationId, System.currentTimeMillis());
+        redisTemplate.expire(userActiveGenerationsKey(userId), GENERATION_TTL);
         return toSnapshot(meta, "", Collections.emptyMap(), Collections.emptyMap());
     }
 
@@ -256,24 +261,62 @@ public class ChatGenerationStateService {
         return getGeneration(generationId).filter(snapshot -> snapshot.userId().equals(userId));
     }
 
-    public Optional<GenerationSnapshot> getActiveGenerationForUser(String userId) {
-        String generationId = redisTemplate.opsForValue().get(activeGenerationKey(userId));
-        if (generationId == null || generationId.isBlank()) {
-            return Optional.empty();
-        }
-        return getGenerationForUser(generationId, userId);
-    }
-
     public Optional<GenerationSnapshot> getActiveGenerationForUserAndClient(String userId, String clientId) {
         String normalizedClientId = trimToNull(clientId);
         if (normalizedClientId == null) {
             return Optional.empty();
         }
         String generationId = redisTemplate.opsForValue().get(activeGenerationKey(userId, normalizedClientId));
-        if (generationId == null || generationId.isBlank()) {
+        if (generationId != null && !generationId.isBlank()) {
+            Optional<GenerationSnapshot> snapshot = getGenerationForUser(generationId, userId);
+            if (snapshot.isPresent()) {
+                return snapshot;
+            }
+        }
+        return latestStreamingGenerationForUser(userId);
+    }
+
+    /**
+     * Cross-tab recovery: a fresh tab or browser gets a new chat clientId, so the
+     * per-client pointer of the page that started the generation is invisible to
+     * it and the conversation history does not contain the unfinished answer yet.
+     * Without a fallback the new page cannot see (or stop) the running generation
+     * while the conversation lease keeps rejecting new sends. Reads the user-level
+     * index of running turns (newest first) and returns the first still streaming.
+     */
+    private Optional<GenerationSnapshot> latestStreamingGenerationForUser(String userId) {
+        Set<String> generationIds = redisTemplate.opsForZSet().reverseRange(userActiveGenerationsKey(userId), 0, -1);
+        if (generationIds == null || generationIds.isEmpty()) {
             return Optional.empty();
         }
-        return getGenerationForUser(generationId, userId);
+        for (String generationId : generationIds) {
+            GenerationMeta meta = readMeta(generationId);
+            if (meta == null || meta.status() != GenerationStatus.STREAMING) {
+                continue;
+            }
+            return getGenerationForUser(generationId, userId);
+        }
+        return Optional.empty();
+    }
+
+    /** Conversations of this user that currently have a streaming turn — for list badges. */
+    public Set<String> getStreamingConversationIdsForUser(String userId) {
+        Set<String> generationIds = redisTemplate.opsForZSet().reverseRange(userActiveGenerationsKey(userId), 0, -1);
+        if (generationIds == null || generationIds.isEmpty()) {
+            return Set.of();
+        }
+        Set<String> conversationIds = new LinkedHashSet<>();
+        for (String generationId : generationIds) {
+            GenerationMeta meta = readMeta(generationId);
+            if (meta == null || meta.status() != GenerationStatus.STREAMING) {
+                continue;
+            }
+            if (!userId.equals(meta.userId()) || meta.conversationId() == null || meta.conversationId().isBlank()) {
+                continue;
+            }
+            conversationIds.add(meta.conversationId());
+        }
+        return conversationIds;
     }
 
     public boolean renewConversationLease(String generationId) {
@@ -295,10 +338,10 @@ public class ChatGenerationStateService {
         if (!Long.valueOf(1L).equals(renewed)) {
             return false;
         }
-        compareAndExpire(activeGenerationKey(meta.userId()), generationId);
         if (meta.clientId() != null) {
             compareAndExpire(activeGenerationKey(meta.userId(), meta.clientId()), generationId);
         }
+        redisTemplate.expire(userActiveGenerationsKey(meta.userId()), GENERATION_TTL);
         return true;
     }
 
@@ -336,6 +379,7 @@ public class ChatGenerationStateService {
                 meta.replaceMessage()
         );
         writeMeta(updated);
+        redisTemplate.opsForZSet().remove(userActiveGenerationsKey(meta.userId()), generationId);
         clearActiveGeneration(meta.userId(), meta.clientId(), meta.conversationId(), generationId);
     }
 
@@ -370,7 +414,6 @@ public class ChatGenerationStateService {
     }
 
     private void clearActiveGeneration(String userId, String clientId, String conversationId, String generationId) {
-        compareAndDelete(activeGenerationKey(userId), generationId);
         compareAndDelete(conversationActiveGenerationKey(userId, conversationId), generationId);
         String normalizedClientId = trimToNull(clientId);
         if (normalizedClientId == null) {
@@ -584,12 +627,12 @@ public class ChatGenerationStateService {
         return "chat:generation:" + generationId + ":progress_events";
     }
 
-    private String activeGenerationKey(String userId) {
-        return "chat:user:" + userId + ":active_generation";
-    }
-
     private String activeGenerationKey(String userId, String clientId) {
         return "chat:user:" + userId + ":client:" + clientId + ":active_generation";
+    }
+
+    private String userActiveGenerationsKey(String userId) {
+        return "chat:user:" + userId + ":active_generations";
     }
 
     private String conversationActiveGenerationKey(String userId, String conversationId) {

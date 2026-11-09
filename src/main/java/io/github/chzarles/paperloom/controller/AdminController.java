@@ -11,7 +11,6 @@ import io.github.chzarles.paperloom.service.UserService;
 import io.github.chzarles.paperloom.service.UserTokenService;
 import io.github.chzarles.paperloom.utils.JwtUtils;
 import io.github.chzarles.paperloom.utils.LogUtils;
-import io.github.chzarles.paperloom.utils.MinioMigrationUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -41,8 +40,6 @@ public class AdminController {
     @Autowired
     private UserTokenService userTokenService;
     
-    @Autowired
-    private MinioMigrationUtil migrationUtil;
 
     @Autowired
     private InviteCodeService inviteCodeService;
@@ -86,76 +83,6 @@ public class AdminController {
         }
     }
 
-    /**
-     * 获取系统状态
-     */
-    @GetMapping("/system/status")
-    public ResponseEntity<?> getSystemStatus(@RequestHeader("Authorization") String token) {
-        String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-        validateAdmin(adminUsername);
-        
-        try {
-            // 这里应该调用系统监控服务来获取系统状态
-            // SystemStatus status = monitoringService.getSystemStatus();
-            
-            // 模拟系统状态数据
-            Map<String, Object> status = new HashMap<>();
-            status.put("cpu_usage", "30%");
-            status.put("memory_usage", "45%");
-            status.put("disk_usage", "60%");
-            status.put("active_users", 15);
-            status.put("total_documents", 250);
-            status.put("total_conversations", 1200);
-            
-            return ResponseEntity.ok(Map.of("data", status));
-        } catch (Exception e) {
-            LogUtils.logBusinessError("ADMIN_GET_SYSTEM_STATUS", adminUsername, "获取系统状态失败", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "获取系统状态失败: " + e.getMessage()));
-        }
-    }
-
-    /**
-     * 获取用户活动日志
-     */
-    @GetMapping("/user-activities")
-    public ResponseEntity<?> getUserActivities(
-            @RequestHeader("Authorization") String token,
-            @RequestParam(required = false) String username,
-            @RequestParam(required = false) String start_date,
-            @RequestParam(required = false) String end_date) {
-        
-        String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-        validateAdmin(adminUsername);
-        
-        try {
-            // 这里应该调用用户活动监控服务来获取活动日志
-            // List<UserActivity> activities = activityService.getUserActivities(username, startDate, endDate);
-            
-            // 模拟用户活动数据
-            List<Map<String, Object>> activities = List.of(
-                Map.of(
-                    "username", "user1",
-                    "action", "LOGIN",
-                    "timestamp", "2023-03-01T10:15:30",
-                    "ip_address", "192.168.1.100"
-                ),
-                Map.of(
-                    "username", "user2",
-                    "action", "UPLOAD_FILE",
-                    "timestamp", "2023-03-01T11:20:45",
-                    "ip_address", "192.168.1.101"
-                )
-            );
-            
-            return ResponseEntity.ok(Map.of("data", activities));
-        } catch (Exception e) {
-            LogUtils.logBusinessError("ADMIN_GET_USER_ACTIVITIES", adminUsername, "获取用户活动失败", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "获取用户活动失败: " + e.getMessage()));
-        }
-    }
-
     @GetMapping("/usage/overview")
     public ResponseEntity<?> getUsageOverview(
             @RequestHeader("Authorization") String token,
@@ -179,27 +106,6 @@ public class AdminController {
     /**
      * 创建管理员用户
      */
-    @PostMapping("/users/create-admin")
-    public ResponseEntity<?> createAdminUser(
-            @RequestHeader("Authorization") String token,
-            @RequestBody AdminUserRequest request) {
-        
-        String adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-        validateAdmin(adminUsername);
-        
-        try {
-            userService.createAdminUser(request.username(), request.password(), adminUsername);
-            return ResponseEntity.ok(Map.of("code", 200, "message", "管理员用户创建成功"));
-        } catch (CustomException e) {
-            LogUtils.logBusinessError("ADMIN_CREATE_ADMIN_USER", adminUsername, "创建管理员用户失败: %s", e, e.getMessage());
-            return ResponseEntity.status(e.getStatus()).body(Map.of("code", e.getStatus().value(), "message", e.getMessage()));
-        } catch (Exception e) {
-            LogUtils.logBusinessError("ADMIN_CREATE_ADMIN_USER", adminUsername, "创建管理员用户异常: %s", e, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("code", 500, "message", "创建管理员用户失败: " + e.getMessage()));
-        }
-    }
-
     /**
      * 创建邀请码
      */
@@ -486,142 +392,7 @@ public class AdminController {
         return admin;
     }
 
-    /**
-     * 迁移 MinIO 文件从旧路径到新路径
-     * 旧路径: merged/{fileName}
-     * 新路径: merged/{fileMd5}
-     *
-     * @param token JWT token
-     * @param adminKey 管理员密钥（简单验证）
-     * @return 迁移报告
-     */
-    @PostMapping("/migrate-minio")
-    public ResponseEntity<?> migrateMinioFiles(
-            @RequestHeader("Authorization") String token,
-            @RequestParam String adminKey) {
-
-        LogUtils.PerformanceMonitor monitor = LogUtils.startPerformanceMonitor("MIGRATE_MINIO");
-        String adminUsername = null;
-
-        try {
-            // 验证管理员权限
-            adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-            validateAdmin(adminUsername);
-
-            // 简单密钥验证
-            if (!"migration2024".equals(adminKey)) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("code", 403);
-                response.put("message", "无效的管理员密钥");
-                return ResponseEntity.status(403).body(response);
-            }
-
-            LogUtils.logBusiness("MIGRATE_MINIO", adminUsername, "开始MinIO文件迁移");
-
-            MinioMigrationUtil.MigrationReport report = migrationUtil.migrateAllFiles();
-
-            LogUtils.logBusiness("MIGRATE_MINIO", adminUsername,
-                "迁移完成: 成功=%d, 跳过=%d, 失败=%d",
-                report.successCount, report.skipCount, report.errorCount);
-
-            monitor.end("MinIO文件迁移完成");
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 200);
-            response.put("message", "迁移完成");
-            response.put("data", Map.of(
-                "successCount", report.successCount,
-                "skipCount", report.skipCount,
-                "errorCount", report.errorCount,
-                "errors", report.getErrors()
-            ));
-            return ResponseEntity.ok(response);
-
-        } catch (CustomException e) {
-            LogUtils.logBusinessError("MIGRATE_MINIO", adminUsername, "MinIO文件迁移失败: %s", e, e.getMessage());
-            monitor.end("MinIO文件迁移失败: " + e.getMessage());
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", e.getStatus().value());
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(e.getStatus()).body(response);
-        } catch (Exception e) {
-            LogUtils.logBusinessError("MIGRATE_MINIO", adminUsername, "MinIO文件迁移异常: %s", e, e.getMessage());
-            monitor.end("MinIO文件迁移失败: " + e.getMessage());
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 500);
-            response.put("message", "迁移失败: " + e.getMessage());
-            return ResponseEntity.status(500).body(response);
-        }
-    }
-
-    /**
-     * 清空所有数据（危险操作，仅用于测试环境）
-     *
-     * @param token JWT token
-     * @param adminKey 管理员密钥
-     * @return 操作结果
-     */
-    @PostMapping("/clear-all-data")
-    public ResponseEntity<?> clearAllData(
-            @RequestHeader("Authorization") String token,
-            @RequestParam String adminKey) {
-
-        LogUtils.PerformanceMonitor monitor = LogUtils.startPerformanceMonitor("CLEAR_ALL_DATA");
-        String adminUsername = null;
-
-        try {
-            // 验证管理员权限
-            adminUsername = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-            validateAdmin(adminUsername);
-
-            // 更严格的密钥验证
-            if (!"CLEAR_ALL_2024".equals(adminKey)) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("code", 403);
-                response.put("message", "无效的管理员密钥");
-                return ResponseEntity.status(403).body(response);
-            }
-
-            LogUtils.logBusiness("CLEAR_ALL_DATA", adminUsername, "开始清空所有数据");
-
-            migrationUtil.clearAllData();
-
-            LogUtils.logBusiness("CLEAR_ALL_DATA", adminUsername, "所有数据已清空");
-
-            monitor.end("数据清空完成");
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 200);
-            response.put("message", "所有数据已清空");
-            return ResponseEntity.ok(response);
-
-        } catch (CustomException e) {
-            LogUtils.logBusinessError("CLEAR_ALL_DATA", adminUsername, "清空数据失败: %s", e, e.getMessage());
-            monitor.end("数据清空失败: " + e.getMessage());
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", e.getStatus().value());
-            response.put("message", e.getMessage());
-            return ResponseEntity.status(e.getStatus()).body(response);
-        } catch (Exception e) {
-            LogUtils.logBusinessError("CLEAR_ALL_DATA", adminUsername, "清空数据异常: %s", e, e.getMessage());
-            monitor.end("数据清空失败: " + e.getMessage());
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("code", 500);
-            response.put("message", "清空失败: " + e.getMessage());
-            return ResponseEntity.status(500).body(response);
-        }
-    }
-
-    }
-
-/**
- * 管理员用户请求体
- */
-record AdminUserRequest(String username, String password) {}
+}
 
 record AddUserTokenRequest(Long llmToken, Long embeddingToken, String reason) {}
 

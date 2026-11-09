@@ -15,7 +15,7 @@ const chatStore = useChatStore();
 const authStore = useAuthStore();
 const route = useRoute();
 const router = useRouter();
-const { conversationId, sessions, sessionsLoading } = storeToRefs(chatStore);
+const { conversationId, generatingConversationIds, sessions, sessionsLoading } = storeToRefs(chatStore);
 const keyword = ref('');
 const showArchived = ref(false);
 
@@ -42,6 +42,14 @@ const visibleSessions = computed(() => {
 });
 
 const activeCount = computed(() => sessions.value.filter(item => item.status === 'ACTIVE').length);
+// Server flag (any conversation of the user, any tab) wins; the store set is
+// the immediate local fallback for the conversation open in this tab.
+function isSessionGenerating(session: Api.Chat.ConversationSession): boolean {
+  return (
+    Boolean((session as { generating?: boolean }).generating) ||
+    generatingConversationIds.value.has(session.conversationId)
+  );
+}
 const archivedCount = computed(() => sessions.value.filter(item => item.status === 'ARCHIVED').length);
 const accountName = computed(() => authStore.userInfo.username || 'Citewise User');
 const accountRole = computed(() => (authStore.isAdmin ? 'Admin management' : 'Workspace settings'));
@@ -59,9 +67,7 @@ function handleCollapse() {
 }
 
 async function handleNewChat() {
-  const createdConversationId = await chatStore.createNewSession();
-  if (!createdConversationId) return;
-  await chatStore.loadSessionIndex({ silent: true });
+  chatStore.startDraftSession();
 
   if (route.name !== 'chat') {
     await router.push({ name: 'chat' });
@@ -255,7 +261,11 @@ function formatDate(dateStr?: string) {
                 @keydown.enter.prevent="handleSelect(session.conversationId)"
                 @keydown.space.prevent="handleSelect(session.conversationId)"
               >
-                <icon-lucide:circle-dot v-if="session.conversationId === conversationId" class="shrink-0 text-12px" />
+                <icon-lucide:sparkles
+                  v-if="isSessionGenerating(session)"
+                  class="session-item__generating shrink-0"
+                  aria-hidden="true"
+                />
                 <div class="min-w-0 flex-1">
                   <div class="session-title">
                     {{ session.title }}
@@ -525,8 +535,23 @@ function formatDate(dateStr?: string) {
 }
 
 .session-scroll {
+  /* Flex column child: without min-height the list grows to its content
+     height and pushes the account area below the viewport once there are
+     more sessions than fit. Allow it to shrink; the virtual list scrolls. */
+  min-height: 0;
   scrollbar-width: none;
   scrollbar-color: transparent transparent;
+}
+
+/* NVirtualList 需要有界高度才启用虚拟滚动；NSpin 的内容层默认无高度，
+   会把列表撑到内容全高，再被上层 overflow-hidden 裁掉——正是侧栏滑不动的根因 */
+.session-scroll :deep(.n-spin-content),
+.session-scroll :deep(.n-spin-container) {
+  height: 100%;
+}
+
+.session-virtual-list {
+  height: 100%;
 }
 
 .session-scroll--overflowing {
@@ -603,6 +628,16 @@ function formatDate(dateStr?: string) {
   box-shadow: var(--shadow-card);
   color: var(--color-research);
   font-weight: 600;
+}
+
+/* Same breathing language as the message-flow sparkle: this conversation
+   has a turn streaming right now. */
+.session-item__generating {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  color: var(--color-research);
+  animation: session-generating-sparkle 1.5s ease-in-out infinite;
 }
 
 .session-title {
@@ -816,5 +851,35 @@ function formatDate(dateStr?: string) {
 .dark .avatar-identicon {
   background: var(--color-surface-elevated);
   box-shadow: var(--shadow-card);
+}
+
+@keyframes session-generating-sparkle {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.86);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .session-item__generating {
+    animation: session-generating-breath 2.4s ease-in-out infinite;
+  }
+}
+
+@keyframes session-generating-breath {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 </style>

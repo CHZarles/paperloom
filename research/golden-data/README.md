@@ -90,6 +90,15 @@ Retriever，不依赖 Agent 是否会搜索、读取、引用或组织答案。
   --out research/golden-data/local-runs/<run>-score-report.json
 ```
 
+`rescore --semantic-judgments` 需要先对保存的 Run 批量生成离线 Judge 结果：
+
+```bash
+.venv-harness/bin/python -m harness_py judge-saved-runs \
+  --runs research/golden-data/local-runs/<run> \
+  --out research/golden-data/local-runs/<run>-semantic-judgments.json \
+  --provider-source db
+```
+
 LLM Judge 校准：
 
 ```bash

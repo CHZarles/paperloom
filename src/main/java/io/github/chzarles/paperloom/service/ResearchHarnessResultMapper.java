@@ -217,7 +217,6 @@ public class ResearchHarnessResultMapper {
         return new ReadingTurnArtifacts(
                 "reading-turn-artifacts/v1",
                 new ReadingTurnArtifacts.GoalCard(question, "Authorized paper scope", null, true, List.of()),
-                ReadingIntentFrame.empty(question),
                 ReadingTurnArtifacts.PaperShortlist.empty(),
                 ReadingTurnArtifacts.ReadingPlan.empty(),
                 new ReadingTurnArtifacts.ClaimEvidencePanel(rows),

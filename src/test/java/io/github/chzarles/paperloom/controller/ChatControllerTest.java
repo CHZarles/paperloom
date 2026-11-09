@@ -5,7 +5,6 @@ import io.github.chzarles.paperloom.service.ChatHandler;
 import io.github.chzarles.paperloom.service.ConversationService;
 import io.github.chzarles.paperloom.utils.JwtUtils;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
@@ -14,7 +13,6 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -32,7 +30,6 @@ class ChatControllerTest {
         ChatController controller = new ChatController(
                 jwtUtils,
                 generationStateService,
-                mock(StringRedisTemplate.class),
                 mock(ChatHandler.class),
                 mock(ConversationService.class)
         );
@@ -40,7 +37,6 @@ class ChatControllerTest {
         ResponseEntity<?> response = controller.getActiveGeneration("Bearer token", "client-a");
 
         verify(generationStateService).getActiveGenerationForUserAndClient("1", "client-a");
-        verify(generationStateService, never()).getActiveGenerationForUser("1");
         assertEquals(200, response.getStatusCode().value());
         assertEquals(snapshot, body(response).get("data"));
     }
@@ -63,7 +59,6 @@ class ChatControllerTest {
         ChatController controller = new ChatController(
                 jwtUtils,
                 mock(ChatGenerationStateService.class),
-                mock(StringRedisTemplate.class),
                 chatHandler,
                 mock(ConversationService.class)
         );
@@ -94,7 +89,6 @@ class ChatControllerTest {
         ChatController controller = new ChatController(
                 jwtUtils,
                 mock(ChatGenerationStateService.class),
-                mock(StringRedisTemplate.class),
                 mock(ChatHandler.class),
                 conversationService
         );

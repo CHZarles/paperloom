@@ -187,29 +187,6 @@ public class TokenCacheService {
     }
     
     /**
-     * 移除用户的所有token（批量登出）
-     */
-    public void removeAllUserTokens(String userId) {
-        try {
-            String userTokenKey = USER_TOKENS_PREFIX + userId + ":tokens";
-            Set<Object> tokenIds = redisTemplate.opsForSet().members(userTokenKey);
-            
-            if (tokenIds != null && !tokenIds.isEmpty()) {
-                for (Object tokenId : tokenIds) {
-                    removeToken(tokenId.toString(), null);
-                }
-            }
-            
-            // 清空用户token集合
-            redisTemplate.delete(userTokenKey);
-            
-            logger.info("All tokens removed for user: {}", userId);
-        } catch (Exception e) {
-            logger.error("Failed to remove all user tokens: {}", userId, e);
-        }
-    }
-    
-    /**
      * 添加token到用户集合
      */
     private void addTokenToUser(String userId, String tokenId, long expireTimeMs) {

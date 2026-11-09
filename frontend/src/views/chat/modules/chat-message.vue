@@ -303,6 +303,21 @@ if (consumeStreamReveal(props.msg.generationId) && !prefersReducedMotion()) {
 const researchFinished = computed(() =>
   researchEvents.value.some(e => ['job_completed', 'job_failed', 'job_cancelled'].includes(e.eventType || e.type))
 );
+// Vibe-style thinking badge: while generating we animate the sparkle;
+// once finished the same slot collapses into "Thought for Xs" using the
+// terminal event's elapsed time (falling back to summed model passes).
+const thoughtSeconds = computed(() => {
+  const terminal = [...researchEvents.value]
+    .reverse()
+    .find(
+      e => ['job_completed', 'run_limited', 'job_failed'].includes(e.eventType || e.type) && Number(e.elapsedMs) > 0
+    );
+  if (terminal) return Math.round(Number(terminal.elapsedMs) / 1000);
+  const modelMs = researchEvents.value
+    .filter(e => (e.eventType || e.type) === 'model_call_completed')
+    .reduce((acc, e) => acc + Number(e.durationMs || 0), 0);
+  return modelMs > 0 ? Math.round(modelMs / 1000) : null;
+});
 const assistantIsGenerating = computed(
   () =>
     props.msg.role === 'assistant' &&
@@ -471,6 +486,15 @@ const currentProgressText = computed(() => {
   if (!latest) return 'Thinking';
   const detail = progressEventDetail(latest);
   return detail ? `${progressEventTitle(latest)} · ${detail}` : progressEventTitle(latest);
+});
+
+// Each incoming research event swaps the live status text; the key drives
+// the enter/leave transition so the swap reads as motion, not a jump cut.
+const currentProgressKey = computed(() => {
+  const latest = researchEvents.value[researchEvents.value.length - 1];
+  if (!latest) return 'thinking';
+  const sequence = Number(latest.sequence || 0);
+  return sequence > 0 ? String(sequence) : inlineProgressIdentity(latest);
 });
 
 function splitTrailingUrlPunctuation(rawUrl: string) {
@@ -962,10 +986,6 @@ async function handleSourceFileClick(fileInfo: {
 <template>
   <div class="message-block" :class="msg.role === 'user' ? 'message-block--user' : 'message-block--assistant'">
     <div class="message-row">
-      <span v-if="msg.role === 'assistant'" class="message-avatar message-avatar--assistant" aria-hidden="true">
-        <SystemLogo />
-      </span>
-
       <div class="message-body">
         <button
           v-if="assistantIsGenerating && showResearchDetails"
@@ -974,11 +994,31 @@ async function handleSourceFileClick(fileInfo: {
           aria-label="Open research process"
           @click="emit('openProcess', msg)"
         >
-          <span class="assistant-process__dot" aria-hidden="true" />
-          <span>{{ currentProgressText }}</span>
+          <icon-lucide:sparkles class="assistant-live-status__sparkle" aria-hidden="true" />
+          <Transition name="progress-swap" mode="out-in">
+            <span :key="currentProgressKey" class="assistant-live-status__text">
+              {{ currentProgressText }}
+            </span>
+          </Transition>
           <icon-lucide:panel-right-open />
         </button>
-        <div v-if="showInlineProgress" class="assistant-progress-strip" aria-live="polite">
+        <button
+          v-else-if="researchFinished && thoughtSeconds !== null"
+          type="button"
+          class="assistant-live-status"
+          title="View research process"
+          @click="emit('openProcess', msg)"
+        >
+          <span>Thought for {{ thoughtSeconds }}s</span>
+          <icon-lucide:panel-right-open />
+        </button>
+        <TransitionGroup
+          v-if="showInlineProgress"
+          name="progress-row"
+          tag="div"
+          class="assistant-progress-strip"
+          aria-live="polite"
+        >
           <div
             v-for="event in inlineProgressItems"
             :key="event.key"
@@ -991,7 +1031,7 @@ async function handleSourceFileClick(fileInfo: {
               <span v-if="event.detail" class="assistant-progress-row__detail">{{ event.detail }}</span>
             </div>
           </div>
-        </div>
+        </TransitionGroup>
         <span v-if="msg.role === 'assistant' && msg.answerMode" class="answer-mode">[{{ msg.answerMode }}]</span>
         <NText v-if="msg.status === 'error'" class="message-error">
           {{ msg.content || '服务器繁忙，请稍后再试' }}
@@ -1201,31 +1241,6 @@ async function handleSourceFileClick(fileInfo: {
   justify-content: flex-end;
 }
 
-.message-avatar {
-  display: inline-flex;
-  width: 30px;
-  height: 30px;
-  flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-elevated);
-  box-shadow: var(--shadow-card);
-  color: var(--color-text-muted);
-}
-
-.message-avatar :deep(svg) {
-  width: 17px;
-  height: 17px;
-}
-
-.message-avatar--assistant {
-  background: var(--color-surface);
-  color: var(--color-primary);
-}
-
 .message-body {
   display: flex;
   min-width: 0;
@@ -1388,12 +1403,6 @@ async function handleSourceFileClick(fileInfo: {
 .dark .user-content {
   border-color: var(--color-border);
   background: var(--color-surface-alt);
-}
-
-.dark .message-avatar {
-  border-color: var(--color-border);
-  background: var(--color-surface-elevated);
-  box-shadow: var(--shadow-card);
 }
 
 /* Override VuePress-style markdown theme variables inside chat responses
@@ -1641,16 +1650,75 @@ async function handleSourceFileClick(fileInfo: {
   color: var(--color-primary);
 }
 
-.assistant-live-status .assistant-process__dot {
+.assistant-live-status .assistant-live-status__sparkle {
+  width: 13px;
+  height: 13px;
   flex: 0 0 auto;
-  background: var(--color-primary);
-  animation: runner-dot 1.2s ease-in-out infinite;
+  color: var(--color-research);
+  animation: thought-sparkle 1.5s ease-in-out infinite;
 }
 
 .assistant-live-status svg {
   width: 14px;
   height: 14px;
   flex: 0 0 auto;
+}
+
+/* Live status: the text swaps per research event. Enter slides up under
+   the leaving word; the strip rows settle in the same direction so the
+   whole block reads as one moving feed. */
+.progress-swap-enter-active {
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard);
+}
+
+.progress-swap-leave-active {
+  transition: opacity 80ms var(--ease-standard);
+}
+
+.progress-swap-enter-from {
+  opacity: 0;
+  transform: translateY(3px);
+}
+
+.progress-swap-leave-to {
+  opacity: 0;
+}
+
+.progress-row-enter-active {
+  transition:
+    opacity var(--duration-base) var(--ease-standard),
+    transform var(--duration-base) var(--ease-standard);
+}
+
+.progress-row-enter-from {
+  opacity: 0;
+  transform: translateY(3px);
+}
+
+@keyframes thought-sparkle {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.86);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes thought-breath {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+
+  50% {
+    opacity: 1;
+  }
 }
 
 .assistant-process__dot {
@@ -1672,10 +1740,22 @@ async function handleSourceFileClick(fileInfo: {
   }
 }
 
+/* Under reduced motion, keep a visible "alive" signal without rotation:
+   the spinner and running dots breathe via opacity only. Text swaps and
+   row entries flatten to instant changes. */
 @media (prefers-reduced-motion: reduce) {
-  .assistant-live-status .assistant-process__dot,
+  .assistant-live-status .assistant-live-status__sparkle {
+    animation: thought-breath 2.4s ease-in-out infinite;
+  }
+
   .assistant-progress-row--running .assistant-progress-row__dot {
-    animation: none;
+    animation: runner-dot 1.6s ease-in-out infinite;
+  }
+
+  .progress-swap-enter-active,
+  .progress-swap-leave-active,
+  .progress-row-enter-active {
+    transition: none;
   }
 }
 
@@ -1688,16 +1768,6 @@ async function handleSourceFileClick(fileInfo: {
   .message-block--assistant .message-row {
     width: 100%;
     max-width: 100%;
-  }
-
-  .message-avatar {
-    width: 28px;
-    height: 28px;
-  }
-
-  .message-avatar :deep(svg) {
-    width: 16px;
-    height: 16px;
   }
 
   .message-body,

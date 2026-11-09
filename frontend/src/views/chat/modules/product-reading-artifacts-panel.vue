@@ -76,7 +76,7 @@ const evidenceRows = computed(() =>
   (props.artifacts?.claimEvidencePanel?.rows || []).filter(row => row.claim || row.quote).slice(0, 5)
 );
 const decisionRows = computed(() => {
-  const frame = props.artifacts?.intentFrame;
+  const trace = props.artifacts?.traceSummary;
   const rows: Array<{
     id: string;
     title: string;
@@ -84,37 +84,6 @@ const decisionRows = computed(() => {
     text?: string;
     status?: string;
   }> = [];
-  (frame?.paperQueryTexts || [])
-    .filter(Boolean)
-    .slice(0, 2)
-    .forEach((query, index) => {
-      rows.push({
-        id: `paper-query-${index}`,
-        title: 'Paper discovery',
-        text: query,
-        status: 'Metadata candidates only until a passage is read'
-      });
-    });
-  (frame?.locationQueryPlans || [])
-    .filter(plan => plan?.queryText || plan?.intent || plan?.sectionRoles?.length)
-    .slice(0, 3)
-    .forEach((plan, index) => {
-      rows.push({
-        id: `location-plan-${index}`,
-        title: locationPlanTitle(plan),
-        meta: locationPlanMeta(plan),
-        text: plan.queryText || undefined,
-        status: 'Typed plan declared before location retrieval'
-      });
-    });
-  if (!rows.length && frame?.planningStatus && frame.planningStatus !== 'not_planned') {
-    rows.push({
-      id: 'planning-status',
-      title: 'Planning state',
-      status: planningStatusLabel(frame.planningStatus)
-    });
-  }
-  const trace = props.artifacts?.traceSummary;
   (trace?.steps || [])
     .filter(step => step?.label || step?.detail || step?.status)
     .slice(0, 6)
@@ -257,24 +226,6 @@ function missingEvidenceLabels(missing?: string[] | null) {
   return (missing || []).map(item => labels[item] || 'Required reading evidence').filter(Boolean);
 }
 
-function locationPlanTitle(plan: Api.Chat.ReadingLocationQueryPlan) {
-  const intent = intentLabel(plan.intent);
-  const sections = (plan.sectionRoles || []).map(sectionRoleLabel).filter(Boolean).slice(0, 2);
-  if (intent && sections.length) return `${intent} in ${sections.join(', ')}`;
-  return intent || sections.join(', ') || 'Location search plan';
-}
-
-function locationPlanMeta(plan: Api.Chat.ReadingLocationQueryPlan) {
-  const parts: string[] = [];
-  const sourceLanguage = languageLabel(plan.sourceLanguage);
-  const retrievalLanguage = languageLabel(plan.retrievalLanguage);
-  if (sourceLanguage) parts.push(`Source request: ${sourceLanguage}`);
-  if (retrievalLanguage) parts.push(`Search language: ${retrievalLanguage}`);
-  const types = (plan.locationTypes || []).map(locationTypeLabel).filter(Boolean).slice(0, 2);
-  if (types.length) parts.push(`Targets: ${types.join(', ')}`);
-  return parts.join(' · ');
-}
-
 function intentLabel(value?: string | null) {
   const labels: Record<string, string> = {
     METHOD: 'Method',
@@ -324,15 +275,6 @@ function languageLabel(value?: string | null) {
   };
   const normalized = (value || '').trim().toLowerCase();
   return labels[normalized] || (normalized ? normalized.toUpperCase() : '');
-}
-
-function planningStatusLabel(value?: string | null) {
-  const labels: Record<string, string> = {
-    typed_location_query_plan_missing: 'Typed location query plan is missing',
-    typed_location_query_plan_observed: 'Typed location query plan observed',
-    paper_query_observed: 'Paper discovery query observed'
-  };
-  return labels[(value || '').trim()] || 'Planning state recorded';
 }
 
 function traceStageLabel(value?: string | null) {

@@ -45,7 +45,7 @@ class ChatHandlerProductHarnessTest {
     @Test
     void chatPathAlwaysUsesProductReadingConversationService() {
         ChatFixture fixture = chatFixture();
-        when(fixture.readingConversationService.runTurn(
+        when(fixture.readingConversationService.submitTurn(
                 eq(1L),
                 eq("conversation-1"),
                 eq("generation-1"),
@@ -56,14 +56,14 @@ class ChatHandlerProductHarnessTest {
                 any()
         )).thenAnswer(invocation -> {
             @SuppressWarnings("unchecked")
-            Consumer<ToolProgressEvent> progressListener = invocation.getArgument(7, Consumer.class);
-            progressListener.accept(new ToolProgressEvent("calling_tool", "get_session_state"));
-            return completedTurn("当前 session scope 内有 2 篇 READY 论文。", List.of());
+            Consumer<Map<String, Object>> progressListener = invocation.getArgument(7, Consumer.class);
+            progressListener.accept(Map.of("type", "calling_tool", "tool", "get_session_state", "status", "executing"));
+            return CompletableFuture.completedFuture(completedTurn("当前 session scope 内有 2 篇 READY 论文。", List.of()));
         });
 
         fixture.handler.processMessage("1", new ChatHandler.ChatRequest("现在有多少论文可以检索", null, "conversation-1"), fixture.session);
 
-        verify(fixture.readingConversationService).runTurn(
+        verify(fixture.readingConversationService).submitTurn(
                 eq(1L),
                 eq("conversation-1"),
                 eq("generation-1"),
@@ -104,7 +104,7 @@ class ChatHandlerProductHarnessTest {
         );
 
         verify(fixture.conversationService).requireActiveOwnedConversationSession(1L, "conversation-explicit");
-        verify(fixture.readingConversationService).runTurn(
+        verify(fixture.readingConversationService).submitTurn(
                 eq(1L),
                 eq("conversation-explicit"),
                 eq("generation-explicit"),
@@ -130,7 +130,7 @@ class ChatHandlerProductHarnessTest {
 
         verify(fixture.conversationService).requireActiveOwnedConversationSession(1L, "foreign-conversation");
         verify(fixture.generationStateService, never()).createGeneration(anyString(), anyString(), anyString(), anyString());
-        verify(fixture.readingConversationService, never()).runTurn(any(), any(), any(), any(), any(), any(), any(), any());
+        verify(fixture.readingConversationService, never()).submitTurn(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -433,7 +433,7 @@ class ChatHandlerProductHarnessTest {
         fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释这个来源", forgedFocus, "conversation-1"), fixture.session);
 
         ArgumentCaptor<SourceScope> scopeCaptor = ArgumentCaptor.forClass(SourceScope.class);
-        verify(fixture.readingConversationService).runTurn(
+        verify(fixture.readingConversationService).submitTurn(
                 eq(1L),
                 eq("conversation-1"),
                 eq("generation-1"),
@@ -447,43 +447,9 @@ class ChatHandlerProductHarnessTest {
     }
 
     @Test
-    void productChatIgnoresClientRetrievalBudgetProfile() {
-        ConversationScopeService.EffectiveConversationScope scope =
-                new ConversationScopeService.EffectiveConversationScope(
-                        ConversationScopeMode.SOURCE_SET_SNAPSHOT,
-                        ConversationScopeStatus.READY,
-                        true,
-                        "Selected papers",
-                        List.of("paper-1"),
-                        Map.of()
-                );
-        ChatFixture fixture = chatFixture("conversation-1", "generation-1", scope);
-
-        fixture.handler.processMessage(
-                "1",
-                new ChatHandler.ChatRequest("LoRA 的方法是什么", null, RetrievalBudgetProfile.DEEP_AUDIT, "conversation-1"),
-                fixture.session
-        );
-
-        ArgumentCaptor<SourceScope> scopeCaptor = ArgumentCaptor.forClass(SourceScope.class);
-        verify(fixture.readingConversationService).runTurn(
-                eq(1L),
-                eq("conversation-1"),
-                eq("generation-1"),
-                anyString(),
-                scopeCaptor.capture(),
-                any(),
-                any(),
-                any()
-        );
-        assertEquals(List.of("paper-1"), scopeCaptor.getValue().paperIds());
-        assertEquals(RetrievalBudgetProfile.INTERACTIVE, scopeCaptor.getValue().retrievalBudgetProfile());
-    }
-
-    @Test
     void productChatReturnsStructuredQuotaErrorInsteadOfGenericAiUnavailable() {
         ChatFixture fixture = chatFixture();
-        when(fixture.readingConversationService.runTurn(
+        when(fixture.readingConversationService.submitTurn(
                 eq(1L),
                 eq("conversation-1"),
                 eq("generation-1"),
@@ -508,7 +474,7 @@ class ChatHandlerProductHarnessTest {
     @Test
     void wrappedProductChatQuotaErrorStillReturnsStructuredMessage() {
         ChatFixture fixture = chatFixture();
-        when(fixture.readingConversationService.runTurn(
+        when(fixture.readingConversationService.submitTurn(
                 eq(1L),
                 eq("conversation-1"),
                 eq("generation-1"),
@@ -584,7 +550,7 @@ class ChatHandlerProductHarnessTest {
 
         verify(fixture.generationStateService, never()).createGeneration(anyString(), anyString(), anyString(), anyString());
         verify(fixture.productPaperHandleService, never()).handleForPaperId(anyString());
-        verify(fixture.readingConversationService, never()).runTurn(any(), any(), any(), any(), any(), any(), any(), any());
+        verify(fixture.readingConversationService, never()).submitTurn(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -657,8 +623,8 @@ class ChatHandlerProductHarnessTest {
     @Test
     void readingSourceQuoteReferencesAreStoredInGenerationStateAndConversationHistory() {
         ChatFixture fixture = chatFixture();
-        when(fixture.readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
-                .thenReturn(completedTurn(
+        when(fixture.readingConversationService.submitTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(completedTurn(
                         "这段引用说明了方法细节 [1]",
                         List.of(Map.of(
                                 "referenceNumber", 1,
@@ -678,7 +644,7 @@ class ChatHandlerProductHarnessTest {
                                 )),
                                 "retrievalRoute", "PRODUCT_READING"
                         ))
-                ));
+                )));
         when(fixture.productPaperHandleService.resolvePaperHandle("paper_handle_answer"))
                 .thenReturn(Optional.of("paper-id-answer"));
 
@@ -733,8 +699,8 @@ class ChatHandlerProductHarnessTest {
                 isNull(),
                 eq("research")
         )).thenReturn(9001L);
-        when(fixture.readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
-                .thenReturn(completedTurn(
+        when(fixture.readingConversationService.submitTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(completedTurn(
                         "这段引用说明了方法细节 [1]",
                         List.of(Map.of(
                                 "referenceNumber", 1,
@@ -744,7 +710,7 @@ class ChatHandlerProductHarnessTest {
                                 "paperTitle", "LoRA",
                                 "retrievalRoute", "PRODUCT_READING"
                         ))
-                ));
+                )));
 
         fixture.handler.processMessage("1", new ChatHandler.ChatRequest("解释这个引用", null, "conversation-1"), fixture.session);
 
@@ -769,8 +735,9 @@ class ChatHandlerProductHarnessTest {
         for (int index = 1; index <= 12; index++) {
             productStateItems.add(paperChoiceItem("paper_handle_" + index, "Paper " + index));
         }
-        when(fixture.readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
-                .thenReturn(completedTurn("请选择论文", List.of(), productStateItems));
+        when(fixture.readingConversationService.submitTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(completedTurn("请选择论文", List.of(), productStateItems)));
+
 
         fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看 Ada 的论文", null, "conversation-1"), fixture.session);
 
@@ -803,8 +770,9 @@ class ChatHandlerProductHarnessTest {
                 paperChoiceItem("paper_handle_list", "Browse Paper", "list_papers"),
                 paperChoiceItem("paper_handle_search", "Search Paper", "search_paper_candidates")
         );
-        when(fixture.readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
-                .thenReturn(completedTurn("请选择论文", List.of(), productStateItems));
+        when(fixture.readingConversationService.submitTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(completedTurn("请选择论文", List.of(), productStateItems)));
+
 
         fixture.handler.processMessage("1", new ChatHandler.ChatRequest("找论文", null, "conversation-1"), fixture.session);
 
@@ -821,10 +789,10 @@ class ChatHandlerProductHarnessTest {
     @Test
     void readingCompletionRejectsUnsupportedPaperChoiceSourceTool() {
         ChatFixture fixture = chatFixture();
-        when(fixture.readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
-                .thenReturn(completedTurn("没有可选论文", List.of(), List.of(
+        when(fixture.readingConversationService.submitTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(completedTurn("没有可选论文", List.of(), List.of(
                         paperChoiceItem("paper_handle_outline", "Outline Paper", "get_paper_outline")
-                )));
+                ))));
 
         fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看大纲", null, "conversation-1"), fixture.session);
 
@@ -834,8 +802,8 @@ class ChatHandlerProductHarnessTest {
     @Test
     void failedReadingCompletionOmitsProductStateItems() {
         ChatFixture fixture = chatFixture();
-        when(fixture.readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
-                .thenReturn(new ProductTurnResult(
+        when(fixture.readingConversationService.submitTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(new ProductTurnResult(
                         "failed",
                         new AnswerEnvelope(AnswerType.CLARIFICATION_NEEDED, "failed", List.of(), List.of(), List.of(), List.of(), List.of(), ""),
                         List.of(),
@@ -843,7 +811,7 @@ class ChatHandlerProductHarnessTest {
                         List.of(paperChoiceItem("paper_handle_abc", "Should not send")),
                         ProductStopReason.TOOL_FAILED,
                         ProductResultStatus.FAILED
-                ));
+                )));
 
         fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看论文", null, "conversation-1"), fixture.session);
 
@@ -859,8 +827,8 @@ class ChatHandlerProductHarnessTest {
                 + "How to verify: choose a concrete passage.\n\n"
                 + "Not verified yet: no quoted passage was validated.\n\n"
                 + "Next step: open a readable location.";
-        when(fixture.readingConversationService.runTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
-                .thenReturn(new ProductTurnResult(
+        when(fixture.readingConversationService.submitTurn(eq(1L), eq("conversation-1"), eq("generation-1"), anyString(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(new ProductTurnResult(
                         answer,
                         new AnswerEnvelope(
                                 AnswerType.INSUFFICIENT_EVIDENCE,
@@ -876,7 +844,7 @@ class ChatHandlerProductHarnessTest {
                         List.of(),
                         ProductStopReason.TOOL_FAILED,
                         ProductResultStatus.INCOMPLETE_PRECISE
-                ));
+                )));
 
         fixture.handler.processMessage("1", new ChatHandler.ChatRequest("看论文", null, "conversation-1"), fixture.session);
 
@@ -936,7 +904,7 @@ class ChatHandlerProductHarnessTest {
     private static Map<String, Object> capturedReadingEffectiveScope(ChatFixture fixture) {
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, Object>> effectiveScopeCaptor = ArgumentCaptor.forClass(Map.class);
-        verify(fixture.readingConversationService).runTurn(
+        verify(fixture.readingConversationService).submitTurn(
                 eq(1L),
                 eq(fixture.conversationId),
                 eq(fixture.generationId),
@@ -1103,28 +1071,13 @@ class ChatHandlerProductHarnessTest {
         }).when(executor).execute(any(Runnable.class));
 
         ProductReadingConversationService readingConversationService = mock(ProductReadingConversationService.class);
-        when(readingConversationService.runTurn(eq(1L), eq(conversationId), eq(generationId), anyString(), any(), any(), any(), any()))
-                .thenReturn(completedTurn("reading ok", List.of()));
-        when(readingConversationService.submitTurn(
-                eq(1L), eq(conversationId), eq(generationId), anyString(), any(), any(), any(), any()))
-                .thenAnswer(invocation -> CompletableFuture.completedFuture(readingConversationService.runTurn(
-                        invocation.getArgument(0),
-                        invocation.getArgument(1),
-                        invocation.getArgument(2),
-                        invocation.getArgument(3),
-                        invocation.getArgument(4),
-                        invocation.getArgument(5),
-                        invocation.getArgument(6),
-                        (Consumer<ToolProgressEvent>) event -> {
-                            @SuppressWarnings("unchecked")
-                            Consumer<Map<String, Object>> progressListener = invocation.getArgument(7, Consumer.class);
-                            progressListener.accept(Map.of(
-                                    "type", event.type(),
-                                    "tool", event.toolName(),
-                                    "status", "executing"
-                            ));
-                        }
-                )));
+        when(readingConversationService.submitTurn(eq(1L), eq(conversationId), eq(generationId), anyString(), any(), any(), any(), any()))
+                .thenAnswer(invocation -> {
+                    @SuppressWarnings("unchecked")
+                    Consumer<Map<String, Object>> progressListener = invocation.getArgument(7, Consumer.class);
+                    progressListener.accept(Map.of("type", "calling_tool", "tool", "get_session_state", "status", "executing"));
+                    return CompletableFuture.completedFuture(completedTurn("reading ok", List.of()));
+                });
         ProductPaperHandleService productPaperHandleService = mock(ProductPaperHandleService.class);
         ConversationService conversationService = mock(ConversationService.class);
         ScheduledExecutorService leaseScheduler = mock(ScheduledExecutorService.class);

@@ -156,31 +156,6 @@ public class ConversationSessionController {
         }
     }
 
-    @PostMapping("/{conversationId}/scope/title-match-preview")
-    public ResponseEntity<?> previewTitleMatchScope(
-            @RequestHeader("Authorization") String token,
-            @PathVariable String conversationId,
-            @RequestBody UpdateConversationScopeRequest request) {
-        String username = null;
-        try {
-            String rawToken = token.replace("Bearer ", "");
-            username = jwtUtils.extractUsernameFromToken(rawToken);
-            if (username == null || username.isEmpty()) {
-                throw new CustomException("无效的token", HttpStatus.UNAUTHORIZED);
-            }
-
-            Long userId = Long.parseLong(jwtUtils.extractUserIdFromToken(rawToken));
-            Map<String, Object> preview = conversationScopeService.previewTitleMatchScope(userId, conversationId, request);
-
-            return ResponseEntity.ok(Map.of("code", 200, "message", "预览标题匹配范围成功", "data", preview));
-        } catch (CustomException e) {
-            return ResponseEntity.status(e.getStatus()).body(Map.of("code", e.getStatus().value(), "message", e.getMessage()));
-        } catch (Exception e) {
-            LogUtils.logBusinessError("PREVIEW_TITLE_MATCH_SCOPE", username, "预览标题匹配范围异常: %s", e, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("code", 500, "message", "服务器内部错误: " + e.getMessage()));
-        }
-    }
 
     @PutMapping("/{conversationId}/archive")
     public ResponseEntity<?> archiveSession(

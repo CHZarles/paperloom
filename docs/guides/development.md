@@ -41,6 +41,13 @@ The backend normally reads the repository-root `.env` and listens on port `8081`
 .venv-harness/bin/python -m harness_py --help
 ```
 
+The `unittest discover` command above only covers `harness_py/tests`. Evaluation probes under
+`scripts/evaluation/` carry their own tests and run against local product services:
+
+```bash
+.venv-harness/bin/python -m unittest scripts.evaluation.test_run_concurrent_parse
+```
+
 Use saved runs for offline diagnosis where possible. Model-backed evaluation can be expensive and
 should record provider, model, case set, budgets, token usage, and output artifacts.
 

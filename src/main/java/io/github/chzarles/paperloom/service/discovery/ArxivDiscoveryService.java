@@ -56,6 +56,7 @@ public class ArxivDiscoveryService {
     private final PaperRepository paperRepository;
     private final UploadService uploadService;
     private final PaperSearchabilityService paperSearchabilityService;
+    private final io.github.chzarles.paperloom.repository.PaperReadingModelRepository paperReadingModelRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final KafkaConfig kafkaConfig;
     private final RedisTemplate<String, Object> redisTemplate;
@@ -67,6 +68,7 @@ public class ArxivDiscoveryService {
                                  PaperRepository paperRepository,
                                  UploadService uploadService,
                                  PaperSearchabilityService paperSearchabilityService,
+                                 io.github.chzarles.paperloom.repository.PaperReadingModelRepository paperReadingModelRepository,
                                  KafkaTemplate<String, Object> kafkaTemplate,
                                  KafkaConfig kafkaConfig,
                                  RedisTemplate<String, Object> redisTemplate) {
@@ -74,6 +76,7 @@ public class ArxivDiscoveryService {
         this.paperRepository = paperRepository;
         this.uploadService = uploadService;
         this.paperSearchabilityService = paperSearchabilityService;
+        this.paperReadingModelRepository = paperReadingModelRepository;
         this.kafkaTemplate = kafkaTemplate;
         this.kafkaConfig = kafkaConfig;
         this.redisTemplate = redisTemplate;
@@ -172,6 +175,11 @@ public class ArxivDiscoveryService {
                 backfillArxivId(existing, arxivId);
                 return shortCircuit.get();
             }
+            Optional<ArxivImportResult> reposted = repostFailedParse(existing, arxivId, userId);
+            if (reposted.isPresent()) {
+                backfillArxivId(existing, arxivId);
+                return reposted.get();
+            }
         }
 
         Paper paper = sameContent.orElseGet(() -> newPaper(paperId, userId));
@@ -210,6 +218,46 @@ public class ArxivDiscoveryService {
                 ArxivImportResult.STATUS_IMPORTED,
                 "已加入文献库，正在解析并建立索引"
         );
+    }
+
+    /**
+     * 解析失败过的论文（此前 MinerU 出口抖动很常见）：本地 PDF 仍在，直接重排队解析，
+     * 等同论文库页的「重试」——不要重新走下载，下载才是这条链路最不稳的一环。
+     */
+    private Optional<ArxivImportResult> repostFailedParse(Paper paper, String arxivId, String userId) {
+        if (!Paper.VECTORIZATION_STATUS_FAILED.equals(paper.getVectorizationStatus())) {
+            return Optional.empty();
+        }
+        // 解析产物完好的只补索引（RETRY_INITIAL，绕开波动最大的 MinerU 下载/解析链）；
+        // 连解析都缺的才走完整 UPLOAD_PROCESS 重排队。
+        boolean parsedBefore = paperReadingModelRepository
+                .findFirstByPaperIdAndIsCurrentTrue(paper.getPaperId())
+                .isPresent();
+        PaperProcessingTask task = new PaperProcessingTask(
+                paper.getPaperId(),
+                null,
+                paper.getPaperTitle(),
+                userId,
+                parsedBefore
+                        ? PaperProcessingTask.TASK_TYPE_RETRY_INITIAL
+                        : PaperProcessingTask.TASK_TYPE_UPLOAD_PROCESS,
+                userId
+        );
+        try {
+            kafkaTemplate.executeInTransaction(sender -> {
+                sender.send(kafkaConfig.getPaperProcessingTopic(), paper.getPaperId(), task);
+                return true;
+            });
+        } catch (RuntimeException e) {
+            logger.warn("重新排队解析任务发送失败 => paperId: {}, error: {}", paper.getPaperId(), e.getMessage());
+        }
+        return Optional.of(new ArxivImportResult(
+                paper.getPaperId(),
+                arxivId,
+                paper.getPaperTitle(),
+                ArxivImportResult.STATUS_PROCESSING,
+                parsedBefore ? "这篇论文此前索引失败，已重新排队建立索引" : "这篇论文此前解析失败，已重新排队解析"
+        ));
     }
 
     private Optional<ArxivImportResult> existingPaperResult(Paper paper, String arxivId) {

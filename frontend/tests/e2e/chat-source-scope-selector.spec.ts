@@ -62,9 +62,7 @@ test('a stale initial session load cannot replace a new scoped query', async ({ 
   let initialSessionsRequested = false;
   let currentSessionRequests = 0;
 
-  await page.route('**/users/me', route =>
-    fulfillApi(route, { id: 1, username: 'admin', role: 'ADMIN' })
-  );
+  await page.route('**/users/me', route => fulfillApi(route, { id: 1, username: 'admin', role: 'ADMIN' }));
   await page.route('**/users/usage', route =>
     fulfillApi(route, {
       day: '2026-07-13',

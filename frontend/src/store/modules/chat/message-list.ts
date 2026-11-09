@@ -77,7 +77,8 @@ export function applyGenerationStartToMessages<T extends ChatMessageListItem>({
   const assistantIndex = findStartedAssistantIndex(messages, payload);
   const userIndex = findNearestUserIndex(messages, assistantIndex);
 
-  const visibleMessages = payload.replaceMessage && assistantIndex >= 0 ? messages.slice(0, assistantIndex + 1) : messages;
+  const visibleMessages =
+    payload.replaceMessage && assistantIndex >= 0 ? messages.slice(0, assistantIndex + 1) : messages;
   const nextMessages = visibleMessages.map((message, index) => {
     if (index !== assistantIndex && index !== userIndex) {
       return message;
@@ -90,7 +91,9 @@ export function applyGenerationStartToMessages<T extends ChatMessageListItem>({
       timestamp: index === assistantIndex ? payload.timestamp || message.timestamp : message.timestamp,
       route: index === assistantIndex ? payload.route || message.route : message.route,
       retryOfGenerationId:
-        index === assistantIndex ? payload.retryOfGenerationId || message.retryOfGenerationId : message.retryOfGenerationId,
+        index === assistantIndex
+          ? payload.retryOfGenerationId || message.retryOfGenerationId
+          : message.retryOfGenerationId,
       retryOfConversationRecordId:
         index === assistantIndex
           ? payload.retryOfConversationRecordId || message.retryOfConversationRecordId
@@ -98,7 +101,8 @@ export function applyGenerationStartToMessages<T extends ChatMessageListItem>({
       answerSlotId: index === assistantIndex ? payload.answerSlotId || message.answerSlotId : message.answerSlotId,
       answerRevision:
         index === assistantIndex ? payload.answerRevision || message.answerRevision : message.answerRevision,
-      replaceMessage: index === assistantIndex ? payload.replaceMessage || message.replaceMessage : message.replaceMessage,
+      replaceMessage:
+        index === assistantIndex ? payload.replaceMessage || message.replaceMessage : message.replaceMessage,
       content: index === assistantIndex && payload.replaceMessage ? '' : message.content,
       status: index === assistantIndex && payload.replaceMessage ? 'loading' : message.status
     };

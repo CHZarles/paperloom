@@ -3,13 +3,9 @@ package io.github.chzarles.paperloom.controller;
 import io.github.chzarles.paperloom.exception.CustomException;
 import io.github.chzarles.paperloom.model.User;
 import io.github.chzarles.paperloom.repository.UserRepository;
-import io.github.chzarles.paperloom.service.UsageQuotaService;
 import io.github.chzarles.paperloom.service.UserService;
-import io.github.chzarles.paperloom.service.UserTokenService;
 import io.github.chzarles.paperloom.utils.JwtUtils;
 import io.github.chzarles.paperloom.utils.LogUtils;
-import lombok.Builder;
-import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -18,7 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -37,11 +32,7 @@ public class UserController {
     @Autowired
     private UserRepository userRepository;
 
-    @Autowired
-    private UsageQuotaService usageQuotaService;
 
-    @Autowired
-    private UserTokenService userTokenService;
 
     // 用户注册接口
     // 接收用户请求体中的用户名和密码，并调用用户服务进行注册
@@ -193,31 +184,6 @@ public class UserController {
         }
     }
     
-    @GetMapping("/usage")
-    public ResponseEntity<?> getCurrentUserUsage(@RequestHeader("Authorization") String token) {
-        String username = null;
-        try {
-            username = jwtUtils.extractUsernameFromToken(token.replace("Bearer ", ""));
-            if (username == null || username.isEmpty()) {
-                throw new CustomException("Invalid token", HttpStatus.UNAUTHORIZED);
-            }
-
-            User user = userRepository.findByUsername(username)
-                    .orElseThrow(() -> new CustomException("User not found", HttpStatus.NOT_FOUND));
-
-            return ResponseEntity.ok(Map.of(
-                    "code", 200,
-                    "message", "Get user usage successful",
-                    "data", usageQuotaService.getSnapshot(String.valueOf(user.getId()))
-            ));
-        } catch (CustomException e) {
-            return ResponseEntity.status(e.getStatus()).body(Map.of("code", e.getStatus().value(), "message", e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("code", 500, "message", "Failed to get usage: " + e.getMessage()));
-        }
-    }
-
     // 用户登出接口
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@RequestHeader("Authorization") String token) {
@@ -253,164 +219,8 @@ public class UserController {
         }
     }
 
-    // 用户批量登出接口（登出所有设备）
-    @PostMapping("/logout-all")
-    public ResponseEntity<?> logoutAll(@RequestHeader("Authorization") String token) {
-        LogUtils.PerformanceMonitor monitor = LogUtils.startPerformanceMonitor("USER_LOGOUT_ALL");
-        String username = null;
-        try {
-            if (token == null || !token.startsWith("Bearer ")) {
-                LogUtils.logUserOperation("anonymous", "LOGOUT_ALL", "validation", "FAILED_INVALID_TOKEN");
-                monitor.end("批量登出失败：token格式无效");
-                return ResponseEntity.badRequest().body(Map.of("code", 400, "message", "Invalid token format"));
-            }
-
-            String jwtToken = token.replace("Bearer ", "");
-            username = jwtUtils.extractUsernameFromToken(jwtToken);
-            String userId = jwtUtils.extractUserIdFromToken(jwtToken);
-            
-            if (username == null || username.isEmpty() || userId == null) {
-                LogUtils.logUserOperation("anonymous", "LOGOUT_ALL", "token_extraction", "FAILED_NO_USER_INFO");
-                monitor.end("批量登出失败：无法提取用户信息");
-                return ResponseEntity.status(401).body(Map.of("code", 401, "message", "Invalid token"));
-            }
-
-            // 使用户所有token失效
-            jwtUtils.invalidateAllUserTokens(userId);
-            
-            LogUtils.logUserOperation(username, "LOGOUT_ALL", "all_tokens_invalidation", "SUCCESS");
-            monitor.end("批量登出成功");
-
-            return ResponseEntity.ok(Map.of("code", 200, "message", "Logout from all devices successful"));
-        } catch (Exception e) {
-            LogUtils.logBusinessError("USER_LOGOUT_ALL", username, "批量登出异常: %s", e, e.getMessage());
-            monitor.end("批量登出异常: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("code", 500, "message", "Internal server error"));
-        }
-    }
-
-    /**
-     * 查询用户 Token 记录列表（分页）
-     */
-    @GetMapping("/token-records")
-    public ResponseEntity<?> getTokenRecords(
-            @RequestHeader("Authorization") String token,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        LogUtils.PerformanceMonitor monitor = LogUtils.startPerformanceMonitor("GET_TOKEN_RECORDS");
-        String userId = null;
-        try {
-            userId = jwtUtils.extractUserIdFromToken(token.replace("Bearer ", ""));
-            if (userId == null || userId.isEmpty()) {
-                LogUtils.logUserOperation("anonymous", "GET_TOKEN_RECORDS", "token_validation", "FAILED_INVALID_TOKEN");
-                monitor.end("查询 Token 记录失败：无效 token");
-                throw new CustomException("Invalid token", HttpStatus.UNAUTHORIZED);
-            }
-
-            var records = userTokenService.getUserTokenRecords(userId, page, size);
-            var recordPage = records.map(record -> UserTokenRecordDTO.builder()
-                    .id(record.getId())
-                    .recordDate(record.getRecordDate())
-                    .tokenType(record.getTokenType().name())
-                    .changeType(record.getChangeType().name())
-                    .amount(record.getAmount())
-                    .balanceBefore(record.getBalanceBefore())
-                    .balanceAfter(record.getBalanceAfter())
-                    .reason(record.getReason())
-                    .remark(record.getRemark())
-                    .createdAt(record.getCreatedAt())
-                    .requestCount(record.getRequestCount())
-                    .build());
-
-            Map<String, Object> responseData = new HashMap<>();
-            responseData.put("content", recordPage.getContent());
-            responseData.put("totalElements", recordPage.getTotalElements());
-            responseData.put("totalPages", recordPage.getTotalPages());
-            responseData.put("number", recordPage.getNumber());
-            responseData.put("size", recordPage.getSize());
-            responseData.put("first", recordPage.isFirst());
-            responseData.put("last", recordPage.isLast());
-            responseData.put("empty", recordPage.isEmpty());
-
-            LogUtils.logUserOperation(userId, "GET_TOKEN_RECORDS", "token_records_query", "SUCCESS");
-            monitor.end("查询 Token 记录成功");
-
-            return ResponseEntity.ok(Map.of(
-                    "code", 200,
-                    "message", "Get token records successful",
-                    "data", responseData
-            ));
-        } catch (CustomException e) {
-            LogUtils.logBusinessError("GET_TOKEN_RECORDS", userId, "查询 Token 记录失败：%s", e, e.getMessage());
-            monitor.end("查询 Token 记录失败：" + e.getMessage());
-            return ResponseEntity.status(e.getStatus()).body(Map.of("code", e.getStatus().value(), "message", e.getMessage()));
-        } catch (Exception e) {
-            LogUtils.logBusinessError("GET_TOKEN_RECORDS", userId, "查询 Token 记录异常：%s", e, e.getMessage());
-            monitor.end("查询 Token 记录异常：" + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("code", 500, "message", "Internal server error"));
-        }
-    }
 }
 
 // 用户请求记录类
 record UserRequest(String username, String password, String inviteCode) {}
 
-@Data
-@Builder
-class UserTokenRecordDTO {
-
-    /**
-     * 记录 ID
-     */
-    private Long id;
-
-    /**
-     * 记录日期
-     */
-    private LocalDate recordDate;
-
-    /**
-     * Token 类型：LLM 或 EMBEDDING
-     */
-    private String tokenType;
-
-    /**
-     * 变动类型：INCREASE（增加）或 CONSUME（消耗）
-     */
-    private String changeType;
-
-    /**
-     * 变动数量
-     */
-    private Long amount;
-
-    /**
-     * 变动前的余额
-     */
-    private Long balanceBefore;
-
-    /**
-     * 变动后的余额
-     */
-    private Long balanceAfter;
-
-    /**
-     * 变动原因描述
-     */
-    private String reason;
-
-    /**
-     * 备注信息
-     */
-    private String remark;
-
-    /**
-     * 创建时间
-     */
-    private LocalDateTime createdAt;
-
-    /**
-     * 请求次数
-     */
-    private Long requestCount;
-}

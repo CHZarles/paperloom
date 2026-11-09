@@ -57,6 +57,9 @@ public class ConversationService {
     @Autowired
     private ConversationSessionRepository sessionRepository;
 
+    @Autowired(required = false)
+    private ChatGenerationStateService chatGenerationStateService;
+
     @Autowired
     private UserRepository userRepository;
 
@@ -273,11 +276,14 @@ public class ConversationService {
 
     public List<Map<String, Object>> getConversationSessions(Long userId) {
         List<ConversationSession> sessions = sessionRepository.findByUserIdOrderByUpdatedAtDesc(userId);
-        Set<String> nonEmptyConversationIds = new HashSet<>(conversationRepository.findDistinctConversationIdsByUserId(userId));
         List<Map<String, Object>> result = new ArrayList<>();
         String redisKey = "user:" + userId + ":current_conversation";
         String storedCurrentConversationId = redisTemplate.opsForValue().get(redisKey);
 
+        // A session is visible from the moment it is created — including one whose
+        // first turn is still streaming and has no persisted answer yet. Hiding empty
+        // sessions made a new first question disappear from the sidebar until the
+        // answer landed, leaving no way back to the running turn.
         boolean currentIsUsable = storedCurrentConversationId != null && sessions.stream().anyMatch(session ->
                 storedCurrentConversationId.equals(session.getConversationId())
                         && session.getStatus() == ConversationSession.SessionStatus.ACTIVE
@@ -287,7 +293,6 @@ public class ConversationService {
             currentConversationId = sessions.stream()
                     .filter(session -> session.getStatus() == ConversationSession.SessionStatus.ACTIVE)
                     .map(ConversationSession::getConversationId)
-                    .filter(nonEmptyConversationIds::contains)
                     .findFirst()
                     .orElse(null);
             if (currentConversationId == null) {
@@ -299,20 +304,27 @@ public class ConversationService {
 
         Integer autoLibraryPaperCount = null;
         boolean needsAutoLibraryCount = sessions.stream().anyMatch(session ->
-                nonEmptyConversationIds.contains(session.getConversationId())
-                        && session.getScopeMode() != null
+                session.getScopeMode() != null
                         && "AUTO_LIBRARY".equals(session.getScopeMode().name())
         );
         if (needsAutoLibraryCount && conversationScopeService != null) {
             autoLibraryPaperCount = conversationScopeService.autoLibraryReadablePaperCount(userId);
         }
 
+        // Sidebar "generating" badges must reflect turns streaming in ANY of the
+        // user's conversations — not just the one currently open in this tab.
+        Set<String> streamingConversationIds = chatGenerationStateService == null
+                ? Set.of()
+                : chatGenerationStateService.getStreamingConversationIdsForUser(String.valueOf(userId));
+        if (streamingConversationIds == null) {
+            streamingConversationIds = Set.of();
+        }
+
         for (ConversationSession session : sessions) {
-            if (!nonEmptyConversationIds.contains(session.getConversationId())) {
-                continue;
-            }
-            result.add(toSessionListResponse(session, autoLibraryPaperCount,
-                    session.getConversationId().equals(currentConversationId)));
+            Map<String, Object> item = toSessionListResponse(session, autoLibraryPaperCount,
+                    session.getConversationId().equals(currentConversationId));
+            item.put("generating", streamingConversationIds.contains(session.getConversationId()));
+            result.add(item);
         }
 
         return result;
@@ -419,14 +431,6 @@ public class ConversationService {
         return session;
     }
 
-    public void updateSessionTitle(Long userId, String conversationId, String title) {
-        findOwnedSession(userId, conversationId).ifPresent(session -> {
-            if (session.getTitle() == null || "新对话".equals(session.getTitle())) {
-                session.setTitle(title);
-                sessionRepository.save(session);
-            }
-        });
-    }
 
     public void archiveConversationSession(Long userId, String conversationId) {
         ConversationSession session = requireOwnedSession(userId, conversationId);

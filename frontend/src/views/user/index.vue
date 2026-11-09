@@ -132,7 +132,6 @@ function openTokenDialog(row: Api.User.Item) {
   tokenTarget.value = row;
   tokenDialogVisible.value = true;
 }
-
 </script>
 
 <template>

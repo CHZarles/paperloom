@@ -41,10 +41,10 @@ Runtime 固定使用 `openai-agents`；`Agent`、`Runner`、Function Tool 的语
 ## 核心结构
 
 ```text
-core/                         公共模型、状态和错误
+utils/                        公共模型、状态和错误
 corpus/
   gateway.py                  复用连接池调用 Java Corpus API
-  product_db_dataset.py       Golden/CLI 显式使用的本地 MySQL 适配器
+  product_db_dataset.py       Product Reading Model 行数据到 GoldenDataset 的形状转换
   tools.py                    统一 Tool Schema、授权状态和 Evidence Ledger
 orchestration/
   live_chat.py                单回合产品边界与 Eval Recorder 生命周期
@@ -158,8 +158,15 @@ export OPENAI_MODEL=gpt-5.5
 Java 使用 `/v1/research/stream` 获取 NDJSON Progress 和最终结果；`/v1/research/turn` 提供同步
 边界。Corpus 固定经过 Java/Qdrant；Health Endpoint 是 `/health`。
 
-`--provider-source env` 读取 `MINIMAX_*`；`--provider-source openai-env` 读取
-`OPENAI_BASE_URL`、`OPENAI_API_KEY` 和 `OPENAI_MODEL`，并在产物里记录为 `openai`。
+`serve --provider-source` 决定模型 Provider 的来源，默认 `db`：
+
+- `db`：与 Java 控制平面共用 MySQL `model_provider_configs` 表（经 `PAPERLOOM_MYSQL_CONTAINER`
+  容器读取，密钥用 `.env` 中的 `MODEL_PROVIDER_SECURITY_SECRET_KEY` 或 `JWT_SECRET_KEY`
+  解密）。管理页保存 Provider 后，**下一个回合即生效**，无需重启 harness。启动时若表里
+  还没有可用行，只记录 warning，`/ready` 报 `provider_unconfigured`，回合路径 fail-closed。
+- `env`：读取 `MINIMAX_*` 环境变量（本地逃生通道）。
+- `openai-env`：读取 `OPENAI_BASE_URL`、`OPENAI_API_KEY` 和 `OPENAI_MODEL`，并在产物里
+  记录为 `openai`。
 
 ## 常用命令
 

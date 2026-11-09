@@ -114,9 +114,8 @@ export const useAuthStore = defineStore(SetupStoreId.Auth, () => {
       const pass = await completeLogin(loginToken, redirect);
       endLoading();
       return pass;
-    } else {
-      resetStore();
     }
+    resetStore();
 
     endLoading();
     return false;

@@ -32,6 +32,7 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -78,6 +79,9 @@ class ConversationServiceTest {
 
     @Mock
     private ConversationSessionRepository sessionRepository;
+
+    @Mock
+    private ChatGenerationStateService chatGenerationStateService;
 
     @Mock
     private ObjectMapper objectMapper;
@@ -663,7 +667,10 @@ class ConversationServiceTest {
     }
 
     @Test
-    void getConversationSessionsHidesEmptySessions() {
+    void getConversationSessionsShowsEmptySessions() {
+        // Contract change: a just-created session whose first turn is still streaming
+        // must stay visible in the sidebar, otherwise the user cannot return to the
+        // running turn. The list renders it with the default "新对话" title.
         ConversationSession empty = new ConversationSession();
         ReflectionTestUtils.setField(empty, "id", 11L);
         empty.setConversationId("empty-session");
@@ -675,12 +682,12 @@ class ConversationServiceTest {
         used.setTitle("Reading session");
         used.setStatus(ConversationSession.SessionStatus.ACTIVE);
         when(sessionRepository.findByUserIdOrderByUpdatedAtDesc(1L)).thenReturn(List.of(empty, used));
-        when(conversationRepository.findDistinctConversationIdsByUserId(1L)).thenReturn(List.of("used-session"));
 
         List<Map<String, Object>> result = conversationService.getConversationSessions(1L);
 
-        assertEquals(1, result.size());
-        assertEquals("used-session", result.get(0).get("conversationId"));
+        assertEquals(2, result.size());
+        assertEquals("empty-session", result.get(0).get("conversationId"));
+        assertEquals("used-session", result.get(1).get("conversationId"));
     }
 
     @Test
@@ -1063,4 +1070,46 @@ class ConversationServiceTest {
         assertTrue(detailOpt.isEmpty());
     }
 
+
+    @Test
+    void getConversationSessionsIncludesEmptySessions() {
+        ConversationSession session = new ConversationSession();
+        session.setConversationId("conversation-empty");
+        session.setStatus(ConversationSession.SessionStatus.ACTIVE);
+        session.setCreatedAt(LocalDateTime.now());
+        session.setUpdatedAt(LocalDateTime.now());
+        when(sessionRepository.findByUserIdOrderByUpdatedAtDesc(1L)).thenReturn(List.of(session));
+        when(conversationRepository.findDistinctConversationIdsByUserId(1L)).thenReturn(List.of());
+        when(valueOperations.get("user:1:current_conversation")).thenReturn("conversation-empty");
+
+        List<Map<String, Object>> sessions = conversationService.getConversationSessions(1L);
+
+        assertEquals(1, sessions.size());
+        assertEquals("conversation-empty", sessions.get(0).get("conversationId"));
+        assertEquals("新对话", sessions.get(0).get("title"));
+        assertEquals(Boolean.TRUE, sessions.get(0).get("current"));
+    }
+
+    @Test
+    void getConversationSessionsMarksStreamingConversationsAsGenerating() {
+        ConversationSession streaming = new ConversationSession();
+        ReflectionTestUtils.setField(streaming, "id", 21L);
+        streaming.setConversationId("conversation-streaming");
+        streaming.setTitle("Streaming session");
+        streaming.setStatus(ConversationSession.SessionStatus.ACTIVE);
+        ConversationSession idle = new ConversationSession();
+        ReflectionTestUtils.setField(idle, "id", 22L);
+        idle.setConversationId("conversation-idle");
+        idle.setTitle("Idle session");
+        idle.setStatus(ConversationSession.SessionStatus.ACTIVE);
+        when(sessionRepository.findByUserIdOrderByUpdatedAtDesc(1L)).thenReturn(List.of(streaming, idle));
+        when(chatGenerationStateService.getStreamingConversationIdsForUser("1"))
+                .thenReturn(Set.of("conversation-streaming"));
+
+        List<Map<String, Object>> result = conversationService.getConversationSessions(1L);
+
+        assertEquals(2, result.size());
+        assertEquals(Boolean.TRUE, result.get(0).get("generating"));
+        assertEquals(Boolean.FALSE, result.get(1).get("generating"));
+    }
 }

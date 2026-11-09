@@ -323,12 +323,10 @@ declare namespace App {
         keywordSearch: string;
         logout: string;
         logoutConfirm: string;
-        lookForward: string;
         modify: string;
         modifySuccess: string;
         noData: string;
         operate: string;
-        pleaseCheckValue: string;
         refresh: string;
         reset: string;
         search: string;
@@ -337,7 +335,6 @@ declare namespace App {
         trigger: string;
         update: string;
         updateSuccess: string;
-        userCenter: string;
         yesOrNo: {
           yes: string;
           no: string;
@@ -427,12 +424,9 @@ declare namespace App {
             guestLogin: string;
             register: string;
             userNamePlaceholder: string;
-            phonePlaceholder: string;
-            codePlaceholder: string;
             passwordPlaceholder: string;
             confirmPasswordPlaceholder: string;
             inviteCodePlaceholder: string;
-            codeLogin: string;
             confirm: string;
             back: string;
             validateSuccess: string;
@@ -442,20 +436,7 @@ declare namespace App {
           pwdLogin: {
             title: string;
             rememberMe: string;
-            forgetPassword: string;
             register: string;
-            otherAccountLogin: string;
-            otherLoginMode: string;
-            superAdmin: string;
-            admin: string;
-            user: string;
-          };
-          codeLogin: {
-            title: string;
-            getCode: string;
-            reGetCode: string;
-            sendCodeSuccess: string;
-            imageCodePlaceholder: string;
           };
           register: {
             title: string;
@@ -465,22 +446,13 @@ declare namespace App {
             policy: string;
             inviteCodeTip: string;
           };
-          resetPwd: {
-            title: string;
-          };
-          bindWeChat: {
-            title: string;
-          };
         };
       };
       form: {
         required: string;
         userName: FormMsg;
-        phone: FormMsg;
         pwd: FormMsg;
         confirmPwd: FormMsg;
-        code: FormMsg;
-        email: FormMsg;
       };
       dropdown: Record<Global.DropdownKey, string>;
       icon: {

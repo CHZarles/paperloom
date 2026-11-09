@@ -52,6 +52,7 @@ class ArxivDiscoveryServiceTest {
     private PaperRepository paperRepository;
     private UploadService uploadService;
     private PaperSearchabilityService searchabilityService;
+    private io.github.chzarles.paperloom.repository.PaperReadingModelRepository readingModelRepository;
     private KafkaTemplate<String, Object> kafkaTemplate;
     private KafkaConfig kafkaConfig;
     private RedisTemplate<String, Object> redisTemplate;
@@ -64,6 +65,7 @@ class ArxivDiscoveryServiceTest {
         paperRepository = mock(PaperRepository.class);
         uploadService = mock(UploadService.class);
         searchabilityService = mock(PaperSearchabilityService.class);
+        readingModelRepository = mock(io.github.chzarles.paperloom.repository.PaperReadingModelRepository.class);
         kafkaTemplate = mock(KafkaTemplate.class);
         kafkaConfig = mock(KafkaConfig.class);
         redisTemplate = mock(RedisTemplate.class);
@@ -79,6 +81,7 @@ class ArxivDiscoveryServiceTest {
                 paperRepository,
                 uploadService,
                 searchabilityService,
+                readingModelRepository,
                 kafkaTemplate,
                 kafkaConfig,
                 redisTemplate

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, h, onMounted, ref, watch } from 'vue';
-import { NTag } from 'naive-ui';
+import { computed, defineAsyncComponent, onMounted, ref, watch } from 'vue';
 
 const InviteCodePage = defineAsyncComponent(() => import('@/views/invite-code/index.vue'));
 const UserPage = defineAsyncComponent(() => import('@/views/user/index.vue'));
+const ModelProviderPage = defineAsyncComponent(() => import('@/views/model-provider/index.vue'));
+const UsageDashboardPage = defineAsyncComponent(() => import('@/views/usage-dashboard/index.vue'));
 
 const settingsPanelCacheKey = Symbol.for('paperloom.settingsPanelCache');
 
@@ -16,15 +17,9 @@ type SettingsPanelGlobal = typeof globalThis & {
   [settingsPanelCacheKey]?: SettingsPanelCache | null;
 };
 
-type SettingsSection =
-  | 'general'
-  | 'userAdmin'
-  | 'inviteCode';
+type SettingsSection = 'general' | 'userAdmin' | 'inviteCode' | 'modelProvider' | 'usage';
 
-const adminSections = new Set<SettingsSection>([
-  'userAdmin',
-  'inviteCode'
-]);
+const adminSections = new Set<SettingsSection>(['userAdmin', 'inviteCode', 'modelProvider', 'usage']);
 
 const emit = defineEmits<{
   close: [];
@@ -37,6 +32,8 @@ const profileLoading = ref(false);
 const profileLoaded = ref(false);
 
 const activeSection = ref<SettingsSection>('general');
+
+const adminAreaActive = computed(() => isAdminSection(activeSection.value));
 
 const userCacheId = computed(() => String(userInfo.value.id || userInfo.value.username || 'anonymous'));
 const accountName = computed(() => userInfo.value.username || 'Citewise User');
@@ -70,13 +67,6 @@ function restoreCachedSettings() {
   }
 
   profileLoaded.value = cachedSettings.profileLoaded;
-}
-
-function cacheSettingsPanelState() {
-  (globalThis as SettingsPanelGlobal)[settingsPanelCacheKey] = {
-    userId: userCacheId.value,
-    profileLoaded: profileLoaded.value
-  };
 }
 
 function readSettingsPanelCache() {
@@ -114,8 +104,13 @@ function buildAvatarFill(seed: string) {
 </script>
 
 <template>
-  <div class="settings-spin">
-    <div class="settings-modal" data-testid="settings-modal" :data-profile-loading="profileLoading && !profileLoaded">
+  <div class="settings-spin" :class="{ 'settings-spin--workspace': adminAreaActive }">
+    <div
+      class="settings-modal"
+      :class="{ 'settings-modal--workspace': adminAreaActive }"
+      data-testid="settings-modal"
+      :data-profile-loading="profileLoading && !profileLoaded"
+    >
       <aside class="settings-nav">
         <button type="button" class="settings-account">
           <span class="account-avatar" :style="avatarStyle" aria-hidden="true">
@@ -163,6 +158,24 @@ function buildAvatarFill(seed: string) {
             <icon-lucide:ticket />
             <span>Invite Codes</span>
           </button>
+          <button
+            type="button"
+            class="settings-nav__item"
+            :class="{ 'settings-nav__item--active': activeSection === 'modelProvider' }"
+            @click="activeSection = 'modelProvider'"
+          >
+            <icon-lucide:boxes />
+            <span>AI Providers</span>
+          </button>
+          <button
+            type="button"
+            class="settings-nav__item"
+            :class="{ 'settings-nav__item--active': activeSection === 'usage' }"
+            @click="activeSection = 'usage'"
+          >
+            <icon-lucide:chart-column />
+            <span>Token Usage</span>
+          </button>
         </template>
       </aside>
 
@@ -197,10 +210,21 @@ function buildAvatarFill(seed: string) {
         >
           <InviteCodePage />
         </section>
+        <section
+          v-if="authStore.isAdmin && activeSection === 'modelProvider'"
+          class="settings-section settings-section--embedded"
+        >
+          <ModelProviderPage />
+        </section>
+        <section
+          v-if="authStore.isAdmin && activeSection === 'usage'"
+          class="settings-section settings-section--embedded"
+        >
+          <UsageDashboardPage />
+        </section>
       </main>
     </div>
-
-      </div>
+  </div>
 </template>
 
 <style scoped lang="scss">
@@ -208,16 +232,27 @@ function buildAvatarFill(seed: string) {
   width: min(1480px, calc(100vw - 32px));
 }
 
+.settings-spin--workspace {
+  width: calc(100vw - 32px);
+  max-width: 100%;
+}
+
 .settings-modal {
   display: grid;
   width: min(1480px, calc(100vw - 32px));
   height: min(830px, calc(100vh - 92px));
+  margin-inline: auto;
   grid-template-columns: 260px minmax(0, 1fr);
   overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   background: var(--color-surface);
   box-shadow: var(--shadow-card-soft);
+}
+
+.settings-modal--workspace {
+  width: 100%;
+  height: calc(100vh - 32px);
 }
 
 .settings-nav {

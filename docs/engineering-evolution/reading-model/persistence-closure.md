@@ -2,8 +2,7 @@
 
 Date: 2026-07-05
 Status: historical simplification record. Later implementation and verification are captured in the
-current code, ADRs, and
-[`../verification/reading-model-persistence-closure-spec-readiness-review-2026-07-05.md`](../verification/reading-model-persistence-closure-spec-readiness-review-2026-07-05.md).
+current code and the ADRs.
 
 ## Purpose
 

@@ -158,16 +158,3 @@ pnpm --dir frontend exec node scripts/benchmark-pdf-preview.mjs
 `PAPERLOOM_CHROME_PATH` 指定 Chrome。导航发生临时断连时最多重试 3 次；计时窗口内不重试 PDF 请求，
 避免把失败样本悄悄美化。
 
-## 11. 面试 Story
-
-> 我在线上发现 PDF 首次显示约需 3 秒。没有先凭感觉改 pdf.js，而是用 Playwright 驱动真实 Chrome，定义
-> “点击 Preview 到 Canvas 有尺寸且渲染遮罩消失”为 First Page Ready，对同一 PDF 做 5 组冷、热打开，
-> 并用 Resource Timing 拆分网络与渲染。数据显示冷打开中位数 3059 ms，其中约 2539 ms 在网络链路。
-> 沿请求链定位到前端已知 paperId 和 PDF 类型，却仍先请求 descriptor，而后端只返回可直接计算的
-> pdf-data 地址，形成无信息增量的串行往返。我增加 PDF 快速路径，非 PDF 保持原流程，后端 pdf-data
-> 继续鉴权。部署后同条件复测，冷打开中位数降到 2561 ms，提升 16.3%；热打开从 1380 ms 降到 886 ms，
-> 提升 35.8%。同时我保留了边界：样本只有一份 PDF，冷启动最大值没有改善，下一瓶颈是 Range 请求，不能
-> 把中位数结果包装成全量用户的 p95 提升。
-
-**常见追问：**为什么用中位数、冷缓存与热缓存区别、为什么不是 Canvas 瓶颈、减少请求和减少字节的区别、
-前端快速路径是否绕过鉴权、为何只测 5 次不能声称 p95、下一步如何拆分 Range 延迟。

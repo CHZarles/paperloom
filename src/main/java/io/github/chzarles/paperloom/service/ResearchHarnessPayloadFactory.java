@@ -30,15 +30,7 @@ public class ResearchHarnessPayloadFactory {
         return body;
     }
 
-    public int estimatedPromptTokens(ProductTurnRequest request) {
-        int characters = request.userMessage().length();
-        for (Map<String, String> message : request.history()) {
-            characters += message.getOrDefault("role", "").length();
-            characters += message.getOrDefault("content", "").length();
-        }
-        return Math.max(1, (characters + 3) / 4);
-    }
-
+    
     public ResearchRunLimits runLimits(ProductTurnRequest request) {
         return ResearchRunLimits.resolve(request.modelContext());
     }

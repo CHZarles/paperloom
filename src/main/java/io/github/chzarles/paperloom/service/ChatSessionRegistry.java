@@ -26,10 +26,6 @@ public class ChatSessionRegistry {
         this.objectMapper = objectMapper;
     }
 
-    public void registerSession(String userId, WebSocketSession session) {
-        registerSession(userId, null, session);
-    }
-
     public void registerSession(String userId, String clientId, WebSocketSession session) {
         String resolvedClientId = normalizeClientId(clientId, session);
         Map<String, Object> attributes = session.getAttributes();
@@ -65,35 +61,6 @@ public class ChatSessionRegistry {
         return sessionList.stream()
                 .filter(WebSocketSession::isOpen)
                 .toList();
-    }
-
-    public void sendJsonToUser(String userId, Map<String, ?> payload) {
-        List<WebSocketSession> sessionList = sessions.get(userId);
-        if (sessionList == null || sessionList.isEmpty()) {
-            logger.debug("用户 {} 当前没有可用的 WebSocket 会话，跳过发送", userId);
-            return;
-        }
-
-        String jsonMessage;
-        try {
-            jsonMessage = objectMapper.writeValueAsString(payload);
-        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-            logger.error("序列化消息失败: {}", e.getMessage(), e);
-            return;
-        }
-
-        for (WebSocketSession session : sessionList) {
-            try {
-                synchronized (session) {
-                    if (session.isOpen()) {
-                        session.sendMessage(new TextMessage(jsonMessage));
-                    }
-                }
-            } catch (Exception e) {
-                logger.warn("发送消息到 session {} 失败: {}", session.getId(), e.getMessage());
-                // 不影响其他 session
-            }
-        }
     }
 
     public void sendJsonToClient(String userId, String clientId, Map<String, ?> payload) {

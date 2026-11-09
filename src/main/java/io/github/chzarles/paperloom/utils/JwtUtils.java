@@ -383,18 +383,6 @@ public class JwtUtils {
         }
     }
     
-    /**
-     * 使用户所有token失效（批量登出）
-     */
-    public void invalidateAllUserTokens(String userId) {
-        try {
-            tokenCacheService.removeAllUserTokens(userId);
-            logger.info("All tokens invalidated for user: {}", userId);
-        } catch (Exception e) {
-            logger.error("Error invalidating all user tokens: {}", userId, e);
-        }
-    }
-
     private void logTokenError(String operation, Exception error) {
         logger.warn("JWT operation failed: operation={}, error_type={}",
                 operation, error.getClass().getSimpleName());

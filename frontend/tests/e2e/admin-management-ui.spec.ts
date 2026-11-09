@@ -178,12 +178,7 @@ test('admin management pages keep the Manus-style shell stable', async ({ page }
 });
 
 test('management functions stay out of generated global navigation metadata', () => {
-  const managementRouteNames = [
-    'chat-history',
-    'invite-code',
-    'recharge',
-    'recharge-manage'
-  ];
+  const managementRouteNames = ['chat-history', 'invite-code', 'recharge', 'recharge-manage'];
   const exposedRoutes = generatedRoutes
     .filter(route => managementRouteNames.includes(route.name as string))
     .filter(route => !route.meta?.hideInMenu)

@@ -1,0 +1,103 @@
+{
+  "topic": "t1",
+  "goal": "speculative decoding 与 KV cache 量化方向的近两年代表工作",
+  "max_papers": 5,
+  "active_tools": [
+    "search_arxiv_papers",
+    "submit_discovery_shortlist"
+  ],
+  "shortlist": [
+    {
+      "arxiv_id": "2401.15077v3",
+      "reason": "EAGLE：把推测采样重新表述为特征（倒数第二层）层面的自回归问题，提出特征级草稿与不确定性建模，是自草稿式推测解码的代表作。标题为“Speculative Sampling Requires Rethinking Feature Uncertainty”，作者 Yuhui Li、Fangyun Wei、Chao Zhang、Hongyang Zhang，cs.LG/cs.CL，2024 年。同期另一篇 EAGLE-2（2406.16858）由同组作者提出动态草稿树，可作为延伸阅读。",
+      "score": 9
+    },
+    {
+      "arxiv_id": "2401.10774v3",
+      "reason": "Medusa：在目标模型上增加多个解码头（multiple decoding heads）实现推测解码，避免额外草稿模型带来的开销，属于自推测解码路线代表作。摘要指出其针对 HBM-加速器间搬运模型参数造成的自回归瓶颈，并与推测解码方案对比。作者 Tianle Cai、Yuhong Li、Zhengyang Geng、Hongwu Peng、Jason D. Lee、Deming Chen，cs.LG/cs.CL，2024 年。",
+      "score": 9
+    },
+    {
+      "arxiv_id": "2402.02750v2",
+      "reason": "KIVI：免调优的非对称 2bit KV cache 量化，针对 key 与 value 分别采用不同的量化/保留策略以应对离群点，摘要明确指向长上下文与大批量部署下的 KV cache 内存瓶颈。作者 Zirui Liu、Jiayi Yuan、Hongye Jin、Shaochen Zhong、Zhaozhuo Xu、Vladimir Braverman，cs.CL/cs.LG/cs.PF，2024 年。",
+      "score": 9
+    },
+    {
+      "arxiv_id": "2401.18079v6",
+      "reason": "KVQuant：面向千万级上下文推理的 KV cache 量化工作，摘要指出既有方案在 4 bit 以下精度难以准确表示激活，提出面向 sub-4-bit 的量化设计。作者 Coleman Hooper、Sehoon Kim、Hiva Mohammadzadeh、Michael W. Mahoney、Yakun Sophia Shao、Kurt Keutzer，cs.LG，2024 年。",
+      "score": 8.5
+    },
+    {
+      "arxiv_id": "2502.10424v1",
+      "reason": "QuantSpec：自推测解码与分层量化 KV cache 的结合，针对边缘设备长上下文推理中 KV cache 显存与加载延迟瓶颈，同时使用推测解码技术。作者 Rishabh Tiwari、Haocheng Xi、Aditya Tomar、Coleman Hooper、Sehoon Kim、Maxwell Horton，cs.LG/cs.AI，2025 年，恰好覆盖 speculative decoding 与 KV cache 量化两条线的交叉点。",
+      "score": 8.5
+    }
+  ],
+  "shortlist_enriched": [
+    {
+      "arxiv_id": "2401.15077v3",
+      "reason": "EAGLE：把推测采样重新表述为特征（倒数第二层）层面的自回归问题，提出特征级草稿与不确定性建模，是自草稿式推测解码的代表作。标题为“Speculative Sampling Requires Rethinking Feature Uncertainty”，作者 Yuhui Li、Fangyun Wei、Chao Zhang、Hongyang Zhang，cs.LG/cs.CL，2024 年。同期另一篇 EAGLE-2（2406.16858）由同组作者提出动态草稿树，可作为延伸阅读。",
+      "score": 9,
+      "title": "EAGLE: Speculative Sampling Requires Rethinking Feature Uncertainty",
+      "year": "2024"
+    },
+    {
+      "arxiv_id": "2401.10774v3",
+      "reason": "Medusa：在目标模型上增加多个解码头（multiple decoding heads）实现推测解码，避免额外草稿模型带来的开销，属于自推测解码路线代表作。摘要指出其针对 HBM-加速器间搬运模型参数造成的自回归瓶颈，并与推测解码方案对比。作者 Tianle Cai、Yuhong Li、Zhengyang Geng、Hongwu Peng、Jason D. Lee、Deming Chen，cs.LG/cs.CL，2024 年。",
+      "score": 9,
+      "title": "Medusa: Simple LLM Inference Acceleration Framework with Multiple Decoding Heads",
+      "year": "2024"
+    },
+    {
+      "arxiv_id": "2402.02750v2",
+      "reason": "KIVI：免调优的非对称 2bit KV cache 量化，针对 key 与 value 分别采用不同的量化/保留策略以应对离群点，摘要明确指向长上下文与大批量部署下的 KV cache 内存瓶颈。作者 Zirui Liu、Jiayi Yuan、Hongye Jin、Shaochen Zhong、Zhaozhuo Xu、Vladimir Braverman，cs.CL/cs.LG/cs.PF，2024 年。",
+      "score": 9,
+      "title": "KIVI: A Tuning-Free Asymmetric 2bit Quantization for KV Cache",
+      "year": "2024"
+    },
+    {
+      "arxiv_id": "2401.18079v6",
+      "reason": "KVQuant：面向千万级上下文推理的 KV cache 量化工作，摘要指出既有方案在 4 bit 以下精度难以准确表示激活，提出面向 sub-4-bit 的量化设计。作者 Coleman Hooper、Sehoon Kim、Hiva Mohammadzadeh、Michael W. Mahoney、Yakun Sophia Shao、Kurt Keutzer，cs.LG，2024 年。",
+      "score": 8.5,
+      "title": "KVQuant: Towards 10 Million Context Length LLM Inference with KV Cache Quantization",
+      "year": "2024"
+    },
+    {
+      "arxiv_id": "2502.10424v1",
+      "reason": "QuantSpec：自推测解码与分层量化 KV cache 的结合，针对边缘设备长上下文推理中 KV cache 显存与加载延迟瓶颈，同时使用推测解码技术。作者 Rishabh Tiwari、Haocheng Xi、Aditya Tomar、Coleman Hooper、Sehoon Kim、Maxwell Horton，cs.LG/cs.AI，2025 年，恰好覆盖 speculative decoding 与 KV cache 量化两条线的交叉点。",
+      "score": 8.5,
+      "title": "QuantSpec: Self-Speculative Decoding with Hierarchical Quantized KV Cache",
+      "year": "2025"
+    }
+  ],
+  "submit_attempts": 1,
+  "observed_count": 65,
+  "searches": [
+    "检索「speculative decoding」→ 15 条",
+    "检索「KV cache quantization」→ 15 条",
+    "检索「KVQuant group-wise quantization key value cache LLM」→ 10 条",
+    "检索「EAGLE-2 Medusa draft model head」→ 10 条",
+    "检索「TurboQuant rotation quantization KV cache Hadamard」→ 10 条",
+    "检索「EAGLE speculative sampling feature uncertainty」→ 10 条",
+    "检索「speculative decoding with KV cache compression quantization joint」→ 10 条",
+    "检索「KV cache compression vector quantization entropy coding atom」→ 10 条"
+  ],
+  "usage_total": {
+    "input": 79967,
+    "output": 7871
+  },
+  "event_types": {
+    "agent_start": 1,
+    "turn_start": 6,
+    "message_start": 17,
+    "message_end": 17,
+    "message_update": 177,
+    "tool_execution_start": 9,
+    "tool_execution_end": 9,
+    "turn_end": 6,
+    "agent_end": 1,
+    "agent_settled": 1
+  },
+  "model": "MiniMax-M3.1-Flash@api.minimaxi.com/v1",
+  "elapsed_s": 29
+}

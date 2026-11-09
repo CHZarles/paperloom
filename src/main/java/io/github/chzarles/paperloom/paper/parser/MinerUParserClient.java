@@ -8,6 +8,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -16,11 +18,15 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -29,6 +35,9 @@ public class MinerUParserClient {
 
     private static final int DEFAULT_MAX_RESULT_IN_MEMORY_BYTES = 64 * 1024 * 1024;
 
+    /** MinerU reports this business code while an uploaded batch has no extraction task registered yet. */
+    private static final int RESULT_CODE_TASK_NOT_FOUND = -60012;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("${paper.parsing.mineru.base-url:https://mineru.net}")
@@ -36,6 +45,25 @@ public class MinerUParserClient {
 
     @Value("${paper.parsing.mineru.api-token:}")
     private String apiToken;
+
+    @Value("${paper.parsing.mineru.auth-base-url:https://sso.openxlab.org.cn/gw/uaa-be/api/v1/open}")
+    private String authBaseUrl;
+
+    @Value("${paper.parsing.mineru.access-key:}")
+    private String accessKey;
+
+    @Value("${paper.parsing.mineru.secret-key:}")
+    private String secretKey;
+
+    @Value("${paper.parsing.mineru.token-refresh-skew-seconds:300}")
+    private long tokenRefreshSkewSeconds;
+
+    /**
+     * Access token exchanged from the MinerU AK/SK credentials. Guarded by {@link #tokenRefreshLock}.
+     */
+    private volatile String cachedAccessToken;
+    private volatile long cachedAccessTokenExpirationEpochSecond;
+    private final Object tokenRefreshLock = new Object();
 
     @Value("${paper.parsing.mineru.model-version:vlm}")
     private String modelVersion;
@@ -96,8 +124,21 @@ public class MinerUParserClient {
 
     private JsonNode waitUntilCompleted(WebClient client, String batchId) {
         long deadline = System.currentTimeMillis() + Duration.ofSeconds(Math.max(1, timeoutSeconds)).toMillis();
+        // MinerU registers the extraction task asynchronously after the upload, and "task not found" is a
+        // transient state during that registration window.
+        long registrationGraceDeadline = System.currentTimeMillis() + Duration.ofSeconds(60).toMillis();
         while (System.currentTimeMillis() < deadline) {
-            JsonNode response = getJson(client, "/api/v4/extract-results/batch/{batchId}", batchId, "get parse result");
+            JsonNode response = getJsonRaw(client, "/api/v4/extract-results/batch/{batchId}", batchId, "get parse result");
+            int responseCode = response.path("code").asInt(Integer.MIN_VALUE);
+            if (responseCode == RESULT_CODE_TASK_NOT_FOUND
+                    && System.currentTimeMillis() < registrationGraceDeadline) {
+                sleep();
+                continue;
+            }
+            if (responseCode != 0) {
+                throw new PaperParsingException(
+                        "MinerU API failed to get parse result: " + response.path("msg").asText("unknown API error"));
+            }
             JsonNode results = data(response, "get parse result").path("extract_result");
             if (!results.isArray() || results.isEmpty()) {
                 throw new PaperParsingException("MinerU API did not return the uploaded file result");
@@ -118,45 +159,72 @@ public class MinerUParserClient {
     }
 
     private JsonNode postJson(WebClient client, String path, Object request, String operation) {
-        String body;
-        try {
-            body = client.post()
-                    .uri(path)
-                    .headers(headers -> headers.setBearerAuth(requiredApiToken()))
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .accept(MediaType.APPLICATION_JSON)
-                    .bodyValue(request)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block(requestTimeout());
-        } catch (PaperParsingException e) {
-            throw e;
-        } catch (WebClientResponseException e) {
-            throw apiRejected(operation, e);
-        } catch (Exception e) {
-            throw apiUnavailable(operation, e);
-        }
-        return parseSuccessfulResponse(body, operation);
+        return performJsonCall(operation,
+                token -> client.post()
+                        .uri(path)
+                        .headers(headers -> headers.setBearerAuth(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .bodyValue(request)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block(requestTimeout()),
+                body -> parseSuccessfulResponse(body, operation));
     }
 
     private JsonNode getJson(WebClient client, String path, String batchId, String operation) {
-        String body;
+        return performJsonCall(operation,
+                token -> client.get()
+                        .uri(path, batchId)
+                        .headers(headers -> headers.setBearerAuth(token))
+                        .accept(MediaType.APPLICATION_JSON)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block(Duration.ofSeconds(30)),
+                body -> parseSuccessfulResponse(body, operation));
+    }
+
+    private JsonNode getJsonRaw(WebClient client, String path, String batchId, String operation) {
+        return performJsonCall(operation,
+                token -> client.get()
+                        .uri(path, batchId)
+                        .headers(headers -> headers.setBearerAuth(token))
+                        .accept(MediaType.APPLICATION_JSON)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block(Duration.ofSeconds(30)),
+                body -> parseJsonTree(body));
+    }
+
+    /**
+     * Runs a JSON call with the current bearer token. AK/SK-exchanged tokens expire after roughly an hour, so an
+     * HTTP 401 triggers one token refresh and a single retry instead of failing a long-running parse.
+     */
+    private JsonNode performJsonCall(String operation, Function<String, String> call, Function<String, JsonNode> parser) {
+        BearerToken bearer = resolveBearerToken();
         try {
-            body = client.get()
-                    .uri(path, batchId)
-                    .headers(headers -> headers.setBearerAuth(requiredApiToken()))
-                    .accept(MediaType.APPLICATION_JSON)
-                    .retrieve()
-                    .bodyToMono(String.class)
-                    .block(Duration.ofSeconds(30));
+            return parser.apply(call.apply(bearer.value()));
         } catch (PaperParsingException e) {
             throw e;
+        } catch (WebClientResponseException.Unauthorized e) {
+            if (!bearer.refreshable()) {
+                throw apiRejected(operation, e);
+            }
+            cachedAccessToken = null;
+            try {
+                return parser.apply(call.apply(resolveBearerToken().value()));
+            } catch (PaperParsingException retryError) {
+                throw retryError;
+            } catch (WebClientResponseException retryError) {
+                throw apiRejected(operation, retryError);
+            } catch (Exception retryError) {
+                throw apiUnavailable(operation, retryError);
+            }
         } catch (WebClientResponseException e) {
             throw apiRejected(operation, e);
         } catch (Exception e) {
             throw apiUnavailable(operation, e);
         }
-        return parseSuccessfulResponse(body, operation);
     }
 
     private JsonNode parseSuccessfulResponse(String body, String operation) {
@@ -197,6 +265,8 @@ public class MinerUParserClient {
             connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("PUT");
             connection.setDoOutput(true);
+            // The presigned upload URL includes this content type in its signature; other values are rejected with 403.
+            connection.setRequestProperty("Content-Type", "application/pdf");
             connection.setConnectTimeout(requestTimeoutMillis());
             connection.setReadTimeout(requestTimeoutMillis());
             connection.setFixedLengthStreamingMode(pdfBytes.length);
@@ -228,11 +298,132 @@ public class MinerUParserClient {
         }
     }
 
-    private String requiredApiToken() {
-        if (apiToken == null || apiToken.isBlank()) {
-            throw new PaperParsingException("PAPER_PARSING_MINERU_API_TOKEN is required for the MinerU cloud API");
+    private BearerToken resolveBearerToken() {
+        String normalizedAccessKey = accessKey == null ? "" : accessKey.trim();
+        String normalizedSecretKey = secretKey == null ? "" : secretKey.trim();
+        if (!normalizedAccessKey.isEmpty() && !normalizedSecretKey.isEmpty()) {
+            return new BearerToken(getOrRefreshAccessToken(), true);
         }
-        return apiToken.trim();
+        String token = apiToken == null ? "" : apiToken.trim();
+        if (!token.isEmpty()) {
+            return new BearerToken(token, false);
+        }
+        throw new PaperParsingException(
+                "PAPER_PARSING_MINERU_ACCESS_KEY and PAPER_PARSING_MINERU_SECRET_KEY are required for the MinerU cloud API"
+                        + " (or a PAPER_PARSING_MINERU_API_TOKEN with a manually issued token)");
+    }
+
+    private String getOrRefreshAccessToken() {
+        if (isCachedAccessTokenValid()) {
+            return cachedAccessToken;
+        }
+        synchronized (tokenRefreshLock) {
+            if (isCachedAccessTokenValid()) {
+                return cachedAccessToken;
+            }
+            String jwt = exchangeAccessToken();
+            cachedAccessToken = jwt;
+            // Refresh a little before the reported expiration so a parse never starts with a dying token.
+            cachedAccessTokenExpirationEpochSecond =
+                    accessTokenExpirationEpochSecond(jwt) - Math.max(0, tokenRefreshSkewSeconds);
+            return jwt;
+        }
+    }
+
+    private boolean isCachedAccessTokenValid() {
+        return cachedAccessToken != null && !cachedAccessToken.isBlank()
+                && cachedAccessTokenExpirationEpochSecond > 0
+                && Instant.now().getEpochSecond() < cachedAccessTokenExpirationEpochSecond;
+    }
+
+    /**
+     * MinerU now issues Access Key / Secret Key credential pairs instead of long-lived API tokens. The pair is
+     * exchanged for a short-lived access token (a JWT, roughly one hour) through the OpenXLab SSO token service:
+     * a nonce challenge signed with the secret key, then {@code getJwt} with the signature.
+     */
+    private String exchangeAccessToken() {
+        WebClient authClient = WebClient.builder()
+                .baseUrl(normalizeBaseUrl(authBaseUrl))
+                .build();
+        String normalizedAccessKey = accessKey.trim();
+        JsonNode challenge = postAuthJson(authClient, "/auth", Map.of("ak", normalizedAccessKey));
+        JsonNode challengeData = authData(challenge, "request the MinerU access-token challenge");
+        String nonce = requiredText(challengeData, "nonce", "request the MinerU access-token challenge");
+        String algorithm = requiredText(challengeData, "algorithm", "request the MinerU access-token challenge");
+        String signature = signNonce(nonce, algorithm);
+        JsonNode token = postAuthJson(authClient, "/getJwt", Map.of("ak", normalizedAccessKey, "d", signature));
+        return requiredText(authData(token, "exchange the MinerU access token"), "jwt", "exchange the MinerU access token");
+    }
+
+    private JsonNode postAuthJson(WebClient client, String path, Object request) {
+        String body;
+        try {
+            body = client.post()
+                    .uri(path)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .bodyValue(request)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block(Duration.ofSeconds(30));
+        } catch (WebClientResponseException e) {
+            throw apiRejected("authenticate with the MinerU token service", e);
+        } catch (Exception e) {
+            throw apiUnavailable("authenticate with the MinerU token service", e);
+        }
+        JsonNode response = parseJsonTree(body);
+        if (!"10000".equals(response.path("msgCode").asText(""))) {
+            String message = response.path("msg").asText("unknown error");
+            throw new PaperParsingException("MinerU token service rejected the credentials: " + message);
+        }
+        return response;
+    }
+
+    private JsonNode authData(JsonNode response, String operation) {
+        JsonNode data = response.path("data");
+        if (data.isMissingNode() || data.isNull() || data.isEmpty()) {
+            throw new PaperParsingException("MinerU token service did not return data while attempting to " + operation);
+        }
+        return data;
+    }
+
+    private String signNonce(String nonce, String algorithm) {
+        try {
+            Mac mac = Mac.getInstance(algorithm);
+            mac.init(new SecretKeySpec(secretKey.trim().getBytes(StandardCharsets.UTF_8), algorithm));
+            return Base64.getEncoder().encodeToString(mac.doFinal(nonce.getBytes(StandardCharsets.UTF_8)));
+        } catch (GeneralSecurityException e) {
+            throw new PaperParsingException(
+                    "MinerU token service requested an unsupported signature algorithm: " + algorithm, e);
+        }
+    }
+
+    private long accessTokenExpirationEpochSecond(String jwt) {
+        // The exchanged token is a JWT whose exp claim carries the exact epoch; fall back to a conservative TTL.
+        try {
+            String[] segments = jwt.split("\\.");
+            if (segments.length >= 2) {
+                String payload = new String(Base64.getUrlDecoder().decode(segments[1]), StandardCharsets.UTF_8);
+                long exp = objectMapper.readTree(payload).path("exp").asLong(0);
+                if (exp > 0) {
+                    return exp;
+                }
+            }
+        } catch (Exception ignored) {
+            // Fall through to the conservative default.
+        }
+        return Instant.now().getEpochSecond() + 1800;
+    }
+
+    private JsonNode parseJsonTree(String body) {
+        try {
+            return objectMapper.readTree(body == null || body.isBlank() ? "{}" : body);
+        } catch (Exception e) {
+            throw new PaperParsingException("MinerU token service returned an invalid response", e);
+        }
+    }
+
+    private record BearerToken(String value, boolean refreshable) {
     }
 
     private String normalizeFilename(String originalFilename) {

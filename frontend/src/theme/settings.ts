@@ -4,8 +4,8 @@ export const themeSettings: App.Theme.ThemeSetting = {
   grayscale: false,
   colourWeakness: false,
   recommendColor: true,
-  themeColor: '#202522',
-  otherColor: { info: '#16786e', success: '#168039', warning: '#b7791f', error: '#d92d20' },
+  themeColor: '#16181d',
+  otherColor: { info: '#2065d3', success: '#168039', warning: '#b7791f', error: '#d92d20' },
   isInfoFollowPrimary: true,
   resetCacheStrategy: 'close',
   layout: { mode: 'vertical', scrollMode: 'content', reverseHorizontalMix: false },
@@ -27,14 +27,14 @@ export const themeSettings: App.Theme.ThemeSetting = {
     light: {
       colors: {
         container: 'rgb(255, 255, 255)',
-        layout: 'rgb(246, 248, 247)',
-        inverted: 'rgb(240, 243, 241)',
-        'base-text': 'rgb(32, 37, 34)'
+        layout: 'rgb(246, 247, 248)',
+        inverted: 'rgb(238, 240, 242)',
+        'base-text': 'rgb(23, 24, 28)'
       },
       boxShadow: {
-        header: '0 1px 0 rgb(220, 227, 223, 0.88)',
-        sider: '1px 0 0 0 rgb(220, 227, 223, 0.88)',
-        tab: '0 1px 0 rgb(220, 227, 223, 0.88)'
+        header: '0 1px 0 rgb(228, 230, 233, 0.88)',
+        sider: '1px 0 0 0 rgb(228, 230, 233, 0.88)',
+        tab: '0 1px 0 rgb(228, 230, 233, 0.88)'
       }
     }
   }

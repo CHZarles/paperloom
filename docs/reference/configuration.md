@@ -55,7 +55,10 @@ Host-port overrides for `docs/docker-compose.yaml` use `MYSQL_HOST_PORT`, `REDIS
 | --- | --- |
 | `PAPER_PARSING_PROVIDER` | Normal product value is `mineru` |
 | `PAPER_PARSING_MINERU_BASE_URL` | MinerU cloud API base URL, normally `https://mineru.net` |
-| `PAPER_PARSING_MINERU_API_TOKEN` | MinerU API management token; required to parse uploads |
+| `PAPER_PARSING_MINERU_ACCESS_KEY` | MinerU API management Access Key; exchanged for a short-lived access token |
+| `PAPER_PARSING_MINERU_SECRET_KEY` | MinerU API management Secret Key; signs the token-exchange challenge |
+| `PAPER_PARSING_MINERU_AUTH_BASE_URL` | OpenXLab SSO token service used to exchange the key pair |
+| `PAPER_PARSING_MINERU_API_TOKEN` | Legacy manually issued token; alternative to the Access Key / Secret Key pair |
 | `PAPER_PARSING_MINERU_MODEL_VERSION` | `pipeline`, `vlm` (default), or `MinerU-HTML` |
 
 The optional alternative parser is intended for explicit experiments, not silent production
@@ -77,7 +80,7 @@ fallback.
 | `JAVA_CORPUS_BASE_URL` | Java Corpus API base URL used by Python; local default is `http://127.0.0.1:8081` |
 | `JAVA_CORPUS_MAX_RESPONSE_BYTES` | Maximum accepted Java Corpus API response body; default is 8 MiB |
 | `RESEARCH_HARNESS_PYTHON` | Python executable for local launcher |
-| `MINIMAX_API_BASE_URL`, `MINIMAX_API_KEY`, `MINIMAX_MODEL` | Default research model provider |
+| `MINIMAX_API_BASE_URL`, `MINIMAX_API_KEY`, `MINIMAX_MODEL` | Bootstrap values for the default research model provider; the admin page persists provider rows in MySQL `model_provider_configs` and those rows take precedence |
 | `QDRANT_CONTRACT` | `sparse-only-v1` (default) or `sparse-dense-v1`; picks which Qdrant collection schema to use |
 | `AGENT_TRACE_DIR` | Private production directory for complete per-Run model, tool, validation, and result JSON |
 | `AGENT_TRACE_RETENTION_DAYS` | Delete completed Agent traces older than this many days; default `7` |
