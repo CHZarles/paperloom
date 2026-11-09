@@ -96,6 +96,13 @@ public class PaperProcessingConsumer {
             publicationService.publishIfAdministrator(task.getPaperId(), task.getUserId());
             log.info("论文词法检索索引完成，paperId: {}", task.getPaperId());
         } catch (Exception e) {
+            // 并发护栏不是失败：同一篇论文的另一条任务已经在建索引，这条安静让路即可，
+            // 否则会把进行中的索引错误地标成 FAILED（用户看到"解析失败"但内容实际完好）。
+            if (isConcurrentIndexClaim(e)) {
+                log.warn("论文索引并发护栏触发（另一条任务正在处理同一篇），本条跳过: paperId: {}",
+                        task.getPaperId());
+                return;
+            }
             paperService.markVectorizationFailed(task.getPaperId(), e);
             log.error("Error processing task: {}", task, e);
             // 抛出异常让 Kafka 的 DefaultErrorHandler 捕获并触发重试 / 死信
@@ -122,10 +129,31 @@ public class PaperProcessingConsumer {
             paperService.markVectorizationCompleted(task.getPaperId(), result);
             publicationService.publishIfAdministrator(task.getPaperId(), task.getUserId());
         } catch (Exception e) {
+            if (isConcurrentIndexClaim(e)) {
+                log.warn("重试撞上索引并发护栏（另一条任务正在处理同一篇），本条跳过: paperId: {}",
+                        task.getPaperId());
+                return;
+            }
             paperService.markVectorizationFailed(task.getPaperId(), e);
             log.error("Error retrying failed initial index task: {}", task, e);
             throw new RuntimeException("Error retrying failed initial index task", e);
         }
+    }
+
+    /** 索引并发护栏（含全量重建互斥）：出现在因果链任何一层都视为"让路"而非失败 */
+    private boolean isConcurrentIndexClaim(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            if (current instanceof IllegalStateException) {
+                String message = current.getMessage();
+                if ("PAPER_INDEX_OPERATION_RUNNING".equals(message)
+                        || "FULL_REBUILD_ALREADY_RUNNING".equals(message)) {
+                    return true;
+                }
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
 }
