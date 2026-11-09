@@ -1,14 +1,8 @@
 <script setup lang="tsx">
 import { defineAsyncComponent } from 'vue';
-import type { UploadFileInfo } from 'naive-ui';
-import { NButton, NDropdown, NEllipsis, NModal, NProgress, NUpload } from 'naive-ui';
+import { NButton, NDropdown, NModal } from 'naive-ui';
 import type { FlatResponseData } from '@sa/axios';
-import { uploadAccept } from '@/constants/common';
-import { getUploadFileValidationError } from '@/store/modules/knowledge-base/upload-validation';
 import { UploadStatus } from '@/enum';
-import SvgIcon from '@/components/custom/svg-icon.vue';
-import ConversationSidebar from '@/views/chat/modules/conversation-sidebar.vue';
-import SettingsPanel from '@/views/personal-center/modules/settings-panel.vue';
 import UploadDialog from './modules/upload-dialog.vue';
 import CollectionsPanel from './modules/collections-panel.vue';
 import PaperMobileList from './modules/paper-mobile-list.vue';
@@ -19,11 +13,7 @@ const authStore = useAuthStore();
 const canUploadPapers = computed(() => authStore.userInfo.role !== 'GUEST');
 const route = useRoute();
 const router = useRouter();
-const sidebarCollapsed = ref(typeof window !== 'undefined' ? window.innerWidth < 960 : false);
 const isMobileLibrary = ref(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
-let libraryNavigationNarrow = typeof window !== 'undefined' ? window.innerWidth < 960 : false;
-const settingsVisible = ref(false);
-const settingsModalHostStyle = { width: 'calc(100vw - 32px)' };
 
 function normalizeLibraryView(value: unknown): 'papers' | 'collections' {
   return value === 'collections' ? 'collections' : 'papers';
@@ -63,11 +53,6 @@ type PaperLibrarySearchParams = Api.Common.CommonSearchParams & {
   query?: string;
 };
 
-const assetWarningLabels: Record<string, string> = {
-  parser_artifact_missing: 'Parser artifact missing',
-  page_screenshots_missing: 'Page screenshots missing'
-};
-
 const activeProcessingStatuses = new Set<Api.Paper.UploadTask['processingStatus']>([
   'PENDING',
   'PROCESSING',
@@ -78,17 +63,6 @@ const activeProcessingStatuses = new Set<Api.Paper.UploadTask['processingStatus'
   'EMBEDDING',
   'INDEXING'
 ]);
-
-const processingStatusLabels: Partial<Record<NonNullable<Api.Paper.UploadTask['processingStatus']>, string>> = {
-  PENDING: 'Queued',
-  PROCESSING: 'Processing',
-  MINERU_RUNNING: 'Parsing',
-  MINERU_ARTIFACT_SAVED: 'Parsed',
-  MAPPING_STRUCTURED_CONTENT: 'Mapping',
-  RENDERING_VISUAL_ASSETS: 'Rendering',
-  EMBEDDING: 'Embedding',
-  INDEXING: 'Indexing'
-};
 
 function mapUploadStatusToTaskStatus(uploadStatus?: Api.Paper.UploadTask['uploadStatus']) {
   if (uploadStatus === 'COMPLETED' || uploadStatus === 1) return UploadStatus.Completed;
@@ -211,15 +185,6 @@ function handlePaperRowMenuAction(key: string | number, row: Api.Paper.UploadTas
   });
 }
 
-function renderIcon(originalFilename: string) {
-  const ext = getFileExt(originalFilename);
-  if (ext) {
-    if (uploadAccept.split(',').includes(`.${ext}`)) return <SvgIcon localIcon={ext} class="library-file-icon" />;
-    return <SvgIcon localIcon="dflt" class="library-file-icon" />;
-  }
-  return null;
-}
-
 // 处理文件预览
 function handleFilePreview(originalFilename: string, paperId: string) {
   previewPaperTitle.value = originalFilename;
@@ -234,121 +199,30 @@ function closeFilePreview() {
   previewPaperId.value = '';
 }
 
-const { columns, columnChecks, data, getData, loading, mobilePagination, updateSearchParams } = useTable({
+const { data, getData, loading, mobilePagination, updateSearchParams } = useTable({
   apiFn,
   showTotal: true,
   immediate: false,
-  columns: () => [
-    {
-      key: 'originalFilename',
-      title: 'Paper',
-      width: 320,
-      render: row => (
-        <div class="library-file-cell">
-          <button
-            class="library-file-cell__icon"
-            type="button"
-            title="Preview PDF"
-            onClick={() => handleFilePreview(row.originalFilename, row.paperId)}
-          >
-            {renderIcon(row.originalFilename)}
-          </button>
-          <div class="library-file-cell__copy">
-            <NEllipsis lineClamp={1} tooltip>
-              <button
-                type="button"
-                class="library-file-cell__name"
-                title="Preview PDF"
-                onClick={() => handleFilePreview(row.originalFilename, row.paperId)}
-              >
-                {row.originalFilename}
-              </button>
-            </NEllipsis>
-            <div class="library-file-cell__meta">
-              <button
-                type="button"
-                class="library-digest-chip"
-                onClick={() => {
-                  navigator.clipboard.writeText(row.paperId);
-                  window.$message?.success('Paper ID copied');
-                }}
-                title="Copy paper ID"
-              >
-                {row.paperId.substring(0, 8)}
-              </button>
-            </div>
-          </div>
-        </div>
-      )
-    },
-    {
-      key: 'totalSize',
-      title: 'Size',
-      width: 76,
-      render: row => <span class="library-size-cell">{formatFileSize(row.totalSize ?? row.sourceFileSizeBytes)}</span>
-    },
-    {
-      key: 'retrievalIndexedTokenCount',
-      title: 'Evidence',
-      width: 250,
-      render: row => renderIndexUsage(row)
-    },
-    {
-      key: 'status',
-      title: 'Status',
-      width: 120,
-      render: row => renderPipelineStatus(row)
-    },
-    {
-      key: 'libraryScope',
-      title: 'Scope',
-      width: 88,
-      render: row => (
-        <span class={isGlobalPaper(row) ? 'library-scope library-scope--global' : 'library-scope'}>
-          {isGlobalPaper(row) ? 'Global' : 'Private'}
-        </span>
-      )
-    },
-    {
-      key: 'createdAt',
-      title: 'Updated',
-      width: 96,
-      render: row => (
-        <span class="library-date-cell" title={dayjs(row.createdAt).format('YYYY-MM-DD HH:mm:ss')}>
-          {dayjs(row.createdAt).format('YYYY-MM-DD')}
-        </span>
-      )
-    },
-    {
-      key: 'operate',
-      title: 'Actions',
-      width: 84,
-      render: row => (
-        <div class="library-action-group">
-          {canManageFile(row) ? renderResumeUploadButton(row) : null}
-          <NButton
-            quaternary
-            circle
-            size="small"
-            aria-label="Preview PDF"
-            onClick={() => handleFilePreview(row.originalFilename, row.paperId)}
-          >
-            {{ icon: () => <span class="icon-lucide-eye text-15px" /> }}
-          </NButton>
-          <NDropdown
-            trigger="click"
-            options={paperRowMenuOptions(row)}
-            onSelect={key => handlePaperRowMenuAction(key, row)}
-          >
-            <NButton quaternary circle size="small">
-              {{ icon: () => <span class="icon-lucide-ellipsis text-14px" /> }}
-            </NButton>
-          </NDropdown>
-        </div>
-      )
-    }
-  ]
+  columns: () => []
 });
+
+function catalogCounts(row: Api.Paper.UploadTask) {
+  const tokens = Number(row.retrievalIndexedTokenCount || 0);
+  const locations = Number(row.retrievalIndexedLocationCount || 0);
+  return `${compactNumber(tokens)} tokens · ${locations.toLocaleString()} 处索引`;
+}
+
+function catalogState(row: Api.Paper.UploadTask): {
+  label: string;
+  tone: 'ready' | 'processing' | 'broken' | 'warning';
+} {
+  if (row.file && Number(row.progress || 0) < 100)
+    return { label: `上传中 ${Math.round(Number(row.progress || 0))}%`, tone: 'processing' };
+  if (isPipelineFailed(row)) return { label: '解析失败', tone: 'broken' };
+  if (isPaperSearchable(row)) return { label: '可检索', tone: 'ready' };
+  if (isPipelineActive(row)) return { label: '解析中', tone: 'processing' };
+  return { label: '待处理', tone: 'warning' };
+}
 
 const store = useKnowledgeBaseStore();
 const { tasks } = storeToRefs(store);
@@ -403,9 +277,6 @@ const libraryStats = computed(() => {
 
 function syncLibraryViewport() {
   isMobileLibrary.value = window.innerWidth < 768;
-  const nextNavigationNarrow = window.innerWidth < 960;
-  if (nextNavigationNarrow !== libraryNavigationNarrow) sidebarCollapsed.value = nextNavigationNarrow;
-  libraryNavigationNarrow = nextNavigationNarrow;
 }
 
 onMounted(async () => {
@@ -626,133 +497,6 @@ function handleUpload() {
 }
 // #endregion
 
-function formatFileSize(value?: number | string | null) {
-  const bytes = normalizeBytes(value);
-  return bytes > 0 ? fileSize(bytes) : 'N/A';
-}
-
-function renderPipelineStatus(row: Api.Paper.UploadTask) {
-  if (row.status === UploadStatus.Break) {
-    return renderPipelineBadge('Interrupted', 'broken');
-  }
-
-  if (!isUploadCompleted(row)) {
-    return renderUploadProgress(row.progress);
-  }
-
-  if (row.processingStatus === 'FAILED') {
-    return renderPipelineBadge('Failed', 'broken', row.processingErrorMessage || 'Parse or index failed');
-  }
-
-  if (isPaperSearchable(row)) {
-    return renderPipelineBadge('Searchable', 'ready');
-  }
-
-  if (isVectorizationProcessing(row)) {
-    const label = processingStatusLabels[row.processingStatus || 'PROCESSING'] || 'Processing';
-    return renderPipelineBadge(label, 'processing');
-  }
-
-  if (row.processingStatus === 'COMPLETED') {
-    return renderPipelineBadge('Not searchable', 'warning', 'The retrieval index is not ready');
-  }
-
-  return renderPipelineBadge('Pending', 'warning');
-}
-
-function renderPipelineBadge(label: string, status: 'ready' | 'processing' | 'warning' | 'broken', title?: string) {
-  return (
-    <span class={`library-pipeline-status library-pipeline-status--${status}`} title={title}>
-      <span class="library-pipeline-status__dot"></span>
-      {label}
-    </span>
-  );
-}
-
-function renderUploadProgress(percentage: number) {
-  return (
-    <div class="library-progress-cell">
-      <NProgress percentage={percentage || 0} processing showIndicator={false} />
-      <span>{Number(percentage || 0)}%</span>
-    </div>
-  );
-}
-
-function renderIndexUsage(row: Api.Paper.UploadTask) {
-  return (
-    <div class="library-evidence-cell">
-      {renderActualIndexLine(row)}
-      {renderAssetStatus(row)}
-    </div>
-  );
-}
-
-function renderAssetStatus(row: Api.Paper.UploadTask) {
-  const parserSaved = Boolean(row.parserArtifact?.available);
-  const tableCount = Number(row.tableAsset?.tableCount || 0);
-  const figureCount = Number(row.figureAsset?.figureCount || 0);
-  const formulaCount = Number(row.formulaAsset?.formulaCount || 0);
-  const pageCount = Number(row.visualAsset?.pageScreenshotCount || 0);
-  const totalAssets = tableCount + figureCount + formulaCount + pageCount;
-  const assetTitle = `Tables ${tableCount} · Figures ${figureCount} · Formulas ${formulaCount} · Pages ${pageCount}`;
-  const warningText = formatAssetWarnings(row.assetWarnings);
-
-  return (
-    <div class="library-asset-strip">
-      {renderEvidenceReadiness(row, warningText)}
-      <span
-        class={parserSaved ? 'library-asset-dot library-asset-dot--ok' : 'library-asset-dot library-asset-dot--warn'}
-        title={parserSaved ? 'Parser artifact saved' : 'Parser artifact missing'}
-      >
-        Parser {parserSaved ? 'saved' : 'missing'}
-      </span>
-      {totalAssets ? (
-        <span class="library-asset-count" title={assetTitle}>
-          {totalAssets} assets
-        </span>
-      ) : null}
-      {warningText ? (
-        <span class="library-asset-dot library-asset-dot--warn" title={warningText}>
-          Warnings {row.assetWarnings?.length || 0}
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-function renderEvidenceReadiness(row: Api.Paper.UploadTask, warningText: string) {
-  const ready = Boolean(row.pdfEvidenceAvailable || row.evidenceAssetLevel === 'PDF_VISUAL');
-
-  return (
-    <span
-      class={ready ? 'library-asset-dot library-asset-dot--ok' : 'library-asset-dot library-asset-dot--warn'}
-      title={warningText || (ready ? 'PDF evidence ready' : 'PDF evidence pending')}
-    >
-      PDF {ready ? 'ready' : 'pending'}
-    </span>
-  );
-}
-
-function formatAssetWarnings(warnings?: string[]) {
-  return (warnings || []).map(warning => assetWarningLabels[warning] || warning).join('; ');
-}
-
-function renderIndexLine(_label: string, tokens?: number | null, locations?: number | null) {
-  if (!locations) {
-    return <span class="library-index-line library-index-line--empty">not indexed</span>;
-  }
-
-  const tokenLabel = Number(tokens || 0).toLocaleString();
-  const locationLabel = Number(locations).toLocaleString();
-  return (
-    <span class="library-index-line" title={`${tokenLabel} tokens across ${locationLabel} locations`}>
-      {tokenLabel} tokens
-      <span class="library-index-line__sep">·</span>
-      {locationLabel} locs
-    </span>
-  );
-}
-
 function isVectorizationProcessing(row: Api.Paper.UploadTask) {
   return activeProcessingStatuses.has(row.processingStatus || null);
 }
@@ -812,41 +556,6 @@ async function handleUpdatePublication(row: Api.Paper.UploadTask, publish: boole
   await getList();
 }
 
-function renderActualIndexLine(row: Api.Paper.UploadTask) {
-  if (hasRetrievalIndexUsage(row)) {
-    return renderIndexLine('IDX', row.retrievalIndexedTokenCount, row.retrievalIndexedLocationCount);
-  }
-
-  if (isVectorizationProcessing(row)) {
-    return <span class="library-index-line library-index-line--processing">indexing…</span>;
-  }
-
-  if (row.processingStatus === 'COMPLETED') {
-    return (
-      <span class="library-index-line" title="Processing completed without a retrieval index">
-        tokens unavailable
-      </span>
-    );
-  }
-
-  if (row.processingStatus === 'FAILED') {
-    return (
-      <div class="library-index-line library-index-line--failed">
-        <span class="library-index-line__text" title={row.processingErrorMessage || undefined}>
-          {row.processingErrorMessage || 'Processing failed'}
-        </span>
-        {canRetryVectorization(row) ? (
-          <button type="button" class="library-inline-action" onClick={() => handleRetryVectorization(row)}>
-            Retry
-          </button>
-        ) : null}
-      </div>
-    );
-  }
-
-  return <span class="library-index-line library-index-line--empty">not started</span>;
-}
-
 let vectorizationPollingTimer: number | null = null;
 
 function clearVectorizationPolling() {
@@ -886,36 +595,6 @@ onUnmounted(() => {
 });
 
 // #region 文件续传
-function renderResumeUploadButton(row: Api.Paper.UploadTask) {
-  if (row.status === UploadStatus.Break) {
-    if (row.file)
-      return (
-        <NButton type="primary" size="small" secondary onClick={() => resumeUpload(row)}>
-          {{
-            icon: () => <span class="icon-lucide-upload text-14px" />,
-            default: () => 'Resume'
-          }}
-        </NButton>
-      );
-    return (
-      <NUpload
-        show-file-list={false}
-        default-upload={false}
-        accept={uploadAccept}
-        onBeforeUpload={options => onBeforeUpload(options, row)}
-        class="w-fit"
-      >
-        <NButton type="primary" size="small" secondary>
-          {{
-            icon: () => <span class="icon-lucide-upload text-14px" />,
-            default: () => 'Resume'
-          }}
-        </NButton>
-      </NUpload>
-    );
-  }
-  return null;
-}
 
 function formatNumber(value?: number | string | null) {
   return Number(value || 0).toLocaleString();
@@ -929,70 +608,22 @@ function compactNumber(value?: number | string | null) {
 }
 
 // 任务列表存在文件，直接续传
-function resumeUpload(row: Api.Paper.UploadTask) {
-  row.status = UploadStatus.Pending;
-  store.startUpload();
-}
-
-async function onBeforeUpload(
-  options: { file: UploadFileInfo; fileList: UploadFileInfo[] },
-  row: Api.Paper.UploadTask
-) {
-  const file = options.file.file ?? null;
-  const validationError = getUploadFileValidationError(file);
-  if (validationError || !file) {
-    window.$message?.error(validationError);
-    return false;
-  }
-  const md5 = await calculateMD5(file);
-  if (md5 !== row.paperId) {
-    window.$message?.error('The selected file does not match the interrupted upload');
-    return false;
-  }
-  loading.value = true;
-  const { error, data: progress } = await request<Api.Paper.Progress>({
-    url: '/papers/upload/status',
-    params: { paperId: row.paperId }
-  });
-  if (!error) {
-    row.file = options.file.file!;
-    row.status = UploadStatus.Pending;
-    row.progress = progress.progress;
-    row.uploadedChunks = progress.uploaded;
-    store.startUpload();
-    loading.value = false;
-    return true;
-  }
-  loading.value = false;
-  return false;
-}
 </script>
 
 <template>
   <div class="paper-library-shell">
-    <div v-if="!sidebarCollapsed" class="paper-library-sidebar-mask" @click="sidebarCollapsed = true" />
-    <ConversationSidebar
-      v-model:collapsed="sidebarCollapsed"
-      class="paper-library-sidebar"
-      @open-settings="settingsVisible = true"
-    />
-
     <main class="paper-library-page">
-      <NCard :bordered="false" size="small" class="paper-library-card">
+      <div class="paper-library-card">
         <div class="library-topbar">
-          <button
-            v-show="sidebarCollapsed"
-            type="button"
-            class="library-sidebar-open"
-            aria-label="Open navigation"
-            @click="sidebarCollapsed = false"
-          >
-            <icon-lucide:panel-left-open class="text-18px" />
+          <button type="button" class="library-back" @click="router.push('/chat')">
+            <icon-lucide:arrow-left class="text-16px" />
+            <span>返回 Chat</span>
           </button>
           <div class="library-title-block">
             <div>
+              <p class="library-eyebrow">PAPERLOOM · RESEARCH LIBRARY</p>
               <h1>Library</h1>
-              <p>Research PDFs, parser state, evidence assets, and reusable source sets.</p>
+              <p class="library-sub">Research PDFs, parser state, evidence assets, and reusable source sets.</p>
             </div>
           </div>
           <NRadioGroup
@@ -1038,13 +669,7 @@ async function onBeforeUpload(
               Reset
             </NButton>
           </div>
-          <TableHeaderOperation
-            v-model:columns="columnChecks"
-            :addable="false"
-            :loading="loading"
-            compact
-            @refresh="getList"
-          >
+          <TableHeaderOperation :addable="false" :loading="loading" compact @refresh="getList">
             <template #default>
               <NButton v-if="canUploadPapers" size="small" type="primary" @click="handleUpload">
                 <template #icon>
@@ -1088,20 +713,65 @@ async function onBeforeUpload(
             :page-slot="5"
             @update:page="handleMobilePageUpdate"
           />
-          <NDataTable
-            v-else
-            :columns="columns"
-            :data="tableTasks"
-            size="small"
-            :scroll-x="1040"
-            :loading="loading"
-            remote
-            :row-key="row => row.id"
-            :pagination="mobilePagination"
-            class="library-table"
-          >
-            <template #empty>
-              <div class="library-empty">
+          <!-- 桌面：馆藏目录——每篇论文一条有分量的条目 -->
+          <template v-else>
+            <NSpin :show="loading">
+              <div v-if="tableTasks.length" class="library-catalog">
+                <article v-for="row in tableTasks" :key="row.paperId" class="catalog-item">
+                  <div class="catalog-main">
+                    <button
+                      type="button"
+                      class="catalog-title"
+                      title="预览 PDF"
+                      @click="handleFilePreview(row.originalFilename, row.paperId)"
+                    >
+                      {{ row.paperTitle || row.originalFilename }}
+                    </button>
+                    <p class="catalog-meta">
+                      <span v-if="row.authors">{{ row.authors }}</span>
+                      <span v-if="row.publicationYear">· {{ row.publicationYear }}</span>
+                      <span v-if="row.venue">· {{ row.venue }}</span>
+                      <span v-if="row.arxivId" class="catalog-arxiv">arXiv:{{ row.arxivId }}</span>
+                      <span
+                        v-if="row.originalFilename && row.paperTitle && row.originalFilename !== row.paperTitle"
+                        class="catalog-file"
+                      >
+                        {{ row.originalFilename }}
+                      </span>
+                    </p>
+                    <p v-if="row.abstractText" class="catalog-abstract">{{ row.abstractText }}</p>
+                  </div>
+                  <div class="catalog-side">
+                    <span class="catalog-status" :data-tone="catalogState(row).tone">
+                      {{ catalogState(row).label }}
+                    </span>
+                    <p v-if="Number(row.retrievalIndexedTokenCount || 0) > 0" class="catalog-counts">
+                      {{ catalogCounts(row) }}
+                    </p>
+                    <div class="catalog-actions">
+                      <NButton
+                        quaternary
+                        circle
+                        size="small"
+                        aria-label="预览 PDF"
+                        @click="handleFilePreview(row.originalFilename, row.paperId)"
+                      >
+                        <icon-lucide:eye class="text-14px" />
+                      </NButton>
+                      <NDropdown
+                        trigger="click"
+                        :options="paperRowMenuOptions(row)"
+                        @select="key => handlePaperRowMenuAction(key, row)"
+                      >
+                        <NButton quaternary circle size="small" aria-label="更多操作">
+                          <icon-lucide:ellipsis class="text-14px" />
+                        </NButton>
+                      </NDropdown>
+                    </div>
+                  </div>
+                </article>
+              </div>
+              <div v-else class="library-empty">
                 <span class="library-empty__icon">
                   <icon-lucide:file-search class="text-18px" />
                 </span>
@@ -1109,30 +779,26 @@ async function onBeforeUpload(
                   {{ activePaperLibraryQuery ? 'No paper matches this search' : 'No papers yet' }}
                 </div>
                 <p class="library-empty__hint">
-                  {{
-                    activePaperLibraryQuery
-                      ? 'Try a different filename, title, or paper ID.'
-                      : 'Upload a PDF to build your research library.'
-                  }}
+                  {{ activePaperLibraryQuery ? '换个标题、作者或文件名再试。' : '上传一篇 PDF 开始建立你的文献库。' }}
                 </p>
               </div>
-            </template>
-          </NDataTable>
+            </NSpin>
+            <NPagination
+              v-if="Number(mobilePagination.itemCount || 0) > Number(mobilePagination.pageSize || 10)"
+              class="library-catalog-pagination"
+              :page="Number(mobilePagination.page || 1)"
+              :page-size="Number(mobilePagination.pageSize || 10)"
+              :item-count="Number(mobilePagination.itemCount || 0)"
+              :page-slot="7"
+              @update:page="handleMobilePageUpdate"
+            />
+          </template>
         </template>
 
         <CollectionsPanel v-else />
-      </NCard>
+      </div>
     </main>
     <UploadDialog v-if="canUploadPapers" v-model:visible="uploadVisible" />
-
-    <NModal
-      v-model:show="settingsVisible"
-      :auto-focus="false"
-      class="settings-modal-host"
-      :style="settingsModalHostStyle"
-    >
-      <SettingsPanel @close="settingsVisible = false" />
-    </NModal>
 
     <NModal v-model:show="tableModalVisible" class="paper-table-modal-shell" :auto-focus="false">
       <div class="paper-table-modal">
@@ -1240,14 +906,6 @@ async function onBeforeUpload(
   color: var(--color-text);
 }
 
-.paper-library-sidebar {
-  height: 100%;
-}
-
-.paper-library-sidebar-mask {
-  display: none;
-}
-
 .library-empty {
   display: grid;
   justify-items: center;
@@ -1300,48 +958,200 @@ async function onBeforeUpload(
   padding: 0;
 }
 
-.paper-library-card {
-  min-height: fit-content;
-  overflow: visible;
-  border: 0;
-  border-radius: 0;
-  background: var(--color-surface);
-  box-shadow: none;
+/* 整页式布局：内容直接铺满页面，只有大边距，不再有卡片壳 */
+.paper-library-page {
+  padding: 28px clamp(20px, 5vw, 64px) 56px;
 }
 
-.paper-library-card > .n-card__content {
-  background: var(--color-bg);
-  padding: 20px 24px 28px !important;
+.paper-library-card {
+  min-height: fit-content;
+  max-width: 1080px;
+  margin: 0 auto;
 }
 
 .library-topbar {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   min-width: 0;
-  margin-bottom: 14px;
-  padding: 0;
+  margin-bottom: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--color-border-soft);
 }
 
-.library-sidebar-open {
+.library-back {
   display: inline-flex;
-  width: 36px;
-  height: 36px;
-  flex: 0 0 auto;
+  flex: none;
   align-items: center;
-  justify-content: center;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  gap: 6px;
+  margin-top: 4px;
+  padding: var(--space-1, 4px) 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
   color: var(--color-text-muted);
+  font-size: var(--text-xs);
   cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
 }
 
-.library-sidebar-open:hover {
-  border-color: var(--color-primary);
-  background: var(--color-accent-soft-bg);
-  color: var(--color-primary);
+.library-back:hover {
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+}
+
+.library-eyebrow {
+  margin: 0 0 6px;
+  color: var(--color-text-muted);
+  font-family: var(--font-utility);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+}
+
+.library-topbar h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.library-sub {
+  margin: 4px 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+/* ---------- 馆藏目录：整页目录流，条目之间细线分隔 ---------- */
+.library-catalog {
+  display: flex;
+  flex-direction: column;
+}
+
+.catalog-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 20px 4px;
+  border-bottom: 1px solid var(--color-border-soft);
+}
+
+.catalog-item:first-child {
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.catalog-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.catalog-title {
+  overflow: hidden;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: left;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-standard);
+}
+
+.catalog-title:hover {
+  color: var(--color-research);
+}
+
+.catalog-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+
+.catalog-arxiv {
+  font-family: var(--font-utility);
+}
+
+.catalog-file {
+  overflow: hidden;
+  max-width: 260px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.7;
+}
+
+.catalog-abstract {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 8px 0 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.65;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.catalog-side {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.catalog-status {
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
+  font-weight: 500;
+
+  &[data-tone='ready'] {
+    background: rgba(22, 128, 57, 0.1);
+    color: var(--color-success);
+  }
+
+  &[data-tone='processing'] {
+    background: var(--color-surface-alt);
+    color: var(--color-text-muted);
+  }
+
+  &[data-tone='broken'] {
+    background: rgba(217, 45, 32, 0.1);
+    color: var(--color-error);
+  }
+
+  &[data-tone='warning'] {
+    background: rgba(183, 121, 31, 0.12);
+    color: var(--color-warning-text);
+  }
+}
+
+.catalog-counts {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-family: var(--font-utility);
+  font-size: 11px;
+}
+
+.catalog-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.library-catalog-pagination {
+  justify-content: flex-end;
+  margin-top: 18px;
 }
 
 .library-title-block {
@@ -1439,6 +1249,13 @@ async function onBeforeUpload(
   color: var(--color-text-muted);
   font-size: var(--text-xs);
   line-height: 1.3;
+}
+
+.library-summary__value,
+.library-summary__item > strong {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 650;
 }
 
 .library-summary__label {
@@ -1576,6 +1393,14 @@ async function onBeforeUpload(
   color: var(--color-text-muted);
   font-size: var(--text-xs);
   line-height: 1.3;
+}
+.library-file-cell__file {
+  overflow: hidden;
+  max-width: 220px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .library-digest-chip {
@@ -1958,29 +1783,6 @@ async function onBeforeUpload(
 
   .library-summary__item:nth-child(3n) {
     border-right: 0;
-  }
-}
-
-@media (max-width: 959px) {
-  .paper-library-sidebar {
-    position: fixed !important;
-    inset: 0 auto 0 0;
-    z-index: 40;
-    width: 276px !important;
-    min-width: 276px !important;
-    transform: translateX(0);
-  }
-
-  .paper-library-sidebar.w-0 {
-    transform: translateX(-100%);
-  }
-
-  .paper-library-sidebar-mask {
-    position: fixed;
-    inset: 0;
-    z-index: 30;
-    display: block;
-    background: color-mix(in srgb, var(--color-text) 18%, transparent);
   }
 }
 
