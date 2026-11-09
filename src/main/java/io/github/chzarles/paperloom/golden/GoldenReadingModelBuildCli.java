@@ -42,7 +42,7 @@ public final class GoldenReadingModelBuildCli {
 
         ParsedPaper parsedPaper;
         try (AnnotationConfigApplicationContext context = minerUContext(
-                options.minerUBaseUrl(), options.minerUApiToken(), options.minerUAccessKey(), options.minerUSecretKey());
+                options.minerUBaseUrl(), options.minerUAccessKey(), options.minerUSecretKey());
              InputStream pdfInputStream = Files.newInputStream(options.pdf())) {
             MinerUParserClient client = context.getBean(MinerUParserClient.class);
             parsedPaper = new MinerUPaperPdfParser(client, new MinerUOutputMapper())
@@ -87,11 +87,10 @@ public final class GoldenReadingModelBuildCli {
     }
 
     private static AnnotationConfigApplicationContext minerUContext(
-            String baseUrl, String apiToken, String accessKey, String secretKey) {
+            String baseUrl, String accessKey, String secretKey) {
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
         Map<String, Object> properties = new LinkedHashMap<>();
         properties.put("paper.parsing.mineru.base-url", baseUrl);
-        properties.put("paper.parsing.mineru.api-token", apiToken == null ? "" : apiToken);
         properties.put("paper.parsing.mineru.access-key", accessKey == null ? "" : accessKey);
         properties.put("paper.parsing.mineru.secret-key", secretKey == null ? "" : secretKey);
         properties.put("paper.parsing.mineru.timeout-seconds", "1800");
@@ -139,7 +138,6 @@ public final class GoldenReadingModelBuildCli {
             String sourcePdfPath,
             String title,
             String minerUBaseUrl,
-            String minerUApiToken,
             String minerUAccessKey,
             String minerUSecretKey
     ) {
@@ -161,7 +159,6 @@ public final class GoldenReadingModelBuildCli {
                     required(values, "source-pdf-path"),
                     required(values, "title"),
                     values.getOrDefault("mineru-base-url", "https://mineru.net"),
-                    values.getOrDefault("mineru-api-token", System.getenv("PAPER_PARSING_MINERU_API_TOKEN")),
                     values.getOrDefault("mineru-access-key", System.getenv("PAPER_PARSING_MINERU_ACCESS_KEY")),
                     values.getOrDefault("mineru-secret-key", System.getenv("PAPER_PARSING_MINERU_SECRET_KEY"))
             );

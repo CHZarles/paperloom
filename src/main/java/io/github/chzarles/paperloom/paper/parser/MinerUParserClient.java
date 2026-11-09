@@ -43,9 +43,6 @@ public class MinerUParserClient {
     @Value("${paper.parsing.mineru.base-url:https://mineru.net}")
     private String baseUrl;
 
-    @Value("${paper.parsing.mineru.api-token:}")
-    private String apiToken;
-
     @Value("${paper.parsing.mineru.auth-base-url:https://sso.openxlab.org.cn/gw/uaa-be/api/v1/open}")
     private String authBaseUrl;
 
@@ -201,18 +198,15 @@ public class MinerUParserClient {
      * HTTP 401 triggers one token refresh and a single retry instead of failing a long-running parse.
      */
     private JsonNode performJsonCall(String operation, Function<String, String> call, Function<String, JsonNode> parser) {
-        BearerToken bearer = resolveBearerToken();
+        String bearer = resolveBearerToken();
         try {
-            return parser.apply(call.apply(bearer.value()));
+            return parser.apply(call.apply(bearer));
         } catch (PaperParsingException e) {
             throw e;
         } catch (WebClientResponseException.Unauthorized e) {
-            if (!bearer.refreshable()) {
-                throw apiRejected(operation, e);
-            }
             cachedAccessToken = null;
             try {
-                return parser.apply(call.apply(resolveBearerToken().value()));
+                return parser.apply(call.apply(resolveBearerToken()));
             } catch (PaperParsingException retryError) {
                 throw retryError;
             } catch (WebClientResponseException retryError) {
@@ -298,19 +292,15 @@ public class MinerUParserClient {
         }
     }
 
-    private BearerToken resolveBearerToken() {
+    /** AK/SK 是唯一认证方式：MinerU 已废弃手动签发的长期 token。 */
+    private String resolveBearerToken() {
         String normalizedAccessKey = accessKey == null ? "" : accessKey.trim();
         String normalizedSecretKey = secretKey == null ? "" : secretKey.trim();
-        if (!normalizedAccessKey.isEmpty() && !normalizedSecretKey.isEmpty()) {
-            return new BearerToken(getOrRefreshAccessToken(), true);
+        if (normalizedAccessKey.isEmpty() || normalizedSecretKey.isEmpty()) {
+            throw new PaperParsingException(
+                    "PAPER_PARSING_MINERU_ACCESS_KEY and PAPER_PARSING_MINERU_SECRET_KEY are required for the MinerU cloud API");
         }
-        String token = apiToken == null ? "" : apiToken.trim();
-        if (!token.isEmpty()) {
-            return new BearerToken(token, false);
-        }
-        throw new PaperParsingException(
-                "PAPER_PARSING_MINERU_ACCESS_KEY and PAPER_PARSING_MINERU_SECRET_KEY are required for the MinerU cloud API"
-                        + " (or a PAPER_PARSING_MINERU_API_TOKEN with a manually issued token)");
+        return getOrRefreshAccessToken();
     }
 
     private String getOrRefreshAccessToken() {
@@ -423,8 +413,6 @@ public class MinerUParserClient {
         }
     }
 
-    private record BearerToken(String value, boolean refreshable) {
-    }
 
     private String normalizeFilename(String originalFilename) {
         return originalFilename == null || originalFilename.isBlank() ? "paper.pdf" : originalFilename.trim();

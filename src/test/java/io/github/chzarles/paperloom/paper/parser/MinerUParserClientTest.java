@@ -28,6 +28,7 @@ class MinerUParserClientTest {
     void reportsCloudApiHttpErrorsWithoutCallingThemUnavailable() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
         server.createContext("/api/v4/file-urls/batch", exchange -> respond(exchange, 404, "{}"));
+        serveAuthExchange(server);
         server.start();
         try {
             MinerUParserClient client = configuredClient("http://localhost:" + server.getAddress().getPort());
@@ -72,6 +73,7 @@ class MinerUParserClientTest {
                     """.formatted(resultUrl));
         });
         server.createContext("/result.zip", exchange -> respondBytes(exchange, 200, "application/zip", resultZip));
+        serveAuthExchange(server);
         server.start();
         try {
             MinerUParserClient client = configuredClient("http://localhost:" + server.getAddress().getPort());
@@ -81,7 +83,7 @@ class MinerUParserClientTest {
                     "paper.pdf"
             );
 
-            assertEquals("Bearer mineru-token", authorization.get());
+            assertEquals("Bearer " + servedJwt(), authorization.get());
             assertTrue(uploadRequest.get().contains("\"name\":\"paper.pdf\""));
             assertTrue(uploadRequest.get().contains("\"model_version\":\"vlm\""));
             assertArrayEquals("%PDF-test".getBytes(StandardCharsets.UTF_8), uploadedPdf.get());
@@ -93,16 +95,17 @@ class MinerUParserClientTest {
     }
 
     @Test
-    void requiresCloudApiTokenBeforeSubmittingAFile() {
+    void requiresAccessKeyPairBeforeSubmittingAFile() {
         MinerUParserClient client = configuredClient("http://localhost:1");
-        ReflectionTestUtils.setField(client, "apiToken", "");
+        ReflectionTestUtils.setField(client, "accessKey", "");
+        ReflectionTestUtils.setField(client, "secretKey", "");
 
         PaperParsingException error = assertThrows(
                 PaperParsingException.class,
                 () -> client.parse("%PDF-test".getBytes(StandardCharsets.UTF_8), "paper.pdf")
         );
 
-        assertTrue(error.getMessage().contains("PAPER_PARSING_MINERU_API_TOKEN"));
+        assertTrue(error.getMessage().contains("PAPER_PARSING_MINERU_ACCESS_KEY"));
     }
 
     @Test
@@ -191,27 +194,6 @@ class MinerUParserClientTest {
         }
     }
 
-    @Test
-    void doesNotRetryWithAStaticApiTokenAfterUnauthorizedResponses() throws Exception {
-        AtomicInteger batchCalls = new AtomicInteger();
-        HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
-        server.createContext("/api/v4/file-urls/batch", exchange -> {
-            batchCalls.incrementAndGet();
-            respond(exchange, 401, "{\"msgCode\":\"A0202\",\"msg\":\"user authenticate failed\"}");
-        });
-        server.start();
-        try {
-            MinerUParserClient client = configuredClient("http://localhost:" + server.getAddress().getPort());
-
-            PaperParsingException error = assertThrows(PaperParsingException.class,
-                    () -> client.parse("%PDF-test".getBytes(StandardCharsets.UTF_8), "paper.pdf"));
-
-            assertTrue(error.getMessage().contains("HTTP 401"));
-            assertEquals(1, batchCalls.get());
-        } finally {
-            server.stop(0);
-        }
-    }
 
     @Test
     void toleratesTransientTaskNotFoundWhileMinerURegistersTheExtractionTask() throws Exception {
@@ -239,6 +221,7 @@ class MinerUParserClientTest {
         });
         server.createContext("/result.zip", exchange ->
                 respondBytes(exchange, 200, "application/zip", resultZip));
+        serveAuthExchange(server);
         server.start();
         try {
             MinerUParserClient client = configuredClient("http://localhost:" + server.getAddress().getPort());
@@ -255,27 +238,37 @@ class MinerUParserClientTest {
 
     private static final AtomicReference<String> LAST_SERVED_JWT = new AtomicReference<>();
 
+    /** 唯一支持的模式：AK/SK 换取短时 JWT */
     private MinerUParserClient configuredClient(String baseUrl) {
         MinerUParserClient client = new MinerUParserClient();
         ReflectionTestUtils.setField(client, "baseUrl", baseUrl);
-        ReflectionTestUtils.setField(client, "apiToken", "mineru-token");
         ReflectionTestUtils.setField(client, "modelVersion", "vlm");
         ReflectionTestUtils.setField(client, "enableFormula", true);
         ReflectionTestUtils.setField(client, "enableTable", true);
         ReflectionTestUtils.setField(client, "timeoutSeconds", 5L);
         ReflectionTestUtils.setField(client, "pollIntervalSeconds", 1L);
         ReflectionTestUtils.setField(client, "maxResultInMemoryBytes", 1_048_576);
-        return client;
-    }
-
-    private MinerUParserClient akskConfiguredClient(String baseUrl) {
-        MinerUParserClient client = configuredClient(baseUrl);
-        ReflectionTestUtils.setField(client, "apiToken", "");
         ReflectionTestUtils.setField(client, "authBaseUrl", baseUrl);
         ReflectionTestUtils.setField(client, "accessKey", "test-access-key");
         ReflectionTestUtils.setField(client, "secretKey", "test-secret-key");
         ReflectionTestUtils.setField(client, "tokenRefreshSkewSeconds", 300L);
         return client;
+    }
+
+    private MinerUParserClient akskConfiguredClient(String baseUrl) {
+        return configuredClient(baseUrl);
+    }
+
+    /** 给桩服务器补上 OpenXLab SSO 的 /auth 与 /getJwt 挑战-应答 */
+    private void serveAuthExchange(HttpServer server) {
+        server.createContext("/auth", exchange -> respond(exchange, 200, """
+                {"traceId":"t","msgCode":"10000","msg":"ok",
+                 "data":{"nonce":"challenge-nonce","algorithm":"HmacSHA1"},"success":true}
+                """));
+        server.createContext("/getJwt", exchange -> respond(exchange, 200, """
+                {"traceId":"t","msgCode":"10000","msg":"ok",
+                 "data":{"jwt":"%s","expiration":"soon","sso_uid":1},"success":true}
+                """.formatted(testJwt(Instant.now().getEpochSecond() + 3600))));
     }
 
     private String expectedSignature(String nonce) {
