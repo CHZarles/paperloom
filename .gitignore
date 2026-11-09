@@ -104,3 +104,5 @@ site/node_modules/
 site/.vitepress/cache/
 site/.vitepress/dist/
 youtube_scripts/jwt-mini-lab/
+tmp/
+*.log
