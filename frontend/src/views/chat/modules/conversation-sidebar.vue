@@ -66,11 +66,11 @@ function handleCollapse() {
   collapsed.value = true;
 }
 
-function handleNewChat() {
+async function handleNewChat() {
   chatStore.startDraftSession();
 
   if (route.name !== 'chat') {
-    void router.push({ name: 'chat' });
+    await router.push({ name: 'chat' });
   }
 }
 
