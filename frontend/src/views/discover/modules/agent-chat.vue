@@ -1,17 +1,22 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { NButton, NCheckbox, NDrawer, NDrawerContent, NEmpty, NInput, NSpin, NTag } from 'naive-ui';
+import { NButton, NCheckbox, NDrawer, NDrawerContent, NEmpty, NInput, NModal, NSelect, NSpin, NTag } from 'naive-ui';
 import {
+  addPapersToCollection,
   cancelDiscoveryAgentTurn,
   clearDiscoveryAgentChat,
   createDiscoveryAgentMemory,
+  createPaperCollection,
   deleteDiscoveryAgentMemory,
   fetchDiscoveryAgentChat,
   fetchDiscoveryAgentMemory,
+  fetchPaperCollections,
   importDiscoveryAgentCandidates,
   postDiscoveryAgentMessage,
+  removeDiscoveryAgentCandidate,
   updateDiscoveryAgentMemory
 } from '@/service/api';
+import { researchMarkdownOptions } from '@/utils/research-markdown';
 import StreamingMarkdown from '@/components/custom/streaming-markdown.vue';
 
 /** 智能探索聊天（PRD v3 + UX 重构）：对话主区 + 右侧候选栏。 聊天区只承载对话（模型做脉络点评，不甩清单）；候选论文全部聚合到候选栏， 入不入库由用户自决：勾选后一键入库，或单篇入库。运行中的检索实时流进候选栏。 */
@@ -19,6 +24,10 @@ import StreamingMarkdown from '@/components/custom/streaming-markdown.vue';
 defineOptions({ name: 'DiscoveryAgentChat' });
 // shiki 渲染重 module（语法高亮），lazy load 减少 Discovery 页首包
 const VueMarkdownIt = defineAsyncComponent(() => import('@/vendor/vue-markdown-shiki').then(m => m.VueMarkdownIt));
+// VueMarkdownIt 必须挂在 VueMarkdownItProvider 里才有 markdown 上下文；漏了 Provider 只会渲染空 <body>
+const MarkdownProvider = defineAsyncComponent(() =>
+  import('@/vendor/vue-markdown-shiki').then(m => m.VueMarkdownItProvider)
+);
 
 const POLL_INTERVAL = 2800;
 
@@ -31,7 +40,66 @@ const stickBottom = ref(true);
 
 /** 用户显式勾选的候选（正向集合：在集合中 = 已勾选） */
 const checked = ref<Set<string>>(new Set());
+
+// ---------------- 目标库（合集） ----------------
+
+/** 0 = 个人库（不进合集）；否则为合集 id。导入成功后自动挂进所选合集。 */
+const PERSONAL_LIBRARY = 0;
+const TARGET_STORAGE_KEY = 'discovery.target-collection';
+
+function storeTarget(id: number) {
+  if (id === PERSONAL_LIBRARY) {
+    window.localStorage.removeItem(TARGET_STORAGE_KEY);
+  } else {
+    window.localStorage.setItem(TARGET_STORAGE_KEY, String(id));
+  }
+}
+
+const targetCollectionId = ref<number>(PERSONAL_LIBRARY);
+const collections = ref<Api.PaperCollection.Item[]>([]);
+const collectionFormVisible = ref(false);
+const collectionFormName = ref('');
+const collectionFormDescription = ref('');
+const collectionCreating = ref(false);
+
+const collectionOptions = computed(() => [
+  { label: '个人库（默认）', value: PERSONAL_LIBRARY },
+  ...collections.value.map(c => ({
+    label: `${c.name} · ${c.paperCount} 篇`,
+    value: c.id
+  }))
+]);
+
+async function loadCollections() {
+  const { data, error } = await fetchPaperCollections();
+  if (!error && data) {
+    collections.value = data;
+    // 恢复上次选的目标库（库被删了就退回个人库）
+    const saved = Number(window.localStorage.getItem(TARGET_STORAGE_KEY));
+    targetCollectionId.value = saved && data.some(c => c.id === saved) ? saved : PERSONAL_LIBRARY;
+  }
+}
+
+async function submitNewCollection() {
+  const name = collectionFormName.value.trim();
+  if (!name || collectionCreating.value) return;
+  collectionCreating.value = true;
+  const { data, error } = await createPaperCollection({
+    name,
+    description: collectionFormDescription.value.trim() || null
+  });
+  collectionCreating.value = false;
+  if (error || !data) return;
+  collections.value = [...collections.value, data];
+  targetCollectionId.value = data.id;
+  storeTarget(data.id);
+  collectionFormVisible.value = false;
+  collectionFormName.value = '';
+  collectionFormDescription.value = '';
+  window.$message?.success(`已创建「${data.name}」，之后的入库会自动加入这个合集`);
+}
 const importingIds = ref<Set<string>>(new Set());
+const removingIds = ref<Set<string>>(new Set());
 const candVisible = ref(true);
 
 const memoryVisible = ref(false);
@@ -47,7 +115,23 @@ let polling = false;
 
 const running = computed(() => Boolean(thread.value?.activeTurn));
 const activeTurn = computed(() => thread.value?.activeTurn ?? null);
-const messageList = computed(() => thread.value?.messages ?? []);
+/** 原始消息流（含 CUTOFF 之前的段落，仅用于计算分界） */
+const allMessages = computed(() => thread.value?.messages ?? []);
+const lastCutoffId = computed(() => {
+  let cutoff: number | null = null;
+  for (const m of allMessages.value) {
+    if (m.role === 'CUTOFF') {
+      cutoff = m.id;
+    }
+  }
+  return cutoff;
+});
+/** /clear 后只展示最后一条 CUTOFF 之后的对话；分界行本身渲染成分割线 */
+const messageList = computed(() => {
+  const cutoff = lastCutoffId.value;
+  if (cutoff === null) return allMessages.value;
+  return allMessages.value.filter(m => m.id >= cutoff);
+});
 
 const windowPercent = computed(() => {
   const w = thread.value?.window;
@@ -67,7 +151,56 @@ const currentModel = computed(() => {
 });
 
 const commandHint = computed(() => (inputText.value.startsWith('/') ? inputText.value.trim().split(/\s+/)[0] : ''));
-const showCommandHints = computed(() => !running.value && inputText.value.trim().startsWith('/'));
+
+// slash 命令菜单：输入 / 自动弹出，↑↓ 选择、回车补全、Esc 关闭
+const hintsDismissed = ref(false);
+const activeCommandIndex = ref(0);
+const matchedCommands = computed(() => COMMANDS.filter(c => c.command.startsWith(commandHint.value)));
+const showCommandHints = computed(
+  () =>
+    !running.value &&
+    !hintsDismissed.value &&
+    inputText.value.trim().startsWith('/') &&
+    matchedCommands.value.length > 0
+);
+
+watch(commandHint, () => {
+  hintsDismissed.value = false;
+  activeCommandIndex.value = 0;
+});
+
+function applyCommand(cmd: { command: string; desc: string }) {
+  // 已精确输入时等于用户自己选完：让 Enter 走发送，别覆盖成补全
+  inputText.value = cmd.command;
+  activeCommandIndex.value = 0;
+}
+
+function commandMenuKeydown(event: KeyboardEvent) {
+  const count = matchedCommands.value.length;
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    activeCommandIndex.value = (activeCommandIndex.value + 1) % count;
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    activeCommandIndex.value = (activeCommandIndex.value - 1 + count) % count;
+  } else if (event.key === 'Tab') {
+    event.preventDefault();
+    applyCommand(matchedCommands.value[activeCommandIndex.value]!);
+  } else if (event.key === 'Escape') {
+    event.preventDefault();
+    hintsDismissed.value = true;
+  } else if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    const cmd = matchedCommands.value[activeCommandIndex.value]!;
+    if (inputText.value.trim() === cmd.command) {
+      handleSend();
+    } else {
+      applyCommand(cmd);
+    }
+  } else {
+    onInputKey(event);
+  }
+}
 
 const EXAMPLES = [
   '我想看 speculative decoding 近两年的代表作',
@@ -81,6 +214,21 @@ const runningStage = computed(() => {
   if (turn.kind === 'DISTILL') return '正在沉淀记忆';
   if (turn.searchCount > 0) return `已检索 ${turn.searchCount} 次`;
   return '正在思考';
+});
+
+// 运行头的语境化状态：思考 → 检索 → 撰写；token 等诊断数字只在「情况」抽屉露出
+const stepsExpanded = ref(true);
+const liveAction = computed(() => {
+  const turn = activeTurn.value;
+  if (!turn) return '';
+  if (turn.kind === 'DISTILL') return '正在沉淀记忆';
+  if (turn.assistantText) return '正在撰写回复';
+  if (turn.searchCount > 0) return `检索中 · 已 ${turn.searchCount} 次`;
+  return '正在思考';
+});
+const liveElapsed = computed(() => {
+  const seconds = Math.floor((activeTurn.value?.elapsedMs ?? 0) / 1000);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 });
 
 // 显示最近几条过程记录，最后一条代表“当前动作”
@@ -111,18 +259,8 @@ interface SidebarCandidate extends Api.Discovery.AgentCard {
   live: boolean;
 }
 
-const lastCutoffId = computed(() => {
-  let cutoff: number | null = null;
-  for (const m of messageList.value) {
-    if (m.role === 'CUTOFF') {
-      cutoff = m.id;
-    }
-  }
-  return cutoff;
-});
-
 const effectiveMessages = computed(() =>
-  messageList.value.filter(m => lastCutoffId.value === null || m.id > lastCutoffId.value)
+  allMessages.value.filter(m => lastCutoffId.value === null || m.id > lastCutoffId.value)
 );
 
 const candidates = computed<SidebarCandidate[]>(() => {
@@ -199,6 +337,23 @@ function toggleCandidate(c: SidebarCandidate, on: boolean) {
   checked.value = next;
 }
 
+/** 从候选栏移除一篇（服务端从消息行的 cards 里摘除；运行中的实况卡等本轮结束） */
+async function removeOne(c: SidebarCandidate) {
+  if (c.live) {
+    window.$message?.warning('本轮还在进行，等它结束再移除');
+    return;
+  }
+  removingIds.value.add(c.arxivId);
+  const { error } = await removeDiscoveryAgentCandidate(c.arxivId);
+  removingIds.value.delete(c.arxivId);
+  if (error) return;
+  const next = new Set(checked.value);
+  next.delete(c.arxivId);
+  checked.value = next;
+  window.$message?.success('已从候选栏移除');
+  await fetchThread(true);
+}
+
 /** 单独入库：绕过勾选，直接把这一篇送入库 */
 async function importOne(c: SidebarCandidate) {
   if (!isImportable(c) || importingIds.value.has(c.arxivId)) return;
@@ -253,6 +408,20 @@ async function runImport(ids: string[]) {
   }
   const okCount = data.items.filter(item => item.status !== 'FAILED').length;
   const failedCount = data.items.length - okCount;
+  // 勾选了目标合集时，把成功落库的论文挂进去（paperId 由导入结果带回）
+  if (targetCollectionId.value !== PERSONAL_LIBRARY) {
+    const paperIds = data.items
+      .filter(item => item.status !== 'FAILED' && item.paperId)
+      .map(item => String(item.paperId));
+    if (paperIds.length) {
+      const { error: addError } = await addPapersToCollection(targetCollectionId.value, paperIds);
+      if (!addError) {
+        const target = collections.value.find(c => c.id === targetCollectionId.value);
+        window.$message?.success(`已同步加入合集「${target?.name ?? ''}」`);
+        await loadCollections();
+      }
+    }
+  }
   if (failedCount) {
     window.$message?.warning(`入库完成 ${okCount} 篇，失败 ${failedCount} 篇`);
   } else {
@@ -273,11 +442,9 @@ async function fetchThread(reset = false) {
   } else {
     const knownIds = new Set(thread.value.messages.map(m => m.id));
     const fresh = data.messages.filter(m => !knownIds.has(m.id));
-    thread.value = { ...data, messages: [...thread.value.messages, ...fresh] };
-    if (data.messages.length && fresh.length === 0) {
-      const byId = new Map(data.messages.map(m => [m.id, m]));
-      thread.value.messages = thread.value.messages.map(m => byId.get(m.id) ?? m);
-    }
+    const byId = new Map(data.messages.map(m => [m.id, m]));
+    const messages = thread.value.messages.map(m => byId.get(m.id) ?? m).concat(fresh);
+    thread.value = { ...data, messages };
   }
 }
 
@@ -402,6 +569,14 @@ function onInputKey(event: KeyboardEvent) {
   }
 }
 
+function onComposerKey(event: KeyboardEvent) {
+  if (showCommandHints.value) {
+    commandMenuKeydown(event);
+  } else {
+    onInputKey(event);
+  }
+}
+
 // ---------------- 长期记忆面板 ----------------
 
 async function openMemory() {
@@ -480,6 +655,7 @@ watch(
 
 onMounted(async () => {
   candVisible.value = window.innerWidth >= 960;
+  loadCollections();
   await fetchThread(true);
   scrollToBottom(true);
   if (thread.value?.activeTurn) {
@@ -527,7 +703,7 @@ onUnmounted(stopPolling);
       <!-- 对话主区 -->
       <main class="chat-main">
         <div ref="scrollEl" class="chat-scroll" @scroll="onScroll">
-          <div class="chat-column">
+          <MarkdownProvider :options="researchMarkdownOptions" class="chat-column">
             <div v-if="!messageList.length" class="chat-empty">
               <span class="empty-badge">
                 <icon-lucide:sparkles class="text-24px" />
@@ -606,50 +782,61 @@ onUnmounted(stopPolling);
 
             <!-- 运行中：live status + 流式正文（候选静默流进侧栏） -->
             <div v-if="activeTurn" class="message-block message-block--assistant">
-              <div class="assistant-live-status">
-                <NSpin size="small" />
-                <span class="live-text">{{ runningStage }}</span>
-                <span class="live-meta">
-                  {{ activeTurn.usage.inputTokens.toLocaleString() }} in /
-                  {{ activeTurn.usage.outputTokens.toLocaleString() }} out
-                  <template v-if="activeTurn.contextPercent != null">
-                    · 上下文 {{ Math.round(activeTurn.contextPercent) }}%
+              <div class="live-head">
+                <span class="live-indicator" />
+                <span class="live-action">{{ liveAction }}</span>
+                <span class="live-timer">{{ liveElapsed }}</span>
+                <NButton
+                  v-if="recentSteps.length"
+                  size="tiny"
+                  quaternary
+                  class="live-toggle"
+                  :aria-label="stepsExpanded ? '收起过程' : '展开过程'"
+                  @click="stepsExpanded = !stepsExpanded"
+                >
+                  <template #icon>
+                    <icon-lucide:chevron-down class="text-12px" :class="{ 'is-folded': !stepsExpanded }" />
                   </template>
-                </span>
+                </NButton>
                 <NButton size="tiny" quaternary type="error" @click="handleCancel">取消</NButton>
               </div>
-              <div v-if="recentSteps.length" class="assistant-steps">
+              <div v-if="recentSteps.length && stepsExpanded" class="live-steps">
                 <div
                   v-for="(step, index) in recentSteps"
                   :key="`${index}-${step.text}`"
-                  class="step-line"
-                  :class="{ 'step-line--latest': isLatestStep(index) }"
+                  class="live-step"
+                  :class="{ 'is-active': isLatestStep(index) }"
                 >
-                  <span class="step-dot" />
-                  <span class="step-text">{{ step.text }}</span>
+                  <span class="live-step-dot" />
+                  <span class="live-step-text">{{ step.text }}</span>
                 </div>
               </div>
               <div v-if="activeTurn.assistantText" class="assistant-text assistant-markdown">
                 <StreamingMarkdown :content="activeTurn.assistantText" :streaming="true" />
               </div>
             </div>
-          </div>
+          </MarkdownProvider>
         </div>
 
         <!-- composer -->
         <footer class="composer-wrap">
           <div class="composer">
-            <div v-if="showCommandHints" class="command-hints">
+            <div v-if="showCommandHints" class="command-pop" role="listbox">
+              <div class="command-pop-head">命令</div>
               <button
-                v-for="cmd in COMMANDS.filter(c => c.command.startsWith(commandHint))"
+                v-for="(cmd, index) in matchedCommands"
                 :key="cmd.command"
                 type="button"
-                class="hint-chip"
-                @click="inputText = `${cmd.command} `"
+                role="option"
+                class="command-item"
+                :class="{ 'is-active': index === activeCommandIndex }"
+                @mouseenter="activeCommandIndex = index"
+                @mousedown.prevent="applyCommand(cmd)"
               >
-                <b>{{ cmd.command }}</b>
-                {{ cmd.desc }}
+                <span class="command-name">{{ cmd.command }}</span>
+                <span class="command-desc">{{ cmd.desc }}</span>
               </button>
+              <div class="command-pop-foot">↑↓ 选择 · 回车补全 · Esc 关闭</div>
             </div>
             <div class="composer-row">
               <NInput
@@ -661,7 +848,7 @@ onUnmounted(stopPolling);
                 placeholder="说说你的研究目标，我会检索并给出点评；候选在右侧入库"
                 :bordered="false"
                 :disabled="running"
-                @keydown="onInputKey"
+                @keydown="onComposerKey"
               />
               <NButton
                 circle
@@ -765,6 +952,16 @@ onUnmounted(stopPolling);
                         {{ cat }}
                       </span>
                     </span>
+                    <button
+                      v-if="!candidate.live"
+                      type="button"
+                      class="cand-card-remove"
+                      :class="{ 'is-busy': removingIds.has(candidate.arxivId) }"
+                      title="从候选栏移除"
+                      @click.stop="removeOne(candidate)"
+                    >
+                      <icon-lucide:x class="text-12px" />
+                    </button>
                   </div>
                 </div>
               </article>
@@ -810,6 +1007,15 @@ onUnmounted(stopPolling);
                         {{ cat }}
                       </span>
                     </span>
+                    <button
+                      type="button"
+                      class="cand-card-remove"
+                      :class="{ 'is-busy': removingIds.has(candidate.arxivId) }"
+                      title="从候选栏移除"
+                      @click.stop="removeOne(candidate)"
+                    >
+                      <icon-lucide:x class="text-12px" />
+                    </button>
                   </div>
                 </div>
               </article>
@@ -825,22 +1031,45 @@ onUnmounted(stopPolling);
         </div>
 
         <!-- 底部固定操作条 -->
-        <div v-if="importableCandidates.length" class="cand-action">
-          <button type="button" class="cand-action-toggle" @click="selectedAll ? deselectAll() : selectAll()">
-            {{ selectedAll ? '清空选择' : '全选' }}
-          </button>
-          <NButton
-            size="small"
-            type="primary"
-            class="cand-action-btn"
-            :loading="importingIds.size > 0"
-            :disabled="!selectedCount"
-            @click="batchImport"
-          >
-            <template #icon><icon-lucide:package-plus /></template>
-            入库所选
-            <span v-if="selectedCount" class="cand-action-num">{{ selectedCount }}</span>
-          </NButton>
+        <div class="cand-action">
+          <div class="cand-target">
+            <span class="cand-target-label">入库到</span>
+            <NSelect
+              :value="targetCollectionId"
+              size="small"
+              class="cand-target-select"
+              :options="collectionOptions"
+              @update:value="
+                (v: number) => {
+                  targetCollectionId = v;
+                  storeTarget(v);
+                }
+              "
+            />
+            <button type="button" class="cand-target-new" @click="collectionFormVisible = true">
+              <icon-lucide:folder-plus class="text-12px" />
+              新建
+            </button>
+          </div>
+          <div class="cand-action-row">
+            <template v-if="importableCandidates.length">
+              <button type="button" class="cand-action-toggle" @click="selectedAll ? deselectAll() : selectAll()">
+                {{ selectedAll ? '清空选择' : '全选' }}
+              </button>
+              <NButton
+                size="small"
+                type="primary"
+                class="cand-action-btn"
+                :loading="importingIds.size > 0"
+                :disabled="!selectedCount"
+                @click="batchImport"
+              >
+                <template #icon><icon-lucide:package-plus /></template>
+                入库所选
+                <span v-if="selectedCount" class="cand-action-num">{{ selectedCount }}</span>
+              </NButton>
+            </template>
+          </div>
         </div>
       </aside>
     </div>
@@ -849,6 +1078,46 @@ onUnmounted(stopPolling);
       <icon-lucide:library />
       候选 {{ candidates.length }}{{ selectedCount ? ` (${selectedCount})` : '' }}
     </button>
+
+    <!-- 新建论文合集 -->
+    <NModal
+      v-model:show="collectionFormVisible"
+      preset="dialog"
+      title="新建论文合集"
+      :show-icon="false"
+      class="w-480px!"
+    >
+      <div class="collection-form">
+        <NInput
+          v-model:value="collectionFormName"
+          autofocus
+          maxlength="60"
+          placeholder="合集名称，如「KV cache 量化调研」"
+          @keydown.enter="submitNewCollection"
+        />
+        <NInput
+          v-model:value="collectionFormDescription"
+          type="textarea"
+          :rows="2"
+          maxlength="200"
+          placeholder="描述（可选）"
+        />
+      </div>
+      <template #action>
+        <NButton size="small" quaternary :disabled="collectionCreating" @click="collectionFormVisible = false">
+          取消
+        </NButton>
+        <NButton
+          size="small"
+          type="primary"
+          :loading="collectionCreating"
+          :disabled="!collectionFormName.trim()"
+          @click="submitNewCollection"
+        >
+          创建并选为目标
+        </NButton>
+      </template>
+    </NModal>
 
     <!-- 长期记忆面板 -->
     <NDrawer v-model:show="memoryVisible" :width="420" placement="right">
@@ -1332,66 +1601,95 @@ onUnmounted(stopPolling);
   color: var(--color-error);
 }
 
-.assistant-live-status {
+/* ---------- 运行中：干净的运行头 + 过程轨迹 ---------- */
+.live-head {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  width: fit-content;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-pill);
-  background: var(--color-research-soft-bg, rgba(0, 100, 200, 0.08));
-  color: var(--color-research);
-  font-size: var(--text-xs);
-}
-
-.live-text {
-  font-weight: 600;
-}
-
-.live-meta {
-  color: var(--color-text-muted);
-}
-
-/* ---------- 运行中的过程轨迹 ---------- */
-.assistant-steps {
-  display: flex;
   width: 100%;
-  flex-direction: column;
-  gap: var(--space-1);
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  border: 1px dashed var(--color-border-soft);
-  background: var(--color-surface-alt);
 }
 
-.step-line {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-xs);
-  color: var(--color-text-muted);
+.live-indicator {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-research);
+  box-shadow: 0 0 0 3px var(--color-research-soft-bg);
+  animation: live-pulse 1.4s var(--ease-standard) infinite;
 }
 
-.step-line--latest {
-  color: var(--color-research);
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.55;
+    transform: scale(0.82);
+  }
+}
+
+.live-action {
+  color: var(--color-text);
+  font-size: var(--text-sm);
   font-weight: 500;
 }
 
-.step-dot {
-  flex: none;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--color-border-strong, var(--color-text-muted));
+.live-timer {
+  color: var(--color-text-muted);
+  font-family: var(--font-utility);
+  font-size: var(--text-xs);
+  line-height: 1;
 }
 
-.step-line--latest .step-dot {
-  background: var(--color-research);
+.live-toggle {
+  color: var(--color-text-muted);
 }
 
-.step-text {
+.live-toggle :deep(.is-folded) {
+  transform: rotate(-90deg);
+}
+
+.live-steps {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 2px;
+  margin: var(--space-1-5) 0 0;
+  padding-left: var(--space-0-5);
+}
+
+.live-step {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
   line-height: var(--leading-normal);
+}
+
+.live-step.is-active {
+  color: var(--color-text);
+}
+
+.live-step-dot {
+  flex: none;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--color-border-strong);
+  transform: translateY(-2px);
+}
+
+.live-step.is-active .live-step-dot {
+  background: var(--color-research);
+  animation: live-pulse 1.2s var(--ease-standard) infinite;
+}
+
+.live-step-text {
   word-break: break-word;
 }
 
@@ -1404,6 +1702,7 @@ onUnmounted(stopPolling);
 }
 
 .composer {
+  position: relative;
   display: flex;
   width: min(960px, 100%);
   min-height: 60px;
@@ -1421,24 +1720,71 @@ onUnmounted(stopPolling);
   box-shadow: var(--shadow-composer-hover, var(--shadow-card));
 }
 
-.command-hints {
+/* slash 命令弹出菜单 */
+.command-pop {
+  position: absolute;
+  bottom: calc(100% + var(--space-2));
+  left: 0;
+  z-index: 30;
   display: flex;
-  gap: var(--space-2);
+  min-width: 280px;
+  flex-direction: column;
+  padding: var(--space-1-5) 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  background: var(--color-surface-elevated);
+  box-shadow: var(--shadow-float);
+  overflow: hidden;
 }
 
-.hint-chip {
-  padding: var(--space-1) var(--space-2-5);
-  border: 1px solid var(--color-border-soft);
-  border-radius: var(--radius-pill);
-  background: transparent;
+.command-pop-head {
+  padding: var(--space-1) var(--space-3) var(--space-1-5);
   color: var(--color-text-muted);
-  font-size: var(--text-xs);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.command-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2-5);
+  padding: var(--space-1-5) var(--space-3);
+  border: none;
+  background: none;
+  text-align: left;
   cursor: pointer;
 }
 
-.hint-chip b {
-  margin-right: 6px;
+.command-item.is-active {
+  background: var(--color-surface-alt);
+}
+
+.command-name {
+  flex: none;
+  min-width: 52px;
+  font-family: var(--font-utility);
+  font-size: var(--text-xs);
+  font-weight: 600;
   color: var(--color-research);
+}
+
+.command-item.is-active .command-name {
+  color: var(--color-research-hover);
+}
+
+.command-desc {
+  flex: 1;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.command-pop-foot {
+  padding: var(--space-1-5) var(--space-3) var(--space-0-5);
+  border-top: 1px solid var(--color-border-soft);
+  color: var(--color-text-muted);
+  font-size: 10px;
+  opacity: 0.8;
 }
 
 .composer-row {
@@ -1666,20 +2012,21 @@ onUnmounted(stopPolling);
 .cand-card-import {
   flex: none;
   padding: 2px var(--space-2);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-research);
   border-radius: var(--radius-pill);
-  background: transparent;
-  color: var(--color-text-muted);
+  background: var(--color-research-soft-bg);
+  color: var(--color-research);
   font-size: 11px;
+  font-weight: 500;
   line-height: 1.5;
   cursor: pointer;
   transition:
-    border-color var(--duration-fast) var(--ease-standard),
+    background var(--duration-fast) var(--ease-standard),
     color var(--duration-fast) var(--ease-standard);
 
   &:hover:not(:disabled) {
-    border-color: var(--color-research);
-    color: var(--color-research);
+    background: var(--color-research);
+    color: #fff;
   }
 
   &:disabled {
@@ -1811,11 +2158,86 @@ onUnmounted(stopPolling);
 .cand-action {
   display: flex;
   flex: none;
-  align-items: center;
+  flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-2-5);
   border-top: 1px solid var(--color-border-soft);
   background: var(--color-surface);
+}
+
+.cand-target {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1-5);
+}
+
+.cand-target-label {
+  flex: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.cand-target-select {
+  flex: 1;
+  min-width: 0;
+}
+
+.cand-target-new {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: var(--space-0-5) var(--space-1-5);
+  border: none;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-research);
+  font-size: var(--text-xs);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--color-surface-alt);
+  }
+}
+
+.cand-action-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 卡片上的移除按钮：默认隐身，hover 显形 */
+.cand-card-remove {
+  display: none;
+  flex: none;
+  padding: var(--space-0-5);
+  border: none;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.cand-card:hover .cand-card-remove,
+.cand-card-remove.is-busy {
+  display: inline-flex;
+}
+
+.cand-card-remove:hover {
+  background: var(--color-surface-alt);
+  color: var(--color-error);
+}
+
+.cand-card-remove.is-busy {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.collection-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2-5);
+  padding-top: var(--space-1);
 }
 
 .cand-action-toggle {

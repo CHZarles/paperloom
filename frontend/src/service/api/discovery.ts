@@ -95,6 +95,14 @@ export function deleteDiscoveryAgentMemory(id: number) {
   });
 }
 
+/** 从候选栏移除一篇候选（服务端从消息行 cards 里摘除） */
+export function removeDiscoveryAgentCandidate(arxivId: string) {
+  return request<{ ok: boolean; removedRows: number }>({
+    url: `discovery/agent/chat/cards/${encodeURIComponent(arxivId)}`,
+    method: 'delete'
+  });
+}
+
 /** 清除全部对话 + 候选（一键回白板） */
 export function clearDiscoveryAgentChat() {
   return request<{ ok: boolean }>({
