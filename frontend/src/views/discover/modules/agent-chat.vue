@@ -2206,26 +2206,28 @@ onUnmounted(stopPolling);
   gap: var(--space-2);
 }
 
-/* 卡片上的移除按钮：默认隐身，hover 显形 */
+/* 卡片上的移除按钮：常显但低对比，hover 时提亮。之前只在 hover 才 display，触屏设备永远看不到。 */
 .cand-card-remove {
-  display: none;
+  display: inline-flex;
   flex: none;
   padding: var(--space-0-5);
   border: none;
   border-radius: var(--radius-md);
   background: none;
   color: var(--color-text-muted);
+  opacity: 0.45;
   cursor: pointer;
 }
 
 .cand-card:hover .cand-card-remove,
-.cand-card-remove.is-busy {
-  display: inline-flex;
+.cand-card-remove:focus-visible {
+  opacity: 1;
 }
 
 .cand-card-remove:hover {
   background: var(--color-surface-alt);
   color: var(--color-error);
+  opacity: 1;
 }
 
 .cand-card-remove.is-busy {
