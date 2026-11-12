@@ -165,16 +165,25 @@ start_frontend() {
     echo "frontend_pid_file=${PID_FILE}"
     echo "frontend_log_file=${LOG_FILE}"
     echo "frontend_url=${FRONTEND_URL}"
-    echo "frontend_command=pnpm --dir ${FRONTEND_DIR} exec vite --mode test --host ${HOST} --port ${PORT} --strictPort --open=false"
+    echo "frontend_command=${FRONTEND_DIR}/node_modules/.bin/vite --mode test --host ${HOST} --port ${PORT} --strictPort --open=false"
     return 0
   fi
 
   mkdir -p "$(dirname "$PID_FILE")" "$(dirname "$LOG_FILE")"
-  BROWSER=none nohup pnpm --dir "$FRONTEND_DIR" exec vite --mode test \
-    --host "$HOST" \
-    --port "$PORT" \
+  # Call the vite binary directly. `pnpm exec vite` runs a dependency-status check first, and when
+  # node_modules does not match the lockfile state it tries to purge and reinstall, which aborts in
+  # any non-TTY shell with ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY.
+  local vite_bin="${FRONTEND_DIR}/node_modules/.bin/vite"
+  if [[ ! -x "$vite_bin" ]]; then
+    echo "vite not installed at ${vite_bin}; run: pnpm --dir ${FRONTEND_DIR} install" >&2
+    exit 1
+  fi
+  # Vite treats the working directory as the project root, so launch it from FRONTEND_DIR.
+  BROWSER=none nohup bash -c "cd '$FRONTEND_DIR' && exec ./node_modules/.bin/vite --mode test \
+    --host '$HOST' \
+    --port '$PORT' \
     --strictPort \
-    --open=false \
+    --open=false" \
     > "$LOG_FILE" 2>&1 &
   echo $! > "$PID_FILE"
 
