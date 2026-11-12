@@ -8,7 +8,7 @@
  *   - lastMessage 作为本轮用户输入。
  *
  * 工具面按 kind 锁定（安全事实见下方 allowlist 注释）：
- *   CHAT: search_arxiv_papers（检索）+ import_arxiv_papers（入库门：ids ∈ 本窗口候选池）
+ *   CHAT: 外部元数据检索、独立公开原文获取、候选操作（入库门：ids ∈ 本窗口候选池）
  *   DISTILL: save_memory（唯一允许写长期记忆的通道，且只在显式 /沉淀 轮存在）
  *
  * 鉴权：Bearer $DISCOVERY_RUNNER_INTERNAL_TOKEN；环境变量同 v2（PORT/JAVA_INTERNAL_BASE_URL/
@@ -25,6 +25,7 @@ import {
   defineTool
 } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
+import { CHAT_CONTRACT, buildReadingTools } from "./discovery-reading.mjs";
 import http from "node:http";
 import { mkdirSync, rmSync } from "node:fs";
 import path from "node:path";
@@ -196,7 +197,7 @@ function buildChatTools(state) {
       const items = (data.items ?? []).map(it => ({
         arxiv_id: it.arxivId,
         title: it.title,
-        summary: String(it.summary ?? "").slice(0, 400),
+        summary: String(it.summary ?? ""),
         authors: (it.authors ?? []).slice(0, 6),
         categories: (it.categories ?? []).slice(0, 6),
         published_year: it.publishedYear,
@@ -234,7 +235,7 @@ function buildChatTools(state) {
       "把这轮你真正推荐给用户的论文放进候选栏（完整 id 逐个列出，按推荐优先级排序）。" +
       "id 可以来自本轮检索，也可以来自之前轮次的候选（历史候选仍在池内，反馈轮可以直接沿用）。" +
       "没调过这个工具时，候选栏会显示本轮检索过的全部论文；调用后只显示你筛出的。" +
-      "检索结束后、给最终答复前必须调用一次。",
+      "有合适的外部候选推荐时，在最终答复前调用；纯库内内容问答无需调用。",
     parameters: Type.Object({
       arxiv_ids: Type.Array(Type.String(), { minItems: 1, maxItems: 30 })
     }),
@@ -326,7 +327,7 @@ function buildChatTools(state) {
     }
   });
 
-  return [searchTool, shortlistTool, importTool, removeTool];
+  return [searchTool, shortlistTool, importTool, removeTool, ...buildReadingTools(state, javaInternal)];
 }
 
 function buildDistillTools(state) {
@@ -358,26 +359,6 @@ function buildDistillTools(state) {
 }
 
 // ---- system prompt ----
-
-const CHAT_CONTRACT = `你是 PaperLoom 的论文发现助理。职能只有一句话：把「这个人现在需要什么论文」翻译成一组对应的论文。
-
-对话不是为了聊天，是需求澄清——每轮的价值只有一个：让候选集合更贴近他的需要。
-
-## 按轮分档作业（先判断档位，再决定检索预算）
-
-**档一 · 需求不清（开题轮）**：他要的东西关键划界还不明确（方法还是应用？时间窗？偏好？）。复述你的理解，问最关键的 1-2 个问题，然后停。最多 1 次探测性检索。这轮不产出结论。
-
-**档二 · 需求明确（首次交付轮）**：多角度检索（同义词/缩写/算法名，3-6 次，每个角度 1 次），调 shortlist_papers 精选（5-15 篇，按贴合需求的程度排序），正文只写「匹配说明」：这批为什么对应他的需求、建议的阅读顺序、哪几篇是为边界情况准备的。250 字以内，结尾给一步推进。
-
-**档三 · 需求更新（反馈轮）**：他排除/收窄/转向了。预算 1-2 次定向检索，只补差集；更新 shortlist（保留仍贴合的，替换被排除的）；正文一句话确认变化 + 新增什么、去掉什么。这轮必须快，不要重新开题。继续之前先回顾你消息里附带的「本轮动作/本轮候选」：用过的检索词不原样重跑，换个角度收差集；旧候选已经覆盖的直接沿用，不用再检索。
-
-任何一档都不做：学术内容解读（引导去 Chat）、综述式写作、与他当前需求无关的扩展检索。当候选已经贴合需求时，收尾引导他去右侧候选栏拿走，而不是继续找话题。
-
-## 硬性边界
-
-1. 工具：search_arxiv_papers（检索）、shortlist_papers（每轮检索完必调一次；候选栏只显示你筛出的）、import_arxiv_papers（仅当他说「入库」时）、remove_candidates（仅当他说某篇不要/删掉时）。
-2. 判断只依据元数据（标题/摘要/作者/年份/类目）；library_status 非 NONE 的不进 shortlist。
-3. 中文回复。窗口内历史与长期记忆可用，窗口外的不假装记得。`;
 
 const DISTILL_CONTRACT = `你是 PaperLoom 论文发现助理的记忆沉淀器。任务：从当前对话中提炼值得长期保留的信息，调用 save_memory 一次性写入。
 
@@ -453,6 +434,7 @@ async function startTurn(state) {
   const model = modelRuntime.getModel(PROVIDER_ID, MODEL_ID);
   if (!model) throw new Error(`models.json 未注册出 ${PROVIDER_ID}/${MODEL_ID}`);
 
+  const customTools = state.kind === "DISTILL" ? buildDistillTools(state) : buildChatTools(state);
   const { session } = await createAgentSession({
     cwd: workDir,
     model,
@@ -461,8 +443,8 @@ async function startTurn(state) {
     // agent 可调用集合只装 allowlist 工具；模型发明的 bash/read 调用会在 prepareToolCall 的
     // tools.find() 落空返回 "Tool not found"，不执行任何代码。本进程 env 持有 MINIMAX_API_KEY
     // 与 internal token，shell 可用即等于密钥泄漏——工具面锁定是本服务唯一持密边界。
-    tools: state.kind === "DISTILL" ? ["save_memory"] : ["search_arxiv_papers", "shortlist_papers", "import_arxiv_papers", "remove_candidates"],
-    customTools: state.kind === "DISTILL" ? buildDistillTools(state) : buildChatTools(state),
+    tools: customTools.map(tool => tool.name),
+    customTools,
     sessionManager: SessionManager.inMemory(workDir, undefined, historyEntries(state, workDir)),
     settingsManager: SettingsManager.inMemory({ compaction: { enabled: false } }),
     resourceLoader: loader

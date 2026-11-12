@@ -6,7 +6,8 @@
     "node": ">=22.19"
   },
   "scripts": {
-    "start": "node runner.mjs"
+    "start": "node runner.mjs",
+    "test": "node --test *.test.mjs"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "1.5.0",
