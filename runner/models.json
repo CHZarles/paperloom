@@ -4,7 +4,7 @@
       "baseUrl": "https://api.minimaxi.com/v1",
       "models": [
         {
-          "id": "MiniMax-M3.1-Flash",
+          "id": "MiniMax-M3.1-flash",
           "api": "openai-completions",
           "contextWindow": 204800,
           "maxTokens": 131072,
