@@ -1,5 +1,9 @@
 # Allow arXiv Metadata Discovery With Explicit Single-Paper Import
 
+The discovery assistant's metadata-only content boundary is extended by
+[ADR 0017](0017-read-external-paper-content-before-import.md), which adds separate pre-import public
+full-text reading. The import pipeline and metadata-as-navigation rules below remain unchanged.
+
 PaperLoom adds one bounded discovery surface: a user can search arXiv metadata from the web
 application and import one paper at a time into their own library. This narrows and replaces the
 previous blanket "no all-web paper search" stance. Discovery stays metadata-only. A search result is

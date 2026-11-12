@@ -35,7 +35,9 @@ engine.
 
 ## Product Boundary
 
-The product answers only from research-paper PDFs in the current user's authorized library.
+The ordinary reading Chat answers only from research-paper PDFs in the current user's authorized
+library. The separate, pre-import discovery assistant may read supported public external full text
+under the boundary below; it does not widen a reading conversation's authorized corpus.
 
 Confirmed non-goals:
 
@@ -46,17 +48,44 @@ Confirmed non-goals:
 - no production behavior hardcoded around particular benchmark questions;
 - no claim that independent or dormant infrastructure contributes to the current assistant path.
 
-Recommendations are limited to papers already present and readable in the authorized product
-corpus. Metadata can support inventory and filtering; claims about methods, results, or limitations
-require read evidence.
+Reading Chat recommendations are limited to papers already present and readable in the authorized
+product corpus. Metadata can support inventory and filtering; claims about methods, results, or
+limitations require read evidence.
 
-One bounded exception exists for acquisition, not for answering: the product may search arXiv
-metadata and import a single paper on explicit user action
-([ADR 0016](../adr/0016-allow-arxiv-metadata-discovery-with-explicit-import.md)). Discovery results
-are navigation data. They are never evidence, never enter a conversation scope, and never change
-what the assistant may claim. An imported paper becomes an ordinary personal-library PDF, parsed and
-indexed through the same pipeline as an upload; the web client may add the imported paper to one of
-the user's existing paper sets after the import returns.
+The product may search arXiv metadata and import a single paper on explicit user action
+([ADR 0016](../adr/0016-allow-arxiv-metadata-discovery-with-explicit-import.md)). Metadata discovery
+results are navigation data, not content evidence, and never enter a reading conversation's scope.
+An imported paper becomes an ordinary personal-library PDF, parsed and indexed through the same
+pipeline as an upload; the web client may add the imported paper to one of the user's existing paper
+sets after the import returns. Separately, the discovery assistant may retrieve public external
+paper text without importing it
+([ADR 0017](../adr/0017-read-external-paper-content-before-import.md)).
+
+### Discovery Assistant
+
+The discovery assistant supports paper explanation, method comparison, and content-grounded
+recommendations in the discovery conversation itself. It must not reject these requests merely
+because a separate reading Chat exists.
+
+- Discovery is a pre-import workflow. Its content retrieval does not call the Corpus/Reading Model
+  APIs and must work when none of the discussed papers are in the user's library.
+- External identity discovery uses arXiv and Crossref metadata. Neither source is exhaustive; a miss
+  is not proof that a paper does not exist. Search candidates and abstracts are not full-text evidence.
+- External reading downloads a validated arXiv PDF and extracts text with PDFBox, or resolves an exact
+  DOI to a unique open-access Europe PMC article and reads its public full-text XML. It does not fetch
+  arbitrary model-supplied URLs, bypass paywalls, or browse publisher websites. Every operation is bound
+  to a running discovery CHAT turn and its owner; internal credentials are not sent to external hosts.
+- Content explanations and recommendations must use returned original text, cite its real source URL,
+  and distinguish abstract-only matching, partial extraction, and unread material. PDF text carries
+  actual page numbers; XML text carries section context, not invented PDF pages. These sources are not
+  ordinary Chat evidence IDs or library paper identities.
+- Responses expose pagination/truncation and unavailable full text. Extraction limits, missing text,
+  upstream failures, and unsupported sources stay explicit; they do not become successful empty reads.
+  The assistant completes the supported portion before requesting missing identity or source material.
+- Reading does not import a paper, invoke MinerU, queue ingestion, change another conversation's source
+  scope, or write long-term memory. Import and memory-write actions retain their existing explicit-user-
+  action boundaries. The existing arXiv candidate-card/import protocol is unchanged; Crossref papers
+  can be recommended with source links in the answer, not fabricated arXiv cards.
 
 ## Accepted Input And Parsing
 

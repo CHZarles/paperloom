@@ -8,8 +8,11 @@ DO NOT send optional commentary
   search plus explicit single-paper import is now supported (ADR 0016). Field Extraction, public
   OAuth, citation graphs, multimodal retrieval, and any web-browsing exploration agent remain
   deferred.
-- Paper ingestion still ends in the existing PDF parse-and-index flow. arXiv discovery only supplies
-  metadata and, on explicit user action, one PDF; discovery results are never evidence.
-- Existing PaperLoom corpus search remains the default for ordinary research questions.
+- Paper ingestion still ends in the existing PDF parse-and-index flow. Import remains an explicit
+  user action; metadata discovery results are navigation data, never content evidence.
+- Discovery content reading is a pre-import workflow (ADR 0017): use independent public-source
+  adapters, not the Corpus/Reading Model APIs or automatic ingestion. External excerpts retain their
+  source URLs and extraction limits; they do not become ordinary Chat evidence or expand its scope.
+- Existing PaperLoom corpus search remains the default for ordinary library research questions.
 - Production stays unchanged during local development; do not use production as a test environment.
 - Keep functional commits separate from drafts, interview notes, evaluation output, `tmp/`, and caches.
