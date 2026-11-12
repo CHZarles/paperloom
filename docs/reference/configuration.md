@@ -73,10 +73,6 @@ fallback.
 | `RESEARCH_HARNESS_MAX_ACTIVE_GENERATIONS` | Concurrent research turns allowed in flight |
 | `RESEARCH_HARNESS_USER_RETRY_MAX_PER_MESSAGE` | Maximum product-level regenerate attempts for one completed assistant answer |
 | `RESEARCH_HARNESS_HTTP_REQUEST_TIMEOUT_SECONDS` | Total HTTP research-generation timeout; defaults to 930 seconds |
-| `RESEARCH_HARNESS_LEASE_TTL_SECONDS` | Renewable Worker ownership lease; default `60`, at least three heartbeat intervals |
-| `RESEARCH_HARNESS_WORKER_HEARTBEAT_SECONDS` | Lease renewal interval; default `10` |
-| `RESEARCH_HARNESS_JOB_TIMEOUT_SECONDS` | Maximum Worker execution bound; default `900` |
-| `RESEARCH_HARNESS_WORKER_MAX_CONCURRENT_RUNS` | Keep at `1` for V1; scale by running more worker processes |
 | `JAVA_CORPUS_BASE_URL` | Java Corpus API base URL used by Python; local default is `http://127.0.0.1:8081` |
 | `JAVA_CORPUS_MAX_RESPONSE_BYTES` | Maximum accepted Java Corpus API response body; default is 8 MiB |
 | `RESEARCH_HARNESS_PYTHON` | Python executable for local launcher |
@@ -88,9 +84,10 @@ fallback.
 | `AGENT_TRACE_INCOMPLETE_GRACE_HOURS` | Keep unfinished Run directories this long before treating them as abandoned; default `24` |
 | `EVAL_DUMP_DIR` | Optional offline-evaluation saved-run root; live service prefers `AGENT_TRACE_DIR` |
 
-The production research path is Java -> Redis Streams -> one or more `harness_py worker` processes.
-No load balancer is required between Java and Python. The HTTP harness server can stay available for
-development and emergency rollback, but it is not the scalable production path.
+The production research path is Java -> HTTP -> the single `harness_py serve` process. No load
+balancer is required between Java and Python. The earlier Redis Streams worker transport
+(`harness_py worker`) was removed in `b0f83ec` (2026-11-04, *collapse to a single HTTP harness
+transport*); the HTTP server is now the only research path, not a development fallback.
 
 The Python service does not connect to MySQL or Qdrant. It calls the Java Corpus API with the locked
 scope; Java owns the hybrid Qdrant retrieval (sparse BM25 + dense MiniMax embedding, RRF-fused),

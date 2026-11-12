@@ -1,6 +1,9 @@
 # Wuyun + Cloudflare Tunnel 部署实录
 
-> **2026-11 变更**：研究回合改为单进程 `harness_py serve` + HTTP 传输，4 个 `paperloom-harness-worker@` 单元已退役；下文关于 worker 与 `RESEARCH_HARNESS_TRANSPORT=redis` 的描述保留为当时的部署实录。
+> **2026-11 变更**：研究回合改为单进程 `harness_py serve` + HTTP 传输。`harness_py worker` 子命令
+> 已随 `b0f83ec`（2026-11-04，*collapse to a single HTTP harness transport*）移除，4 个
+> `paperloom-harness-worker@` 单元退役；下文 §6 与运维命令已改为 `paperloom-harness.service`。
+> 当时 `RESEARCH_HARNESS_TRANSPORT=redis` 的叙述仅作为部署历史保留。
 
 本文记录 PaperLoom 第一次公网部署的实际步骤，并把它整理成可在另一台服务器复现的流程。
 
@@ -233,19 +236,20 @@ corepack pnpm --dir frontend build
 ## 6. 让后端和 Harness 随开机自动运行
 
 下面两个 systemd 文件中的 `<paperloom-home>` 必须替换成实际项目目录。创建
-`/etc/systemd/system/paperloom-harness-worker@.service`：
+`/etc/systemd/system/paperloom-harness.service`：
 
 ```ini
 [Unit]
-Description=PaperLoom Redis research harness worker %i
-After=network-online.target docker.service paperloom-backend.service
-Requires=paperloom-backend.service
+Description=PaperLoom research harness
+After=network-online.target docker.service
+Wants=network-online.target docker.service
 
 [Service]
 Type=simple
 WorkingDirectory=<paperloom-home>
 EnvironmentFile=<paperloom-home>/.env
-ExecStart=<paperloom-home>/.venv-harness/bin/python -u -m harness_py worker --redis-url ${RESEARCH_HARNESS_REDIS_URL} --worker-id harness-%H-%i --group paperloom-research-harness --max-concurrent-runs 1
+ExecStartPre=/usr/bin/docker compose --env-file .env -f docs/docker-compose.yaml up -d
+ExecStart=<paperloom-home>/.venv-harness/bin/python -u -m harness_py serve --host 127.0.0.1 --port 8091
 Restart=on-failure
 RestartSec=10
 TimeoutStopSec=30
@@ -253,6 +257,11 @@ TimeoutStopSec=30
 [Install]
 WantedBy=multi-user.target
 ```
+
+> 不要再用 `paperloom-harness-worker@` 单元。`harness_py worker` 子命令已在 `b0f83ec`
+> （2026-11-04，*collapse to a single HTTP harness transport*）移除；照旧装 4 个 worker 的结果是它们
+> 每 10 秒因 `invalid choice: 'worker'` 重启一次，而 `8091` 上没有任何进程在监听，研究回合全部失败并
+> 返回 "The research service is temporarily unavailable"。
 
 创建 `/etc/systemd/system/paperloom-backend.service`：
 
@@ -280,8 +289,9 @@ WantedBy=multi-user.target
 
 ```bash
 systemctl daemon-reload
-systemctl enable --now paperloom-backend.service paperloom-harness-worker@{1..4}.service
-systemctl status paperloom-backend.service paperloom-harness-worker@{1..4}.service
+systemctl enable --now paperloom-backend.service paperloom-harness.service
+systemctl status paperloom-backend.service paperloom-harness.service
+curl -fsS http://127.0.0.1:8091/health
 ```
 
 管理员创建并确认可以登录后：
@@ -433,15 +443,15 @@ systemctl restart paperloom-backend.service
 ```bash
 curl -o /dev/null -w '%{http_code}\n' https://<domain>/
 curl -o /dev/null -w '%{http_code}\n' https://<domain>/api/v1/users/me
-systemctl is-active paperloom-harness-worker@{1..4}.service
+systemctl is-active paperloom-harness.service
 systemctl is-active paperloom-backend.service
 systemctl is-active cloudflared.service
 cd "$PAPERLOOM_HOME"
 docker compose --env-file .env -f docs/docker-compose.yaml ps
 ```
 
-本次正式上线的结果是：前端 `200`、未认证 API `403`、真实研究问答完成，Backend、4 个 Worker
-和 Cloudflared 均为 `active`；任务完成后 Redis jobs stream 长度和 pending 数均回到 `0`。
+本次正式上线的结果是：前端 `200`、未认证 API `403`、真实研究问答完成，Backend、Harness
+和 Cloudflared 均为 `active`。
 
 上线后的检查、发布、备份与排障见[运维指南](operations.md)。
 
@@ -455,16 +465,15 @@ git pull --ff-only
 mvn -DskipTests package
 corepack pnpm --dir frontend install --frozen-lockfile
 corepack pnpm --dir frontend build
-systemctl restart paperloom-harness-worker@{1..4}.service paperloom-backend.service
+systemctl restart paperloom-harness.service paperloom-backend.service
 ```
 
 看状态和日志：
 
 ```bash
-systemctl status paperloom-backend paperloom-harness-worker@{1..4} cloudflared
+systemctl status paperloom-backend paperloom-harness cloudflared
 journalctl -u paperloom-backend -f
-journalctl -u paperloom-harness-worker@1 -u paperloom-harness-worker@2 \
-  -u paperloom-harness-worker@3 -u paperloom-harness-worker@4 -f
+journalctl -u paperloom-harness -f
 journalctl -u cloudflared -f
 ```
 
