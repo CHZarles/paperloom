@@ -74,14 +74,6 @@ public class DiscoveryChatService {
     private final Map<String, Integer> activeTurns = new ConcurrentHashMap<>();
     /** turnId -> 本 turn 内部检索真实见过的候选 id（入库门的实况侧）。 */
     private final Map<String, Set<String>> turnCandidates = new ConcurrentHashMap<>();
-    private final Map<String, CorpusDisclosure> turnCorpus = new ConcurrentHashMap<>();
-
-    private record CorpusDisclosure(Set<String> paperIds, Set<String> locationRefs) {
-        private CorpusDisclosure() {
-            this(ConcurrentHashMap.newKeySet(), ConcurrentHashMap.newKeySet());
-        }
-    }
-
     private ScheduledExecutorService poller;
 
     public DiscoveryChatService(DiscoveryChatMessageRepository chatRepository,
@@ -335,60 +327,14 @@ public class DiscoveryChatService {
 
     // --------------------------------------------------------- 内部端点（runner 调用）
 
-    public Map<String, Object> searchLibraryPapers(String turnId, Long userId, List<String> scope,
-                                                   java.util.function.Supplier<Map<String, Object>> search) {
-        CorpusDisclosure disclosure = requireCorpusTurn(turnId, userId, scope);
-        Map<String, Object> result = search.get();
-        if ("resolved".equals(result.get("status"))) {
-            rememberCorpusIds(result.get("matches"), "paper_id", disclosure.paperIds());
-        } else if (!result.containsKey("status")) {
-            rememberCorpusIds(result.get("candidates"), "paper_id", disclosure.paperIds());
+    /** External content tools are permitted only inside the owner's active chat turn. */
+    public void authorizeExternalTurn(String turnId, String userId) {
+        if (turnId == null || turnId.isBlank() || userId == null || userId.isBlank()) {
+            throw new IllegalArgumentException("turnId/userId 必填");
         }
-        return result;
-    }
-
-    public Map<String, Object> findLibraryLocations(String turnId, Long userId, List<String> scope,
-                                                     List<String> paperIds,
-                                                     java.util.function.Supplier<Map<String, Object>> search) {
-        CorpusDisclosure disclosure = requireCorpusTurn(turnId, userId, scope);
-        requireDisclosed(paperIds, disclosure.paperIds());
-        Map<String, Object> result = search.get();
-        rememberCorpusIds(result.get("locations"), "location_ref", disclosure.locationRefs());
-        return result;
-    }
-
-    public Map<String, Object> readLibraryLocations(String turnId, Long userId, List<String> scope,
-                                                     List<String> locationRefs,
-                                                     java.util.function.Supplier<Map<String, Object>> read) {
-        CorpusDisclosure disclosure = requireCorpusTurn(turnId, userId, scope);
-        requireDisclosed(locationRefs, disclosure.locationRefs());
-        return read.get();
-    }
-
-    private CorpusDisclosure requireCorpusTurn(String turnId, Long userId, List<String> scope) {
-        if (userId == null || userId <= 0 || (scope != null && !scope.isEmpty())) {
-            throw new IllegalArgumentException("user_id 必填，discovery scope 必须为当前授权库");
-        }
-        DiscoveryChatMessage row = requireRunningChatTurn(turnId, userId.toString());
+        DiscoveryChatMessage row = requireRunningChatTurn(turnId, userId);
         if (!"CHAT".equals(row.getKind())) {
-            throw new CustomException("仅 CHAT turn 可读取授权库", HttpStatus.CONFLICT);
-        }
-        return turnCorpus.computeIfAbsent(turnId, key -> new CorpusDisclosure());
-    }
-
-    private void requireDisclosed(List<String> requested, Set<String> disclosed) {
-        if (requested == null || requested.isEmpty() || !disclosed.containsAll(requested)) {
-            throw new CustomException("请求的论文或位置尚未在当前 turn 中发现", HttpStatus.CONFLICT);
-        }
-    }
-
-    private void rememberCorpusIds(Object items, String field, Set<String> target) {
-        if (items instanceof List<?> list) {
-            for (Object item : list) {
-                if (item instanceof Map<?, ?> map && map.get(field) instanceof String id) {
-                    target.add(id);
-                }
-            }
+            throw new CustomException("仅 CHAT turn 可获取外部论文", HttpStatus.CONFLICT);
         }
     }
 
@@ -889,7 +835,6 @@ public class DiscoveryChatService {
 
     private void discardTurnState(String turnId) {
         turnCandidates.remove(turnId);
-        turnCorpus.remove(turnId);
     }
 
     private Optional<DiscoveryChatMessage> findRunningTurn(String userId) {

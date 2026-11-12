@@ -91,6 +91,39 @@ public class ArxivClient {
         return content;
     }
 
+    /** Isolated discovery read: fixed public HTTPS origin, no library writes or configurable URL. */
+    public byte[] downloadExternalPdf(String rawId) {
+        String id = requireExternalId(rawId);
+        try {
+            byte[] body = webClientFactory.builder("https://arxiv.org")
+                    .codecs(c -> c.defaultCodecs().maxInMemorySize(16 * 1024 * 1024)).build()
+                    .get().uri("/pdf/" + id).exchangeToMono(response -> {
+                        if (!response.statusCode().is2xxSuccessful()) {
+                            return response.createException().flatMap(reactor.core.publisher.Mono::error);
+                        }
+                        return response.bodyToMono(byte[].class);
+                    }).block(Duration.ofSeconds(25));
+            if (body == null || body.length < 5 || body[0] != '%' || body[1] != 'P'
+                    || body[2] != 'D' || body[3] != 'F') {
+                throw new ArxivResponseException("arXiv 返回的内容不是 PDF: " + id);
+            }
+            return body;
+        } catch (ArxivResponseException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            if (isPdfTooLarge(e)) throw new ArxivPdfTooLargeException("arXiv PDF 超过允许的 16 MB");
+            throw new ArxivUnavailableException("arXiv PDF 下载失败: " + rootMessage(e), e);
+        }
+    }
+
+    static String requireExternalId(String raw) {
+        String value = raw == null ? "" : raw.trim();
+        if (!value.matches("(?:[0-9]{4}\\.[0-9]{4,5}|[a-z][a-z-]*(?:\\.[A-Za-z]{2})?/[0-9]{7})(?:v[1-9][0-9]*)?")) {
+            throw new IllegalArgumentException("arxivId 必须是有效标识（可带版本），不是 URL");
+        }
+        return value;
+    }
+
     private String fetch(String baseUrl, java.util.function.Function<org.springframework.web.util.UriBuilder, java.net.URI> uri, String operation) {
         ArxivUnavailableException last = null;
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {

@@ -3,6 +3,7 @@ package io.github.chzarles.paperloom.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.chzarles.paperloom.exception.CustomException;
 import io.github.chzarles.paperloom.service.discovery.DiscoveryChatService;
+import io.github.chzarles.paperloom.service.discovery.ExternalPaperService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,6 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -35,13 +38,16 @@ public class InternalDiscoveryController {
 
     private final DiscoveryChatService chatService;
     private final ObjectMapper objectMapper;
+    private final ExternalPaperService externalPaperService;
     private final String internalToken;
 
     public InternalDiscoveryController(DiscoveryChatService chatService,
                                        ObjectMapper objectMapper,
+                                       ExternalPaperService externalPaperService,
                                        @Value("${discovery.runner.internal-token:}") String internalToken) {
         this.chatService = chatService;
         this.objectMapper = objectMapper;
+        this.externalPaperService = externalPaperService;
         this.internalToken = internalToken == null ? "" : internalToken.trim();
     }
 
@@ -105,6 +111,34 @@ public class InternalDiscoveryController {
                     "content", item.content() == null ? "" : item.content()));
         }
         return Map.of("items", chatService.distilledMemory(request.userId(), items));
+    }
+
+    public record ExternalSearchRequest(String userId, String query, Integer max) {}
+    public record ExternalReadRequest(String userId, String arxivId, String doi, Integer offset, Integer maxChars) {}
+
+    @PostMapping("/turns/{turnId}/external/search")
+    public Map<String, Object> searchExternalPapers(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @PathVariable("turnId") String turnId,
+            @RequestBody ExternalSearchRequest request) {
+        authorize(authorization);
+        chatService.authorizeExternalTurn(turnId, request.userId());
+        return externalPaperService.search(request.query(), request.max());
+    }
+
+    @PostMapping("/turns/{turnId}/external/read")
+    public Map<String, Object> readExternalPaper(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @PathVariable("turnId") String turnId,
+            @RequestBody ExternalReadRequest request) {
+        authorize(authorization);
+        chatService.authorizeExternalTurn(turnId, request.userId());
+        return externalPaperService.read(request.arxivId(), request.doi(), request.offset(), request.maxChars());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> invalidExternalRequest(HttpMessageNotReadableException error) {
+        return ResponseEntity.badRequest().body(Map.of("code", 400, "message", "invalid request"));
     }
 
     private void requireFields(String... values) {
