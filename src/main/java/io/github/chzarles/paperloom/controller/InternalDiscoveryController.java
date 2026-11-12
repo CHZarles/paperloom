@@ -52,6 +52,9 @@ public class InternalDiscoveryController {
     public record ImportRequest(String turnId, String userId, List<String> arxivIds) {
     }
 
+    public record RemoveCandidatesRequest(String turnId, String userId, List<String> arxivIds) {
+    }
+
     public record MemoryItemRequest(String kind, String content) {
     }
 
@@ -76,6 +79,19 @@ public class InternalDiscoveryController {
             throw new IllegalArgumentException("arxivIds 不能为空");
         }
         return Map.of("items", chatService.delegatedImport(request.turnId(), request.userId(), request.arxivIds()));
+    }
+
+    /** 模型侧移除候选：ids 必须落在当前 turn 候选池或窗口历史卡片里，门在服务端。 */
+    @PostMapping("/candidates/remove")
+    public Map<String, Object> removeCandidates(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestBody RemoveCandidatesRequest request) {
+        authorize(authorization);
+        requireFields(request.turnId(), request.userId());
+        if (request.arxivIds() == null || request.arxivIds().isEmpty()) {
+            throw new IllegalArgumentException("arxivIds 不能为空");
+        }
+        return chatService.removeCandidateCards(request.turnId(), request.userId(), request.arxivIds());
     }
 
     @PostMapping("/memory")

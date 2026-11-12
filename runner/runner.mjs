@@ -290,7 +290,43 @@ function buildChatTools(state) {
     }
   });
 
-  return [searchTool, shortlistTool, importTool];
+  const removeTool = defineTool({
+    name: "remove_candidates",
+    label: "移除候选",
+    description:
+      "把用户明确说不要的论文从候选栏移除（只在他表达排除/删掉/不要了这类意图时调用，绝不自行清理候选）。" +
+      "arxiv_id 必须来自当前候选栏或本轮检索结果。已入库的论文只影响候选展示，不会删库内论文。",
+    parameters: Type.Object({
+      arxiv_ids: Type.Array(Type.String(), { minItems: 1, maxItems: 30 })
+    }),
+    async execute(_id, params) {
+      const allowed = new Set([...state.historyCardIds, ...state.observed.keys()]);
+      const bad = params.arxiv_ids.filter(id => !allowed.has(id));
+      if (bad.length) {
+        state.steps.push(`移除候选被拒：${bad.length} 个 id 不在候选池`);
+        const digest = [...allowed].slice(0, 60).join(", ");
+        return {
+          content: [{ type: "text", text: JSON.stringify({ ok: false, errors: ["以下 id 不在候选池: " + bad.join(", ")], allowed_digest: digest }) }],
+          details: {}
+        };
+      }
+      const data = await javaInternal("/internal/v1/discovery/candidates/remove", {
+        turnId: state.turnId, userId: state.userId, arxivIds: params.arxiv_ids
+      });
+      const removed = new Set(params.arxiv_ids);
+      for (const id of removed) state.observed.delete(id);
+      state.cards = state.cards.filter(c => !removed.has(c.arxivId));
+      if (state.shortlisted) state.shortlisted = state.shortlisted.filter(id => !removed.has(id));
+      state.historyCardIds = new Set([...state.historyCardIds].filter(id => !removed.has(id)));
+      state.steps.push(`移除 ${removed.size} 篇候选`);
+      return {
+        content: [{ type: "text", text: JSON.stringify({ ok: true, removed: [...removed], rejected: data.rejected ?? [], removedRows: data.removedRows ?? 0 }) }],
+        details: {}
+      };
+    }
+  });
+
+  return [searchTool, shortlistTool, importTool, removeTool];
 }
 
 function buildDistillTools(state) {
@@ -339,7 +375,7 @@ const CHAT_CONTRACT = `你是 PaperLoom 的论文发现助理。职能只有一�
 
 ## 硬性边界
 
-1. 工具：search_arxiv_papers（检索）、shortlist_papers（每轮检索完必调一次；候选栏只显示你筛出的）、import_arxiv_papers（仅当他说「入库」时）。
+1. 工具：search_arxiv_papers（检索）、shortlist_papers（每轮检索完必调一次；候选栏只显示你筛出的）、import_arxiv_papers（仅当他说「入库」时）、remove_candidates（仅当他说某篇不要/删掉时）。
 2. 判断只依据元数据（标题/摘要/作者/年份/类目）；library_status 非 NONE 的不进 shortlist。
 3. 中文回复。窗口内历史与长期记忆可用，窗口外的不假装记得。`;
 
@@ -425,7 +461,7 @@ async function startTurn(state) {
     // agent 可调用集合只装 allowlist 工具；模型发明的 bash/read 调用会在 prepareToolCall 的
     // tools.find() 落空返回 "Tool not found"，不执行任何代码。本进程 env 持有 MINIMAX_API_KEY
     // 与 internal token，shell 可用即等于密钥泄漏——工具面锁定是本服务唯一持密边界。
-    tools: state.kind === "DISTILL" ? ["save_memory"] : ["search_arxiv_papers", "shortlist_papers", "import_arxiv_papers"],
+    tools: state.kind === "DISTILL" ? ["save_memory"] : ["search_arxiv_papers", "shortlist_papers", "import_arxiv_papers", "remove_candidates"],
     customTools: state.kind === "DISTILL" ? buildDistillTools(state) : buildChatTools(state),
     sessionManager: SessionManager.inMemory(workDir, undefined, historyEntries(state, workDir)),
     settingsManager: SettingsManager.inMemory({ compaction: { enabled: false } }),

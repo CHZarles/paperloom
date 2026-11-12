@@ -74,6 +74,13 @@ public class DiscoveryChatService {
     private final Map<String, Integer> activeTurns = new ConcurrentHashMap<>();
     /** turnId -> 本 turn 内部检索真实见过的候选 id（入库门的实况侧）。 */
     private final Map<String, Set<String>> turnCandidates = new ConcurrentHashMap<>();
+    private final Map<String, CorpusDisclosure> turnCorpus = new ConcurrentHashMap<>();
+
+    private record CorpusDisclosure(Set<String> paperIds, Set<String> locationRefs) {
+        private CorpusDisclosure() {
+            this(ConcurrentHashMap.newKeySet(), ConcurrentHashMap.newKeySet());
+        }
+    }
 
     private ScheduledExecutorService poller;
 
@@ -192,7 +199,7 @@ public class DiscoveryChatService {
             active.setReasonCode("user_cleared");
             chatRepository.save(active);
             activeTurns.remove(active.getTurnId());
-            turnCandidates.remove(active.getTurnId());
+            discardTurnState(active.getTurnId());
             runnerClient.dispose(active.getTurnId());
         });
         chatRepository.deleteAllByUserId(userId);
@@ -277,7 +284,7 @@ public class DiscoveryChatService {
             row.setTurnStatus(DiscoveryChatMessage.TURN_STATUS_CANCELLED);
             chatRepository.save(row);
             activeTurns.remove(row.getTurnId());
-            turnCandidates.remove(row.getTurnId());
+            discardTurnState(row.getTurnId());
             runnerClient.cancelAsync(row.getTurnId());
         }
         Map<String, Object> data = new LinkedHashMap<>();
@@ -327,6 +334,63 @@ public class DiscoveryChatService {
     }
 
     // --------------------------------------------------------- 内部端点（runner 调用）
+
+    public Map<String, Object> searchLibraryPapers(String turnId, Long userId, List<String> scope,
+                                                   java.util.function.Supplier<Map<String, Object>> search) {
+        CorpusDisclosure disclosure = requireCorpusTurn(turnId, userId, scope);
+        Map<String, Object> result = search.get();
+        if ("resolved".equals(result.get("status"))) {
+            rememberCorpusIds(result.get("matches"), "paper_id", disclosure.paperIds());
+        } else if (!result.containsKey("status")) {
+            rememberCorpusIds(result.get("candidates"), "paper_id", disclosure.paperIds());
+        }
+        return result;
+    }
+
+    public Map<String, Object> findLibraryLocations(String turnId, Long userId, List<String> scope,
+                                                     List<String> paperIds,
+                                                     java.util.function.Supplier<Map<String, Object>> search) {
+        CorpusDisclosure disclosure = requireCorpusTurn(turnId, userId, scope);
+        requireDisclosed(paperIds, disclosure.paperIds());
+        Map<String, Object> result = search.get();
+        rememberCorpusIds(result.get("locations"), "location_ref", disclosure.locationRefs());
+        return result;
+    }
+
+    public Map<String, Object> readLibraryLocations(String turnId, Long userId, List<String> scope,
+                                                     List<String> locationRefs,
+                                                     java.util.function.Supplier<Map<String, Object>> read) {
+        CorpusDisclosure disclosure = requireCorpusTurn(turnId, userId, scope);
+        requireDisclosed(locationRefs, disclosure.locationRefs());
+        return read.get();
+    }
+
+    private CorpusDisclosure requireCorpusTurn(String turnId, Long userId, List<String> scope) {
+        if (userId == null || userId <= 0 || (scope != null && !scope.isEmpty())) {
+            throw new IllegalArgumentException("user_id 必填，discovery scope 必须为当前授权库");
+        }
+        DiscoveryChatMessage row = requireRunningChatTurn(turnId, userId.toString());
+        if (!"CHAT".equals(row.getKind())) {
+            throw new CustomException("仅 CHAT turn 可读取授权库", HttpStatus.CONFLICT);
+        }
+        return turnCorpus.computeIfAbsent(turnId, key -> new CorpusDisclosure());
+    }
+
+    private void requireDisclosed(List<String> requested, Set<String> disclosed) {
+        if (requested == null || requested.isEmpty() || !disclosed.containsAll(requested)) {
+            throw new CustomException("请求的论文或位置尚未在当前 turn 中发现", HttpStatus.CONFLICT);
+        }
+    }
+
+    private void rememberCorpusIds(Object items, String field, Set<String> target) {
+        if (items instanceof List<?> list) {
+            for (Object item : list) {
+                if (item instanceof Map<?, ?> map && map.get(field) instanceof String id) {
+                    target.add(id);
+                }
+            }
+        }
+    }
 
     public Map<String, Object> delegatedSearch(String turnId, String userId, String query, Integer start,
                                                 Integer max, String sort, Integer yearFrom, Integer yearTo) {
@@ -493,6 +557,55 @@ public class DiscoveryChatService {
         if (id.isEmpty()) {
             throw new CustomException("缺少 arXiv 编号", HttpStatus.BAD_REQUEST);
         }
+        int touched = stripCardsFromRows(userId, Set.of(id));
+        LogUtils.logBusiness("DISCOVERY_AGENT_CARD_REMOVE", userId,
+                "移除候选: arxivId=%s, 落行数=%d", id, touched);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("ok", true);
+        data.put("removedRows", touched);
+        return data;
+    }
+
+    /**
+     * Runner 侧移除候选：与候选栏 UI 的移除同源，把 ids 从所有消息行的 cards 里摘除。
+     *
+     * <p>服务的边界与入库一致：ids 必须落在当前 turn 的候选池或窗口历史卡片里，否则记入 rejected；
+     * 只动候选展示，不影响库内已入库的论文与 importResults。
+     */
+    public Map<String, Object> removeCandidateCards(String turnId, String userId, List<String> arxivIds) {
+        requireRunningChatTurn(turnId, userId);
+        Set<String> allowed = new LinkedHashSet<>(turnCandidates.getOrDefault(turnId, Set.of()));
+        allowed.addAll(assembleWindow(userId).cardIds());
+        Set<String> ids = new LinkedHashSet<>();
+        List<String> rejected = new ArrayList<>();
+        for (String rawId : arxivIds == null ? List.<String>of() : arxivIds) {
+            String raw = rawId == null ? "" : rawId.trim();
+            String normalized = ArxivIdentifier.normalize(raw).orElse(raw);
+            if (normalized.isEmpty()) {
+                continue;
+            }
+            if (allowed.contains(normalized)) {
+                ids.add(normalized);
+            } else {
+                rejected.add(normalized);
+            }
+        }
+        int touched = ids.isEmpty() ? 0 : stripCardsFromRows(userId, ids);
+        LogUtils.logBusiness("DISCOVERY_AGENT_CARD_REMOVE", userId,
+                "runner 移除候选: ids=%s, 落行数=%d, 拒绝数=%d", ids, touched, rejected.size());
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("ok", true);
+        data.put("removedRows", touched);
+        data.put("removed", new ArrayList<>(ids));
+        data.put("rejected", rejected);
+        return data;
+    }
+
+    /** 把 ids 从该用户所有消息行的 cards 里摘除，返回被改写的行数。UI 与 Runner 共用。 */
+    private int stripCardsFromRows(String userId, Set<String> ids) {
+        if (ids.isEmpty()) {
+            return 0;
+        }
         List<DiscoveryChatMessage> rows = chatRepository.findTop500ByUserIdOrderByIdDesc(userId);
         int touched = 0;
         for (DiscoveryChatMessage row : rows) {
@@ -501,7 +614,7 @@ public class DiscoveryChatService {
                 continue;
             }
             List<Map<String, Object>> kept = cards.stream()
-                    .filter(c -> !id.equals(String.valueOf(c.getOrDefault("arxivId", ""))))
+                    .filter(c -> !ids.contains(String.valueOf(c.getOrDefault("arxivId", ""))))
                     .toList();
             if (kept.size() == cards.size()) {
                 continue;
@@ -514,12 +627,7 @@ public class DiscoveryChatService {
                 logger.warn("候选移除落行失败 => rowId: {}, error: {}", row.getId(), e.getMessage());
             }
         }
-        LogUtils.logBusiness("DISCOVERY_AGENT_CARD_REMOVE", userId,
-                "移除候选: arxivId=%s, 落行数=%d", id, touched);
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("ok", true);
-        data.put("removedRows", touched);
-        return data;
+        return touched;
     }
 
     // --------------------------------------------------------- 轮询与终态
@@ -561,7 +669,7 @@ public class DiscoveryChatService {
         DiscoveryChatMessage row = chatRepository.findByTurnId(turnId).orElse(null);
         if (row == null || !DiscoveryChatMessage.TURN_STATUS_RUNNING.equals(row.getTurnStatus())) {
             activeTurns.remove(turnId);
-            turnCandidates.remove(turnId);
+            discardTurnState(turnId);
             runnerClient.dispose(turnId);
             return;
         }
@@ -604,7 +712,7 @@ public class DiscoveryChatService {
         }
         chatRepository.save(row);
         activeTurns.remove(row.getTurnId());
-        turnCandidates.remove(row.getTurnId());
+        discardTurnState(row.getTurnId());
         runnerClient.dispose(row.getTurnId());
         LogUtils.logBusiness("DISCOVERY_AGENT_TURN", row.getUserId(),
                 "聊天 turn 终态: turnId=%s, status=%s, reason=%s",
@@ -616,7 +724,7 @@ public class DiscoveryChatService {
         row.setReasonCode(reasonCode);
         chatRepository.save(row);
         activeTurns.remove(row.getTurnId());
-        turnCandidates.remove(row.getTurnId());
+        discardTurnState(row.getTurnId());
     }
 
     private void applyLiveFields(DiscoveryChatMessage row, JsonNode snapshot) {
