@@ -887,6 +887,11 @@ public class DiscoveryChatService {
 
     // --------------------------------------------------------- 工具方法
 
+    private void discardTurnState(String turnId) {
+        turnCandidates.remove(turnId);
+        turnCorpus.remove(turnId);
+    }
+
     private Optional<DiscoveryChatMessage> findRunningTurn(String userId) {
         return chatRepository.findFirstByUserIdAndRoleOrderByIdDesc(userId, DiscoveryChatMessage.ROLE_ASSISTANT)
                 .filter(r -> DiscoveryChatMessage.TURN_STATUS_RUNNING.equals(r.getTurnStatus()));
